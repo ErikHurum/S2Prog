@@ -1,0 +1,1614 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:14:16 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\ModbusPro.cpp                   #
+#    Command line    =  D:\S2Prog\Shared\Src\ModbusPro.cpp --fpu None -D     #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\ModbusPro.lst               #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\ModbusPro.r79                #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\ModbusPro.cpp
+      1          #include "TSNIncludes.h"
+      2          #pragma hdrstop
+      3          #ifdef BORLAND
+      4              #pragma package(smart_init)
+      5          #endif
+      6          
+      7          #include "ModbusConst.h"
+      8          
+      9          #ifdef WIN32
+     10              #include "WinUart.h"
+     11          #else
+     12              #include "SC2410Uart.h"
+     13              #include "ST16554Uart.h"
+     14          #endif
+     15          
+     16          //---------------------------------------------------------------------------
+     17          /***********************************************************************
+     18          
+     19               Note: All functions used for sending or receiving data via
+     20                       modbus return these return values.
+     21          
+     22          
+     23              Returns:	string_length if OK
+     24                      0 if failed
+     25                      Less than 0 for exception errors
+     26          
+     27          ***********************************************************************/
+     28          
+     29          
+     30          ///////////////////////////////////////////////////////////////////////
+     31          //
+     32          //  ModbusPro object routines
+     33          //
+     34          ///////////////////////////////////////////////////////////////////////
+     35          
+     36          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     37          ModbusPro::ModbusPro() {
+     38              Initiate();
+     39          }
+   \                     ??ModbusPro:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     40          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     41          void ModbusPro::Initiate(void) {
+     42          }
+   \                     ??Initiate:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     43          
+     44          
+     45          ///////////////////////////////////////////////////////////////////////////////////////
+     46          
+     47          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     48          void ModbusPro::ReceiveStatus(TSNUart *Port) {
+     49          }
+   \                     ??ReceiveStatus:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     50          
+     51          
+     52          /* Table of CRC values for high-order byte */
+
+   \                                 In segment DATA_I, align 4, align-sorted
+     53          static U8 auchCRCHi[] = {
+   \                     auchCRCHi:
+   \   00000000                      DS8 256
+   \   00000100                      REQUIRE `?<Initializer for auchCRCHi>`
+   \   00000100                      DS8 256
+   \   00000200                      REQUIRE `?<Initializer for auchCRCLo>`
+     54              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0,
+     55              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+     56              0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
+     57              0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+     58              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1,
+     59              0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
+     60              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1,
+     61              0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+     62              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0,
+     63              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40,
+     64              0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1,
+     65              0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+     66              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0,
+     67              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40,
+     68              0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
+     69              0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+     70              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0,
+     71              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+     72              0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
+     73              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+     74              0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
+     75              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40,
+     76              0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1,
+     77              0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+     78              0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0,
+     79              0x80, 0x41, 0x00, 0xC1, 0x81, 0x40
+     80          };
+     81          
+     82          /* Table of CRC values for low-order byte */
+     83          static U8 auchCRCLo[] = {
+     84              0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2, 0xC6, 0x06,
+     85              0x07, 0xC7, 0x05, 0xC5, 0xC4, 0x04, 0xCC, 0x0C, 0x0D, 0xCD,
+     86              0x0F, 0xCF, 0xCE, 0x0E, 0x0A, 0xCA, 0xCB, 0x0B, 0xC9, 0x09,
+     87              0x08, 0xC8, 0xD8, 0x18, 0x19, 0xD9, 0x1B, 0xDB, 0xDA, 0x1A,
+     88              0x1E, 0xDE, 0xDF, 0x1F, 0xDD, 0x1D, 0x1C, 0xDC, 0x14, 0xD4,
+     89              0xD5, 0x15, 0xD7, 0x17, 0x16, 0xD6, 0xD2, 0x12, 0x13, 0xD3,
+     90              0x11, 0xD1, 0xD0, 0x10, 0xF0, 0x30, 0x31, 0xF1, 0x33, 0xF3,
+     91              0xF2, 0x32, 0x36, 0xF6, 0xF7, 0x37, 0xF5, 0x35, 0x34, 0xF4,
+     92              0x3C, 0xFC, 0xFD, 0x3D, 0xFF, 0x3F, 0x3E, 0xFE, 0xFA, 0x3A,
+     93              0x3B, 0xFB, 0x39, 0xF9, 0xF8, 0x38, 0x28, 0xE8, 0xE9, 0x29,
+     94              0xEB, 0x2B, 0x2A, 0xEA, 0xEE, 0x2E, 0x2F, 0xEF, 0x2D, 0xED,
+     95              0xEC, 0x2C, 0xE4, 0x24, 0x25, 0xE5, 0x27, 0xE7, 0xE6, 0x26,
+     96              0x22, 0xE2, 0xE3, 0x23, 0xE1, 0x21, 0x20, 0xE0, 0xA0, 0x60,
+     97              0x61, 0xA1, 0x63, 0xA3, 0xA2, 0x62, 0x66, 0xA6, 0xA7, 0x67,
+     98              0xA5, 0x65, 0x64, 0xA4, 0x6C, 0xAC, 0xAD, 0x6D, 0xAF, 0x6F,
+     99              0x6E, 0xAE, 0xAA, 0x6A, 0x6B, 0xAB, 0x69, 0xA9, 0xA8, 0x68,
+    100              0x78, 0xB8, 0xB9, 0x79, 0xBB, 0x7B, 0x7A, 0xBA, 0xBE, 0x7E,
+    101              0x7F, 0xBF, 0x7D, 0xBD, 0xBC, 0x7C, 0xB4, 0x74, 0x75, 0xB5,
+    102              0x77, 0xB7, 0xB6, 0x76, 0x72, 0xB2, 0xB3, 0x73, 0xB1, 0x71,
+    103              0x70, 0xB0, 0x50, 0x90, 0x91, 0x51, 0x93, 0x53, 0x52, 0x92,
+    104              0x96, 0x56, 0x57, 0x97, 0x55, 0x95, 0x94, 0x54, 0x9C, 0x5C,
+    105              0x5D, 0x9D, 0x5F, 0x9F, 0x9E, 0x5E, 0x5A, 0x9A, 0x9B, 0x5B,
+    106              0x99, 0x59, 0x58, 0x98, 0x88, 0x48, 0x49, 0x89, 0x4B, 0x8B,
+    107              0x8A, 0x4A, 0x4E, 0x8E, 0x8F, 0x4F, 0x8D, 0x4D, 0x4C, 0x8C,
+    108              0x44, 0x84, 0x85, 0x45, 0x87, 0x47, 0x46, 0x86, 0x82, 0x42,
+    109              0x43, 0x83, 0x41, 0x81, 0x80, 0x40
+    110          };
+    111          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    112          unsigned ModbusPro::FastCalcCRC(U8 *puchMsg, unsigned usDataLen) {
+   \                     ??FastCalcCRC:
+   \   00000000   10002DE9           PUSH     {R4}
+    113              U8 uchCRCHi = 0xFF;    /* high CRC byte initialized 	*/
+   \   00000004   FF20A0E3           MOV      R2,#+255
+    114              U8 uchCRCLo = 0xFF;    /* low CRC byte  initialized  	*/
+   \   00000008   FF30A0E3           MOV      R3,#+255
+   \   0000000C   070000EA           B        ??FastCalcCRC_1
+    115              unsigned uIndex;               /* will index into CRC   lookup */
+    116              /* table              			*/
+    117              while ( usDataLen-- ) {          /* pass through message buffer  */
+    118                  uIndex   = uchCRCHi ^ *puchMsg++;  /* calculate the CRC  */
+   \                     ??FastCalcCRC_2:
+   \   00000010   ........           LDRB     R4,[R0], #+1
+   \   00000014   02C024E0           EOR      R12,R4,R2
+    119                  uchCRCHi = uchCRCLo ^ auchCRCHi[uIndex];
+   \   00000018   2C409FE5           LDR      R4,??FastCalcCRC_3  ;; auchCRCHi
+   \   0000001C   0420DCE7           LDRB     R2,[R12, +R4]
+   \   00000020   032022E0           EOR      R2,R2,R3
+   \   00000024   FF2002E2           AND      R2,R2,#0xFF
+    120                  uchCRCLo = auchCRCLo[uIndex];
+   \   00000028   04308CE0           ADD      R3,R12,R4
+   \   0000002C   0031D3E5           LDRB     R3,[R3, #+256]
+    121              }
+   \                     ??FastCalcCRC_1:
+   \   00000030   0140A0E1           MOV      R4,R1
+   \   00000034   011044E2           SUB      R1,R4,#+1
+   \   00000038   000054E3           CMP      R4,#+0
+   \   0000003C   F3FFFF1A           BNE      ??FastCalcCRC_2
+    122              return ((uchCRCHi << 8) | uchCRCLo);
+   \   00000040   1000BDE8           POP      {R4}
+   \   00000044   020483E1           ORR      R0,R3,R2, LSL #+8
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+   \                     ??FastCalcCRC_3:
+   \   0000004C   ........           DC32     auchCRCHi
+    123          }
+    124          
+    125          
+    126          
+    127          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    128          unsigned ModbusPro::CalcCRC(unsigned char *buf, int start, int cnt) {
+   \                     ??CalcCRC:
+   \   00000000   30002DE9           PUSH     {R4,R5}
+    129              int     i, j;
+    130              unsigned    temp, temp2, flag;
+    131          
+    132              temp = 0xFFFF;
+   \   00000004   FF30A0E3           MOV      R3,#+255
+   \   00000008   FF3C83E3           ORR      R3,R3,#0xFF00
+   \   0000000C   03C0A0E1           MOV      R12,R3
+    133          
+    134              for ( i = start; i < cnt; i++ ) {
+   \   00000010   0C0000EA           B        ??CalcCRC_1
+    135                  temp = temp ^ buf[i];
+   \                     ??CalcCRC_2:
+   \   00000014   0040D1E7           LDRB     R4,[R1, +R0]
+   \   00000018   0CC024E0           EOR      R12,R4,R12
+    136          
+    137                  for ( j = 1; j <= 8; j++ ) {
+   \   0000001C   0140A0E3           MOV      R4,#+1
+    138                      flag = temp & 0x0001;
+   \                     ??CalcCRC_3:
+   \   00000020   01500CE2           AND      R5,R12,#0x1
+    139                      temp = temp >> 1;
+   \   00000024   ACC0A0E1           LSR      R12,R12,#+1
+    140                      if ( flag )	temp = temp ^ 0xA001;
+   \   00000028   000055E3           CMP      R5,#+0
+   \   0000002C   0150A013           MOVNE    R5,#+1
+   \   00000030   A05C8513           ORRNE    R5,R5,#0xA000
+   \   00000034   0CC02510           EORNE    R12,R5,R12
+    141                  }
+   \   00000038   014084E2           ADD      R4,R4,#+1
+   \   0000003C   090054E3           CMP      R4,#+9
+   \   00000040   F6FFFFBA           BLT      ??CalcCRC_3
+    142              }
+   \   00000044   011081E2           ADD      R1,R1,#+1
+   \                     ??CalcCRC_1:
+   \   00000048   020051E1           CMP      R1,R2
+   \   0000004C   F0FFFFBA           BLT      ??CalcCRC_2
+    143          
+    144              /* Reverse byte order. */
+    145          
+    146              temp2 = temp >> 8;
+    147              temp = (temp << 8) | temp2;
+    148              temp &= 0xFFFF;
+    149          
+    150              return (temp);
+   \   00000050   3000BDE8           POP      {R4,R5}
+   \   00000054   2C04A0E1           LSR      R0,R12,#+8
+   \   00000058   0C0480E1           ORR      R0,R0,R12, LSL #+8
+   \   0000005C   000003E0           AND      R0,R3,R0
+   \   00000060   1EFF2FE1           BX       LR               ;; return
+    151          }
+    152          
+    153          
+    154          
+    155          
+    156          
+    157          
+    158          /***********************************************************************
+    159          
+    160          Function to send a query out to a modbus slave.
+    161          
+    162          A checksum is added to the end of a packet.
+    163          Please note that the packet array must be at least 3 fields longer than
+    164          string_length. Test
+    165          
+    166          ************************************************************************/
+    167          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    168          bool ModbusPro::Send_Query(TSNUart *Port, U8 *Query, size_t Length) {
+   \                     ??Send_Query:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    169              bool Status;
+    170              switch ( Port->Device ) {
+   \   00000008   A80094E5           LDR      R0,[R4, #+168]
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   6A0040E2           SUB      R0,R0,#+106
+   \   00000018   7C0D40E2           SUB      R0,R0,#+7936
+   \   0000001C   070050E3           CMP      R0,#+7
+   \   00000020   1300008A           BHI      ??Send_Query_2
+   \   00000024   011F8FE2           ADR      R1,??Send_Query_1
+   \   00000028   0010D1E7           LDRB     R1,[R1, R0]
+   \   0000002C   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??Send_Query_1:
+   \   00000030   01101001           DC8      +1,+16,+16,+1
+   \   00000034   10100101           DC8      +16,+16,+1,+1
+    171              case C_UART_DEVICE_MODICON_MASTER_TCP   :
+    172              case C_UART_DEVICE_MODICON_SLAVE_TCP    :
+    173              case C_UART_DEVICE_MODBUS_SLAVE_TCP     :
+    174              case C_UART_DEVICE_MODBUS_MASTER_TCP    :
+    175                  Query[MODBUS_INDEX_TCP_TRANSACTION] = Port->TransactionNumber & 0xFF;
+   \                     ??Send_Query_3:
+   \   00000038   5C0094E5           LDR      R0,[R4, #+92]
+    176                  Query[MODBUS_INDEX_TCP_TRANSACTION + 1] = Port->TransactionNumber >> 8;
+    177                  Query[MODBUS_INDEX_TCP_PROTOCOL] = 0;
+    178                  Query[MODBUS_INDEX_TCP_PROTOCOL   + 1] = 0;
+    179                  Query[MODBUS_INDEX_TCP_LENGTH] = 0;
+    180                  Query[MODBUS_INDEX_TCP_LENGTH     + 1] = Length - MODBUS_INDEX_TCP_OFFSET;
+    181                  Status = Port->Send(Query, (int)Length, 0x1, true);
+   \   0000003C   0130A0E3           MOV      R3,#+1
+   \   00000040   0000C5E5           STRB     R0,[R5, #+0]
+   \   00000044   5C0094E5           LDR      R0,[R4, #+92]
+   \   00000048   4004A0E1           ASR      R0,R0,#+8
+   \   0000004C   0100C5E5           STRB     R0,[R5, #+1]
+   \   00000050   0000A0E3           MOV      R0,#+0
+   \   00000054   0200C5E5           STRB     R0,[R5, #+2]
+   \   00000058   0300C5E5           STRB     R0,[R5, #+3]
+   \   0000005C   0400C5E5           STRB     R0,[R5, #+4]
+   \   00000060   FA0086E2           ADD      R0,R6,#+250
+   \   00000064   0500C5E5           STRB     R0,[R5, #+5]
+   \   00000068   0100A0E3           MOV      R0,#+1
+   \   0000006C   01002DE9           PUSH     {R0}
+   \   00000070   0C0000EA           B        ??Send_Query_4
+    182                  switch ( Port->HWProtocol ) {
+    183                  case C_UART_HWPRO_485 :
+    184                      Port->ClearRxBuffer();
+    185                      break;
+    186                  case C_UART_HWPRO_232 :
+    187                      break;
+    188                  }
+    189                  break;
+    190              case C_UART_DEVICE_MODICON_MASTER       :
+    191              case C_UART_DEVICE_MODICON_SLAVE        :
+    192              case C_UART_DEVICE_MODBUS_SLAVE_INV     :
+    193              case C_UART_DEVICE_MODBUS_SLAVE         :
+    194              case C_UART_DEVICE_MODBUS_MASTER_INV    :
+    195              case C_UART_DEVICE_MODBUS_MASTER        :
+    196              default:
+    197                  {
+    198                      unsigned short TmpCRC   = (unsigned short)FastCalcCRC(Query, Length);
+   \                     ??Send_Query_2:
+   \   00000074   0610A0E1           MOV      R1,R6
+   \   00000078   0500A0E1           MOV      R0,R5
+   \   0000007C   ........           BL       ??FastCalcCRC
+   \   00000080   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000084   2008A0E1           MOV      R0,R0, LSR #+16
+    199                      Query[Length++] = TmpCRC >> 8;
+   \   00000088   2014A0E1           LSR      R1,R0,#+8
+   \   0000008C   0510C6E7           STRB     R1,[R6, +R5]
+   \   00000090   016086E2           ADD      R6,R6,#+1
+    200                      Query[Length++] = TmpCRC & 0x00FF;
+   \   00000094   0500C6E7           STRB     R0,[R6, +R5]
+    201                  }
+    202                  Status = Port->Send(Query, (int)Length, 0x1, true);
+   \   00000098   0100A0E3           MOV      R0,#+1
+   \   0000009C   01002DE9           PUSH     {R0}
+   \   000000A0   0130A0E3           MOV      R3,#+1
+   \   000000A4   012086E2           ADD      R2,R6,#+1
+   \                     ??Send_Query_4:
+   \   000000A8   0510A0E1           MOV      R1,R5
+   \   000000AC   DC5094E5           LDR      R5,[R4, #+220]
+   \   000000B0   0400A0E1           MOV      R0,R4
+   \   000000B4   045095E5           LDR      R5,[R5, #+4]
+   \   000000B8   0FE0A0E1           MOV      LR,PC
+   \   000000BC   15FF2FE1           BX       R5
+   \   000000C0   0050A0E1           MOV      R5,R0
+    203                  switch ( Port->HWProtocol ) {
+   \   000000C4   A00094E5           LDR      R0,[R4, #+160]
+   \   000000C8   04D08DE2           ADD      SP,SP,#+4
+   \   000000CC   4C10A0E3           MOV      R1,#+76
+   \   000000D0   7C1D81E3           ORR      R1,R1,#0x1F00
+   \   000000D4   010050E1           CMP      R0,R1
+   \   000000D8   0400001A           BNE      ??Send_Query_5
+    204                  case C_UART_HWPRO_485 :
+    205                      Port->ClearRxBuffer();
+   \   000000DC   DC1094E5           LDR      R1,[R4, #+220]
+   \   000000E0   0400A0E1           MOV      R0,R4
+   \   000000E4   101091E5           LDR      R1,[R1, #+16]
+   \   000000E8   0FE0A0E1           MOV      LR,PC
+   \   000000EC   11FF2FE1           BX       R1
+    206                      break;
+    207                  case C_UART_HWPRO_232 :
+    208                      break;
+    209                  }
+    210                  break;
+    211              }
+    212              return (Status);
+   \                     ??Send_Query_5:
+   \   000000F0   0500A0E1           MOV      R0,R5
+   \   000000F4   ........           B        ?Subroutine18
+    213          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine18:
+   \   00000000   7040BDE8           POP      {R4-R6,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    214          
+    215          
+    216          /***********************************************************************
+    217          
+    218              receive_response( array_for_data )
+    219          
+    220               Function to monitor for the reply from the modbus slave.
+    221               This function blocks for timeout seconds if there is no reply.
+    222          
+    223               Returns:	Total number of characters received.
+    224          ***********************************************************************/
+    225          //#define MODBUS_OLD
+
+   \                                 In segment CODE, align 4, keep-with-next
+    226          int ModbusPro::Receive_Response(TSNUart *Port, U8 *received_string, int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??Receive_Response:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+   \   00000004   20609DE5           LDR      R6,[SP, #+32]
+   \   00000008   0040A0E1           MOV      R4,R0
+    227          #ifndef MODBUS_OLD
+    228              int bytes_received = 0;
+    229              switch ( Port->Device ) {
+   \   0000000C   A80094E5           LDR      R0,[R4, #+168]
+   \   00000010   0150A0E1           MOV      R5,R1
+   \   00000014   0280A0E1           MOV      R8,R2
+   \   00000018   0390A0E1           MOV      R9,R3
+   \   0000001C   0070A0E3           MOV      R7,#+0
+   \   00000020   680040E2           SUB      R0,R0,#+104
+   \   00000024   7C0D40E2           SUB      R0,R0,#+7936
+   \   00000028   090050E3           CMP      R0,#+9
+   \   0000002C   3E00008A           BHI      ??Receive_Response_2
+   \   00000030   011F8FE2           ADR      R1,??Receive_Response_1
+   \   00000034   0010D1E7           LDRB     R1,[R1, R0]
+   \   00000038   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??Receive_Response_1:
+   \   0000003C   02020211           DC8      +2,+2,+2,+17
+   \   00000040   11110211           DC8      +17,+17,+2,+17
+   \   00000044   02110000           DC8      +2,+17,+0,+0
+    230              case C_UART_DEVICE_MODICON_MASTER_TCP   :
+    231              case C_UART_DEVICE_MODICON_MASTER       :
+    232              case C_UART_DEVICE_MODBUS_MASTER:
+    233              case C_UART_DEVICE_MODBUS_MASTER_INV:
+    234              case C_UART_DEVICE_MODBUS_MASTER_TCP:
+    235                  {
+    236                      bool dataAvailable = false;
+    237                      /* wait for a response */
+    238                      dataAvailable = Port->Receive(&received_string[bytes_received], sizeof(U8), TimeOut);
+   \                     ??Receive_Response_3:
+   \   00000048   0830A0E1           MOV      R3,R8
+   \   0000004C   0120A0E3           MOV      R2,#+1
+   \   00000050   0510A0E1           MOV      R1,R5
+   \                     ??Receive_Response_4:
+   \   00000054   DC8094E5           LDR      R8,[R4, #+220]
+   \   00000058   0400A0E1           MOV      R0,R4
+   \   0000005C   088098E5           LDR      R8,[R8, #+8]
+   \   00000060   0FE0A0E1           MOV      LR,PC
+   \   00000064   18FF2FE1           BX       R8
+    239                      while ( dataAvailable ) {
+   \   00000068   000050E3           CMP      R0,#+0
+   \   0000006C   2E00000A           BEQ      ??Receive_Response_2
+    240                          dataAvailable = Port->Receive(&received_string[++bytes_received], sizeof(U8), FrameTimeOut);
+   \   00000070   017087E2           ADD      R7,R7,#+1
+   \   00000074   0630A0E1           MOV      R3,R6
+   \   00000078   0120A0E3           MOV      R2,#+1
+   \   0000007C   051087E0           ADD      R1,R7,R5
+   \   00000080   F3FFFFEA           B        ??Receive_Response_4
+    241                      }
+    242                  }
+    243                  break;
+    244              case C_UART_DEVICE_MODICON_SLAVE_TCP    :
+    245              case C_UART_DEVICE_MODICON_SLAVE        :
+    246              case C_UART_DEVICE_MODBUS_SLAVE:
+    247              case C_UART_DEVICE_MODBUS_SLAVE_TCP:
+    248              case C_UART_DEVICE_MODBUS_SLAVE_INV:
+    249                  {
+    250                      bool dataAvailable = false;
+    251                      /* wait for a response */
+    252                      int LastRxTime = Port->LastRxTime;
+   \                     ??Receive_Response_5:
+   \   00000084   48A094E5           LDR      R10,[R4, #+72]
+    253                      int NoRxTime;
+    254                      do {
+    255                          dataAvailable = Port->Receive(&received_string[bytes_received], sizeof(U8), TimeOut);
+   \                     ??Receive_Response_6:
+   \   00000088   DCC094E5           LDR      R12,[R4, #+220]
+   \   0000008C   0830A0E1           MOV      R3,R8
+   \   00000090   08C09CE5           LDR      R12,[R12, #+8]
+   \   00000094   0120A0E3           MOV      R2,#+1
+   \   00000098   0510A0E1           MOV      R1,R5
+   \   0000009C   0400A0E1           MOV      R0,R4
+   \   000000A0   0FE0A0E1           MOV      LR,PC
+   \   000000A4   1CFF2FE1           BX       R12
+    256                          NoRxTime = Port->LastRxTime - LastRxTime;
+   \   000000A8   481094E5           LDR      R1,[R4, #+72]
+    257                      }while ( dataAvailable && NoRxTime < FrameSpaceTime ); // Wait for a quiet time
+   \   000000AC   000050E3           CMP      R0,#+0
+   \   000000B0   0A1041E0           SUB      R1,R1,R10
+   \   000000B4   0100000A           BEQ      ??Receive_Response_7
+   \   000000B8   090051E1           CMP      R1,R9
+   \   000000BC   F1FFFFBA           BLT      ??Receive_Response_6
+    258                      if ( NoRxTime >=  FrameSpaceTime ) {
+   \                     ??Receive_Response_7:
+   \   000000C0   090051E1           CMP      R1,R9
+   \   000000C4   0B0000BA           BLT      ??Receive_Response_8
+   \   000000C8   080000EA           B        ??Receive_Response_9
+    259                          while ( dataAvailable ) {
+    260                              dataAvailable = Port->Receive(&received_string[++bytes_received], sizeof(U8), FrameTimeOut);
+   \                     ??Receive_Response_10:
+   \   000000CC   DC8094E5           LDR      R8,[R4, #+220]
+   \   000000D0   017087E2           ADD      R7,R7,#+1
+   \   000000D4   088098E5           LDR      R8,[R8, #+8]
+   \   000000D8   0630A0E1           MOV      R3,R6
+   \   000000DC   0120A0E3           MOV      R2,#+1
+   \   000000E0   051087E0           ADD      R1,R7,R5
+   \   000000E4   0400A0E1           MOV      R0,R4
+   \   000000E8   0FE0A0E1           MOV      LR,PC
+   \   000000EC   18FF2FE1           BX       R8
+    261                          }
+   \                     ??Receive_Response_9:
+   \   000000F0   000050E3           CMP      R0,#+0
+   \   000000F4   F4FFFF1A           BNE      ??Receive_Response_10
+    262                      }
+    263          #ifdef S2TXU
+    264                      OS_DelayUntil(Port->LastRxTime + FrameSpaceTime);
+   \                     ??Receive_Response_8:
+   \   000000F8   480094E5           LDR      R0,[R4, #+72]
+   \   000000FC   000089E0           ADD      R0,R9,R0
+   \   00000100   ........           _BLF     OS_DelayUntil,??OS_DelayUntil??rA
+    265          #endif
+    266                      // See if we have a quiet periode
+    267                      if ( !Port->Relaxed && Port->HasMore() ) {
+   \   00000104   5800D4E5           LDRB     R0,[R4, #+88]
+   \   00000108   000050E3           CMP      R0,#+0
+   \   0000010C   0600001A           BNE      ??Receive_Response_2
+   \   00000110   DC1094E5           LDR      R1,[R4, #+220]
+   \   00000114   0400A0E1           MOV      R0,R4
+   \   00000118   241091E5           LDR      R1,[R1, #+36]
+   \   0000011C   0FE0A0E1           MOV      LR,PC
+   \   00000120   11FF2FE1           BX       R1
+   \   00000124   000050E3           CMP      R0,#+0
+    268                          bytes_received = 0;
+   \   00000128   0070A013           MOVNE    R7,#+0
+    269                      }
+    270                  }
+    271                  break;
+    272              }
+    273              return (bytes_received);
+   \                     ??Receive_Response_2:
+   \   0000012C   0700A0E1           MOV      R0,R7
+   \   00000130   ........           B        ??Subroutine17_0
+    274          #else
+    275              bool dataAvailable = false;
+    276              int bytes_received = 0;
+    277              /* wait for a response */
+    278              dataAvailable = Port->Receive(&received_string[bytes_received], sizeof(U8), TimeOut);
+    279              while ( dataAvailable ) {
+    280                  dataAvailable = Port->Receive(&received_string[++bytes_received], sizeof(U8), FrameTimeOut);
+    281              }
+    282          
+    283              return (bytes_received);
+    284          
+    285          #endif
+    286          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine17:
+   \   00000000   0DC0A0E1           MOV      R12,SP
+   \   00000004   80AFA0E3           MOV      R10,#+512
+   \                     ??Subroutine17_2:
+   \   00000008   04A05AE2           SUBS     R10,R10,#+4
+   \   0000000C   0A909EE7           LDR      R9,[LR, R10]
+   \   00000010   0A908CE7           STR      R9,[R12, R10]
+   \   00000014   FBFFFF1A           BNE      ??Subroutine17_2
+   \   00000018   0010CDE5           STRB     R1,[SP, #+0]
+   \   0000001C   2294A0E1           LSR      R9,R2,#+8
+   \   00000020   0290CDE5           STRB     R9,[SP, #+2]
+   \   00000024   0320CDE5           STRB     R2,[SP, #+3]
+   \   00000028   2324A0E1           LSR      R2,R3,#+8
+   \   0000002C   0420CDE5           STRB     R2,[SP, #+4]
+   \   00000030   0530CDE5           STRB     R3,[SP, #+5]
+   \   00000034   0680CDE5           STRB     R8,[SP, #+6]
+   \   00000038   0820A0E1           MOV      R2,R8
+   \   0000003C   0010A0E1           MOV      R1,R0
+   \   00000040   07008DE2           ADD      R0,SP,#+7
+   \   00000044   ........           _BLF     memcpy,??memcpy??rA
+   \   00000048   078088E2           ADD      R8,R8,#+7
+   \   0000004C   0820A0E1           MOV      R2,R8
+   \   00000050   0D10A0E1           MOV      R1,SP
+   \   00000054   0400A0E1           MOV      R0,R4
+   \   00000058   ........           BL       ??Send_Query
+   \   0000005C   000050E3           CMP      R0,#+0
+   \   00000060   0A00000A           BEQ      ??Subroutine17_3
+   \   00000064   0000A0E3           MOV      R0,#+0
+   \   00000068   01002DE9           PUSH     {R0}
+   \   0000006C   80002DE9           PUSH     {R7}
+   \   00000070   40002DE9           PUSH     {R6}
+   \   00000074   0530A0E1           MOV      R3,R5
+   \   00000078   0820A0E1           MOV      R2,R8
+   \   0000007C   0C108DE2           ADD      R1,SP,#+12
+   \   00000080   0400A0E1           MOV      R0,R4
+   \   00000084   ........           BL       ??Preset_Response
+   \   00000088   0CD08DE2           ADD      SP,SP,#+12
+   \   0000008C   000000EA           B        ??Subroutine17_4
+   \                     ??Subroutine17_3:
+   \   00000090   0A00E0E3           MVN      R0,#+10
+   \                     ??Subroutine17_4:
+   \   00000094   80DF8DE2           ADD      SP,SP,#+512
+   \                     ??Subroutine17_0:
+   \   00000098   F047BDE8           POP      {R4-R10,LR}
+   \   0000009C   1EFF2FE1           BX       LR               ;; return
+   \                     ??Subroutine17_1:
+   \   000000A0   ........           DC32     `?<Constant {(unsigned char __data)'\\000', (uns_1`
+    287          
+    288          
+    289          /*********************************************************************
+    290          
+    291              modbus_response( response_data_array, query_array )
+    292          
+    293               Function to the correct response is returned and that the checksum
+    294               is correct.
+    295          
+    296               Returns:	string_length if OK
+    297                  0 if failed
+    298                  Less than 0 for exception errors
+    299          
+    300              Note: All functions used for sending or receiving data via
+    301                      modbus return these return values.
+    302          
+    303          **********************************************************************/
+    304          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    305          int ModbusPro::Modbus_Response(TSNUart *Port, U8 *ReplyPtr, U8 *query, int QueryLength, int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??Modbus_Response:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   40DE4DE2           SUB      SP,SP,#+1024
+   \   00000008   0060A0E1           MOV      R6,R0
+   \   0000000C   1C049DE5           LDR      R0,[SP, #+1052]
+   \   00000010   0140A0E1           MOV      R4,R1
+   \   00000014   20149DE5           LDR      R1,[SP, #+1056]
+   \   00000018   0250A0E1           MOV      R5,R2
+   \   0000001C   18249DE5           LDR      R2,[SP, #+1048]
+    306              QueryLength += 2;
+   \   00000020   027083E2           ADD      R7,R3,#+2
+    307              U8 tmpData[MAX_RESPONSE_LENGTH];
+    308              //memset(tmpData,0xff,MAX_QUERY_LENGTH);
+    309              int AnswerSize = Receive_Response(Port,  tmpData, TimeOut, FrameSpaceTime, FrameTimeOut);
+   \   00000024   02002DE9           PUSH     {R1}
+   \   00000028   0030A0E1           MOV      R3,R0
+   \   0000002C   04108DE2           ADD      R1,SP,#+4
+   \   00000030   0600A0E1           MOV      R0,R6
+   \   00000034   ........           BL       ??Receive_Response
+   \   00000038   0080B0E1           MOVS     R8,R0
+    310              if ( AnswerSize ) {
+   \   0000003C   04D08DE2           ADD      SP,SP,#+4
+   \   00000040   2C00000A           BEQ      ??Modbus_Response_3
+    311                  switch ( Port->HWProtocol ) {
+   \   00000044   A00096E5           LDR      R0,[R6, #+160]
+   \   00000048   4B0040E2           SUB      R0,R0,#+75
+   \   0000004C   7C0D40E2           SUB      R0,R0,#+7936
+   \   00000050   010050E3           CMP      R0,#+1
+   \   00000054   0400008A           BHI      ??Modbus_Response_4
+   \   00000058   011F8FE2           ADR      R1,??Modbus_Response_1
+   \   0000005C   0010D1E7           LDRB     R1,[R1, R0]
+   \   00000060   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??Modbus_Response_1:
+   \   00000064   00000000           DC8      +0,+0,+0,+0
+    312                  case C_UART_HWPRO_485 :
+    313                  case C_UART_HWPRO_232 :
+    314                      QueryLength = 0;
+   \                     ??Modbus_Response_5:
+   \   00000068   0070A0E3           MOV      R7,#+0
+    315                      break;
+    316                  }
+    317                  AnswerSize -= QueryLength;
+   \                     ??Modbus_Response_4:
+   \   0000006C   078048E0           SUB      R8,R8,R7
+    318                  if ( AnswerSize >= 2 ) {
+   \   00000070   020058E3           CMP      R8,#+2
+   \   00000074   180000BA           BLT      ??Modbus_Response_6
+    319                      memcpy(ReplyPtr, &tmpData[QueryLength], AnswerSize);
+   \   00000078   0820A0E1           MOV      R2,R8
+   \   0000007C   0D00A0E1           MOV      R0,SP
+   \   00000080   001087E0           ADD      R1,R7,R0
+   \   00000084   0400A0E1           MOV      R0,R4
+   \   00000088   ........           _BLF     memcpy,??memcpy??rA
+    320                      switch ( Port->Device ) {
+   \   0000008C   A80096E5           LDR      R0,[R6, #+168]
+   \   00000090   680040E2           SUB      R0,R0,#+104
+   \   00000094   7C0D40E2           SUB      R0,R0,#+7936
+   \   00000098   070050E3           CMP      R0,#+7
+   \   0000009C   1000008A           BHI      ??Modbus_Response_7
+   \   000000A0   011F8FE2           ADR      R1,??Modbus_Response_2
+   \   000000A4   0010D1E7           LDRB     R1,[R1, R0]
+   \   000000A8   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??Modbus_Response_2:
+   \   000000AC   01010D01           DC8      +1,+1,+13,+1
+   \   000000B0   010D0101           DC8      +1,+13,+1,+1
+    321                      case C_UART_DEVICE_MODICON_MASTER       :
+    322                      case C_UART_DEVICE_MODICON_SLAVE        :
+    323                      case C_UART_DEVICE_MODBUS_MASTER        :
+    324                      case C_UART_DEVICE_MODBUS_MASTER_INV    :
+    325                      case C_UART_DEVICE_MODBUS_SLAVE         :
+    326                      case C_UART_DEVICE_MODBUS_SLAVE_INV     :
+    327                          {
+    328                              U16 crc_calc = FastCalcCRC(ReplyPtr, AnswerSize - 2);
+   \                     ??Modbus_Response_8:
+   \   000000B4   021048E2           SUB      R1,R8,#+2
+   \   000000B8   0400A0E1           MOV      R0,R4
+   \   000000BC   ........           BL       ??FastCalcCRC
+    329          
+    330                              U8 recv_crc_hi = (U8)ReplyPtr[AnswerSize - 2];
+    331                              U8 recv_crc_lo = (U8)ReplyPtr[AnswerSize - 1];
+    332          
+    333                              U16 crc_received  = (recv_crc_hi << 8) | recv_crc_lo;
+    334                              /*********** check CRC of response ************/
+    335                              if ( crc_calc != crc_received ) {
+   \   000000C0   041088E0           ADD      R1,R8,R4
+   \   000000C4   022071E5           LDRB     R2,[R1, #-2]!
+   \   000000C8   0110D1E5           LDRB     R1,[R1, #+1]
+   \   000000CC   0008A0E1           MOV      R0,R0, LSL #+16
+   \   000000D0   021481E1           ORR      R1,R1,R2, LSL #+8
+   \   000000D4   200851E1           CMP      R1,R0, LSR #+16
+   \   000000D8   0100000A           BEQ      ??Modbus_Response_7
+    336                                  AnswerSize = 0;
+   \                     ??Modbus_Response_6:
+   \   000000DC   0080A0E3           MOV      R8,#+0
+   \   000000E0   040000EA           B        ??Modbus_Response_3
+    337                              }
+    338                          }
+    339                          break;
+    340                      case C_UART_DEVICE_MODICON_MASTER_TCP   :
+    341                      case C_UART_DEVICE_MODICON_SLAVE_TCP    :
+    342                      case C_UART_DEVICE_MODBUS_SLAVE_TCP     :
+    343                      case C_UART_DEVICE_MODBUS_MASTER_TCP    :
+    344                          break;
+    345                      }
+   \                     ??Modbus_Response_7:
+   \   000000E4   0100D4E5           LDRB     R0,[R4, #+1]
+   \   000000E8   0110D5E5           LDRB     R1,[R5, #+1]
+   \   000000EC   010050E1           CMP      R0,R1
+    346                  } else {
+    347                      AnswerSize = 0;
+    348                  }
+    349          
+    350          
+    351          
+    352                  /********** check for exception response *****/
+    353          
+    354                  if ( AnswerSize && ReplyPtr[1] != query[1] ) {
+    355                      AnswerSize = 0 - ReplyPtr[2];
+   \   000000F0   0200D415           LDRBNE   R0,[R4, #+2]
+   \   000000F4   00806012           RSBNE    R8,R0,#+0
+    356                  }
+    357              }
+    358              return (AnswerSize);
+   \                     ??Modbus_Response_3:
+   \   000000F8   0800A0E1           MOV      R0,R8
+   \   000000FC   40DE8DE2           ADD      SP,SP,#+1024
+   \   00000100   ........           B        ?Subroutine19
+    359          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine19:
+   \   00000000   F041BDE8           POP      {R4-R8,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    360          
+    361          
+    362          /***********************************************************************
+    363          
+    364              preset_response
+    365          
+    366              Gets the raw data from the input stream.
+    367          
+    368          ***********************************************************************/
+    369          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    370          int ModbusPro::Preset_Response(TSNUart *Port, U8 *query, int QueryLength, int TimeOut, int FrameSpaceTime, int FrameTimeOut, U8 *Reply) {
+   \                     ??Preset_Response:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   40DE4DE2           SUB      SP,SP,#+1024
+   \   00000008   0C449DE5           LDR      R4,[SP, #+1036]
+   \   0000000C   10549DE5           LDR      R5,[SP, #+1040]
+   \   00000010   14C49DE5           LDR      R12,[SP, #+1044]
+    371              int ResponseLength;
+    372              if ( Reply ) {
+   \   00000014   20002DE9           PUSH     {R5}
+   \   00000018   00005CE3           CMP      R12,#+0
+   \   0000001C   10002DE9           PUSH     {R4}
+   \   00000020   08002DE9           PUSH     {R3}
+   \   00000024   0230A0E1           MOV      R3,R2
+   \   00000028   0120A0E1           MOV      R2,R1
+    373                  ResponseLength = Modbus_Response(Port, Reply, query, QueryLength, TimeOut, FrameSpaceTime, FrameTimeOut);
+   \   0000002C   0C10A011           MOVNE    R1,R12
+    374              } else {
+    375                  U8 DataBuf[MAX_RESPONSE_LENGTH];
+    376                  ResponseLength = Modbus_Response(Port, DataBuf, query, QueryLength, TimeOut, FrameSpaceTime, FrameTimeOut);
+   \   00000030   0C108D02           ADDEQ    R1,SP,#+12
+   \   00000034   ........           BL       ??Modbus_Response
+   \   00000038   0CD08DE2           ADD      SP,SP,#+12
+    377              }
+    378              return (ResponseLength);
+   \   0000003C   40DE8DE2           ADD      SP,SP,#+1024
+   \   00000040   3040BDE8           POP      {R4,R5,LR}
+   \   00000044   1EFF2FE1           BX       LR               ;; return
+    379          }
+    380          
+    381          
+    382          
+    383          
+    384          
+    385          
+    386          /*************************************************************************
+    387          
+    388              set_single
+    389          
+    390              sends a value to a register in a slave.
+    391          
+    392          **************************************************************************/
+    393          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    394          int ModbusPro::Set_Single(TSNUart *Port, unsigned Function, unsigned SlaveAddress, unsigned Address, unsigned Value, int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??Set_Single:
+   \   00000000   F7402DE9           PUSH     {R0-R2,R4-R7,LR}
+   \   00000004   24509DE5           LDR      R5,[SP, #+36]
+   \   00000008   28609DE5           LDR      R6,[SP, #+40]
+   \   0000000C   2C709DE5           LDR      R7,[SP, #+44]
+   \   00000010   0040A0E1           MOV      R4,R0
+   \   00000014   20009DE5           LDR      R0,[SP, #+32]
+    395          
+    396              int status;
+    397              //SlaveAddress--;
+    398              // Not that the Packet contains 3 times 0x0 to make space for CRC
+    399              U8 Packet[REQUEST_QUERY_SIZE + CHECKSUM_SIZE + 1] = {
+   \   00000018   0020CDE5           STRB     R2,[SP, #+0]
+   \   0000001C   0110CDE5           STRB     R1,[SP, #+1]
+   \   00000020   2324A0E1           LSR      R2,R3,#+8
+   \   00000024   0220CDE5           STRB     R2,[SP, #+2]
+   \   00000028   0330CDE5           STRB     R3,[SP, #+3]
+   \   0000002C   2024A0E1           LSR      R2,R0,#+8
+   \   00000030   0420CDE5           STRB     R2,[SP, #+4]
+   \   00000034   0500CDE5           STRB     R0,[SP, #+5]
+    400                  SlaveAddress,
+    401                  Function,
+    402                  Address >> 8,
+    403                  Address & 0xFF,
+    404                  Value >> 8,
+    405                  Value & 0xff,
+    406              };
+    407          
+    408              if ( Send_Query(Port, Packet, REQUEST_QUERY_SIZE) ) {
+   \   00000038   0620A0E3           MOV      R2,#+6
+   \   0000003C   0D10A0E1           MOV      R1,SP
+   \   00000040   0400A0E1           MOV      R0,R4
+   \   00000044   ........           BL       ??Send_Query
+   \   00000048   000050E3           CMP      R0,#+0
+   \   0000004C   0A00000A           BEQ      ??Set_Single_1
+    409                  status = Preset_Response(Port, Packet, REQUEST_QUERY_SIZE, TimeOut, FrameSpaceTime, FrameTimeOut);
+   \   00000050   0000A0E3           MOV      R0,#+0
+   \   00000054   01002DE9           PUSH     {R0}
+   \   00000058   80002DE9           PUSH     {R7}
+   \   0000005C   40002DE9           PUSH     {R6}
+   \   00000060   0530A0E1           MOV      R3,R5
+   \   00000064   0620A0E3           MOV      R2,#+6
+   \   00000068   0C108DE2           ADD      R1,SP,#+12
+   \   0000006C   0400A0E1           MOV      R0,R4
+   \   00000070   ........           BL       ??Preset_Response
+   \   00000074   0CD08DE2           ADD      SP,SP,#+12
+   \   00000078   000000EA           B        ??Set_Single_2
+    410              } else {
+    411                  status = PORT_FAILURE;
+   \                     ??Set_Single_1:
+   \   0000007C   0A00E0E3           MVN      R0,#+10
+    412              }
+    413          
+    414              return (status);
+   \                     ??Set_Single_2:
+   \   00000080   FE40BDE8           POP      {R1-R7,LR}
+   \   00000084   1EFF2FE1           BX       LR               ;; return
+    415          }
+    416          
+    417          
+    418          /*************************************************************************
+    419          
+    420              set_multiple
+    421          
+    422              sends a value to a register in a slave.
+    423          
+    424          **************************************************************************/
+    425          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    426          int ModbusPro::Set_Multiple(TSNUart *Port, unsigned Function, unsigned SlaveAddress, unsigned Address, unsigned NumberOfRegisters, unsigned Size, U16 Value[], int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??Set_Multiple:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   80DF4DE2           SUB      SP,SP,#+512
+   \   00000008   20C29DE5           LDR      R12,[SP, #+544]
+   \   0000000C   24529DE5           LDR      R5,[SP, #+548]
+   \   00000010   28629DE5           LDR      R6,[SP, #+552]
+   \   00000014   2C729DE5           LDR      R7,[SP, #+556]
+   \   00000018   0040A0E1           MOV      R4,R0
+   \   0000001C   18029DE5           LDR      R0,[SP, #+536]
+    427              int status;
+    428          
+    429          
+    430              // Not that the Packet contains 3 times 0x0 to make space for CRC
+    431              U8 Packet[MAX_QUERY_LENGTH] = {
+   \   00000020   0020CDE5           STRB     R2,[SP, #+0]
+   \   00000024   0110CDE5           STRB     R1,[SP, #+1]
+   \   00000028   2324A0E1           LSR      R2,R3,#+8
+   \   0000002C   0220CDE5           STRB     R2,[SP, #+2]
+   \   00000030   0330CDE5           STRB     R3,[SP, #+3]
+   \   00000034   2024A0E1           LSR      R2,R0,#+8
+   \   00000038   0420CDE5           STRB     R2,[SP, #+4]
+   \   0000003C   0500CDE5           STRB     R0,[SP, #+5]
+   \   00000040   0020A0E1           MOV      R2,R0
+   \   00000044   8220A0E1           LSL      R2,R2,#+1
+   \   00000048   0620CDE5           STRB     R2,[SP, #+6]
+    432                  SlaveAddress,
+    433                  Function,
+    434                  Address >> 8,
+    435                  Address & 0x00FF,
+    436                  NumberOfRegisters >> 8,
+    437                  NumberOfRegisters & 0x00FF,
+    438                  NumberOfRegisters * 2,
+    439              };
+    440          
+    441              int Length = REQUEST_MULTIPLE_SIZE;
+   \   0000004C   0780A0E3           MOV      R8,#+7
+    442              for ( unsigned i = 0; i < NumberOfRegisters; i++ ) {
+   \   00000050   0010A0E3           MOV      R1,#+0
+   \   00000054   0A0000EA           B        ??Set_Multiple_1
+    443                  Packet[Length++] = Value[i] >> 8;
+   \                     ??Set_Multiple_2:
+   \   00000058   81208CE0           ADD      R2,R12,R1, LSL #+1
+   \   0000005C   B0E0D2E1           LDRH     LR,[R2, #+0]
+   \   00000060   0D30A0E1           MOV      R3,SP
+    444                  Packet[Length++] = Value[i] & 0x00FF;
+    445              }
+   \   00000064   011081E2           ADD      R1,R1,#+1
+   \   00000068   2EE4A0E1           LSR      LR,LR,#+8
+   \   0000006C   03E0C8E7           STRB     LR,[R8, +R3]
+   \   00000070   B020D2E1           LDRH     R2,[R2, #+0]
+   \   00000074   013088E2           ADD      R3,R8,#+1
+   \   00000078   0D80A0E1           MOV      R8,SP
+   \   0000007C   0820C3E7           STRB     R2,[R3, +R8]
+   \   00000080   018083E2           ADD      R8,R3,#+1
+   \                     ??Set_Multiple_1:
+   \   00000084   000051E1           CMP      R1,R0
+   \   00000088   F2FFFF3A           BCC      ??Set_Multiple_2
+    446              if ( Send_Query(Port, Packet, Length) ) {
+   \   0000008C   0820A0E1           MOV      R2,R8
+   \   00000090   0D10A0E1           MOV      R1,SP
+   \   00000094   0400A0E1           MOV      R0,R4
+   \   00000098   ........           BL       ??Send_Query
+   \   0000009C   000050E3           CMP      R0,#+0
+   \   000000A0   0A00000A           BEQ      ??Set_Multiple_3
+    447                  status = Preset_Response(Port, Packet, Length, TimeOut, FrameSpaceTime, FrameTimeOut);
+   \   000000A4   0000A0E3           MOV      R0,#+0
+   \   000000A8   01002DE9           PUSH     {R0}
+   \   000000AC   80002DE9           PUSH     {R7}
+   \   000000B0   40002DE9           PUSH     {R6}
+   \   000000B4   0530A0E1           MOV      R3,R5
+   \   000000B8   0820A0E1           MOV      R2,R8
+   \   000000BC   0C108DE2           ADD      R1,SP,#+12
+   \   000000C0   0400A0E1           MOV      R0,R4
+   \   000000C4   ........           BL       ??Preset_Response
+   \   000000C8   0CD08DE2           ADD      SP,SP,#+12
+   \   000000CC   000000EA           B        ??Set_Multiple_4
+    448              } else {
+    449                  status = PORT_FAILURE;
+   \                     ??Set_Multiple_3:
+   \   000000D0   0A00E0E3           MVN      R0,#+10
+    450              }
+    451          
+    452              return (status);
+   \                     ??Set_Multiple_4:
+   \   000000D4   80DF8DE2           ADD      SP,SP,#+512
+   \   000000D8                      REQUIRE ?Subroutine19
+   \   000000D8                      ;; // Fall through to label ?Subroutine19
+    453          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+    454          int ModbusPro::WriteMultipleCoils(TSNUart *Port, unsigned SlaveAddress, unsigned Address, unsigned NumberOfCoils, U8 Value[], int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??WriteMultipleCoils:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+    455              int Status;
+    456          
+    457              unsigned NumberOfBytes = NumberOfCoils / 8;
+    458              if ( NumberOfCoils % 8 ) {
+    459                  NumberOfBytes++;
+    460              }
+    461              // Not that the Packet contains 3 times 0x0 to make space for CRC
+    462              U8 Packet[MAX_QUERY_LENGTH] = {
+    463                  SlaveAddress,
+    464                  MBUS_CMD_WRITE_MULTIPLE_COILS,
+    465                  Address >> 8,
+    466                  Address & 0x00FF,
+    467                  NumberOfCoils >> 8,
+    468                  NumberOfCoils & 0x00FF,
+    469                  NumberOfBytes
+    470              };
+   \   00000004   24E09FE5           LDR      LR,??WriteMultipleCoils_1  ;; `?<Constant {(unsigned char __data)'\\000', (uns`
+   \   00000008   80DF4DE2           SUB      SP,SP,#+512
+   \   0000000C   24529DE5           LDR      R5,[SP, #+548]
+   \   00000010   28629DE5           LDR      R6,[SP, #+552]
+   \   00000014   2C729DE5           LDR      R7,[SP, #+556]
+   \   00000018   0040A0E1           MOV      R4,R0
+   \   0000001C   20029DE5           LDR      R0,[SP, #+544]
+   \   00000020   A381A0E1           LSR      R8,R3,#+3
+   \   00000024   070013E3           TST      R3,#0x7
+   \   00000028   01808812           ADDNE    R8,R8,#+1
+   \   0000002C   ........           B        ?Subroutine17
+   \                     ??WriteMultipleCoils_1:
+   \   00000030   ........           DC32     `?<Constant {(unsigned char __data)'\\000', (uns`
+    471              memcpy(&Packet[REQUEST_MULTIPLE_SIZE], Value, NumberOfBytes);
+    472              int Length = REQUEST_MULTIPLE_SIZE + NumberOfBytes;
+    473              if ( Send_Query(Port, Packet, Length) ) {
+    474                  Status = Preset_Response(Port, Packet, Length, TimeOut, FrameSpaceTime, FrameTimeOut);
+    475              } else {
+    476                  Status = PORT_FAILURE;
+    477              }
+    478          
+    479              return (Status);
+    480          }
+    481          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    482          int ModbusPro::WriteMultipleRegisters(TSNUart *Port, unsigned SlaveAddress, unsigned Address, unsigned NumberOfRegisters, U8 Value[], int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??WriteMultipleRegisters:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+    483              int Status;
+    484          
+    485              unsigned Size = NumberOfRegisters * 2;
+    486              // Not that the Packet contains 3 times 0x0 to make space for CRC
+    487              U8 Packet[MAX_QUERY_LENGTH] = {
+    488                  SlaveAddress,
+    489                  MBUS_CMD_WRITE_MULTIPLE_REGISTERS,
+    490                  Address >> 8,
+    491                  Address & 0x00FF,
+    492                  NumberOfRegisters >> 8,
+    493                  NumberOfRegisters & 0x00FF,
+    494                  Size,
+    495              };
+   \   00000004   ........           LDR      LR,??Subroutine17_1  ;; `?<Constant {(unsigned char __data)'\\000', (uns_1`
+   \   00000008   80DF4DE2           SUB      SP,SP,#+512
+   \   0000000C   24529DE5           LDR      R5,[SP, #+548]
+   \   00000010   28629DE5           LDR      R6,[SP, #+552]
+   \   00000014   2C729DE5           LDR      R7,[SP, #+556]
+   \   00000018   0040A0E1           MOV      R4,R0
+   \   0000001C   20029DE5           LDR      R0,[SP, #+544]
+   \   00000020   8380A0E1           LSL      R8,R3,#+1
+   \   00000024                      REQUIRE ?Subroutine17
+   \   00000024                      ;; // Fall through to label ?Subroutine17
+    496              memcpy(&Packet[REQUEST_MULTIPLE_SIZE], Value, Size);
+    497              int Length = REQUEST_MULTIPLE_SIZE + Size;
+    498              if ( Send_Query(Port, Packet, Length) ) {
+    499                  Status = Preset_Response(Port, Packet, Length, TimeOut, FrameSpaceTime, FrameTimeOut);
+    500              } else {
+    501                  Status = PORT_FAILURE;
+    502              }
+    503          
+    504              return (Status);
+    505          }
+    506          
+    507          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    508          int ModbusPro::Get_Single(TSNUart *Port, unsigned Function, unsigned SlaveAddress, unsigned Address, unsigned NumberOfPoints, U8 *ReplyPtr, int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??Get_Single:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   14C09DE5           LDR      R12,[SP, #+20]
+   \   00000008   18409DE5           LDR      R4,[SP, #+24]
+   \   0000000C   1C509DE5           LDR      R5,[SP, #+28]
+   \   00000010   20609DE5           LDR      R6,[SP, #+32]
+    509              return Get_Multiple(Port, Function, SlaveAddress, Address, 1, ReplyPtr, TimeOut, FrameSpaceTime, FrameTimeOut);
+   \   00000014   40002DE9           PUSH     {R6}
+   \   00000018   20002DE9           PUSH     {R5}
+   \   0000001C   10002DE9           PUSH     {R4}
+   \   00000020   00102DE9           PUSH     {R12}
+   \   00000024   0140A0E3           MOV      R4,#+1
+   \   00000028   10002DE9           PUSH     {R4}
+   \   0000002C   ........           BL       ??Get_Multiple
+   \   00000030   14D08DE2           ADD      SP,SP,#+20
+   \   00000034                      REQUIRE ?Subroutine18
+   \   00000034                      ;; // Fall through to label ?Subroutine18
+    510          }
+    511          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    512          int ModbusPro::Get_Multiple(TSNUart *Port, unsigned Function, unsigned SlaveAddress, unsigned Address, unsigned NumberOfPoints, U8 *ReplyPtr, int TimeOut, int FrameSpaceTime, int FrameTimeOut) {
+   \                     ??Get_Multiple:
+   \   00000000   F0432DE9           PUSH     {R4-R9,LR}
+   \   00000004   0CD04DE2           SUB      SP,SP,#+12
+   \   00000008   40DE4DE2           SUB      SP,SP,#+1024
+   \   0000000C   2C649DE5           LDR      R6,[SP, #+1068]
+   \   00000010   30749DE5           LDR      R7,[SP, #+1072]
+   \   00000014   34849DE5           LDR      R8,[SP, #+1076]
+   \   00000018   38949DE5           LDR      R9,[SP, #+1080]
+   \   0000001C   0040A0E1           MOV      R4,R0
+   \   00000020   28049DE5           LDR      R0,[SP, #+1064]
+   \   00000024   0250A0E1           MOV      R5,R2
+    513          
+    514              // Note that the Packet contains 3 times 0x0 to make space for CRC
+    515              U8 Packet[REQUEST_QUERY_SIZE + CHECKSUM_SIZE + 1] = {
+   \   00000028   0050CDE5           STRB     R5,[SP, #+0]
+   \   0000002C   0110CDE5           STRB     R1,[SP, #+1]
+   \   00000030   2324A0E1           LSR      R2,R3,#+8
+   \   00000034   0220CDE5           STRB     R2,[SP, #+2]
+   \   00000038   0330CDE5           STRB     R3,[SP, #+3]
+   \   0000003C   2024A0E1           LSR      R2,R0,#+8
+   \   00000040   0420CDE5           STRB     R2,[SP, #+4]
+   \   00000044   0500CDE5           STRB     R0,[SP, #+5]
+    516                  SlaveAddress,
+    517                  Function,
+    518                  Address >> 8,
+    519                  Address & 0xFF,
+    520                  NumberOfPoints >> 8,
+    521                  NumberOfPoints & 0xff,
+    522              };
+    523          
+    524              int Status;
+    525              if ( Send_Query(Port, Packet, REQUEST_QUERY_SIZE) ) {
+   \   00000048   0620A0E3           MOV      R2,#+6
+   \   0000004C   0D10A0E1           MOV      R1,SP
+   \   00000050   0400A0E1           MOV      R0,R4
+   \   00000054   ........           BL       ??Send_Query
+   \   00000058   000050E3           CMP      R0,#+0
+   \   0000005C   1B00000A           BEQ      ??Get_Multiple_1
+    526                  U8 tmpReplyData[MAX_RESPONSE_LENGTH];
+    527                  Status = Preset_Response(Port, Packet, REQUEST_QUERY_SIZE, TimeOut, FrameSpaceTime, FrameTimeOut, tmpReplyData);
+   \   00000060   0C008DE2           ADD      R0,SP,#+12
+   \   00000064   01002DE9           PUSH     {R0}
+   \   00000068   00022DE9           PUSH     {R9}
+   \   0000006C   00012DE9           PUSH     {R8}
+   \   00000070   0730A0E1           MOV      R3,R7
+   \   00000074   0620A0E3           MOV      R2,#+6
+   \   00000078   0C108DE2           ADD      R1,SP,#+12
+   \   0000007C   0400A0E1           MOV      R0,R4
+   \   00000080   ........           BL       ??Preset_Response
+   \   00000084   0040A0E1           MOV      R4,R0
+    528                  if ( Status >= 6 && tmpReplyData[MODBUS_INDEX_SLAVE_ADDRESS] == (U8)SlaveAddress ) {
+   \   00000088   060054E3           CMP      R4,#+6
+   \   0000008C   0CD08DE2           ADD      SP,SP,#+12
+   \   00000090   0E0000BA           BLT      ??Get_Multiple_1
+   \   00000094   0C00DDE5           LDRB     R0,[SP, #+12]
+   \   00000098   055CA0E1           MOV      R5,R5, LSL #+24
+   \   0000009C   250C50E1           CMP      R0,R5, LSR #+24
+   \   000000A0   0A00001A           BNE      ??Get_Multiple_1
+    529                      switch ( tmpReplyData[MODBUS_INDEX_COMMAND] ) {
+   \   000000A4   0D00DDE5           LDRB     R0,[SP, #+13]
+   \   000000A8   010050E2           SUBS     R0,R0,#+1
+   \   000000AC   0200000A           BEQ      ??Get_Multiple_2
+   \   000000B0   020040E2           SUB      R0,R0,#+2
+   \   000000B4   010050E3           CMP      R0,#+1
+   \   000000B8   0400008A           BHI      ??Get_Multiple_1
+    530                      case MBUS_CMD_READ_COIL_STATUS:
+    531                          memcpy(ReplyPtr, &tmpReplyData[MODBUS_INDEX_DATA_START], tmpReplyData[MODBUS_INDEX_BYTE_CNT]);
+   \                     ??Get_Multiple_2:
+   \   000000BC   0E20DDE5           LDRB     R2,[SP, #+14]
+   \   000000C0   0F108DE2           ADD      R1,SP,#+15
+   \   000000C4   0600A0E1           MOV      R0,R6
+   \   000000C8   ........           _BLF     memcpy,??memcpy??rA
+   \   000000CC   000000EA           B        ??Get_Multiple_3
+    532                          break;
+    533                      case MBUS_CMD_READ_INPUT_REGISTER:
+    534                      case MBUS_CMD_READ_HOLDING_REGISTER:
+    535                          memcpy(ReplyPtr, &tmpReplyData[MODBUS_INDEX_DATA_START], tmpReplyData[MODBUS_INDEX_BYTE_CNT]);
+    536                          break;
+    537                      default:
+    538                          Status = PORT_FAILURE;
+   \                     ??Get_Multiple_1:
+   \   000000D0   0A40E0E3           MVN      R4,#+10
+    539                          break;
+    540                      }
+    541                  } else {
+    542                      Status = PORT_FAILURE;
+    543                  }
+    544              } else {
+    545                  Status = PORT_FAILURE;
+    546              }
+    547              return (Status);
+   \                     ??Get_Multiple_3:
+   \   000000D4   0400A0E1           MOV      R0,R4
+   \   000000D8   0CD08DE2           ADD      SP,SP,#+12
+   \   000000DC   40DE8DE2           ADD      SP,SP,#+1024
+   \   000000E0   F043BDE8           POP      {R4-R9,LR}
+   \   000000E4   1EFF2FE1           BX       LR               ;; return
+    548          }
+
+   \                                 In segment DATA_ID, align 4, align-sorted
+   \                     `?<Initializer for auchCRCHi>`:
+   \   00000000   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   00000010   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   00000020   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   00000030   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   00000040   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   00000050   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   00000060   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   00000070   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   00000080   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   00000090   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   000000A0   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   000000B0   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   000000C0   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \   000000D0   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   000000E0   01C0804100C1       DC8 1, 192, 128, 65, 0, 193, 129, 64, 0, 193, 129, 64, 1, 192, 128, 65
+   \              814000C18140
+   \              01C08041    
+   \   000000F0   00C1814001C0       DC8 0, 193, 129, 64, 1, 192, 128, 65, 1, 192, 128, 65, 0, 193, 129, 64
+   \              804101C08041
+   \              00C18140    
+   \                     `?<Initializer for auchCRCLo>`:
+   \   00000100   00C0C101C303       DC8 0, 192, 193, 1, 195, 3, 2, 194, 198, 6, 7, 199, 5, 197, 196, 4, 204
+   \              02C2C60607C7
+   \              05C5C404CC  
+   \   00000111   0C0DCD0FCFCE       DC8 12, 13, 205, 15, 207, 206, 14, 10, 202, 203, 11, 201, 9, 8, 200
+   \              0E0ACACB0BC9
+   \              0908C8      
+   \   00000120   D81819D91BDB       DC8 216, 24, 25, 217, 27, 219, 218, 26, 30, 222, 223, 31, 221, 29, 28
+   \              DA1A1EDEDF1F
+   \              DD1D1C      
+   \   0000012F   DC14D4D515D7       DC8 220, 20, 212, 213, 21, 215, 23, 22, 214, 210, 18, 19, 211, 17, 209
+   \              1716D6D21213
+   \              D311D1      
+   \   0000013E   D010F03031F1       DC8 208, 16, 240, 48, 49, 241, 51, 243, 242, 50, 54, 246, 247, 55, 245
+   \              33F3F23236F6
+   \              F737F5      
+   \   0000014D   3534F43CFCFD       DC8 53, 52, 244, 60, 252, 253, 61, 255, 63, 62, 254, 250, 58, 59, 251
+   \              3DFF3F3EFEFA
+   \              3A3BFB      
+   \   0000015C   39F9F83828E8       DC8 57, 249, 248, 56, 40, 232, 233, 41, 235, 43, 42, 234, 238, 46, 47
+   \              E929EB2B2AEA
+   \              EE2E2F      
+   \   0000016B   EF2DEDEC2CE4       DC8 239, 45, 237, 236, 44, 228, 36, 37, 229, 39, 231, 230, 38, 34, 226
+   \              2425E527E7E6
+   \              2622E2      
+   \   0000017A   E323E12120E0       DC8 227, 35, 225, 33, 32, 224, 160, 96, 97, 161, 99, 163, 162, 98, 102
+   \              A06061A163A3
+   \              A26266      
+   \   00000189   A6A767A56564       DC8 166, 167, 103, 165, 101, 100, 164, 108, 172, 173, 109, 175, 111
+   \              A46CACAD6DAF
+   \              6F          
+   \   00000196   6EAEAA6A6BAB       DC8 110, 174, 170, 106, 107, 171, 105, 169, 168, 104, 120, 184, 185
+   \              69A9A86878B8
+   \              B9          
+   \   000001A3   79BB7B7ABABE       DC8 121, 187, 123, 122, 186, 190, 126, 127, 191, 125, 189, 188, 124
+   \              7E7FBF7DBDBC
+   \              7C          
+   \   000001B0   B47475B577B7       DC8 180, 116, 117, 181, 119, 183, 182, 118, 114, 178, 179, 115, 177
+   \              B67672B2B373
+   \              B1          
+   \   000001BD   7170B0509091       DC8 113, 112, 176, 80, 144, 145, 81, 147, 83, 82, 146, 150, 86, 87, 151
+   \              519353529296
+   \              565797      
+   \   000001CC   559594549C5C       DC8 85, 149, 148, 84, 156, 92, 93, 157, 95, 159, 158, 94, 90, 154, 155
+   \              5D9D5F9F9E5E
+   \              5A9A9B      
+   \   000001DB   5B9959589888       DC8 91, 153, 89, 88, 152, 136, 72, 73, 137, 75, 139, 138, 74, 78, 142
+   \              4849894B8B8A
+   \              4A4E8E      
+   \   000001EA   8F4F8D4D4C8C       DC8 143, 79, 141, 77, 76, 140, 68, 132, 133, 69, 135, 71, 70, 134, 130
+   \              448485458747
+   \              468682      
+   \   000001F9   424383418180       DC8 66, 67, 131, 65, 129, 128, 64
+   \              40          
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant {(unsigned char __data)'\\000', (uns`:
+   \   00000000   000F00000000       DC8 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              000000      
+   \   0000000F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000001F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000002F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000003F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000004F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000005F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000006F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000007F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000008F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000009F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000AF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000BF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000CF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000DF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000EF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000FF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000010F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000011F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000012F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000013F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000014F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000015F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000016F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000017F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000018F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000019F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001AF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001BF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001CF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001DF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001EF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              0000000000  
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant {(unsigned char __data)'\\000', (uns_1`:
+   \   00000000   001000000000       DC8 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              000000      
+   \   0000000F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000001F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000002F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000003F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000004F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000005F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000006F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000007F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000008F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000009F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000AF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000BF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000CF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000DF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000EF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000000FF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000010F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000011F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000012F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000013F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000014F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000015F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000016F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000017F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000018F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   0000019F   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001AF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001BF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001CF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001DF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \   000001EF   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              0000000000  
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs ModbusPro &ModbusPro::new ModbusPro()
+   \                     `??new ModbusPro`:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   0100A0E3           MOV      R0,#+1
+   \   00000008   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    549          
+    550          
+    551          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     ModbusPro::CalcCRC(unsigned char *, int, int)
+                                        8
+     ModbusPro::FastCalcCRC(unsigned char *, unsigned int)
+                                        4
+     ModbusPro::Get_Multiple(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                     1076
+     ModbusPro::Get_Single(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                       36
+     ModbusPro::Initiate()              0
+     ModbusPro::ModbusPro()             0
+     ModbusPro::Modbus_Response(TSNUart *, unsigned char *, unsigned char *, int, int, int, int)
+                                     1052
+     ModbusPro::Preset_Response(TSNUart *, unsigned char *, int, int, int, int, unsigned char *)
+                                     1048
+     ModbusPro::ReceiveStatus(TSNUart *)
+                                        0
+     ModbusPro::Receive_Response(TSNUart *, unsigned char *, int, int, int)
+                                       32
+     ModbusPro::Send_Query(TSNUart *, unsigned char *, size_t)
+                                       20
+     ModbusPro::Set_Multiple(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned short *, int, int, int)
+                                      548
+     ModbusPro::Set_Single(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, int, int, int)
+                                       44
+     ModbusPro::WriteMultipleCoils(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                      556
+     ModbusPro::WriteMultipleRegisters(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                      556
+     ModbusPro::new ModbusPro()         4
+     __sti__routine()                   0
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     ModbusPro::ModbusPro()            4
+     ModbusPro::Initiate()             4
+     ModbusPro::ReceiveStatus(TSNUart *)
+                                       4
+     auchCRCHi                       512
+     ModbusPro::FastCalcCRC(unsigned char *, unsigned int)
+                                      80
+     ModbusPro::CalcCRC(unsigned char *, int, int)
+                                     100
+     ModbusPro::Send_Query(TSNUart *, unsigned char *, size_t)
+                                     248
+     ?Subroutine18                     8
+     ModbusPro::Receive_Response(TSNUart *, unsigned char *, int, int, int)
+                                     308
+     ?Subroutine17                   164
+     ModbusPro::Modbus_Response(TSNUart *, unsigned char *, unsigned char *, int, int, int, int)
+                                     260
+     ?Subroutine19                     8
+     ModbusPro::Preset_Response(TSNUart *, unsigned char *, int, int, int, int, unsigned char *)
+                                      72
+     ModbusPro::Set_Single(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, int, int, int)
+                                     136
+     ModbusPro::Set_Multiple(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned short *, int, int, int)
+                                     216
+     ModbusPro::WriteMultipleCoils(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                      52
+     ModbusPro::WriteMultipleRegisters(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                      36
+     ModbusPro::Get_Single(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                      52
+     ModbusPro::Get_Multiple(TSNUart *, unsigned int, unsigned int, unsigned int, unsigned int, unsigned char *, int, int, int)
+                                     232
+     ?<Initializer for auchCRCHi>    512
+     ?<Constant {(unsigned char __data)'\000', (uns
+                                     512
+     ?<Constant {(unsigned char __data)'\000', (uns_1
+                                     512
+     ModbusPro::new ModbusPro()       20
+     __sti__routine()                  4
+      Others                         120
+
+ 
+ 2 112 bytes in segment CODE
+ 1 024 bytes in segment DATA_C
+   512 bytes in segment DATA_I
+   512 bytes in segment DATA_ID
+     4 bytes in segment DIFUNCT
+    12 bytes in segment INITTAB
+ 
+ 2 012 bytes of CODE  memory (+ 116 bytes shared)
+ 1 536 bytes of CONST memory
+   512 bytes of DATA  memory
+
+Errors: none
+Warnings: none

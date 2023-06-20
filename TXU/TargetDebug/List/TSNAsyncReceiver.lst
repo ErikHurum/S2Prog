@@ -1,0 +1,254 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               19/Jan/2017  10:13:09 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\TSNAsyncReceiver.cpp            #
+#    Command line    =  D:\S2Prog\Shared\Src\TSNAsyncReceiver.cpp --fpu      #
+#                       None -D OS_LIBMODE_DP -D OS_RAMVECT=0 -D             #
+#                       CPU_S3C2410 -D OS_UART=1 -D ANBOOTLOADER -D          #
+#                       __ARM_LIBRARY__ -lCN D:\S2Prog\TXU\TargetDebug\List\ #
+#                        -o D:\S2Prog\TXU\TargetDebug\Obj\ -s2 --no_cse      #
+#                       --no_unroll --no_inline --no_code_motion --no_tbaa   #
+#                       --no_clustering --no_scheduling --debug --cpu_mode   #
+#                       arm --endian little --cpu ARM920T --stack_align 4    #
+#                       --interwork -e --eec++ --dlib_config "C:\Program     #
+#                       Files (x86)\IAR Systems\Embedded Workbench           #
+#                       4.0\arm\LIB\dl4tpainl8f.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\MINILZO.108\ -I          #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\INC\"                              #
+#    List file       =  D:\S2Prog\TXU\TargetDebug\List\TSNAsyncReceiver.lst  #
+#    Object file     =  D:\S2Prog\TXU\TargetDebug\Obj\TSNAsyncReceiver.r79   #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\TSNAsyncReceiver.cpp
+      1          #ifdef ANBOOTLOADER
+      2              #include "RTOS.h"
+      3              #include "ANPro10Inc.h"
+      4          #else
+      5              #include "TSNIncludes.h"
+      6              #include "TSNAsyncReceiver.h"
+      7          #endif
+      8          
+      9          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     10          TSNAsyncReceiver *TSNAsyncReceiver::ReceiveTasks[ASYNC_RECEIVER_TASKS];
+   \                     ??ReceiveTasks:
+   \   00000000                      DS8 12
+     11          
+     12          // this routine is supposed to start a ReceiveTask on the first available configured port/uart
+
+   \                                 In segment CODE, align 4, keep-with-next
+     13          void TSNAsyncReceiver::EntryPoint(void *portNoPtr)
+     14          {
+   \                     ??EntryPoint:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+     15              const int portNo = (int)portNoPtr;
+   \   00000008   0450B0E1           MOVS     R5,R4
+     16              const int Device = TSNUart::Channels[portNo]->Device;
+   \   0000000C   0400A0E3           MOV      R0,#+4
+   \   00000010   1C109FE5           LDR      R1,??EntryPoint_1  ;; ??Channels
+   \   00000014   901521E0           MLA      R1,R0,R5,R1
+   \   00000018   000091E5           LDR      R0,[R1, #+0]
+   \   0000001C   B00090E5           LDR      R0,[R0, #+176]
+   \   00000020   0060B0E1           MOVS     R6,R0
+     17              switch ( Device ) {
+     18              case C_UART_DEVICE_PRINTER:
+     19          #ifdef S2TXU
+     20                  {
+     21                      PROPrinter *PROPrinterPtr = PROPrinter::FindPrinterPort(portNo);
+     22                      if ( PROPrinterPtr ) {
+     23                          //OS_TASK* tmpTaskPtr = OS_GetpCurrentTask();
+     24                          //OS_SetPriority(tmpTaskPtr,130);
+     25                          PROPrinterPtr->PrinterTask(TSNUart::Channels[portNo]);
+     26                      }
+     27                  }
+     28          #endif
+     29              case C_UART_DEVICE_ANPRO3:
+     30          #ifdef S2TXU
+     31                  {
+     32                      AnPro3object *ANPRO3Ptr = AnPro3object::FindANPRO3Object(portNo);
+     33                      if ( ANPRO3Ptr ) {
+     34                          OS_TASK* tmpTaskPtr = OS_GetpCurrentTask();
+     35                          OS_SetPriority(tmpTaskPtr,130);
+     36                          ANPRO3Ptr->ANPRO3Task(TSNUart::Channels[portNo]);
+     37                      }
+     38                  }
+     39          #endif
+     40                  break;
+     41              case C_UART_DEVICE_SAAB:
+     42          #ifdef S2TXU
+     43                  {
+     44                      SaabProtcol *SaabProtcolPtr = SaabProtcol::FindSaabProtocolObject(portNo);
+     45                      if (!SaabProtcolPtr) {
+     46                          SaabProtcolPtr = new SaabProtcol(portNo);
+     47          
+     48                      }
+     49                      if ( SaabProtcolPtr ) {
+     50                          SaabProtcolPtr->SaabComTask(TSNUart::Channels[portNo]);
+     51                      }
+     52                  }
+     53          #endif
+     54                  break;
+     55          
+     56              case C_UART_DEVICE_TPC:
+     57          #ifdef S2TXU
+     58                  TPCxObject::TPCxTask(TSNUart::Channels[portNo]);
+     59          #endif
+     60                  break;
+     61              case C_UART_DEVICE_ANPRO10:
+     62              case C_UART_DEVICE_TDU:
+     63          	case C_UART_DEVICE_PC:
+     64          	case C_UART_DEVICE_TCU:
+     65          #ifdef S2TXU
+     66          		{
+     67          			int Priority = 150;
+     68          			switch(Device){
+     69          			case C_UART_DEVICE_ANPRO10:
+     70          				Priority = 110;
+     71          				break;
+     72          			case C_UART_DEVICE_TDU:
+     73          			case C_UART_DEVICE_PC:
+     74          			case C_UART_DEVICE_TCU:
+     75          				break;
+     76          			}
+     77          			OS_TASK* tmpTaskPtr = OS_GetpCurrentTask();
+     78          			OS_SetPriority(tmpTaskPtr,Priority);
+     79          			ANPRO10_Receive(TSNUart::Channels[portNo],10000);
+     80          		}
+     81          #endif
+     82                  break;
+     83              case C_UART_DEVICE_MODBUS_SLAVE:
+     84              case C_UART_DEVICE_MODBUS_SLAVE_INV:
+     85              case C_UART_DEVICE_MODBUS_SLAVE_TCP:
+     86          	case C_UART_DEVICE_MODBUS_MASTER:
+     87          	case C_UART_DEVICE_MODBUS_MASTER_INV:
+     88          	case C_UART_DEVICE_MODBUS_MASTER_TCP:
+     89          #ifdef S2TXU
+     90          // This cause the c-spy crash
+     91                  ModbusObject::ModbusTask(TSNUart::Channels[portNo]);
+     92          #endif        
+     93                    break;
+     94              case C_UART_DEVICE_ZB:
+     95          #ifndef ANBOOTLOADER
+     96                  ANPRO10_IO_Handler(TSNUart::Channels[portNo]);
+     97          #endif
+     98                  break;
+     99              }
+    100              // shall not return
+    101              while ( 1 ) {
+    102                  TSN_Delay(60000);
+   \                     ??EntryPoint_2:
+   \   00000024   6000A0E3           MOV      R0,#+96
+   \   00000028   EA0C80E3           ORR      R0,R0,#0xEA00
+   \   0000002C   ........           _BLF     OS_Delay,??OS_Delay??rA
+   \   00000030   FBFFFFEA           B        ??EntryPoint_2
+   \                     ??EntryPoint_1:
+   \   00000034   ........           DC32     ??Channels
+    103              }
+    104          }
+    105          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    106          TSNAsyncReceiver::TSNAsyncReceiver(TSNUart *port)
+    107          {
+    108          }
+   \                     ??TSNAsyncReceiver:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    109          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    110          TSNAsyncReceiver::~TSNAsyncReceiver()
+    111          {
+    112          }
+   \                     `?~TSNAsyncReceiver`:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs TSNAsyncReceiver &TSNAsyncReceiver::new TSNAsyncReceiver(TSNUart *)
+   \                     `??new TSNAsyncReceiver`:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0100A0E3           MOV      R0,#+1
+   \   0000000C   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   00000010   000050E3           CMP      R0,#+0
+   \   00000014   0200000A           BEQ      `??new TSNAsyncReceiver_1`
+   \   00000018   0410B0E1           MOVS     R1,R4
+   \   0000001C   ........           BL       ??TSNAsyncReceiver
+   \   00000020   000000EA           B        `??new TSNAsyncReceiver_2`
+   \                     `??new TSNAsyncReceiver_1`:
+   \   00000024   0000A0E3           MOV      R0,#+0
+   \                     `??new TSNAsyncReceiver_2`:
+   \   00000028   1040BDE8           POP      {R4,LR}
+   \   0000002C   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs void TSNAsyncReceiver::delete ~TSNAsyncReceiver(TSNAsyncReceiver *)
+   \                     `??delete ~TSNAsyncReceiver`:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   000054E3           CMP      R4,#+0
+   \   0000000C   0300000A           BEQ      `??delete ~TSNAsyncReceiver_1`
+   \   00000010   0400B0E1           MOVS     R0,R4
+   \   00000014   ........           BL       `?~TSNAsyncReceiver`
+   \   00000018   0400B0E1           MOVS     R0,R4
+   \   0000001C   ........           _BLF     `??operator delete`,`??operator delete??rA`
+   \                     `??delete ~TSNAsyncReceiver_1`:
+   \   00000020   1040BDE8           POP      {R4,LR}
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     TSNAsyncReceiver::EntryPoint(void *)
+                                       16
+     TSNAsyncReceiver::TSNAsyncReceiver(TSNUart *)
+                                        0
+     TSNAsyncReceiver::delete ~TSNAsyncReceiver(TSNAsyncReceiver *)
+                                        8
+     TSNAsyncReceiver::new TSNAsyncReceiver(TSNUart *)
+                                        8
+     TSNAsyncReceiver::~TSNAsyncReceiver()
+                                        0
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     TSNAsyncReceiver::ReceiveTasks   12
+     TSNAsyncReceiver::EntryPoint(void *)
+                                      56
+     TSNAsyncReceiver::TSNAsyncReceiver(TSNUart *)
+                                       4
+     TSNAsyncReceiver::~TSNAsyncReceiver()
+                                       4
+     TSNAsyncReceiver::new TSNAsyncReceiver(TSNUart *)
+                                      48
+     TSNAsyncReceiver::delete ~TSNAsyncReceiver(TSNAsyncReceiver *)
+                                      40
+      Others                          68
+
+ 
+ 208 bytes in segment CODE
+  12 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 152 bytes of CODE memory (+ 68 bytes shared)
+  12 bytes of DATA memory
+
+Errors: none
+Warnings: none

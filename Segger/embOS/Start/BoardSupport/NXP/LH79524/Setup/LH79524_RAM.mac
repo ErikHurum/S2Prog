@@ -1,0 +1,127 @@
+
+//  File: logicpd_lh79524.mac
+//
+// This file describes a macro for a LogicPD development board consisting of
+// LH79524 Microprocessor and 28F128J3 16Mbyte Flash. To enable the debugger to
+// see the memory map as the code would run in a deployed system some initialisation is done:-
+//
+// Cancel remap that forced Flash to locate at 0x00000000 at boot
+//
+// Poke Syntax is..
+// __writeMemory32(32 bit value, 32 bit address, "Memory");
+
+
+__var dummy;
+
+execUserPreload()
+{
+  __message "logicpd_lh79524.mac>execUserPreload(): Configure CE79524\n";
+  __writeMemory32(0x00000260,0xFFFE2000,"Memory"); //RCPC_CTRL: Enable APB register Write Access
+  __writeMemory32(0x00000001,0xFFFE2088,"Memory"); //CORECONFIG: Set Chip in Fastbus Mode
+  __writeMemory32(0x0000001C,0xFFFE202C,"Memory"); //AHBCLKCTRL: Disable Ethernet Clk
+  __writeMemory32(0x00000207,0xFFFE2024,"Memory"); //PCLKCTRL0: En RTC Dis UART clks
+  __writeMemory32(0x0000000F,0xFFFE2028,"Memory"); //PCLKCTRL1: En LCD Dis ADC,USB clks
+  __writeMemory32(0x00003049,0xFFFE20C0,"Memory"); //SYSPLLCNTL: PLL = 101.6064 Mhz
+__sleep(40000);
+  __writeMemory32(0x00000001,0xFFFE2018,"Memory"); //SYSCLKPRE: HCLK = 50.8032 MHz
+  __writeMemory32(0x00000001,0xFFFE201C,"Memory"); //CPUCLKPRE: FCLK = 50.8032 MHz
+  __writeMemory32(0x00000001,0xFFFE2088,"Memory"); //CORECONFIG: Set clock to async mode
+  __writeMemory32(0x00000001,0xFFFF1000,"Memory"); //EMC_CONTROL: Enable external memory controller
+//
+  __writeMemory32(0x00005000,0xFFFE5058,"Memory"); //MUXCTL12: IO pins data bus(D) 8,26
+  __writeMemory32(0x00005555,0xFFFE5050,"Memory"); //MUXCTL11: IO pins data bus(D) 9-12,17-20
+  __writeMemory32(0x00005555,0xFFFE5048,"Memory"); //MUXCTL10: IO pins data bus(D) 13-15,21-25
+  __writeMemory32(0x00001110,0xFFFE5098,"Memory"); //MUXCTL20: IO pins data bus(D) 26-28
+  __writeMemory32(0x00000441,0xFFFE5090,"Memory"); //MUXCTL19: IO pins data bus(D) 29-31
+  __writeMemory32(0x00005555,0xFFFE5030,"Memory"); //MUXCTL7:  IO pins addr bus(A) 16-23
+//
+  __writeMemory32(0x00000081,0xFFFF1220,"Memory"); //SCONFIG1:  CS1(Flash) 16bit,BLE=1
+  __writeMemory32(0x00000001,0xFFFF1224,"Memory"); //SWAITWEN1: CS1(Flash) _WE DELAY=1
+  __writeMemory32(0x00000001,0xFFFF1228,"Memory"); //SWAITOEN1: CS1(Flash) _OE DELAY=1
+  __writeMemory32(0x00000006,0xFFFF122C,"Memory"); //SWAITRD1:  CS1(Flash) _RD DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1230,"Memory"); //SWAITPAGE1:CS1(Flash) PAGE DELAY=6
+  __writeMemory32(0x00000006,0xFFFF1234,"Memory"); //SWAITWR1:  CS1(Flash) WRITE DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1238,"Memory"); //STURN1:    CS1(Flash) TURN DELAY=2
+//
+  __writeMemory32(0x00000081,0xFFFF1260,"Memory"); //SCONFIG3:  CS3(CPLD) 16bit,BLE=1
+  __writeMemory32(0x00000002,0xFFFF1264,"Memory"); //SWAITWEN3: CS3(CPLD) _WE DELAY=1
+  __writeMemory32(0x00000002,0xFFFF1268,"Memory"); //SWAITOEN3: CS3(CPLD) _OE DELAY=1
+  __writeMemory32(0x00000005,0xFFFF126C,"Memory"); //SWAITRD3:  CS3(CPLD) _RD DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1270,"Memory"); //SWAITPAGE3:CS3(CPLD) PAGE DELAY=6
+  __writeMemory32(0x00000005,0xFFFF1274,"Memory"); //SWAITWR3:  CS3(CPLD) WRITE DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1278,"Memory"); //STURN3:    CS3(CPLD) TURN DELAY=2
+  __writeMemory32(0x0000000F,0x4C800000,"Memory"); //Enable Flash WE via CPLD register
+
+// Setup SDRAM
+  __writeMemory32(0x00000001,0xFFFF1028,"Memory"); //
+  __writeMemory32(0x00000001,0xFFFF1108,"Memory"); //
+  __writeMemory32(0x00005680,0xFFFF1100,"Memory"); //
+  __writeMemory32(0x00000203,0xFFFF1104,"Memory"); //
+  __writeMemory32(0x00000001,0xFFFF1030,"Memory"); //
+  __writeMemory32(0x00000003,0xFFFF1034,"Memory"); //
+  __writeMemory32(0x00000006,0xFFFF1038,"Memory"); //
+  __writeMemory32(0x00000006,0xFFFF103C,"Memory"); //
+  __writeMemory32(0x00000006,0xFFFF1040,"Memory"); //
+  __writeMemory32(0x00000002,0xFFFF1044,"Memory"); //
+  __writeMemory32(0x00000006,0xFFFF1048,"Memory"); //
+  __writeMemory32(0x00000006,0xFFFF104C,"Memory"); //
+  __writeMemory32(0x00000006,0xFFFF1050,"Memory"); //
+  __writeMemory32(0x00000002,0xFFFF1054,"Memory"); //
+  __writeMemory32(0x00000002,0xFFFF1058,"Memory"); //
+
+  __writeMemory32(0x00000003,0xFFFF1020,"Memory"); //
+  __sleep(200);                                    // Wait for SDRAM controller
+  __writeMemory32(0x00000183,0xFFFF1020,"Memory"); //
+  __sleep(200);                                    // Wait for SDRAM controller
+  __writeMemory32(0x00000103,0xFFFF1020,"Memory"); //
+  __writeMemory32(0x00000001,0xFFFF1024,"Memory"); //
+  __sleep(250);                                    // Wait for SDRAM controller
+  __writeMemory32(0x00000018,0xFFFF1024,"Memory"); //
+  __sleep(250);                                   // Wait for SDRAM controller
+  __writeMemory32(0x00000083,0xFFFF1020,"Memory"); //
+  dummy = __readMemory32(0x20011000,"Memory");
+  __writeMemory32(0x00000003,0xFFFF1020,"Memory"); //
+  __writeMemory32(0x00085680,0xFFFF1100,"Memory"); //
+  __sleep(2500);                                   // Wait for SDRAM controller
+  __writeMemory32(0x00000001,0xFFFE2008,"Memory"); // Map SDRAM to 0x00000000
+}
+//In case you have set C-Spy options such that 'Reset Asserts Harware Reset',the Remap above is repeated below
+execUserReset()
+{
+  __message "logicpd_lh79524.mac>execUserPreload(): Configure CE79524\n";
+  __writeMemory32(0x00000260,0xFFFE2000,"Memory"); //RCPC_CTRL: Enable APB register Write Access
+  __writeMemory32(0x00000001,0xFFFE2088,"Memory"); //CORECONFIG: Set Chip in Fastbus Mode
+  __writeMemory32(0x0000001C,0xFFFE202C,"Memory"); //AHBCLKCTRL: Disable Ethernet Clk
+  __writeMemory32(0x00000207,0xFFFE2024,"Memory"); //PCLKCTRL0: En RTC Dis UART clks
+  __writeMemory32(0x0000000F,0xFFFE2028,"Memory"); //PCLKCTRL1: En LCD Dis ADC,USB clks
+  __writeMemory32(0x00003049,0xFFFE20C0,"Memory"); //SYSPLLCNTL: PLL = 101.6064 Mhz
+__sleep(40000);
+  __writeMemory32(0x00000001,0xFFFE2018,"Memory"); //SYSCLKPRE: HCLK = 50.8032 MHz
+  __writeMemory32(0x00000001,0xFFFE201C,"Memory"); //CPUCLKPRE: FCLK = 50.8032 MHz
+  __writeMemory32(0x00000001,0xFFFE2088,"Memory"); //CORECONFIG: Set clock to async mode
+  __writeMemory32(0x00000001,0xFFFF1000,"Memory"); //EMC_CONTROL: Enable external memory controller
+//
+  __writeMemory32(0x00005000,0xFFFE5058,"Memory"); //MUXCTL12: IO pins data bus(D) 8,26
+  __writeMemory32(0x00005555,0xFFFE5050,"Memory"); //MUXCTL11: IO pins data bus(D) 9-12,17-20
+  __writeMemory32(0x00005555,0xFFFE5048,"Memory"); //MUXCTL10: IO pins data bus(D) 13-15,21-25
+  __writeMemory32(0x00001110,0xFFFE5098,"Memory"); //MUXCTL20: IO pins data bus(D) 26-28
+  __writeMemory32(0x00000441,0xFFFE5090,"Memory"); //MUXCTL19: IO pins data bus(D) 29-31
+  __writeMemory32(0x00005555,0xFFFE5030,"Memory"); //MUXCTL7:  IO pins addr bus(A) 16-23
+//
+  __writeMemory32(0x00000081,0xFFFF1220,"Memory"); //SCONFIG1:  CS1(Flash) 16bit,BLE=1
+  __writeMemory32(0x00000001,0xFFFF1224,"Memory"); //SWAITWEN1: CS1(Flash) _WE DELAY=1
+  __writeMemory32(0x00000001,0xFFFF1228,"Memory"); //SWAITOEN1: CS1(Flash) _OE DELAY=1
+  __writeMemory32(0x00000006,0xFFFF122C,"Memory"); //SWAITRD1:  CS1(Flash) _RD DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1230,"Memory"); //SWAITPAGE1:CS1(Flash) PAGE DELAY=6
+  __writeMemory32(0x00000006,0xFFFF1234,"Memory"); //SWAITWR1:  CS1(Flash) WRITE DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1238,"Memory"); //STURN1:    CS1(Flash) TURN DELAY=2
+//
+  __writeMemory32(0x00000081,0xFFFF1260,"Memory"); //SCONFIG3:  CS3(CPLD) 16bit,BLE=1
+  __writeMemory32(0x00000002,0xFFFF1264,"Memory"); //SWAITWEN3: CS3(CPLD) _WE DELAY=1
+  __writeMemory32(0x00000002,0xFFFF1268,"Memory"); //SWAITOEN3: CS3(CPLD) _OE DELAY=1
+  __writeMemory32(0x00000005,0xFFFF126C,"Memory"); //SWAITRD3:  CS3(CPLD) _RD DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1270,"Memory"); //SWAITPAGE3:CS3(CPLD) PAGE DELAY=6
+  __writeMemory32(0x00000005,0xFFFF1274,"Memory"); //SWAITWR3:  CS3(CPLD) WRITE DELAY=6
+  __writeMemory32(0x00000002,0xFFFF1278,"Memory"); //STURN3:    CS3(CPLD) TURN DELAY=2
+  __writeMemory32(0x0000000F,0x4C800000,"Memory"); //Enable Flash WE via CPLD register
+}

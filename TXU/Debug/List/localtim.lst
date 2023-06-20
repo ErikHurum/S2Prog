@@ -1,0 +1,259 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:14 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\CStartup\localtim.c                    #
+#    Command line    =  D:\S2Prog\TXU\CStartup\localtim.c --fpu None -D      #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\localtim.lst                #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\localtim.r79                 #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\CStartup\localtim.c
+      1          /* localtime function */
+      2          #include <stdlib.h>
+      3          #include "xmtloc.h"
+      4          #include "xtime.h"
+      5          #include <yfuns.h>
+      6          _STD_BEGIN
+      7          
+      8          #define MAXTZ	(100 * 13)	/* biggest valid HHMM offset from UTC */
+      9          
+     10          typedef const char *_Localtime_old_t;
+     11          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     12          _TLS_DATA_DEF(static, _Localtime_old_t, _Localtime_oldzone, 0);
+   \                     _Localtime_oldzone:
+   \   00000000                      DS8 4
+   \   00000004                      DS8 4
+     13          _TLS_DATA_DEF(static, long, _Localtime_tzoff, 0);
+     14          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     15          time_t _Tzoff(void)
+     16          {	/* determine local time offset */
+   \                     _Tzoff:
+   \   00000000   73402DE9           PUSH     {R0,R1,R4-R6,LR}
+     17          	_Localtime_old_t *poldzone = _TLS_DATA_PTR(_Localtime_old_t,
+     18                                                             _Localtime_oldzone);
+     19          	char const * * pzone = _TLS_DATA_PTR(char const *, _TzoneStr);
+   \   00000004   D4009FE5           LDR      R0,??_Tzoff_0    ;; _Tls_setup__TzoneStr
+   \   00000008   000090E5           LDR      R0,[R0, #+0]
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0100000A           BEQ      ??_Tzoff_1
+   \   00000014   0FE0A0E1           MOV      LR,PC
+   \   00000018   10FF2FE1           BX       R0
+     20          	long *ptzoff = _TLS_DATA_PTR(long, _Localtime_tzoff);
+     21          
+     22          	if (*poldzone != *pzone)
+   \                     ??_Tzoff_1:
+   \   0000001C   C0409FE5           LDR      R4,??_Tzoff_0+0x4  ;; _TzoneStr
+   \   00000020   C0509FE5           LDR      R5,??_Tzoff_0+0x8  ;; _Localtime_oldzone
+   \   00000024   000094E5           LDR      R0,[R4, #+0]
+   \   00000028   001095E5           LDR      R1,[R5, #+0]
+   \   0000002C   000051E1           CMP      R1,R0
+   \   00000030   2400000A           BEQ      ??_Tzoff_2
+     23          		{	/* determine time zone offset (East is +) */
+     24          		const char *p, *pe;
+     25          		int n;
+     26          
+     27          		if ( (*pzone)[0] == '\0' )
+   \   00000034   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000038   000050E3           CMP      R0,#+0
+   \   0000003C   0100001A           BNE      ??_Tzoff_3
+     28                                  (*pzone) = __getzone();
+   \   00000040   ........           _BLF     __getzone,??__getzone??rA
+   \   00000044   000084E5           STR      R0,[R4, #+0]
+     29          
+     30          		p = _Gettime(*pzone, 2, &n);
+   \                     ??_Tzoff_3:
+   \   00000048   000094E5           LDR      R0,[R4, #+0]
+   \   0000004C   04208DE2           ADD      R2,SP,#+4
+   \   00000050   0210A0E3           MOV      R1,#+2
+   \   00000054   ........           _BLF     _Gettime,??_Gettime??rA
+   \   00000058   0060A0E1           MOV      R6,R0
+     31          		*ptzoff = strtol(p, (char **)&pe, 10);
+   \   0000005C   0A20A0E3           MOV      R2,#+10
+   \   00000060   0D10A0E1           MOV      R1,SP
+   \   00000064   ........           _BLF     strtol,??strtol??rA
+     32          		if ( pe - p != n
+     33          				 || *ptzoff <= -MAXTZ || MAXTZ <= *ptzoff )
+   \   00000068   04109DE5           LDR      R1,[SP, #+4]
+   \   0000006C   0020A0E1           MOV      R2,R0
+   \   00000070   00009DE5           LDR      R0,[SP, #+0]
+   \   00000074   060040E0           SUB      R0,R0,R6
+   \   00000078   010050E1           CMP      R0,R1
+   \   0000007C   0700001A           BNE      ??_Tzoff_4
+   \   00000080   1200E0E3           MVN      R0,#+18
+   \   00000084   500EC0E3           BIC      R0,R0,#0x500
+   \   00000088   000052E1           CMP      R2,R0
+   \   0000008C   030000BA           BLT      ??_Tzoff_4
+   \   00000090   1400A0E3           MOV      R0,#+20
+   \   00000094   500E80E3           ORR      R0,R0,#0x500
+   \   00000098   000052E1           CMP      R2,R0
+   \   0000009C   000000BA           BLT      ??_Tzoff_5
+     34          			*ptzoff = 0;
+   \                     ??_Tzoff_4:
+   \   000000A0   0020A0E3           MOV      R2,#+0
+     35          		*ptzoff -= (*ptzoff / 100) * 40;	/* HHMM -- changed for C9X */
+     36          		*ptzoff = -*ptzoff;	/* also change sense of offset for C9X */
+   \                     ??_Tzoff_5:
+   \   000000A4   0200A0E1           MOV      R0,R2
+   \   000000A8   6410A0E3           MOV      R1,#+100
+   \   000000AC   ........           _BLF     ??div32_a,??rA??div32_a
+   \   000000B0   2800A0E3           MOV      R0,#+40
+   \   000000B4   900101E0           MUL      R1,R0,R1
+   \   000000B8   020041E0           SUB      R0,R1,R2
+   \   000000BC   040085E5           STR      R0,[R5, #+4]
+     37          		*poldzone = *pzone;
+   \   000000C0   000094E5           LDR      R0,[R4, #+0]
+   \   000000C4   000085E5           STR      R0,[R5, #+0]
+     38          	}
+     39          	return(-*ptzoff * 60);
+   \                     ??_Tzoff_2:
+   \   000000C8   040095E5           LDR      R0,[R5, #+4]
+   \   000000CC   3C10A0E3           MOV      R1,#+60
+   \   000000D0   910000E0           MUL      R0,R1,R0
+   \   000000D4   7640BDE8           POP      {R1,R2,R4-R6,LR}
+   \   000000D8   000060E2           RSB      R0,R0,#+0
+   \   000000DC   1EFF2FE1           BX       LR               ;; return
+   \                     ??_Tzoff_0:
+   \   000000E0   ........           DC32     _Tls_setup__TzoneStr
+   \   000000E4   ........           DC32     _TzoneStr
+   \   000000E8   ........           DC32     _Localtime_oldzone
+     40          }
+     41          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     42          struct tm *(localtime)(const time_t *tod)
+     43          	{	/* convert to local time structure */
+   \                     localtime:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     44          	return(_Ttotm(0, *tod + _Tzoff(), -1));
+   \   00000008   ........           BL       _Tzoff
+   \   0000000C   001094E5           LDR      R1,[R4, #+0]
+   \   00000010   0020E0E3           MVN      R2,#+0
+   \   00000014   011080E0           ADD      R1,R0,R1
+   \   00000018   0000A0E3           MOV      R0,#+0
+   \   0000001C   ........           _BLF     _Ttotm,??_Ttotm??rA
+   \   00000020   1040BDE8           POP      {R4,LR}
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+     45          }
+     46          
+     47          /*****************************************************************
+     48          *
+     49          * Added by EHS, Tanksystem Norway
+     50          *
+     51          */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     52          time_t *GetTimeZone(void)
+     53          {
+     54          	return(time_t*)_TLS_DATA_PTR(long, _Localtime_tzoff);
+   \                     GetTimeZone:
+   \   00000000   ........           LDR      R0,??DataTable1  ;; _Localtime_oldzone + 4
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+     55          }
+     56          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     57          void SetTimeZone(int NewTZ)
+     58          {
+   \                     SetTimeZone:
+   \   00000000   00402DE9           PUSH     {LR}
+     59          	long *ptzoff = _TLS_DATA_PTR(long, _Localtime_tzoff);
+     60          	NewTZ /=60; // Convert to minutes
+   \   00000004   3C10A0E3           MOV      R1,#+60
+   \   00000008   ........           _BLF     ??div32_a,??rA??div32_a
+     61          	if (NewTZ <= -12*60 ) {
+   \   0000000C   CE00E0E3           MVN      R0,#+206
+   \   00000010   800FC0E3           BIC      R0,R0,#0x200
+   \   00000014   000051E1           CMP      R1,R0
+     62          		*ptzoff = 12*60;
+   \   00000018   B41FA0B3           MOVLT    R1,#+720
+   \   0000001C   010000BA           BLT      ??SetTimeZone_0
+     63          	}else if ( NewTZ >= 12*60 ) {
+   \   00000020   B40F51E3           CMP      R1,#+720
+     64          		*ptzoff = -12*60;
+   \   00000024   0110C0A3           BICGE    R1,R0,#0x1
+     65          	}else{
+     66          	  *ptzoff = NewTZ;
+   \                     ??SetTimeZone_0:
+   \   00000028   ........           LDR      R0,??DataTable1  ;; _Localtime_oldzone + 4
+   \   0000002C   001080E5           STR      R1,[R0, #+0]
+     67          	}
+     68          }
+   \   00000030   0040BDE8           POP      {LR}
+   \   00000034   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable1:
+   \   00000000   ........           DC32     _Localtime_oldzone + 4
+     69          
+     70          _STD_END
+     71          
+     72          /*
+     73           * Copyright (c) 1992-2002 by P.J. Plauger.  ALL RIGHTS RESERVED.
+     74           * Consult your license regarding permissions and restrictions.
+     75          V3.12:0576 */
+
+   Maximum stack usage in bytes:
+
+     Function    CSTACK
+     --------    ------
+     GetTimeZone     0
+     SetTimeZone     4
+     _Tzoff         24
+     localtime       8
+
+
+   Segment part sizes:
+
+     Function/Label     Bytes
+     --------------     -----
+     _Localtime_oldzone    8
+     _Tzoff              236
+     localtime            40
+     GetTimeZone           8
+     SetTimeZone          56
+     ??DataTable1          4
+      Others              88
+
+ 
+ 420 bytes in segment CODE
+   8 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 344 bytes of CODE memory (+ 88 bytes shared)
+   8 bytes of DATA memory
+
+Errors: none
+Warnings: none

@@ -1,0 +1,624 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            07/Feb/2017  14:17:40
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+#
+#    Source file  =  D:\S2Prog\IO\ANZB\Src\rtosinit.c
+#    Command line =  
+#        D:\S2Prog\IO\ANZB\Src\rtosinit.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB\Release_debug\Obj -D OS_LIBMODE_S -D OS_UART=0 -lCN
+#        D:\S2Prog\IO\ANZB\Release_debug\List -y --initializers_in_flash
+#        --no_tbaa -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB\INC\ -I
+#        D:\S2Prog\IO\ANZB\..\..\SHARED\INC\ --eeprom_size 4096 --clib -Ohz
+#    List file    =  D:\S2Prog\IO\ANZB\Release_debug\List\rtosinit.lst
+#    Object file  =  D:\S2Prog\IO\ANZB\Release_debug\Obj\rtosinit.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB\Src\rtosinit.c
+      1          /*********************************************************************
+      2          *               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+      3          *       Solutions for real time microcontroller applications         *
+      4          **********************************************************************
+      5          *                                                                    *
+      6          *       (C) 2002   SEGGER Microcontroller Systeme GmbH               *
+      7          *                                                                    *
+      8          *       www.segger.com     Support: support@segger.com               *
+      9          *                                                                    *
+     10          **********************************************************************
+     11          *                                                                    *
+     12          *       embOS * Real time operating system for microcontrollers      *
+     13          *                                                                    *
+     14          **********************************************************************
+     15          
+     16          ----------------------------------------------------------------------
+     17          File    : RTOSInit.c   (for ATMEL AT90)
+     18          Purpose : Initializes and handles the hardware for embOS as far
+     19                    as required by embOS.
+     20                    Feel free to modify this file acc. to your
+     21                    target system.
+     22          --------  END-OF-HEADER  ---------------------------------------------
+     23          */
+     24          
+     25          #include "RTOS.H"
+     26          #include "iom128.h"
+
+   \                                 In  segment ABSOLUTE, at 0x29
+   \   union <unnamed> volatile __io _A_UBRR0L
+   \                     _A_UBRR0L:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2a
+   \   union <unnamed> volatile __io _A_UCSR0B
+   \                     _A_UCSR0B:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2b
+   \   union <unnamed> volatile __io _A_UCSR0A
+   \                     _A_UCSR0A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2c
+   \   union <unnamed> volatile __io _A_UDR0
+   \                     _A_UDR0:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x4a
+   \   union <unnamed> volatile __io _A_OCR1A
+   \                     _A_OCR1A:
+   \   00000000                      DS8 2
+
+   \                                 In  segment ABSOLUTE, at 0x4c
+   \   union <unnamed> volatile __io _A_TCNT1
+   \                     _A_TCNT1:
+   \   00000000                      DS8 2
+
+   \                                 In  segment ABSOLUTE, at 0x4e
+   \   union <unnamed> volatile __io _A_TCCR1B
+   \                     _A_TCCR1B:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x4f
+   \   union <unnamed> volatile __io _A_TCCR1A
+   \                     _A_TCCR1A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x56
+   \   union <unnamed> volatile __io _A_TIFR
+   \                     _A_TIFR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x57
+   \   union <unnamed> volatile __io _A_TIMSK
+   \                     _A_TIMSK:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x90
+   \   union <unnamed> volatile __io _A_UBRR0H
+   \                     _A_UBRR0H:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x95
+   \   union <unnamed> volatile __io _A_UCSR0C
+   \                     _A_UCSR0C:
+   \   00000000                      DS8 1
+     27          #include "constants.h"
+     28          /*
+     29          #if (((__TID__ >> 4) & 0x0F) == 1)
+     30            #include "IO8535.H"
+     31          #elif (((__TID__ >> 4) & 0x0F) == 3)
+     32            #include "IOM603.H"
+     33          #else
+     34            #error "This CPU version (selected by -v) is not supported !"
+     35          #endif
+     36          */
+     37          /*********************************************************************
+     38          *
+     39          *       Configuration
+     40          *
+     41          **********************************************************************
+     42          */
+     43          
+     44          //#define OS_FSYS CPU_XTAL    // System frequency [Hz]
+     45          
+     46          /* Select UART for embOSView.
+     47             If you do not want (or can not due to hardware limitations) to dedicate
+     48             a UART to embOSView, please define it to be -1
+     49             Currently the standard code below supports only UART 1
+     50             (But is easily changed to UART 0)
+     51          */
+     52          #ifndef OS_UART
+     53              #define OS_UART 0
+     54          #endif
+     55          #ifndef OS_BAUDRATE
+     56              #define OS_BAUDRATE 19200L
+     57          #endif
+     58          
+     59          /*********************************************************************
+     60          *
+     61          *       OS_InitHW
+     62          *
+     63          **********************************************************************
+     64          
+     65          Initialize the hardware required for the OS to run. This will work
+     66          on any target hardware, but may have to be tailored a little
+     67          (regarding the clock frequency). Of course the same holds true
+     68          if for some reason you choose to use an other timer.
+     69          Here we use Timer 1 with Compare match. If other Timer has to be used,
+     70          also change the interrupt vector number in OS_ISR_Tick()
+     71          */
+     72          
+     73          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     74          void OS_InitHW(void) {
+   \                     OS_InitHW:
+     75              TCCR1A=  (0<<6)       // 0: No output
+     76                       |(0<<4)             // 0: No output
+     77                       |(0<<0);            // No PWM
+   \   00000000   E000               LDI     R16, 0
+   \   00000002   BD0F               OUT     0x2F, R16
+     78              TCCR1B=  (1<<7)       // 0: Disable noise canceler
+     79                       |(0<<6)             // X: Capture edge
+     80                       |(1<<3)             // 1: Reset on compare match
+     81                       |(1<<0);            // 1: clock source CK/1
+   \   00000004   E809               LDI     R16, 137
+   \   00000006   BD0E               OUT     0x2E, R16
+     82              OCR1A = (XTAL_CPU/1000)-1;         // generate 1ms interrupts
+   \   00000008   E605               LDI     R16, 101
+   \   0000000A   E01E               LDI     R17, 14
+   \   0000000C   BD1B               OUT     0x2B, R17
+   \   0000000E   BD0A               OUT     0x2A, R16
+     83              TIMSK |= (1<<4);      // Output CompareA Match Interrupt Enable
+   \   00000010   B707               IN      R16, 0x37
+   \   00000012   6100               ORI     R16, 0x10
+   \   00000014   BF07               OUT     0x37, R16
+     84              //  SREG  = 0x80 ;        // global interrupt
+     85              OS_COM_Init();        // Initialize communication to embOS Viewer
+   \   00000016   ....               RJMP    OS_COM_Init
+   \   00000018                      REQUIRE _A_TCCR1A
+   \   00000018                      REQUIRE _A_TCCR1B
+   \   00000018                      REQUIRE _A_OCR1A
+   \   00000018                      REQUIRE _A_TIMSK
+     86          
+     87          }
+     88          
+     89          /*********************************************************************
+     90          *
+     91          *       Idle loop  (OS_Idle)
+     92          *
+     93          **********************************************************************
+     94          
+     95           Please note:
+     96           This is basically the "core" of the idle loop
+     97           This core loop can be changed, but:
+     98           The idle loop does not have a stack of its own, therefore no
+     99           functionality should be implemented that relies on the stack
+    100           to be preserved. However, a simple program loop can be programmed
+    101           (like toggeling an output or incrementing a counter)
+    102          */
+    103          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    104          void OS_Idle(void) {          // Idle loop: No task is ready to exec
+   \                     OS_Idle:
+   \                     ??OS_Idle_0:
+    105              for (;;);                   // Nothing to do ... wait for a interrupt
+   \   00000000   CFFF               RJMP    ??OS_Idle_0
+    106          }
+    107          
+    108          /*********************************************************************
+    109          *
+    110          *       Get time [cycles]
+    111          *
+    112          **********************************************************************
+    113          
+    114              This routine is required for task-info via embOS Viewer.
+    115              It returns the system time in clock cycles.
+    116          */
+    117          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    118          static int ReadHWTimer(void) {
+   \                     ReadHWTimer:
+    119              OS_U16 r = TCNT1L;
+   \   00000000   B50C               IN      R16, 0x2C
+    120              asm ("nop");
+   \   00000002   0000               nop
+    121              return r |(TCNT1H<<8);
+   \   00000004   B51D               IN      R17, 0x2D
+   \   00000006   9508               RET
+   \   00000008                      REQUIRE _A_TCNT1
+    122          }
+    123          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    124          OS_U32 OS_GetTime_Cycles(void) {
+   \                     OS_GetTime_Cycles:
+   \   00000000   ........           CALL    ?PROLOGUE6_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+    125              unsigned int t_cnt = ReadHWTimer();
+   \   00000004   ....               RCALL   ReadHWTimer
+   \   00000006   0128               MOVW    R5:R4, R17:R16
+    126              OS_U32 time = OS_Time;
+   \   00000008   ....               LDI     R30, LOW(OS_Time)
+   \   0000000A   ....               LDI     R31, (OS_Time) >> 8
+   \   0000000C   8180               LD      R24, Z
+   \   0000000E   8191               LDD     R25, Z+1
+   \   00000010   81A2               LDD     R26, Z+2
+   \   00000012   81B3               LDD     R27, Z+3
+    127              //
+    128              // Check if timer interrupt pending ...
+    129              if (TIFR&(1<<4)) {
+   \   00000014   B706               IN      R16, 0x36
+   \   00000016   FF04               SBRS    R16, 4
+   \   00000018   C006               RJMP    ??OS_GetTime_Cycles_0
+    130                  t_cnt = ReadHWTimer();
+   \   0000001A   ....               RCALL   ReadHWTimer
+   \   0000001C   0128               MOVW    R5:R4, R17:R16
+    131                  time++;
+   \   0000001E   5F8F               SUBI    R24, 255
+   \   00000020   4F9F               SBCI    R25, 255
+   \   00000022   4FAF               SBCI    R26, 255
+   \   00000024   4FBF               SBCI    R27, 255
+    132              }
+    133          //  return (XTAL_CPU/1000)*time  + t_cnt;
+    134              return(XTAL_CPU/1000)*time  + t_cnt;
+   \                     ??OS_GetTime_Cycles_0:
+   \   00000026   E646               LDI     R20, 102
+   \   00000028   E05E               LDI     R21, 14
+   \   0000002A   E060               LDI     R22, 0
+   \   0000002C   E070               LDI     R23, 0
+   \   0000002E   018C               MOVW    R17:R16, R25:R24
+   \   00000030   019D               MOVW    R19:R18, R27:R26
+   \   00000032   ........           CALL    ?L_EC_MUL_L03
+   \   00000036   0D04               ADD     R16, R4
+   \   00000038   1D15               ADC     R17, R5
+   \   0000003A   1F26               ADC     R18, R22
+   \   0000003C   1F36               ADC     R19, R22
+   \   0000003E   E0E6               LDI     R30, 6
+   \   00000040   ........           JMP     ?EPILOGUE_B6_L09
+   \   00000044                      REQUIRE _A_TIFR
+    135          }
+    136          
+    137          /*********************************************************************
+    138          *
+    139          *       OS_ConvertCycles2us
+    140          *
+    141          **********************************************************************
+    142          
+    143          Purpose:
+    144             Convert Cycles into micro seconds. (For profiling only)
+    145          
+    146             If you have a clock frequency which is not a multiple of 1 MHz,
+    147             you may have to modify this routine in order to get proper
+    148             diagonstics.
+    149          Please note:
+    150             This routine is required for profiling only.
+    151             It does not affect operation of the OS.
+    152          */
+    153          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    154          OS_U32 OS_ConvertCycles2us(OS_U32 Cycles) {
+   \                     OS_ConvertCycles2us:
+    155              return Cycles/(XTAL_CPU/1000000);
+   \   00000000   E043               LDI     R20, 3
+   \   00000002   E050               LDI     R21, 0
+   \   00000004   E060               LDI     R22, 0
+   \   00000006   E070               LDI     R23, 0
+   \   00000008   ........           JMP     ?UL_DIVMOD_L03
+    156          }
+    157          
+    158          /*********************************************************************
+    159          *
+    160          *       OS_Tick interrupt
+    161          *
+    162          **********************************************************************
+    163          */
+    164          
+    165          #pragma vector = TIMER1_COMPA_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    166          __interrupt void OS_ISR_Tick (void) { OS_TickHandler();}
+   \                     OS_ISR_Tick:
+   \   00000000   ....               RCALL   ?Subroutine0
+   \                     ??CrossCallReturnLabel_0:
+   \   00000002   ........           CALL    OS_TickHandler
+   \   00000006   ....               RCALL   ??Subroutine5_0
+   \                     ??CrossCallReturnLabel_7:
+   \   00000008   9518               RETI
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ??Subroutine5_0:
+   \   00000000   BF9B               OUT     0x3B, R25
+   \   00000002   BF8F               OUT     0x3F, R24
+   \   00000004   9109               LD      R16, Y+
+   \   00000006   9119               LD      R17, Y+
+   \   00000008   9129               LD      R18, Y+
+   \   0000000A   9139               LD      R19, Y+
+   \   0000000C   9149               LD      R20, Y+
+   \   0000000E   9159               LD      R21, Y+
+   \   00000010   9169               LD      R22, Y+
+   \   00000012   9179               LD      R23, Y+
+   \   00000014   9009               LD      R0, Y+
+   \   00000016   9019               LD      R1, Y+
+   \   00000018   9029               LD      R2, Y+
+   \   0000001A   9039               LD      R3, Y+
+   \   0000001C   91E9               LD      R30, Y+
+   \   0000001E   91F9               LD      R31, Y+
+   \   00000020   9189               LD      R24, Y+
+   \   00000022   9199               LD      R25, Y+
+   \   00000024   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+   \   00000024   9508               RET
+    167          
+    168          /*********************************************************************
+    169          *
+    170          *       Communication for embOSView (UART 0)
+    171          *
+    172          **********************************************************************
+    173          */
+    174          
+    175          #if (OS_UART == 0)
+    176          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    177          void OS_COM_Init(void) {
+   \                     OS_COM_Init:
+    178              UBRR0L  = ((XTAL_CPU / 16 / OS_BAUDRATE )-1) & 0xff;
+   \   00000000   E00B               LDI     R16, 11
+   \   00000002   B909               OUT     0x09, R16
+    179              UBRR0H  = (((XTAL_CPU / 16 / OS_BAUDRATE )-1)>> 8) & 0xff;
+   \   00000004   E000               LDI     R16, 0
+   \   00000006   9300....           STS     _A_UBRR0H, R16
+    180              UCSR0C  = 0x06;       /* n,8,1 */
+   \   0000000A   E006               LDI     R16, 6
+   \   0000000C   9300....           STS     _A_UCSR0C, R16
+    181              UCSR0A  = 0x00;
+   \   00000010   E000               LDI     R16, 0
+   \   00000012   B90B               OUT     0x0B, R16
+    182              UCSR0B =  (0<<0)      // X
+    183                        |(0<<1)      // X
+    184                        |(0<<2)      // CHR9: 9-bit Characters
+    185                        |(1<<3)      // TXEN: Transmitter Enable
+    186                        |(1<<4)      // RXEN: Receiver Enable
+    187                        |(0<<5)      // UDRIE: UART Data Register Empty Interrupt Enable
+    188                        |(0<<6)      // TXCIE Tx complete interrupt enable
+    189                        |(0<<7);     // RXCIE Rx complete interrupt enable
+   \   00000014   E108               LDI     R16, 24
+   \   00000016   B90A               OUT     0x0A, R16
+    190              UCSR0B =  (0<<0)      // X
+    191                        |(0<<1)      // X
+    192                        |(0<<2)      // CHR9: 9-bit Characters
+    193                        |(1<<3)      // TXEN: Transmitter Enable
+    194                        |(1<<4)      // RXEN: Receiver Enable
+    195                        |(0<<5)      // UDRIE: UART Data Register Empty Interrupt Enable
+    196                        |(1<<6)      // TXCIE Tx complete interrupt enable
+    197                        |(1<<7);     // RXCIE Rx complete interrupt enable
+   \   00000018   ED08               LDI     R16, 216
+   \   0000001A   B90A               OUT     0x0A, R16
+    198          }
+   \   0000001C   9508               RET
+   \   0000001E                      REQUIRE _A_UBRR0L
+   \   0000001E                      REQUIRE _A_UBRR0H
+   \   0000001E                      REQUIRE _A_UCSR0C
+   \   0000001E                      REQUIRE _A_UCSR0A
+   \   0000001E                      REQUIRE _A_UCSR0B
+    199          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    200          void OS_COM_Send1(unsigned char c) {
+   \                     OS_COM_Send1:
+    201              UDR0 = c;
+   \   00000000   B90C               OUT     0x0C, R16
+    202              UCSR0B |=  (1<<6);      // Generate interrupt on transmit buffer emtpy
+   \   00000002   9A56               SBI     0x0A, 0x06
+    203          }
+   \   00000004   9508               RET
+   \   00000006                      REQUIRE _A_UDR0
+   \   00000006                      REQUIRE _A_UCSR0B
+    204          
+    205              #pragma vector = USART0_RXC_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    206          __interrupt void ISR_uart0_rx (void) {
+   \                     ISR_uart0_rx:
+   \   00000000   ....               RCALL   ?Subroutine0
+    207              UCSR0B &=  ~(1<<7);     // Avoid nesting itself !!!
+   \                     ??CrossCallReturnLabel_1:
+   \   00000002   9857               CBI     0x0A, 0x07
+    208              OS_EnterNestableInterrupt();
+   \   00000004   ....               RCALL   ?Subroutine3
+    209              OS_OnRx(UDR0);
+   \                     ??CrossCallReturnLabel_3:
+   \   00000006   B10C               IN      R16, 0x0C
+   \   00000008   ........           CALL    OS_OnRx
+    210              OS_DI();             // Disable before allowing Rx interrupt
+   \   0000000C   94F8               CLI
+    211              UCSR0B |=  (1<<7);
+   \   0000000E   9A57               SBI     0x0A, 0x07
+    212              OS_LeaveNestableInterrupt();
+   \   00000010                      REQUIRE ?Subroutine4
+   \   00000010                      REQUIRE _A_UCSR0B
+   \   00000010                      REQUIRE _A_UDR0
+   \   00000010                      ;               // Fall through to label ?Subroutine4
+    213          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine4:
+   \   00000000   ....               RCALL   ?Subroutine2
+   \                     ??CrossCallReturnLabel_5:
+   \   00000002   ....               RCALL   ?Subroutine1
+   \                     ??CrossCallReturnLabel_6:
+   \   00000004   9518               RETI
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine1:
+   \   00000000   9100....           LDS     R16, OS_Counters
+   \   00000004   950A               DEC     R16
+   \   00000006   9300....           STS     OS_Counters, R16
+   \   0000000A                      REQUIRE ??Subroutine5_0
+   \   0000000A                      ;               // Fall through to label ??Subroutine5_0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine3:
+   \   00000000   9100....           LDS     R16, OS_Counters
+   \   00000004   9503               INC     R16
+   \   00000006   9300....           STS     OS_Counters, R16
+   \   0000000A   9478               SEI
+   \   0000000C   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine2:
+   \   00000000   94F8               CLI
+   \   00000002   9100....           LDS     R16, OS_Counters
+   \   00000006   3001               CPI     R16, 1
+   \   00000008   F431               BRNE    ??Subroutine2_0
+   \   0000000A   9100....           LDS     R16, OS_Pending
+   \   0000000E   2300               TST     R16
+   \   00000010   F011               BREQ    ??Subroutine2_0
+   \   00000012   ........           CALL    OS_SwitchFromInt
+   \                     ??Subroutine2_0:
+   \   00000016   9508               RET
+    214          
+    215              #pragma vector = USART0_TXC_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    216          __interrupt void ISR_uart0_tx (void) {/*USART0_TXC_vect*/
+   \                     ISR_uart0_tx:
+   \   00000000   ....               RCALL   ?Subroutine0
+    217              OS_EnterNestableInterrupt();
+   \                     ??CrossCallReturnLabel_2:
+   \   00000002   ....               RCALL   ?Subroutine3
+    218              if (OS_OnTx()) {
+   \                     ??CrossCallReturnLabel_4:
+   \   00000004   ........           CALL    OS_OnTx
+   \   00000008   2300               TST     R16
+   \   0000000A   F009               BREQ    ??ISR_uart0_tx_0
+    219                  UCSR0B &=  ~(1<<6);   // Do not generate any more interrupts
+   \   0000000C   9856               CBI     0x0A, 0x06
+    220              }
+    221              OS_LeaveNestableInterrupt();
+   \                     ??ISR_uart0_tx_0:
+   \   0000000E   ....               RJMP    ?Subroutine4
+   \   00000010                      REQUIRE _A_UCSR0B
+    222          }
+
+   \                                 In  segment INTVEC, offset 0x30, root
+   \                     `??OS_ISR_Tick::??INTVEC 48`:
+   \   00000030   ........           JMP     OS_ISR_Tick
+
+   \                                 In  segment INTVEC, offset 0x48, root
+   \                     `??ISR_uart0_rx::??INTVEC 72`:
+   \   00000048   ........           JMP     ISR_uart0_rx
+
+   \                                 In  segment INTVEC, offset 0x50, root
+   \                     `??ISR_uart0_tx::??INTVEC 80`:
+   \   00000050   ........           JMP     ISR_uart0_tx
+    223          
+    224          #else  /* No communication routines, just dummies  */
+    225          void OS_COM_Init(void) {}
+    226          void OS_COM_Send1(OS_U8 c) {
+    227              OS_COM_ClearTxActive();    /* let OS know that transmitter is not busy */
+    228              OS_USEPARA(c);             /* Avoid compiler warning */
+    229          }
+    230          #endif /* defined (OS_UART) */
+    231          
+    232          /*****  EOF  ********************************************************/
+    233          
+    234          
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     16      2   ISR_uart0_rx
+       16      2   -> OS_OnRx
+       16      4   -> OS_SwitchFromInt
+     16      2   ISR_uart0_tx
+       16      2   -> OS_OnTx
+       16      4   -> OS_SwitchFromInt
+      0      2   OS_COM_Init
+      0      2   OS_COM_Send1
+      0      2   OS_ConvertCycles2us
+        0      2 ?UL_DIVMOD_L03
+      6      2   OS_GetTime_Cycles
+        6      2   -> ReadHWTimer
+        6      2 ?L_EC_MUL_L03
+     16      2   OS_ISR_Tick
+       16      2   -> OS_TickHandler
+      0      2   OS_Idle
+      0      2   OS_InitHW
+        0      2   -> OS_COM_Init
+      0      2   ReadHWTimer
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      38  ??Subroutine5_0
+      38  ?Subroutine0
+      10  ?Subroutine1
+      24  ?Subroutine2
+      14  ?Subroutine3
+       6  ?Subroutine4
+      16  ISR_uart0_rx
+       4  ISR_uart0_rx::??INTVEC 72
+      16  ISR_uart0_tx
+       4  ISR_uart0_tx::??INTVEC 80
+      30  OS_COM_Init
+       6  OS_COM_Send1
+      12  OS_ConvertCycles2us
+      68  OS_GetTime_Cycles
+      10  OS_ISR_Tick
+       4  OS_ISR_Tick::??INTVEC 48
+       2  OS_Idle
+      24  OS_InitHW
+       8  ReadHWTimer
+       2  _A_OCR1A
+       1  _A_TCCR1A
+       1  _A_TCCR1B
+       2  _A_TCNT1
+       1  _A_TIFR
+       1  _A_TIMSK
+       1  _A_UBRR0H
+       1  _A_UBRR0L
+       1  _A_UCSR0A
+       1  _A_UCSR0B
+       1  _A_UCSR0C
+       1  _A_UDR0
+
+ 
+  14 bytes in segment ABSOLUTE
+ 322 bytes in segment CODE
+  12 bytes in segment INTVEC
+ 
+ 322 bytes of CODE memory (+ 12 bytes shared)
+   0 bytes of DATA memory (+ 14 bytes shared)
+
+Errors: none
+Warnings: none

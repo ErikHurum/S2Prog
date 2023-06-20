@@ -1,0 +1,883 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            07/Feb/2017  14:17:40
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+#
+#    Source file  =  D:\S2Prog\IO\ANZB\Src\AD7715.c
+#    Command line =  
+#        D:\S2Prog\IO\ANZB\Src\AD7715.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB\Release_debug\Obj -D OS_LIBMODE_S -D OS_UART=0 -lCN
+#        D:\S2Prog\IO\ANZB\Release_debug\List -y --initializers_in_flash
+#        --no_tbaa -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB\INC\ -I
+#        D:\S2Prog\IO\ANZB\..\..\SHARED\INC\ --eeprom_size 4096 --clib -Ohz
+#    List file    =  D:\S2Prog\IO\ANZB\Release_debug\List\AD7715.lst
+#    Object file  =  D:\S2Prog\IO\ANZB\Release_debug\Obj\AD7715.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB\Src\AD7715.c
+      1          /****************************************************************************************
+      2          / AD converter handling , AD7715
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom128.h"
+
+   \                                 In  segment ABSOLUTE, at 0x23
+   \   union <unnamed> volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x32
+   \   union <unnamed> volatile __io _A_PORTD
+   \                     _A_PORTD:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x35
+   \   union <unnamed> volatile __io _A_PORTC
+   \                     _A_PORTC:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x38
+   \   union <unnamed> volatile __io _A_PORTB
+   \                     _A_PORTB:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x63
+   \   union <unnamed> volatile __io _A_PING
+   \                     _A_PING:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x65
+   \   union <unnamed> volatile __io _A_PORTG
+   \                     _A_PORTG:
+   \   00000000                      DS8 1
+      7          #include "stdio.h"
+      8          #include "math.h"
+      9          #include "externals.h"
+     10          #include "version.h"
+     11          
+     12          /*************************************************************************
+     13          *   (This is a task)
+     14          *  AD7715 task 
+     15          *
+     16          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine24:
+   \   00000000   F409               BRNE    ??Subroutine24_0
+   \   00000002   9478               SEI
+   \                     ??Subroutine24_0:
+   \   00000004   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     17          void AD7715(void) {
+   \                     AD7715:
+   \   00000000   ........           CALL    ?PROLOGUE12_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R6_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R7_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R8_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R9_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R10_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R11_is_cg_reg
+   \   00000004   9724               SBIW    R29:R28, 4
+     18              char ch, Rev1 = 0; 
+   \   00000006   E090               LDI     R25, 0
+     19              unsigned int addata ;
+     20              float Tempfloat;
+     21          
+     22              for (ch = 0; ch<12; ch++) {
+   \   00000008   E080               LDI     R24, 0
+   \   0000000A   E021               LDI     R18, 1
+     23                  TData.Ana.Filter[ch] = 1.0;
+   \                     ??AD7715_0:
+   \   0000000C   E010               LDI     R17, 0
+   \   0000000E   01FC               MOVW    R31:R30, R25:R24
+   \   00000010   ....               SUBI    R30, LOW((-(TData) & 0xFFFF))
+   \   00000012   ....               SBCI    R31, (-(TData) & 0xFFFF) >> 8
+   \   00000014   8322               STD     Z+2, R18
+     24              }
+   \   00000016   ....               RCALL   ??Subroutine28_0
+   \                     ??CrossCallReturnLabel_45:
+   \   00000018   F3C8               BRCS    ??AD7715_0
+     25              TData.Ana.PortUsed = ReadEEPROMByte(EEPROM_PORTSETUP) + (ReadEEPROMByte(EEPROM_PORTSETUP+1) <<8); // Get setup from EEPROM
+   \   0000001A   E002               LDI     R16, 2
+   \   0000001C   ........           CALL    ReadEEPROMByte
+   \   00000020   2F80               MOV     R24, R16
+   \   00000022   E003               LDI     R16, 3
+   \   00000024   E010               LDI     R17, 0
+   \   00000026   ........           CALL    ReadEEPROMByte
+   \   0000002A   ....               LDI     R30, LOW(TData)
+   \   0000002C   ....               LDI     R31, (TData) >> 8
+   \   0000002E   8380               ST      Z, R24
+   \   00000030   8301               STD     Z+1, R16
+     26              SetRS4Port();                                           // and set power on ports
+   \   00000032   ........           CALL    SetRS4Port
+     27          
+     28               
+     29              WriteAdByte(0xff) ;             // Write 32 1's to reset
+   \   00000036   ....               RCALL   ?Subroutine4
+     30              WriteAdByte(0xff) ;
+     31              WriteAdByte(0xff) ;
+   \                     ??CrossCallReturnLabel_0:
+   \   00000038   ....               RCALL   ?Subroutine4
+     32              WriteAdByte(0xff) ;
+     33              
+     34              // Calibrate and check if the card is layout rev 1?
+     35              WriteAdByte(0x10) ;             // Next write setup reg 
+   \                     ??CrossCallReturnLabel_1:
+   \   0000003A   ....               RCALL   ?Subroutine9
+     36              WriteAdByte(0x4e) ;             //  Ad setup data, unipolar, calibrate
+   \                     ??CrossCallReturnLabel_4:
+   \   0000003C   E40E               LDI     R16, 78
+   \   0000003E   ....               RCALL   ?Subroutine0
+     37              OS_Delay(250);
+     38              OS_ClearEvents(&TCB_AD7715);
+     39              OS_WaitEventTimed(1, 1000);
+     40              
+     41              ClrBit(PORTE,0xf0);                 // check channel 14 for 2.5 V
+     42              SetBit(PORTE, (14 << 4) & 0xf0);    // check 
+     43              WriteAdByte(0x10) ;                 // Next write data 
+     44              WriteAdByte(0x0e) ;                 // Ad setup data, unipolar
+   \                     ??CrossCallReturnLabel_34:
+   \   00000040   ....               RCALL   ?Subroutine1
+     45              OS_Delay(85);
+     46              OS_ClearEvents(&TCB_AD7715);
+     47              OS_WaitEventTimed(1, 250);
+     48              WriteAdByte(0x38) ;                 // Next read data 
+     49              addata = ReadAdByte()* 256 ;        // read data 16 bit data from ad 
+     50              addata += ReadAdByte() ;
+     51              if (addata > 60000){
+   \                     ??CrossCallReturnLabel_14:
+   \   00000042   2F50               MOV     R21, R16
+   \   00000044   ....               RCALL   ?Subroutine16
+   \                     ??CrossCallReturnLabel_17:
+   \   00000046   3601               CPI     R16, 97
+   \   00000048   4E5A               SBCI    R21, 234
+   \   0000004A   F078               BRCS    ??AD7715_1
+     52                  Rev1 = true;
+   \   0000004C   E091               LDI     R25, 1
+     53                  for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+   \   0000004E   E080               LDI     R24, 0
+   \   00000050   E91D               LDI     R17, 157
+   \   00000052   E72F               LDI     R18, 127
+   \   00000054   E33F               LDI     R19, 63
+     54                     TData.Ana.Offset[ch] = 0.0;
+   \                     ??AD7715_2:
+   \   00000056   ....               RCALL   ?Subroutine12
+   \                     ??CrossCallReturnLabel_10:
+   \   00000058   E000               LDI     R16, 0
+   \   0000005A   8300               ST      Z, R16
+   \   0000005C   8301               STD     Z+1, R16
+   \   0000005E   8302               STD     Z+2, R16
+   \   00000060   8303               STD     Z+3, R16
+     55                     TData.Ana.Gain[ch] = 0.9985;
+   \   00000062   EB02               LDI     R16, 178
+   \   00000064   ....               RCALL   ?Subroutine6
+     56                 }
+     57              } else {
+   \                     ??CrossCallReturnLabel_43:
+   \   00000066   F468               BRCC    ??AD7715_3
+   \   00000068   CFF6               RJMP    ??AD7715_2
+     58                  for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+   \                     ??AD7715_1:
+   \   0000006A   E080               LDI     R24, 0
+   \   0000006C   E11A               LDI     R17, 26
+   \   0000006E   E72F               LDI     R18, 127
+   \   00000070   E33F               LDI     R19, 63
+     59                     TData.Ana.Offset[ch] = 0.0;
+   \                     ??AD7715_4:
+   \   00000072   ....               RCALL   ?Subroutine12
+   \                     ??CrossCallReturnLabel_11:
+   \   00000074   8390               ST      Z, R25
+   \   00000076   8391               STD     Z+1, R25
+   \   00000078   8392               STD     Z+2, R25
+   \   0000007A   8393               STD     Z+3, R25
+     60                     TData.Ana.Gain[ch] = 0.9965;
+   \   0000007C   EA00               LDI     R16, 160
+   \   0000007E   ....               RCALL   ?Subroutine6
+     61                 }
+     62              }
+   \                     ??CrossCallReturnLabel_44:
+   \   00000080   F3C0               BRCS    ??AD7715_4
+     63              for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+   \                     ??AD7715_3:
+   \   00000082   E080               LDI     R24, 0
+     64                ReadEEPROMBuffer( (ch | 0x80) * sizeof(float)*2, sizeof(float), (char*)&Tempfloat );
+   \                     ??AD7715_5:
+   \   00000084   2F08               MOV     R16, R24
+   \   00000086   E010               LDI     R17, 0
+   \   00000088   6800               ORI     R16, 0x80
+   \   0000008A   E043               LDI     R20, 3
+   \   0000008C   ........           CALL    ?S_SHL_L02
+   \   00000090   01D8               MOVW    R27:R26, R17:R16
+   \   00000092   01AE               MOVW    R21:R20, R29:R28
+   \   00000094   E024               LDI     R18, 4
+   \   00000096   ........           CALL    ReadEEPROMBuffer
+     65                
+     66                if (IsFloat(Tempfloat) && Tempfloat > -2.0 && Tempfloat < 2.0 ) { 
+   \   0000009A   ....               LDI     R16, LOW((TData + 98))
+   \   0000009C   ....               LDI     R17, HIGH((TData + 98))
+   \   0000009E   E024               LDI     R18, 4
+   \   000000A0   9F82               MUL     R24, R18
+   \   000000A2   0128               MOVW    R5:R4, R17:R16
+   \   000000A4   0C40               ADD     R4, R0
+   \   000000A6   1C51               ADC     R5, R1
+   \   000000A8   ....               RCALL   ?Subroutine10
+   \                     ??CrossCallReturnLabel_6:
+   \   000000AA   F091               BREQ    ??AD7715_6
+   \   000000AC   EF4E               LDI     R20, 254
+   \   000000AE   EF5F               LDI     R21, 255
+   \   000000B0   EF6F               LDI     R22, 255
+   \   000000B2   EB7F               LDI     R23, 191
+   \   000000B4   ....               RCALL   ?Subroutine11
+   \                     ??CrossCallReturnLabel_8:
+   \   000000B6   F460               BRCC    ??AD7715_6
+   \   000000B8   E040               LDI     R20, 0
+   \   000000BA   E050               LDI     R21, 0
+   \   000000BC   E060               LDI     R22, 0
+   \   000000BE   E470               LDI     R23, 64
+   \   000000C0   ........           CALL    ?F_CMP_LT_L04
+   \   000000C4   F428               BRCC    ??AD7715_6
+     67                  *((float*)&TData.Ana.Offset[ch]) = *((float*)&Tempfloat) ;  //offset
+   \   000000C6   01F2               MOVW    R31:R30, R5:R4
+   \   000000C8   8300               ST      Z, R16
+   \   000000CA   8311               STD     Z+1, R17
+   \   000000CC   8322               STD     Z+2, R18
+   \   000000CE   8333               STD     Z+3, R19
+     68                }
+     69                
+     70                ReadEEPROMBuffer( ((ch | 0x80) * sizeof(float)*2) + sizeof(float), sizeof(float), (char*)&Tempfloat );
+   \                     ??AD7715_6:
+   \   000000D0   01AE               MOVW    R21:R20, R29:R28
+   \   000000D2   E024               LDI     R18, 4
+   \   000000D4   9614               ADIW    R27:R26, 4
+   \   000000D6   018D               MOVW    R17:R16, R27:R26
+   \   000000D8   ........           CALL    ReadEEPROMBuffer
+     71                
+     72                if (IsFloat(Tempfloat) && Tempfloat > 0.98 && Tempfloat < 1.02) { 
+   \   000000DC   ....               RCALL   ?Subroutine10
+   \                     ??CrossCallReturnLabel_7:
+   \   000000DE   F071               BREQ    ??CrossCallReturnLabel_18
+   \   000000E0   E449               LDI     R20, 73
+   \   000000E2   EE51               LDI     R21, 225
+   \   000000E4   E76A               LDI     R22, 122
+   \   000000E6   E37F               LDI     R23, 63
+   \   000000E8   ....               RCALL   ?Subroutine11
+   \                     ??CrossCallReturnLabel_9:
+   \   000000EA   F440               BRCC    ??CrossCallReturnLabel_18
+   \   000000EC   E54C               LDI     R20, 92
+   \   000000EE   E85F               LDI     R21, 143
+   \   000000F0   E862               LDI     R22, 130
+   \   000000F2   ........           CALL    ?F_CMP_LT_L04
+   \   000000F6   F410               BRCC    ??CrossCallReturnLabel_18
+     73                  *((float*)&TData.Ana.Gain[ch]) = *((float*)&Tempfloat) ;  //gain
+   \   000000F8   01F2               MOVW    R31:R30, R5:R4
+   \   000000FA   ....               RCALL   ?Subroutine17
+     74                }
+     75             }
+   \                     ??CrossCallReturnLabel_18:
+   \   000000FC   ....               RCALL   ??Subroutine28_0
+   \                     ??CrossCallReturnLabel_46:
+   \   000000FE   F210               BRCS    ??AD7715_5
+     76             
+     77              while (1) {
+     78                  if (Rev1) {
+   \                     ??AD7715_7:
+   \   00000100   2399               TST     R25
+   \   00000102   F049               BREQ    ??AD7715_8
+     79                     
+     80                      ClrBit(PORTE,0xf0); 
+   \   00000104   ....               RCALL   ?Subroutine15
+     81                      SetBit(PORTE, (15 << 4) & 0xf0); // 0V at ch 16
+   \                     ??CrossCallReturnLabel_29:
+   \   00000106   B103               IN      R16, 0x03
+   \   00000108   6F00               ORI     R16, 0xF0
+   \   0000010A   B903               OUT     0x03, R16
+   \   0000010C   ....               RCALL   ?Subroutine26
+     82                      WriteAdByte(0x10) ;             // Next write setup reg 
+     83                      WriteAdByte(0x8e) ;             //  AStark test zero scale calibrate
+   \                     ??CrossCallReturnLabel_32:
+   \   0000010E   E80E               LDI     R16, 142
+   \   00000110   ....               RCALL   ?Subroutine0
+     84                      OS_Delay(250);
+     85                      OS_ClearEvents(&TCB_AD7715);
+     86                      OS_WaitEventTimed(1, 1000);
+     87                      
+     88                      ClrBit(PORTE,0xf0); 
+     89                      SetBit(PORTE, (14 << 4) & 0xf0); // 2.5V at ch 15
+     90                      WriteAdByte(0x10) ;             // Next write setup reg 
+     91                      WriteAdByte(0xce) ;             //  AStark test full scale calibrate
+   \                     ??CrossCallReturnLabel_35:
+   \   00000112   EC0E               LDI     R16, 206
+   \   00000114   C002               RJMP    ??AD7715_9
+     92                      OS_Delay(250);
+     93                      OS_ClearEvents(&TCB_AD7715);
+     94                      OS_WaitEventTimed(1, 1000);
+     95           
+     96                  } else {
+     97                      WriteAdByte(0x10) ;             // Next write setup reg 
+   \                     ??AD7715_8:
+   \   00000116   ....               RCALL   ?Subroutine9
+     98                      WriteAdByte(0x4e) ;             //  Internal calibration calibrate
+   \                     ??CrossCallReturnLabel_5:
+   \   00000118   E40E               LDI     R16, 78
+   \                     ??AD7715_9:
+   \   0000011A   ....               RCALL   ??Subroutine29_0
+     99                      OS_Delay(250);
+   \                     ??CrossCallReturnLabel_52:
+   \   0000011C   ....               RCALL   ?Subroutine14
+    100                      OS_ClearEvents(&TCB_AD7715);
+    101                      OS_WaitEventTimed(1, 1000);
+    102                  }
+    103          
+    104                  for (ch = 0 ; ch < 12 ; ch++) {
+   \                     ??CrossCallReturnLabel_24:
+   \   0000011E   E080               LDI     R24, 0
+    105                      ClrBit(PORTE,0xf0); 
+   \                     ??AD7715_10:
+   \   00000120   ....               RCALL   ?Subroutine15
+    106                      SetBit(PORTE, (ch << 4) & 0xf0);
+   \                     ??CrossCallReturnLabel_30:
+   \   00000122   2F08               MOV     R16, R24
+   \   00000124   9502               SWAP    R16
+   \   00000126   7F00               ANDI    R16, 0xF0
+   \   00000128   B113               IN      R17, 0x03
+   \   0000012A   2B10               OR      R17, R16
+   \   0000012C   B913               OUT     0x03, R17
+   \   0000012E   ....               RCALL   ?Subroutine26
+    107                      WriteAdByte(0x10) ;                 // Next write data 
+    108                      WriteAdByte(0x0e) ;                          // Ad setup data, unipolar
+   \                     ??CrossCallReturnLabel_33:
+   \   00000130   ....               RCALL   ?Subroutine1
+    109                      OS_Delay(85);
+    110                      OS_ClearEvents(&TCB_AD7715);
+    111                      OS_WaitEventTimed(1, 250);
+    112                      WriteAdByte(0x38) ;             // Next read data 
+    113                      addata = ReadAdByte()* 256 ;        // read data 16 bit data from ad 
+   \                     ??CrossCallReturnLabel_15:
+   \   00000132   2F30               MOV     R19, R16
+    114                      addata += ReadAdByte() ;
+   \   00000134   ....               RCALL   ?Subroutine16
+   \                     ??CrossCallReturnLabel_16:
+   \   00000136   2F20               MOV     R18, R16
+    115                      TData.Ana.Status[ch] = 0;                   // Result ok
+   \   00000138   E010               LDI     R17, 0
+   \   0000013A   ....               LDI     R20, LOW(TData)
+   \   0000013C   2E64               MOV     R6, R20
+   \   0000013E   ....               LDI     R20, (TData) >> 8
+   \   00000140   0E68               ADD     R6, R24
+   \   00000142   1F41               ADC     R20, R17
+   \   00000144   2E74               MOV     R7, R20
+   \   00000146   2DE6               MOV     R30, R6
+   \   00000148   2FF4               MOV     R31, R20
+   \   0000014A   8716               STD     Z+14, R17
+    116                      TData.Ana.Result[ch] += ((((((float)addata / 65535.0) * 25.0) * TData.Ana.Gain[ch])-TData.Ana.Offset[ch] - TData.Ana.Result[ch])
+    117                                               / (TData.Ana.Filter[ch]+1.0))  ;             // readed value / 16bit * 2.5 volt range
+   \   0000014C   E004               LDI     R16, 4
+   \   0000014E   9F80               MUL     R24, R16
+   \   00000150   ....               LDI     R16, LOW(TData)
+   \   00000152   2E40               MOV     R4, R16
+   \   00000154   ....               LDI     R16, (TData) >> 8
+   \   00000156   0C40               ADD     R4, R0
+   \   00000158   1D01               ADC     R16, R1
+   \   0000015A   2E50               MOV     R5, R16
+   \   0000015C   2DA4               MOV     R26, R4
+   \   0000015E   59AE               SUBI    R26, 158
+   \   00000160   4F0F               SBCI    R16, 255
+   \   00000162   2FB0               MOV     R27, R16
+   \   00000164   2F13               MOV     R17, R19
+   \   00000166   E030               LDI     R19, 0
+   \   00000168   2F02               MOV     R16, R18
+   \   0000016A   E020               LDI     R18, 0
+   \   0000016C   ........           CALL    ?UL2F_L04
+   \   00000170   E040               LDI     R20, 0
+   \   00000172   EF5F               LDI     R21, 255
+   \   00000174   E76F               LDI     R22, 127
+   \   00000176   E477               LDI     R23, 71
+   \   00000178   ........           CALL    ?F_DIV_L04
+   \   0000017C   E040               LDI     R20, 0
+   \   0000017E   E050               LDI     R21, 0
+   \   00000180   EC68               LDI     R22, 200
+   \   00000182   E471               LDI     R23, 65
+   \   00000184   ........           CALL    ?F_MUL_L04
+   \   00000188   01FD               MOVW    R31:R30, R27:R26
+   \   0000018A   A940               LDD     R20, Z+48
+   \   0000018C   A951               LDD     R21, Z+49
+   \   0000018E   A962               LDD     R22, Z+50
+   \   00000190   A973               LDD     R23, Z+51
+   \   00000192   ........           CALL    ?F_MUL_L04
+   \   00000196   914D               LD      R20, X+
+   \   00000198   915D               LD      R21, X+
+   \   0000019A   916D               LD      R22, X+
+   \   0000019C   917C               LD      R23, X
+   \   0000019E   ........           CALL    ?F_SUB_L04
+   \   000001A2   ....               RCALL   ?Subroutine13
+    118                  } 
+   \                     ??CrossCallReturnLabel_12:
+   \   000001A4   ........           CALL    ?F_SUB_L04
+   \   000001A8   0148               MOVW    R9:R8, R17:R16
+   \   000001AA   0159               MOVW    R11:R10, R19:R18
+   \   000001AC   01F3               MOVW    R31:R30, R7:R6
+   \   000001AE   8102               LDD     R16, Z+2
+   \   000001B0   E010               LDI     R17, 0
+   \   000001B2   E020               LDI     R18, 0
+   \   000001B4   E030               LDI     R19, 0
+   \   000001B6   ........           CALL    ?UL2F_L04
+   \   000001BA   E040               LDI     R20, 0
+   \   000001BC   E050               LDI     R21, 0
+   \   000001BE   E860               LDI     R22, 128
+   \   000001C0   E37F               LDI     R23, 63
+   \   000001C2   ........           CALL    ?F_ADD_L04
+   \   000001C6   01A8               MOVW    R21:R20, R17:R16
+   \   000001C8   01B9               MOVW    R23:R22, R19:R18
+   \   000001CA   0184               MOVW    R17:R16, R9:R8
+   \   000001CC   0195               MOVW    R19:R18, R11:R10
+   \   000001CE   ........           CALL    ?F_DIV_L04
+   \   000001D2   ....               RCALL   ?Subroutine13
+   \                     ??CrossCallReturnLabel_13:
+   \   000001D4   ........           CALL    ?F_ADD_L04
+   \   000001D8   01F2               MOVW    R31:R30, R5:R4
+   \   000001DA   8F02               STD     Z+26, R16
+   \   000001DC   8F13               STD     Z+27, R17
+   \   000001DE   8F24               STD     Z+28, R18
+   \   000001E0   8F35               STD     Z+29, R19
+   \   000001E2   ....               RCALL   ??Subroutine28_0
+    119              }
+   \                     ??CrossCallReturnLabel_47:
+   \   000001E4   F008               BRCS    $+2+2
+   \   000001E6   CF8C               RJMP    ??AD7715_7
+   \   000001E8   CF9B               RJMP    ??AD7715_10
+   \   000001EA                      REQUIRE _A_PORTE
+    120          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine13:
+   \   00000000   01F2               MOVW    R31:R30, R5:R4
+   \   00000002   8D42               LDD     R20, Z+26
+   \   00000004   8D53               LDD     R21, Z+27
+   \   00000006   8D64               LDD     R22, Z+28
+   \   00000008   8D75               LDD     R23, Z+29
+   \   0000000A   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine12:
+   \   00000000   ....               LDI     R30, LOW((TData + 98))
+   \   00000002   ....               LDI     R31, HIGH((TData + 98))
+   \   00000004   E004               LDI     R16, 4
+   \   00000006   9F80               MUL     R24, R16
+   \   00000008   0DE0               ADD     R30, R0
+   \   0000000A   1DF1               ADC     R31, R1
+   \   0000000C   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine11:
+   \   00000000   ....               RCALL   ?Subroutine20
+   \                     ??CrossCallReturnLabel_21:
+   \   00000002   ........           JMP     ?F_CMP_GE_L04
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine10:
+   \   00000000   ....               RCALL   ?Subroutine20
+   \                     ??CrossCallReturnLabel_20:
+   \   00000002   ........           CALL    IsFloat
+   \   00000006   2300               TST     R16
+   \   00000008   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine20:
+   \   00000000   8108               LD      R16, Y
+   \   00000002   8119               LDD     R17, Y+1
+   \   00000004   812A               LDD     R18, Y+2
+   \   00000006   813B               LDD     R19, Y+3
+   \   00000008   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine9:
+   \   00000000   E100               LDI     R16, 16
+   \   00000002   ....               RJMP    ??Subroutine29_0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine26:
+   \   00000000   ....               RCALL   ?Subroutine22
+   \                     ??CrossCallReturnLabel_37:
+   \   00000002   ....               RJMP    ?Subroutine18
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine6:
+   \   00000000   ....               RCALL   ?Subroutine17
+   \                     ??CrossCallReturnLabel_19:
+   \   00000002                      REQUIRE ??Subroutine28_0
+   \   00000002                      ;               // Fall through to label ??Subroutine28_0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ??Subroutine28_0:
+   \   00000000   9583               INC     R24
+   \   00000002   308C               CPI     R24, 12
+   \   00000004   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine17:
+   \   00000000   AB00               STD     Z+48, R16
+   \   00000002   AB11               STD     Z+49, R17
+   \   00000004   AB22               STD     Z+50, R18
+   \   00000006   AB33               STD     Z+51, R19
+   \   00000008   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine4:
+   \   00000000   EF0F               LDI     R16, 255
+   \   00000002   ....               RCALL   ??Subroutine29_0
+   \                     ??CrossCallReturnLabel_51:
+   \   00000004   EF0F               LDI     R16, 255
+   \   00000006   ....               RJMP    ??Subroutine29_0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine15:
+   \   00000000   94F8               CLI
+   \   00000002   B103               IN      R16, 0x03
+   \   00000004   700F               ANDI    R16, 0x0F
+   \   00000006   B903               OUT     0x03, R16
+   \   00000008   ....               RCALL   ?Subroutine22
+   \                     ??CrossCallReturnLabel_36:
+   \   0000000A                      REQUIRE ?Subroutine25
+   \   0000000A                      ;               // Fall through to label ?Subroutine25
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine25:
+   \   00000000   94F8               CLI
+   \   00000002   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine1:
+   \   00000000   E00E               LDI     R16, 14
+   \   00000002   ....               RCALL   ??Subroutine29_0
+   \                     ??CrossCallReturnLabel_50:
+   \   00000004   E505               LDI     R16, 85
+   \   00000006   ....               RCALL   ?Subroutine21
+   \                     ??CrossCallReturnLabel_23:
+   \   00000008   EF2A               LDI     R18, 250
+   \   0000000A   E030               LDI     R19, 0
+   \   0000000C   ....               RCALL   ?Subroutine23
+   \                     ??CrossCallReturnLabel_26:
+   \   0000000E   E308               LDI     R16, 56
+   \   00000010   ....               RCALL   ??Subroutine29_0
+   \                     ??CrossCallReturnLabel_49:
+   \   00000012                      REQUIRE ?Subroutine16
+   \   00000012                      ;               // Fall through to label ?Subroutine16
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine16:
+   \   00000000   ....               RJMP    ReadAdByte
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine0:
+   \   00000000   ....               RCALL   ??Subroutine29_0
+   \                     ??CrossCallReturnLabel_48:
+   \   00000002   ....               RCALL   ?Subroutine14
+   \                     ??CrossCallReturnLabel_25:
+   \   00000004   ....               RCALL   ?Subroutine15
+   \                     ??CrossCallReturnLabel_31:
+   \   00000006   B103               IN      R16, 0x03
+   \   00000008   6E00               ORI     R16, 0xE0
+   \   0000000A   B903               OUT     0x03, R16
+   \   0000000C   ....               RJMP    ?Subroutine26
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine18:
+   \   00000000   E100               LDI     R16, 16
+   \   00000002                      REQUIRE ??Subroutine29_0
+   \   00000002                      ;               // Fall through to label ??Subroutine29_0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ??Subroutine29_0:
+   \   00000000   ....               RJMP    WriteAdByte
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine14:
+   \   00000000   EF0A               LDI     R16, 250
+   \   00000002   ....               RCALL   ?Subroutine21
+   \                     ??CrossCallReturnLabel_22:
+   \   00000004   EE28               LDI     R18, 232
+   \   00000006   E033               LDI     R19, 3
+   \   00000008                      REQUIRE ?Subroutine23
+   \   00000008                      ;               // Fall through to label ?Subroutine23
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine23:
+   \   00000000   E001               LDI     R16, 1
+   \   00000002   ........           JMP     OS_WaitEventTimed
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine21:
+   \   00000000   E010               LDI     R17, 0
+   \   00000002   ........           CALL    OS_Delay
+   \   00000006   ....               LDI     R16, LOW(TCB_AD7715)
+   \   00000008   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   0000000A   ........           JMP     OS_ClearEvents
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine22:
+   \   00000000   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000004   2300               TST     R16
+   \   00000006   ....               RJMP    ?Subroutine24
+    121          
+    122          /*************************************************************************
+    123          *
+    124          *  Set ports on or off
+    125          *
+    126          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    127          void SetAnaPort(void) {
+   \                     SetAnaPort:
+    128          
+    129              PORTC = (TData.Ana.PortUsed & 0xff) ;         // Set power on ports 0-7
+   \   00000000   ....               LDI     R30, LOW(TData)
+   \   00000002   ....               LDI     R31, (TData) >> 8
+   \   00000004   8100               LD      R16, Z
+   \   00000006   BB05               OUT     0x15, R16
+    130              ClrBit(PORTB, 0xe1);                            // Set power on ports 8-11 off
+   \   00000008   94F8               CLI
+   \   0000000A   B308               IN      R16, 0x18
+   \   0000000C   710E               ANDI    R16, 0x1E
+   \   0000000E   BB08               OUT     0x18, R16
+   \   00000010   ....               RCALL   ?Subroutine8
+    131              SetBit(PORTB, TData.Ana.PortUsed>>8 & 0x01);    // Set power on port 8
+   \                     ??CrossCallReturnLabel_27:
+   \   00000012   8101               LDD     R16, Z+1
+   \   00000014   7001               ANDI    R16, 0x01
+   \   00000016   B318               IN      R17, 0x18
+   \   00000018   2B10               OR      R17, R16
+   \   0000001A   BB18               OUT     0x18, R17
+   \   0000001C   ....               RCALL   ?Subroutine8
+    132              SetBit(PORTB, TData.Ana.PortUsed>>4 & 0xe0);      // Set power on ports 9-11
+   \                     ??CrossCallReturnLabel_28:
+   \   0000001E   E044               LDI     R20, 4
+   \   00000020   8100               LD      R16, Z
+   \   00000022   8111               LDD     R17, Z+1
+   \   00000024   ........           CALL    ?US_SHR_L02
+   \   00000028   7E00               ANDI    R16, 0xE0
+   \   0000002A   B318               IN      R17, 0x18
+   \   0000002C   2B10               OR      R17, R16
+   \   0000002E   BB18               OUT     0x18, R17
+   \   00000030                      REQUIRE ?Subroutine22
+   \   00000030                      REQUIRE _A_PORTC
+   \   00000030                      REQUIRE _A_PORTB
+   \   00000030                      ;               // Fall through to label ?Subroutine22
+    133          
+    134          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine8:
+   \   00000000   ....               RCALL   ?Subroutine22
+   \                     ??CrossCallReturnLabel_38:
+   \   00000002   ....               RJMP    ?Subroutine25
+    135          
+    136          /*************************************************************************
+    137          *
+    138          *  Read from AD-converter
+    139          *
+    140          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    141          char ReadAdByte(void) {
+   \                     ReadAdByte:
+    142          
+    143              char i, readbyte;
+    144          
+    145              for (i = 0; i <  8; i++) {
+   \   00000000   E018               LDI     R17, 8
+    146                  readbyte <<= 1 ;                    // shift to next bit 
+   \                     ??ReadAdByte_0:
+   \   00000002   0F00               LSL     R16
+    147                  ClrBit(PORTD, ADCLK) ;
+   \   00000004   ....               RCALL   ?Subroutine2
+    148                  SetBit(PORTD, ADCLK) ;                  // set clock line high 
+   \                     ??CrossCallReturnLabel_39:
+   \   00000006   94F8               CLI
+   \   00000008   9A91               SBI     0x12, 0x01
+   \   0000000A   ....               RCALL   ??Subroutine27_0
+    149                  if (PING & ADDO) {                  // data  = 1?
+   \                     ??CrossCallReturnLabel_41:
+   \   0000000C   9120....           LDS     R18, _A_PING
+   \   00000010   FD23               SBRC    R18, 3
+    150                      readbyte |= 0x01 ;                    // set bit high 
+   \   00000012   6001               ORI     R16, 0x01
+    151                  } else {
+    152                      readbyte &= ~0x01 ;                   // set bit low 
+    153                  }
+    154              }
+   \                     ??ReadAdByte_1:
+   \   00000014   951A               DEC     R17
+   \   00000016   F7A9               BRNE    ??ReadAdByte_0
+    155              return readbyte ;
+   \   00000018   9508               RET
+   \   0000001A                      REQUIRE _A_PORTD
+   \   0000001A                      REQUIRE _A_PING
+    156          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine2:
+   \   00000000   94F8               CLI
+   \   00000002   9891               CBI     0x12, 0x01
+   \   00000004                      REQUIRE ?Subroutine24
+   \   00000004                      REQUIRE ??Subroutine27_0
+   \   00000004                      ;               // Fall through to label ??Subroutine27_0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ??Subroutine27_0:
+   \   00000000   9120....           LDS     R18, (OS_Counters + 1)
+   \   00000004   2322               TST     R18
+   \   00000006                      REQUIRE ?Subroutine24
+   \   00000006                      ;               // Fall through to label ?Subroutine24
+    157          
+    158          /*************************************************************************
+    159          *
+    160          *  Write to AD-converter
+    161          *
+    162          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    163          void WriteAdByte(char data) {
+   \                     WriteAdByte:
+    164          
+    165              char i;
+    166          
+    167              for (i = 0; i <  8; i++) {
+   \   00000000   E018               LDI     R17, 8
+    168                  ClrBit(PORTD, ADCLK) ;                  // set clock line low
+   \                     ??WriteAdByte_0:
+   \   00000002   ....               RCALL   ?Subroutine2
+    169                  if (data & 0x80) {                  // data bit = 1? 
+   \                     ??CrossCallReturnLabel_40:
+   \   00000004   FB07               BST     R16, 7
+   \   00000006   94F8               CLI
+   \   00000008   91200065           LDS     R18, 101
+   \   0000000C   F426               BRTC    ??WriteAdByte_1
+    170                      SetBit(PORTG,ADDI) ;                  // set data high 
+   \   0000000E   6120               ORI     R18, 0x10
+   \   00000010   ....               RCALL   ?Subroutine5
+    171                  } else {
+   \                     ??CrossCallReturnLabel_2:
+   \   00000012   F429               BRNE    ??WriteAdByte_2
+   \   00000014   C003               RJMP    ??WriteAdByte_3
+    172                      ClrBit(PORTG, ADDI) ;                 // set data low 
+   \                     ??WriteAdByte_1:
+   \   00000016   7E2F               ANDI    R18, 0xEF
+   \   00000018   ....               RCALL   ?Subroutine5
+   \                     ??CrossCallReturnLabel_3:
+   \   0000001A   F409               BRNE    ??WriteAdByte_2
+   \                     ??WriteAdByte_3:
+   \   0000001C   9478               SEI
+    173                  }
+    174                  data <<= 1 ;                        // shift to next bit 
+   \                     ??WriteAdByte_2:
+   \   0000001E   0F00               LSL     R16
+    175                  SetBit(PORTD, ADCLK) ;                  // set clock line high 
+   \   00000020   94F8               CLI
+   \   00000022   9A91               SBI     0x12, 0x01
+   \   00000024   ....               RCALL   ??Subroutine27_0
+    176              }           
+   \                     ??CrossCallReturnLabel_42:
+   \   00000026   951A               DEC     R17
+   \   00000028   F761               BRNE    ??WriteAdByte_0
+    177          }       
+   \   0000002A   9508               RET
+   \   0000002C                      REQUIRE _A_PORTD
+   \   0000002C                      REQUIRE _A_PORTG
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine5:
+   \   00000000   93200065           STS     101, R18
+   \   00000004   9120....           LDS     R18, (OS_Counters + 1)
+   \   00000008   2322               TST     R18
+   \   0000000A   9508               RET
+    178          
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     16      2   AD7715
+       16      4   -> IsFloat
+       16      4   -> OS_ClearEvents
+       16      6   -> OS_ClearEvents
+       16      6   -> OS_Delay
+       16      8   -> OS_Delay
+       16      2   -> OS_WaitEventTimed
+       16      4   -> OS_WaitEventTimed
+       16      2   -> ReadAdByte
+       16      2   -> ReadEEPROMBuffer
+       16      2   -> ReadEEPROMByte
+       16      2   -> SetRS4Port
+       16      2   -> WriteAdByte
+       16      4   -> WriteAdByte
+       16      2 ?F_ADD_L04
+       16      2 ?F_CMP_GE_L04
+       16      2 ?F_CMP_LT_L04
+       16      2 ?F_DIV_L04
+       16      2 ?F_MUL_L04
+       16      2 ?F_SUB_L04
+       16      2 ?S_SHL_L02
+       16      2 ?UL2F_L04
+      0      2   ReadAdByte
+      0      2   SetAnaPort
+        0      2 ?US_SHR_L02
+      0      2   WriteAdByte
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       6  ??Subroutine27_0
+       6  ??Subroutine28_0
+       2  ??Subroutine29_0
+      14  ?Subroutine0
+      18  ?Subroutine1
+      10  ?Subroutine10
+       6  ?Subroutine11
+      14  ?Subroutine12
+      12  ?Subroutine13
+       8  ?Subroutine14
+      10  ?Subroutine15
+       2  ?Subroutine16
+      10  ?Subroutine17
+       2  ?Subroutine18
+       4  ?Subroutine2
+      10  ?Subroutine20
+      14  ?Subroutine21
+       8  ?Subroutine22
+       6  ?Subroutine23
+       6  ?Subroutine24
+       4  ?Subroutine25
+       4  ?Subroutine26
+       8  ?Subroutine4
+      12  ?Subroutine5
+       2  ?Subroutine6
+       4  ?Subroutine8
+       4  ?Subroutine9
+     490  AD7715
+      26  ReadAdByte
+      48  SetAnaPort
+      44  WriteAdByte
+       1  _A_PING
+       1  _A_PORTB
+       1  _A_PORTC
+       1  _A_PORTD
+       1  _A_PORTE
+       1  _A_PORTG
+
+ 
+   6 bytes in segment ABSOLUTE
+ 814 bytes in segment CODE
+ 
+ 814 bytes of CODE memory
+   0 bytes of DATA memory (+ 6 bytes shared)
+
+Errors: none
+Warnings: none

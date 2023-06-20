@@ -1,0 +1,58 @@
+//*********************************************************************
+//*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+//*        Solutions for real time microcontroller applications       *
+//*********************************************************************
+//*                                                                   *
+//*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+//*                  www.segger.com                                   *
+//*                                                                   *
+//*********************************************************************
+//
+//---------------------------------------------------------------------
+//File   : LH79520.xcl
+//Purpose: Linker file for LH79520 and IAR embedded workbench V4
+//-------- END-OF-HEADER ----------------------------------------------
+//
+
+-DROMSTART=00000000
+-DROMEND=000FFFFF
+-DRAMSTART=20100000  // Reserve 1 MB for eventually copy ROM to RAM, otherwise this can be defined to 20000000
+-DRAMEND=20FFFFFF
+-DIRAMSTART=60000000
+-DIRAMEND=60007FFF
+-D_CSTACK_SIZE=(80*4)
+-D_IRQ_STACK_SIZE=(3*(4*7)+8)  // Nesting level * (Size per interrupt) + margin for alignement
+
+-carm
+
+
+//************************************************
+// Address range for reset and exception
+// vectors (INTVEC).
+// The vector area is 32 bytes,
+// an additional 32 bytes is allocated for the
+// constant table used by ldr PC in cstartup.s79.
+//************************************************
+-Z(CODE)INTVEC=ROMSTART-(ROMSTART+FF)
+
+//************************************************
+// Startup code and exception routines (ICODE).
+//************************************************
+-Z(CODE)ICODE,DIFUNCT,SWITAB,CODE,CODE_ID=ROMSTART-ROMEND
+
+//************************************************
+// Various constants and initializers.
+//************************************************
+-Z(CONST)INITTAB,DATA_ID,DATA_C,CHECKSUM=ROMSTART-ROMEND
+-Z(CONST)PROGRAM_END=ROMSTART-ROMEND
+
+//************************************************
+// Data segments.
+//************************************************
+-Z(DATA)DATA_I,DATA_Z,DATA_N=RAMSTART-RAMEND
+-Z(DATA)CODE_I,CSTACK+_CSTACK_SIZE,IRQ_STACK+_IRQ_STACK_SIZE=IRAMSTART-IRAMEND
+-Z(DATA)MMU_TABLE=IRAMSTART-IRAMEND
+-QCODE_I=CODE_ID
+
+
+

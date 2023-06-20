@@ -1,0 +1,520 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.10.1.1197 for Atmel AVR           28/Sep/2017  10:44:04
+# Copyright 1996-2017 IAR Systems AB.
+# Startup license - IAR Embedded Workbench for Atmel AVR 7.10
+#
+#    Source file  =  D:\S2Prog\IO\ANZB\Src\eeprom.c
+#    Command line =  
+#        -f C:\Users\esy\AppData\Local\Temp\EWDE6.tmp
+#        (D:\S2Prog\IO\ANZB\Src\eeprom.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\ANZB\Debug\List -y --initializers_in_flash --no_tbaa
+#        --debug -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB\INC\ -I
+#        D:\S2Prog\IO\ANZB\..\..\SHARED\INC\ --eeprom_size 4096 --clib -Ohz)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\ANZB\Debug\List\eeprom.lst
+#    Object file  =  D:\S2Prog\IO\ANZB\Debug\Obj\eeprom.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB\Src\eeprom.c
+      1          /****************************************************************************************
+      2          / Read and write the eeprom
+      3          /
+      4          ***************************************************************************************/
+      5          #include "iom128.h"
+
+   \                                 In  segment ABSOLUTE, at 0x3c
+   \   union <unnamed> volatile __io _A_EECR
+   \                     _A_EECR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3d
+   \   union <unnamed> volatile __io _A_EEDR
+   \                     _A_EEDR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3e
+   \   union <unnamed> volatile __io _A_EEAR
+   \                     _A_EEAR:
+   \   00000000                      DS8 2
+
+   \                                 In  segment ABSOLUTE, at 0x41
+   \   union <unnamed> volatile __io _A_WDTCR
+   \                     _A_WDTCR:
+   \   00000000                      DS8 1
+      6          #include "stdio.h"
+      7          #include "math.h"
+      8          #include "externals.h"
+      9          #include "version.h"
+     10          #include "inavr.h"
+     11          
+     12          
+     13          /*---------------------------------------------------------------------------
+     14          **
+     15          **  See how many date i remining
+     16          **
+     17          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     18          char TestEEPROM( void ) {
+   \                     TestEEPROM:
+     19          
+     20              return WriteCount;
+   \   00000000   9100....           LDS     R16, WriteCount
+   \   00000004   9508               RET
+     21          }
+     22          
+     23          /*---------------------------------------------------------------------------
+     24          **
+     25          **  Reads an address in the eeprom
+     26          **
+     27          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     28          char ReadEEPROMByte( unsigned int Address ) {
+   \                     ReadEEPROMByte:
+   \                     ??ReadEEPROMByte_0:
+     29          
+     30              unsigned char Data;
+     31          
+     32              while (EECR & (1<<EEWE))     // Wait until ready
+   \   00000000   99E1               SBIC    0x1C, 0x01
+   \   00000002   CFFE               RJMP    ??ReadEEPROMByte_0
+     33                  ;
+     34              EEAR = Address;
+   \   00000004   BB1F               OUT     0x1F, R17
+   \   00000006   BB0E               OUT     0x1E, R16
+     35              OS_IncDI();
+   \   00000008   ....               RCALL   ?Subroutine1
+     36              EECR |= (1 << EERE) ;       // Don't use SetBit macrod due to timing
+   \                     ??CrossCallReturnLabel_3:
+   \   0000000A   9AE0               SBI     0x1C, 0x00
+     37              OS_DecRI();
+   \   0000000C   ....               RCALL   ?Subroutine0
+     38          
+     39              Data = EEDR;
+     40              return Data;
+   \                     ??CrossCallReturnLabel_0:
+   \   0000000E   B30D               IN      R16, 0x1D
+   \   00000010   9508               RET
+   \   00000012                      REQUIRE _A_EECR
+   \   00000012                      REQUIRE _A_EEAR
+   \   00000012                      REQUIRE _A_EEDR
+     41          
+     42          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine1:
+   \   00000000   ....               RCALL   ?Subroutine5
+   \                     ??CrossCallReturnLabel_14:
+   \   00000002   94F8               CLI
+   \   00000004   ....               LDI     R30, LOW(OS_Counters)
+   \   00000006   ....               LDI     R31, (OS_Counters) >> 8
+   \   00000008   8101               LDD     R16, Z+1
+   \   0000000A   9503               INC     R16
+   \   0000000C   8301               STD     Z+1, R16
+   \   0000000E   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine0:
+   \   00000000   ....               RCALL   ?Subroutine5
+   \                     ??CrossCallReturnLabel_15:
+   \   00000002   ....               LDI     R30, LOW(OS_Counters)
+   \   00000004   ....               LDI     R31, (OS_Counters) >> 8
+   \   00000006   8101               LDD     R16, Z+1
+   \   00000008   950A               DEC     R16
+   \   0000000A   8301               STD     Z+1, R16
+   \   0000000C   F409               BRNE    ??Subroutine0_0
+   \   0000000E   9478               SEI
+   \                     ??Subroutine0_0:
+   \   00000010   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine5:
+   \   00000000   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000004   7F00               ANDI    R16, 0xF0
+   \   00000006   F021               BREQ    ??Subroutine5_0
+   \   00000008   E909               LDI     R16, 153
+   \   0000000A   E010               LDI     R17, 0
+   \   0000000C   ........           CALL    OS_Error
+   \                     ??Subroutine5_0:
+   \   00000010   9508               RET
+     43          
+     44          /*---------------------------------------------------------------------------
+     45          **
+     46          **  Write a caracther to the eeprom
+     47          **
+     48          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     49          void WriteEEPROMByte( unsigned int Address, char Data ) {   
+   \                     WriteEEPROMByte:
+   \   00000000   ........           CALL    ?PROLOGUE3_L09
+   \   00000004   01C8               MOVW    R25:R24, R17:R16
+   \   00000006   2FA2               MOV     R26, R18
+     50          
+     51              while (EECR & (1<<EEWE))     // Wait until ready
+   \                     ??WriteEEPROMByte_0:
+   \   00000008   99E1               SBIC    0x1C, 0x01
+   \   0000000A   CFFE               RJMP    ??WriteEEPROMByte_0
+     52                  ;
+     53              OS_IncDI();
+   \   0000000C   ....               RCALL   ?Subroutine1
+     54              EEAR = Address;
+   \                     ??CrossCallReturnLabel_4:
+   \   0000000E   BB9F               OUT     0x1F, R25
+   \   00000010   BB8E               OUT     0x1E, R24
+     55              EEDR = Data;
+   \   00000012   BBAD               OUT     0x1D, R26
+     56              EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+   \   00000014   ....               RCALL   ?Subroutine3
+     57              EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+     58              OS_DecRI();
+   \                     ??CrossCallReturnLabel_8:
+   \   00000016   ....               RCALL   ?Subroutine0
+     59          }
+   \                     ??CrossCallReturnLabel_1:
+   \   00000018   E0E3               LDI     R30, 3
+   \   0000001A   ........           JMP     ?EPILOGUE_B3_L09
+   \   0000001E                      REQUIRE _A_EECR
+   \   0000001E                      REQUIRE _A_EEAR
+   \   0000001E                      REQUIRE _A_EEDR
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine3:
+   \   00000000   9AE2               SBI     0x1C, 0x02
+   \   00000002   9AE1               SBI     0x1C, 0x01
+   \   00000004   9508               RET
+     60          
+     61          /*---------------------------------------------------------------------------
+     62          **
+     63          **  Read a tring from the eeprom
+     64          **
+     65          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     66          void ReadEEPROMBuffer( unsigned int Address, char Size, char *pData ) {   
+   \                     ReadEEPROMBuffer:
+   \   00000000   ........           CALL    ?PROLOGUE8_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R6_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R7_is_cg_reg
+   \   00000004   0128               MOVW    R5:R4, R17:R16
+   \   00000006   2E62               MOV     R6, R18
+   \   00000008   01DA               MOVW    R27:R26, R21:R20
+     67              unsigned int Index;
+     68          
+     69              for ( Index = 0; Index < Size; Index++ ) {
+   \   0000000A   E080               LDI     R24, 0
+   \   0000000C   E090               LDI     R25, 0
+   \   0000000E   C006               RJMP    ??ReadEEPROMBuffer_0
+     70                  *pData++ = ReadEEPROMByte( Address + Index );
+   \                     ??ReadEEPROMBuffer_1:
+   \   00000010   0182               MOVW    R17:R16, R5:R4
+   \   00000012   0F08               ADD     R16, R24
+   \   00000014   1F19               ADC     R17, R25
+   \   00000016   ....               RCALL   ReadEEPROMByte
+   \   00000018   930D               ST      X+, R16
+     71              }
+   \   0000001A   9601               ADIW    R25:R24, 1
+   \                     ??ReadEEPROMBuffer_0:
+   \   0000001C   2477               CLR     R7
+   \   0000001E   1586               CP      R24, R6
+   \   00000020   0597               CPC     R25, R7
+   \   00000022   F3B0               BRCS    ??ReadEEPROMBuffer_1
+     72          }
+   \   00000024   E0E8               LDI     R30, 8
+   \   00000026   ........           JMP     ?EPILOGUE_B8_L09
+     73          
+     74          /*---------------------------------------------------------------------------
+     75          **
+     76          **  Writ buffer to eeprom
+     77          **
+     78          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     79          void WriteEEPROMBuffer( unsigned int Address, char Size, char *pData ) {   
+   \                     WriteEEPROMBuffer:
+   \   00000000   ........           CALL    ?PROLOGUE5_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004   01C8               MOVW    R25:R24, R17:R16
+   \   00000006   2E42               MOV     R4, R18
+   \   00000008   01DA               MOVW    R27:R26, R21:R20
+     80          
+     81              while (EECR & (1<<EEWE))     // Wait until ready
+   \                     ??WriteEEPROMBuffer_0:
+   \   0000000A   99E1               SBIC    0x1C, 0x01
+   \   0000000C   CFFE               RJMP    ??WriteEEPROMBuffer_0
+     82                  ;
+     83              OS_IncDI();
+   \   0000000E   ....               RCALL   ?Subroutine1
+     84              pWriteBuffer = pData;
+   \                     ??CrossCallReturnLabel_5:
+   \   00000010   ....               LDI     R30, LOW(pWriteBuffer)
+   \   00000012   ....               LDI     R31, (pWriteBuffer) >> 8
+   \   00000014   83A0               ST      Z, R26
+   \   00000016   83B1               STD     Z+1, R27
+     85              WriteCount = Size;
+   \   00000018   9240....           STS     WriteCount, R4
+     86              EEAR = Address ;
+   \   0000001C   BB9F               OUT     0x1F, R25
+   \   0000001E   BB8E               OUT     0x1E, R24
+     87              EEDR = *pData ;
+   \   00000020   910C               LD      R16, X
+   \   00000022   BB0D               OUT     0x1D, R16
+     88              pWriteBuffer++;
+   \   00000024   ....               RCALL   ?Subroutine4
+     89              EEPWriteOK = false;
+   \                     ??CrossCallReturnLabel_12:
+   \   00000026   E000               LDI     R16, 0
+   \   00000028   9300....           STS     EEPWriteOK, R16
+     90              EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+   \   0000002C   ....               RCALL   ?Subroutine3
+     91              EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+     92              EECR |= (1 << EERIE) ;       // Don't use SetBit macrod due to timing
+   \                     ??CrossCallReturnLabel_9:
+   \   0000002E   9AE3               SBI     0x1C, 0x03
+     93              OS_DecRI();
+   \   00000030   ....               RCALL   ?Subroutine0
+     94          }
+   \                     ??CrossCallReturnLabel_2:
+   \   00000032   E0E5               LDI     R30, 5
+   \   00000034   ........           JMP     ?EPILOGUE_B5_L09
+   \   00000038                      REQUIRE _A_EECR
+   \   00000038                      REQUIRE _A_EEAR
+   \   00000038                      REQUIRE _A_EEDR
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine4:
+   \   00000000   8100               LD      R16, Z
+   \   00000002   8111               LDD     R17, Z+1
+   \   00000004   5F0F               SUBI    R16, 255
+   \   00000006   4F1F               SBCI    R17, 255
+   \   00000008   8300               ST      Z, R16
+   \   0000000A   8311               STD     Z+1, R17
+   \   0000000C   9508               RET
+     95          
+     96          /*---------------------------------------------------------------------------
+     97          **
+     98          **  Interrupt on EEPROM write
+     99          **
+    100          **--------------------------------------------------------------------------*/
+    101          #pragma vector=EE_RDY_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    102          __interrupt void IntHandler_EEPROM( void ){
+   \                     IntHandler_EEPROM:
+   \   00000000   93FA               ST      -Y, R31
+   \   00000002   93EA               ST      -Y, R30
+   \   00000004   932A               ST      -Y, R18
+   \   00000006   931A               ST      -Y, R17
+   \   00000008   930A               ST      -Y, R16
+   \   0000000A   B72F               IN      R18, 0x3F
+    103          
+    104              if ( --WriteCount ) {                        // More to write? 
+   \   0000000C   9100....           LDS     R16, WriteCount
+   \   00000010   950A               DEC     R16
+   \   00000012   9300....           STS     WriteCount, R16
+   \   00000016   2300               TST     R16
+   \   00000018   F089               BREQ    ??IntHandler_EEPROM_0
+    105                  EEAR++;                                  // Define address and data 
+   \   0000001A   B30E               IN      R16, 0x1E
+   \   0000001C   B31F               IN      R17, 0x1F
+   \   0000001E   5F0F               SUBI    R16, 255
+   \   00000020   4F1F               SBCI    R17, 255
+   \   00000022   BB1F               OUT     0x1F, R17
+   \   00000024   BB0E               OUT     0x1E, R16
+    106                  EEDR = *pWriteBuffer++;
+   \   00000026   91E0....           LDS     R30, pWriteBuffer
+   \   0000002A   91F0....           LDS     R31, (pWriteBuffer + 1)
+   \   0000002E   8100               LD      R16, Z
+   \   00000030   BB0D               OUT     0x1D, R16
+   \   00000032   ....               LDI     R30, LOW(pWriteBuffer)
+   \   00000034   ....               LDI     R31, (pWriteBuffer) >> 8
+   \   00000036   ....               RCALL   ?Subroutine4
+    107                  EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+   \                     ??CrossCallReturnLabel_13:
+   \   00000038   ....               RCALL   ?Subroutine3
+    108                  EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+    109              } else {
+   \                     ??CrossCallReturnLabel_10:
+   \   0000003A   C004               RJMP    ??IntHandler_EEPROM_1
+    110                  EECR &= ~(1 << EERIE) ;       // Don't use ClrBit macrod due to timing
+   \                     ??IntHandler_EEPROM_0:
+   \   0000003C   98E3               CBI     0x1C, 0x03
+    111                  EEPWriteOK = true;
+   \   0000003E   E001               LDI     R16, 1
+   \   00000040   9300....           STS     EEPWriteOK, R16
+    112              }
+    113          }
+   \                     ??IntHandler_EEPROM_1:
+   \   00000044   BF2F               OUT     0x3F, R18
+   \   00000046   9109               LD      R16, Y+
+   \   00000048   9119               LD      R17, Y+
+   \   0000004A   9129               LD      R18, Y+
+   \   0000004C   91E9               LD      R30, Y+
+   \   0000004E   91F9               LD      R31, Y+
+   \   00000050   9518               RETI
+   \   00000052                      REQUIRE _A_EEAR
+   \   00000052                      REQUIRE _A_EEDR
+   \   00000052                      REQUIRE _A_EECR
+    114          
+    115          
+    116          /**===========================================================================
+    117          ** Get the stored version in EEPROM
+    118          **==========================================================================*/ 
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    119          char EEPROMVersion(void) {
+   \                     EEPROMVersion:
+   \   00000000   938A               ST      -Y, R24
+   \   00000002   9721               SBIW    R29:R28, 1
+    120              char val ;
+    121              char retval = false;
+   \   00000004   E080               LDI     R24, 0
+    122          
+    123              ReadEEPROMBuffer(EEPROM_ID_START, 1, (char*)&val) ;
+   \   00000006   01AE               MOVW    R21:R20, R29:R28
+   \   00000008   E021               LDI     R18, 1
+   \   0000000A   E000               LDI     R16, 0
+   \   0000000C   ....               RCALL   ?Subroutine2
+    124              if (val == EEPROM_ID) {                                     //correct EEPROM ID
+   \                     ??CrossCallReturnLabel_6:
+   \   0000000E   3B0D               CPI     R16, 189
+   \   00000010   F479               BRNE    ??EEPROMVersion_0
+    125                  ReadEEPROMBuffer(EEPROM_ID_START+1, 1, (char*)&val) ;
+   \   00000012   01AE               MOVW    R21:R20, R29:R28
+   \   00000014   E021               LDI     R18, 1
+   \   00000016   E001               LDI     R16, 1
+   \   00000018   ....               RCALL   ?Subroutine2
+    126                  if (val == STORE_VERSION) {                             // and version
+   \                     ??CrossCallReturnLabel_7:
+   \   0000001A   3002               CPI     R16, 2
+   \   0000001C   F449               BRNE    ??EEPROMVersion_0
+    127                      ReadEEPROMBuffer(0xffe, 1, (char*)&val) ;
+   \   0000001E   01AE               MOVW    R21:R20, R29:R28
+   \   00000020   E021               LDI     R18, 1
+   \   00000022   EF0E               LDI     R16, 254
+   \   00000024   E01F               LDI     R17, 15
+   \   00000026   ....               RCALL   ReadEEPROMBuffer
+    128                      if (val == EEPROM_OK) {                             // and no reset from user
+   \   00000028   8108               LD      R16, Y
+   \   0000002A   3F0F               CPI     R16, 255
+   \   0000002C   F409               BRNE    ??EEPROMVersion_0
+    129                          retval = true ;                                 // then everything is OK
+   \   0000002E   E081               LDI     R24, 1
+    130                      }
+    131                  }
+    132              }
+    133              return retval;
+   \                     ??EEPROMVersion_0:
+   \   00000030   2F08               MOV     R16, R24
+   \   00000032   9621               ADIW    R29:R28, 1
+   \   00000034   9189               LD      R24, Y+
+   \   00000036   9508               RET
+    134          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine2:
+   \   00000000   E010               LDI     R17, 0
+   \   00000002   ....               RCALL   ReadEEPROMBuffer
+   \   00000004   8108               LD      R16, Y
+   \   00000006   9508               RET
+    135          
+    136          /**===========================================================================
+    137          ** Reset the EEPROM
+    138          **==========================================================================*/ 
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    139          void EEPROMReset(void) {
+   \                     EEPROMReset:
+    140              EEARL = (0x0ffe & 0xff);
+   \   00000000   EF0E               LDI     R16, 254
+   \   00000002   BB0E               OUT     0x1E, R16
+    141              EEARH = (0x0ffe >> 8);
+   \   00000004   E00F               LDI     R16, 15
+   \   00000006   BB0F               OUT     0x1F, R16
+    142              EEDR = EEPROM_RESET;
+   \   00000008   ED0B               LDI     R16, 219
+   \   0000000A   BB0D               OUT     0x1D, R16
+    143              EECR |= (1<<EEMWE);
+   \   0000000C   ....               RCALL   ?Subroutine3
+    144              EECR |= (1<<EEWE);
+    145              while (EECR & (1<<EEWE))
+   \                     ??CrossCallReturnLabel_11:
+   \   0000000E   99E1               SBIC    0x1C, 0x01
+   \   00000010   CFFE               RJMP    ??CrossCallReturnLabel_11
+    146                  ;
+    147              WDTCR = 0x18;               //Start watchdog to genetate restart
+   \   00000012   E108               LDI     R16, 24
+   \   00000014   BD01               OUT     0x21, R16
+    148              WDTCR = 0x18;
+   \   00000016   BD01               OUT     0x21, R16
+    149          }
+   \   00000018   9508               RET
+   \   0000001A                      REQUIRE _A_EEAR
+   \   0000001A                      REQUIRE _A_EEDR
+   \   0000001A                      REQUIRE _A_EECR
+   \   0000001A                      REQUIRE _A_WDTCR
+
+   \                                 In  segment INTVEC, offset 0x58, root
+   \                     `??IntHandler_EEPROM::??INTVEC 88`:
+   \   00000058   ........           JMP     IntHandler_EEPROM
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      0      2   EEPROMReset
+      2      2   EEPROMVersion
+        2      2   -> ReadEEPROMBuffer
+        2      4   -> ReadEEPROMBuffer
+      5      2   IntHandler_EEPROM
+      8      2   ReadEEPROMBuffer
+        8      2   -> ReadEEPROMByte
+      0      2   ReadEEPROMByte
+        0      6   -> OS_Error
+      0      2   TestEEPROM
+      5      2   WriteEEPROMBuffer
+        5      6   -> OS_Error
+      3      2   WriteEEPROMByte
+        3      6   -> OS_Error
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      18  ?Subroutine0
+      16  ?Subroutine1
+       8  ?Subroutine2
+       6  ?Subroutine3
+      14  ?Subroutine4
+      18  ?Subroutine5
+      26  EEPROMReset
+      56  EEPROMVersion
+      82  IntHandler_EEPROM
+       4  IntHandler_EEPROM::??INTVEC 88
+      42  ReadEEPROMBuffer
+      18  ReadEEPROMByte
+       6  TestEEPROM
+      56  WriteEEPROMBuffer
+      30  WriteEEPROMByte
+       2  _A_EEAR
+       1  _A_EECR
+       1  _A_EEDR
+       1  _A_WDTCR
+
+ 
+   5 bytes in segment ABSOLUTE
+ 396 bytes in segment CODE
+   4 bytes in segment INTVEC
+ 
+ 396 bytes of CODE memory (+ 4 bytes shared)
+   0 bytes of DATA memory (+ 5 bytes shared)
+
+Errors: none
+Warnings: none

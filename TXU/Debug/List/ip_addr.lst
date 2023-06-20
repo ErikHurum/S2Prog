@@ -1,0 +1,688 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  14:41:50 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\ipv4\ip_addr.c     #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\ipv4\ip_addr.c     #
+#                       --fpu None -D OS_LIBMODE_SP -D CPU_S3C2410 -D        #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\ip_addr.lst                 #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\ip_addr.r79                  #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\ipv4\ip_addr.c
+      1          /**
+      2           * @file
+      3           * This is the IPv4 address tools implementation.
+      4           *
+      5           */
+      6          
+      7          /*
+      8           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+      9           * All rights reserved.
+     10           *
+     11           * Redistribution and use in source and binary forms, with or without modification,
+     12           * are permitted provided that the following conditions are met:
+     13           *
+     14           * 1. Redistributions of source code must retain the above copyright notice,
+     15           *    this list of conditions and the following disclaimer.
+     16           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     17           *    this list of conditions and the following disclaimer in the documentation
+     18           *    and/or other materials provided with the distribution.
+     19           * 3. The name of the author may not be used to endorse or promote products
+     20           *    derived from this software without specific prior written permission.
+     21           *
+     22           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     23           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     24           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     25           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     26           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     27           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     28           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     29           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     30           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     31           * OF SUCH DAMAGE.
+     32           *
+     33           * This file is part of the lwIP TCP/IP stack.
+     34           *
+     35           * Author: Adam Dunkels <adam@sics.se>
+     36           *
+     37           */
+     38          
+     39          #include "lwip/opt.h"
+     40          #include "lwip/ip_addr.h"
+     41          #include "lwip/netif.h"
+     42          
+     43          /* used by IP_ADDR_ANY and IP_ADDR_BROADCAST in ip_addr.h */
+
+   \                                 In segment DATA_C, align 4, align-sorted
+     44          const ip_addr_t ip_addr_any = { IPADDR_ANY };
+   \                     ip_addr_any:
+   \   00000000   00000000           DC32 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+     45          const ip_addr_t ip_addr_broadcast = { IPADDR_BROADCAST };
+   \                     ip_addr_broadcast:
+   \   00000000   FFFFFFFF           DC32 4294967295
+     46          
+     47          /**
+     48           * Determine if an address is a broadcast address on a network interface
+     49           *
+     50           * @param addr address to be checked
+     51           * @param netif the network interface against which the address is checked
+     52           * @return returns non-zero if the address is a broadcast address
+     53           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     54          u8_t
+     55          ip4_addr_isbroadcast(u32_t addr, const struct netif *netif)
+     56          {
+     57            ip_addr_t ipaddr;
+     58            ip4_addr_set_u32(&ipaddr, addr);
+     59          
+     60            /* all ones (broadcast) or all zeroes (old skool broadcast) */
+     61            if ((~addr == IPADDR_ANY) ||
+     62                (addr == IPADDR_ANY)) {
+   \                     ip4_addr_isbroadcast:
+   \   00000000   0020F0E1           MVNS     R2,R0
+   \   00000004   00005013           CMPNE    R0,#+0
+     63              return 1;
+   \   00000008   0100A003           MOVEQ    R0,#+1
+   \   0000000C   1EFF2F01           BXEQ     LR
+     64            /* no broadcast support on this network interface? */
+     65            } else if ((netif->flags & NETIF_FLAG_BROADCAST) == 0) {
+   \   00000010   2920D1E5           LDRB     R2,[R1, #+41]
+   \   00000014   020012E3           TST      R2,#0x2
+   \   00000018   0100001A           BNE      ??ip4_addr_isbroadcast_0
+     66              /* the given address cannot be a broadcast address
+     67               * nor can we check against any broadcast addresses */
+     68              return 0;
+   \                     ??ip4_addr_isbroadcast_1:
+   \   0000001C   0000A0E3           MOV      R0,#+0
+   \   00000020   1EFF2FE1           BX       LR
+     69            /* address matches network interface address exactly? => no broadcast */
+     70            } else if (addr == ip4_addr_get_u32(&netif->ip_addr)) {
+   \                     ??ip4_addr_isbroadcast_0:
+   \   00000024   042091E5           LDR      R2,[R1, #+4]
+   \   00000028   020050E1           CMP      R0,R2
+   \   0000002C   FAFFFF0A           BEQ      ??ip4_addr_isbroadcast_1
+     71              return 0;
+     72            /*  on the same (sub) network... */
+     73            } else if (ip_addr_netcmp(&ipaddr, &(netif->ip_addr), &(netif->netmask))
+     74                   /* ...and host identifier bits are all ones? =>... */
+     75                    && ((addr & ~ip4_addr_get_u32(&netif->netmask)) ==
+     76                     (IPADDR_BROADCAST & ~ip4_addr_get_u32(&netif->netmask)))) {
+   \   00000030   081091E5           LDR      R1,[R1, #+8]
+   \   00000034   003001E0           AND      R3,R1,R0
+   \   00000038   022001E0           AND      R2,R1,R2
+   \   0000003C   020053E1           CMP      R3,R2
+   \   00000040   F5FFFF1A           BNE      ??ip4_addr_isbroadcast_1
+   \   00000044   0110E0E1           MVN      R1,R1
+   \   00000048   000001E0           AND      R0,R1,R0
+   \   0000004C   010050E1           CMP      R0,R1
+   \   00000050   F1FFFF1A           BNE      ??ip4_addr_isbroadcast_1
+   \   00000054   0100A0E3           MOV      R0,#+1
+   \   00000058   1EFF2FE1           BX       LR
+     77              /* => network broadcast address */
+     78              return 1;
+     79            } else {
+     80              return 0;
+     81            }
+     82          }
+     83          
+     84          /** Checks if a netmask is valid (starting with ones, then only zeros)
+     85           *
+     86           * @param netmask the IPv4 netmask to check (in network byte order!)
+     87           * @return 1 if the netmask is valid, 0 if it is not
+     88           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     89          u8_t
+     90          ip4_addr_netmask_valid(u32_t netmask)
+     91          {
+   \                     ip4_addr_netmask_valid:
+   \   00000000   00402DE9           PUSH     {LR}
+     92            u32_t mask;
+     93            u32_t nm_hostorder = lwip_htonl(netmask);
+   \   00000004   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+     94          
+     95            /* first, check for the first zero */
+     96            for (mask = 1UL << 31 ; mask != 0; mask >>= 1) {
+   \   00000008   8014A0E3           MOV      R1,#-2147483648
+     97              if ((nm_hostorder & mask) == 0) {
+   \                     ??ip4_addr_netmask_valid_0:
+   \   0000000C   000011E1           TST      R1,R0
+   \   00000010   0300000A           BEQ      ??ip4_addr_netmask_valid_1
+     98                break;
+     99              }
+    100            }
+   \   00000014   A110B0E1           LSRS     R1,R1,#+1
+   \   00000018   FBFFFF1A           BNE      ??ip4_addr_netmask_valid_0
+    101            /* then check that there is no one */
+    102            for (; mask != 0; mask >>= 1) {
+   \                     ??ip4_addr_netmask_valid_2:
+   \   0000001C   000051E3           CMP      R1,#+0
+   \   00000020   0400000A           BEQ      ??ip4_addr_netmask_valid_3
+    103              if ((nm_hostorder & mask) != 0) {
+   \                     ??ip4_addr_netmask_valid_1:
+   \   00000024   000011E1           TST      R1,R0
+    104                /* there is a one after the first zero -> invalid */
+    105                return 0;
+   \   00000028   0000A013           MOVNE    R0,#+0
+   \   0000002C   0200001A           BNE      ??ip4_addr_netmask_valid_4
+    106              }
+    107            }
+   \   00000030   A110A0E1           LSR      R1,R1,#+1
+   \   00000034   F8FFFFEA           B        ??ip4_addr_netmask_valid_2
+    108            /* no one after the first zero -> valid */
+    109            return 1;
+   \                     ??ip4_addr_netmask_valid_3:
+   \   00000038   0100A0E3           MOV      R0,#+1
+   \                     ??ip4_addr_netmask_valid_4:
+   \   0000003C   0040BDE8           POP      {LR}
+   \   00000040   1EFF2FE1           BX       LR               ;; return
+    110          }
+    111          
+    112          /* Here for now until needed in other places in lwIP */
+    113          #ifndef isprint
+    114          #define in_range(c, lo, up)  ((u8_t)c >= lo && (u8_t)c <= up)
+    115          #define isprint(c)           in_range(c, 0x20, 0x7f)
+    116          #define isdigit(c)           in_range(c, '0', '9')
+    117          #define isxdigit(c)          (isdigit(c) || in_range(c, 'a', 'f') || in_range(c, 'A', 'F'))
+    118          #define islower(c)           in_range(c, 'a', 'z')
+    119          #define isspace(c)           (c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v')
+    120          #endif
+    121          
+    122          /**
+    123           * Ascii internet address interpretation routine.
+    124           * The value returned is in network order.
+    125           *
+    126           * @param cp IP address in ascii represenation (e.g. "127.0.0.1")
+    127           * @return ip address in network order
+    128           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    129          u32_t
+    130          ipaddr_addr(const char *cp)
+    131          {
+   \                     ipaddr_addr:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   04D04DE2           SUB      SP,SP,#+4
+    132            ip_addr_t val;
+    133          
+    134            if (ipaddr_aton(cp, &val)) {
+   \   00000008   0D10A0E1           MOV      R1,SP
+   \   0000000C   ........           BL       ipaddr_aton
+   \   00000010   000050E3           CMP      R0,#+0
+    135              return ip4_addr_get_u32(&val);
+   \   00000014   00009D15           LDRNE    R0,[SP, #+0]
+    136            }
+    137            return (IPADDR_NONE);
+   \   00000018   0240BDE8           POP      {R1,LR}
+   \   0000001C   0000E003           MVNEQ    R0,#+0
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+    138          }
+    139          
+    140          /**
+    141           * Check whether "cp" is a valid ascii representation
+    142           * of an Internet address and convert to a binary address.
+    143           * Returns 1 if the address is valid, 0 if not.
+    144           * This replaces inet_addr, the return value from which
+    145           * cannot distinguish between failure and a local broadcast address.
+    146           *
+    147           * @param cp IP address in ascii represenation (e.g. "127.0.0.1")
+    148           * @param addr pointer to which to save the ip address in network order
+    149           * @return 1 if cp could be converted to addr, 0 on failure
+    150           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    151          int
+    152          ipaddr_aton(const char *cp, ip_addr_t *addr)
+    153          {
+   \                     ipaddr_aton:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+    154            u32_t val;
+    155            u8_t base;
+    156            char c;
+    157            u32_t parts[4];
+    158            u32_t *pp = parts;
+    159          
+    160            c = *cp;
+   \   00000008   0030D0E5           LDRB     R3,[R0, #+0]
+   \   0000000C   0140A0E1           MOV      R4,R1
+   \   00000010   0D20A0E1           MOV      R2,SP
+   \   00000014   040000EA           B        ??ipaddr_aton_0
+    161            for (;;) {
+    162              /*
+    163               * Collect number up to ``.''.
+    164               * Values are specified as for C:
+    165               * 0x=hex, 0=octal, 1-9=decimal.
+    166               */
+    167              if (!isdigit(c))
+    168                return (0);
+    169              val = 0;
+    170              base = 10;
+    171              if (c == '0') {
+    172                c = *++cp;
+    173                if (c == 'x' || c == 'X') {
+    174                  base = 16;
+    175                  c = *++cp;
+    176                } else
+    177                  base = 8;
+    178              }
+    179              for (;;) {
+    180                if (isdigit(c)) {
+    181                  val = (val * base) + (int)(c - '0');
+    182                  c = *++cp;
+    183                } else if (base == 16 && isxdigit(c)) {
+    184                  val = (val << 4) | (int)(c + 10 - (islower(c) ? 'a' : 'A'));
+    185                  c = *++cp;
+    186                } else
+    187                  break;
+    188              }
+    189              if (c == '.') {
+    190                /*
+    191                 * Internet format:
+    192                 *  a.b.c.d
+    193                 *  a.b.c   (with c treated as 16 bits)
+    194                 *  a.b (with b treated as 24 bits)
+    195                 */
+    196                if (pp >= parts + 3) {
+   \                     ??ipaddr_aton_1:
+   \   00000018   0C308DE2           ADD      R3,SP,#+12
+   \   0000001C   03005CE1           CMP      R12,R3
+   \   00000020   0500002A           BCS      ??ipaddr_aton_2
+    197                  return (0);
+    198                }
+    199                *pp++ = val;
+   \   00000024   ........           STR      R1,[R2], #+4
+    200                c = *++cp;
+   \   00000028   0130F0E5           LDRB     R3,[R0, #+1]!
+    201              } else
+   \                     ??ipaddr_aton_0:
+   \   0000002C   300053E3           CMP      R3,#+48
+   \   00000030   0100003A           BCC      ??ipaddr_aton_2
+   \   00000034   3A0053E3           CMP      R3,#+58
+   \   00000038   0300003A           BCC      ??ipaddr_aton_3
+   \                     ??ipaddr_aton_2:
+   \   0000003C   10D08DE2           ADD      SP,SP,#+16
+   \   00000040   3040BDE8           POP      {R4,R5,LR}
+   \   00000044   0000A0E3           MOV      R0,#+0
+   \   00000048   1EFF2FE1           BX       LR
+   \                     ??ipaddr_aton_3:
+   \   0000004C   0010A0E3           MOV      R1,#+0
+   \   00000050   0AC0A0E3           MOV      R12,#+10
+   \   00000054   300053E3           CMP      R3,#+48
+   \   00000058   0900001A           BNE      ??ipaddr_aton_4
+   \   0000005C   0130F0E5           LDRB     R3,[R0, #+1]!
+   \   00000060   780053E3           CMP      R3,#+120
+   \   00000064   58005313           CMPNE    R3,#+88
+   \   00000068   10C0A003           MOVEQ    R12,#+16
+   \   0000006C   0300000A           BEQ      ??ipaddr_aton_5
+   \   00000070   08C0A0E3           MOV      R12,#+8
+   \   00000074   020000EA           B        ??ipaddr_aton_4
+   \                     ??ipaddr_aton_6:
+   \   00000078   30E04EE2           SUB      LR,LR,#+48
+   \   0000007C   9CE121E0           MLA      R1,R12,R1,LR
+   \                     ??ipaddr_aton_5:
+   \   00000080   0130F0E5           LDRB     R3,[R0, #+1]!
+   \                     ??ipaddr_aton_4:
+   \   00000084   03E0A0E1           MOV      LR,R3
+   \   00000088   300053E3           CMP      R3,#+48
+   \   0000008C   0100003A           BCC      ??ipaddr_aton_7
+   \   00000090   3A0053E3           CMP      R3,#+58
+   \   00000094   F7FFFF3A           BCC      ??ipaddr_aton_6
+   \                     ??ipaddr_aton_7:
+   \   00000098   10005CE3           CMP      R12,#+16
+   \   0000009C   1500001A           BNE      ??ipaddr_aton_8
+   \   000000A0   300053E3           CMP      R3,#+48
+   \   000000A4   0100003A           BCC      ??ipaddr_aton_9
+   \   000000A8   3A0053E3           CMP      R3,#+58
+   \   000000AC   0700003A           BCC      ??ipaddr_aton_10
+   \                     ??ipaddr_aton_9:
+   \   000000B0   610053E3           CMP      R3,#+97
+   \   000000B4   0100003A           BCC      ??ipaddr_aton_11
+   \   000000B8   670053E3           CMP      R3,#+103
+   \   000000BC   0300003A           BCC      ??ipaddr_aton_10
+   \                     ??ipaddr_aton_11:
+   \   000000C0   410053E3           CMP      R3,#+65
+   \   000000C4   0B00003A           BCC      ??ipaddr_aton_8
+   \   000000C8   470053E3           CMP      R3,#+71
+   \   000000CC   0900002A           BCS      ??ipaddr_aton_8
+   \                     ??ipaddr_aton_10:
+   \   000000D0   610053E3           CMP      R3,#+97
+   \   000000D4   0200003A           BCC      ??ipaddr_aton_12
+   \   000000D8   7B0053E3           CMP      R3,#+123
+   \   000000DC   6130A033           MOVCC    R3,#+97
+   \   000000E0   0000003A           BCC      ??ipaddr_aton_13
+   \                     ??ipaddr_aton_12:
+   \   000000E4   4130A0E3           MOV      R3,#+65
+   \                     ??ipaddr_aton_13:
+   \   000000E8   0A508EE2           ADD      R5,LR,#+10
+   \   000000EC   033045E0           SUB      R3,R5,R3
+   \   000000F0   011283E1           ORR      R1,R3,R1, LSL #+4
+   \   000000F4   E1FFFFEA           B        ??ipaddr_aton_5
+   \                     ??ipaddr_aton_8:
+   \   000000F8   02C0A0E1           MOV      R12,R2
+   \   000000FC   2E0053E3           CMP      R3,#+46
+   \   00000100   C4FFFF0A           BEQ      ??ipaddr_aton_1
+    202                break;
+    203            }
+    204            /*
+    205             * Check for trailing characters.
+    206             */
+    207            if (c != '\0' && !isspace(c)) {
+   \   00000104   0300B0E1           MOVS     R0,R3
+   \   00000108   20005313           CMPNE    R3,#+32
+   \   0000010C   0C005313           CMPNE    R3,#+12
+   \   00000110   0A005313           CMPNE    R3,#+10
+   \   00000114   0D005313           CMPNE    R3,#+13
+   \   00000118   09005313           CMPNE    R3,#+9
+   \   0000011C   0B005313           CMPNE    R3,#+11
+   \   00000120   C5FFFF1A           BNE      ??ipaddr_aton_2
+    208              return (0);
+    209            }
+    210            /*
+    211             * Concoct the address according to
+    212             * the number of parts specified.
+    213             */
+    214            switch (pp - parts + 1) {
+   \   00000124   04009DE5           LDR      R0,[SP, #+4]
+   \   00000128   00209DE5           LDR      R2,[SP, #+0]
+   \   0000012C   0008A0E1           LSL      R0,R0,#+16
+   \   00000130   022CA0E1           LSL      R2,R2,#+24
+   \   00000134   2C31A0E1           LSR      R3,R12,#+2
+   \   00000138   0D50A0E1           MOV      R5,SP
+   \   0000013C   253143E0           SUB      R3,R3,R5, LSR #+2
+   \   00000140   013093E2           ADDS     R3,R3,#+1
+   \   00000144   BCFFFF0A           BEQ      ??ipaddr_aton_2
+   \   00000148   023053E2           SUBS     R3,R3,#+2
+   \   0000014C   0400000A           BEQ      ??ipaddr_aton_14
+   \   00000150   013053E2           SUBS     R3,R3,#+1
+   \   00000154   0600000A           BEQ      ??ipaddr_aton_15
+   \   00000158   013053E2           SUBS     R3,R3,#+1
+   \   0000015C   0800000A           BEQ      ??ipaddr_aton_16
+   \   00000160   0D0000EA           B        ??ipaddr_aton_17
+    215          
+    216            case 0:
+    217              return (0);       /* initial nondigit */
+    218          
+    219            case 1:             /* a -- 32 bits */
+    220              break;
+    221          
+    222            case 2:             /* a.b -- 8.24 bits */
+    223              if (val > 0xffffffUL) {
+   \                     ??ipaddr_aton_14:
+   \   00000164   400751E3           CMP      R1,#+16777216
+   \   00000168   B3FFFF2A           BCS      ??ipaddr_aton_2
+    224                return (0);
+    225              }
+    226              val |= parts[0] << 24;
+   \   0000016C   011082E1           ORR      R1,R2,R1
+   \   00000170   090000EA           B        ??ipaddr_aton_17
+    227              break;
+    228          
+    229            case 3:             /* a.b.c -- 8.8.16 bits */
+    230              if (val > 0xffff) {
+   \                     ??ipaddr_aton_15:
+   \   00000174   400B51E3           CMP      R1,#+65536
+   \   00000178   AFFFFF2A           BCS      ??ipaddr_aton_2
+    231                return (0);
+    232              }
+    233              val |= (parts[0] << 24) | (parts[1] << 16);
+   \   0000017C   020080E1           ORR      R0,R0,R2
+   \   00000180   040000EA           B        ??ipaddr_aton_18
+    234              break;
+    235          
+    236            case 4:             /* a.b.c.d -- 8.8.8.8 bits */
+    237              if (val > 0xff) {
+   \                     ??ipaddr_aton_16:
+   \   00000184   400F51E3           CMP      R1,#+256
+   \   00000188   ABFFFF2A           BCS      ??ipaddr_aton_2
+    238                return (0);
+    239              }
+    240              val |= (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8);
+   \   0000018C   020080E1           ORR      R0,R0,R2
+   \   00000190   08209DE5           LDR      R2,[SP, #+8]
+   \   00000194   020480E1           ORR      R0,R0,R2, LSL #+8
+   \                     ??ipaddr_aton_18:
+   \   00000198   011080E1           ORR      R1,R0,R1
+    241              break;
+    242            default:
+    243              LWIP_ASSERT("unhandled", 0);
+    244              break;
+    245            }
+    246            if (addr) {
+   \                     ??ipaddr_aton_17:
+   \   0000019C   000054E3           CMP      R4,#+0
+   \   000001A0   0200000A           BEQ      ??ipaddr_aton_19
+    247              ip4_addr_set_u32(addr, htonl(val));
+   \   000001A4   0100A0E1           MOV      R0,R1
+   \   000001A8   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   000001AC   000084E5           STR      R0,[R4, #+0]
+    248            }
+    249            return (1);
+   \                     ??ipaddr_aton_19:
+   \   000001B0   10D08DE2           ADD      SP,SP,#+16
+   \   000001B4   3040BDE8           POP      {R4,R5,LR}
+   \   000001B8   0100A0E3           MOV      R0,#+1
+   \   000001BC   1EFF2FE1           BX       LR               ;; return
+    250          }
+    251          
+    252          /**
+    253           * Convert numeric IP address into decimal dotted ASCII representation.
+    254           * returns ptr to static buffer; not reentrant!
+    255           *
+    256           * @param addr ip address in network order to convert
+    257           * @return pointer to a global static (!) buffer that holds the ASCII
+    258           *         represenation of addr
+    259           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    260          char *
+    261          ipaddr_ntoa(const ip_addr_t *addr)
+    262          {
+    263            static char str[16];
+    264            return ipaddr_ntoa_r(addr, str, 16);
+   \                     ipaddr_ntoa:
+   \   00000000   10109FE5           LDR      R1,??ipaddr_ntoa_0  ;; ??str
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   1020A0E3           MOV      R2,#+16
+   \   0000000C   ........           BL       ipaddr_ntoa_r
+   \   00000010   0040BDE8           POP      {LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+   \                     ??ipaddr_ntoa_0:
+   \   00000018   ........           DC32     ??str
+    265          }
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+   \                     ??str:
+   \   00000000                      DS8 16
+    266          
+    267          /**
+    268           * Same as ipaddr_ntoa, but reentrant since a user-supplied buffer is used.
+    269           *
+    270           * @param addr ip address in network order to convert
+    271           * @param buf target buffer where the string is stored
+    272           * @param buflen length of buf
+    273           * @return either pointer to buf which now holds the ASCII
+    274           *         representation of addr or NULL if buf was too small
+    275           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    276          char *ipaddr_ntoa_r(const ip_addr_t *addr, char *buf, int buflen)
+    277          {
+   \                     ipaddr_ntoa_r:
+   \   00000000   F00F2DE9           PUSH     {R4-R11}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+   \   00000008   0030A0E1           MOV      R3,R0
+    278            u32_t s_addr;
+    279            char inv[3];
+    280            char *rp;
+    281            u8_t *ap;
+    282            u8_t rem;
+    283            u8_t n;
+    284            u8_t i;
+    285            int len = 0;
+    286          
+    287            s_addr = ip4_addr_get_u32(addr);
+   \   0000000C   003093E5           LDR      R3,[R3, #+0]
+   \   00000010   0100A0E1           MOV      R0,R1
+   \   00000014   0010A0E3           MOV      R1,#+0
+   \   00000018   04308DE5           STR      R3,[SP, #+4]
+    288          
+    289            rp = buf;
+   \   0000001C   0030A0E1           MOV      R3,R0
+    290            ap = (u8_t *)&s_addr;
+   \   00000020   04C08DE2           ADD      R12,SP,#+4
+    291            for(n = 0; n < 4; n++) {
+   \   00000024   0040A0E3           MOV      R4,#+0
+   \   00000028   0150A0E1           MOV      R5,R1
+    292              i = 0;
+   \                     ??ipaddr_ntoa_r_0:
+   \   0000002C   0060A0E3           MOV      R6,#+0
+    293              do {
+    294                rem = *ap % (u8_t)10;
+   \                     ??ipaddr_ntoa_r_1:
+   \   00000030   0070DCE5           LDRB     R7,[R12, #+0]
+   \   00000034   C0809FE5           LDR      R8,??ipaddr_ntoa_r_2  ;; 0x66666667
+   \   00000038   9798CAE0           SMULL    R9,R10,R7,R8
+   \   0000003C   4AA1A0E1           ASR      R10,R10,#+2
+   \   00000040   0A90A0E3           MOV      R9,#+10
+   \   00000044   990A0AE0           MUL      R10,R9,R10
+    295                *ap /= (u8_t)10;
+   \   00000048   AC909FE5           LDR      R9,??ipaddr_ntoa_r_2  ;; 0x66666667
+   \   0000004C   0A8047E0           SUB      R8,R7,R10
+   \   00000050   FF8008E2           AND      R8,R8,#0xFF
+   \   00000054   99A7CBE0           SMULL    R10,R11,R9,R7
+   \   00000058   4BB1A0E1           ASR      R11,R11,#+2
+   \   0000005C   A77F8BE0           ADD      R7,R11,R7, LSR #+31
+   \   00000060   0070CCE5           STRB     R7,[R12, #+0]
+    296                inv[i++] = '0' + rem;
+   \   00000064   0D90A0E1           MOV      R9,SP
+   \   00000068   308088E2           ADD      R8,R8,#+48
+   \   0000006C   0980C6E7           STRB     R8,[R6, +R9]
+    297              } while(*ap);
+   \   00000070   0070DCE5           LDRB     R7,[R12, #+0]
+   \   00000074   016086E2           ADD      R6,R6,#+1
+   \   00000078   FF6006E2           AND      R6,R6,#0xFF
+   \   0000007C   000057E3           CMP      R7,#+0
+   \   00000080   EAFFFF1A           BNE      ??ipaddr_ntoa_r_1
+    298              while(i--) {
+   \                     ??ipaddr_ntoa_r_3:
+   \   00000084   0670A0E1           MOV      R7,R6
+   \   00000088   016047E2           SUB      R6,R7,#+1
+   \   0000008C   FF6006E2           AND      R6,R6,#0xFF
+   \   00000090   000057E3           CMP      R7,#+0
+   \   00000094   0A00000A           BEQ      ??ipaddr_ntoa_r_4
+    299                if (len++ >= buflen) {
+   \   00000098   0170A0E1           MOV      R7,R1
+   \   0000009C   011087E2           ADD      R1,R7,#+1
+   \   000000A0   020057E1           CMP      R7,R2
+   \   000000A4   020000BA           BLT      ??ipaddr_ntoa_r_5
+    300                  return NULL;
+   \                     ??ipaddr_ntoa_r_6:
+   \   000000A8   F60FBDE8           POP      {R1,R2,R4-R11}
+   \   000000AC   0000A0E3           MOV      R0,#+0
+   \   000000B0   1EFF2FE1           BX       LR
+    301                }
+    302                *rp++ = inv[i];
+   \                     ??ipaddr_ntoa_r_5:
+   \   000000B4   0D80A0E1           MOV      R8,SP
+   \   000000B8   0870D6E7           LDRB     R7,[R6, +R8]
+   \   000000BC   ........           STRB     R7,[R3], #+1
+   \   000000C0   EFFFFFEA           B        ??ipaddr_ntoa_r_3
+    303              }
+    304              if (len++ >= buflen) {
+   \                     ??ipaddr_ntoa_r_4:
+   \   000000C4   0160A0E1           MOV      R6,R1
+   \   000000C8   011086E2           ADD      R1,R6,#+1
+   \   000000CC   020056E1           CMP      R6,R2
+   \   000000D0   F4FFFFAA           BGE      ??ipaddr_ntoa_r_6
+    305                return NULL;
+    306              }
+    307              *rp++ = '.';
+   \   000000D4   2E60A0E3           MOV      R6,#+46
+   \   000000D8   ........           STRB     R6,[R3], #+1
+    308              ap++;
+   \   000000DC   01C08CE2           ADD      R12,R12,#+1
+    309            }
+   \   000000E0   015085E2           ADD      R5,R5,#+1
+   \   000000E4   FF5005E2           AND      R5,R5,#0xFF
+   \   000000E8   040055E3           CMP      R5,#+4
+   \   000000EC   CEFFFF3A           BCC      ??ipaddr_ntoa_r_0
+    310            *--rp = 0;
+   \   000000F0   014043E5           STRB     R4,[R3, #-1]
+    311            return buf;
+   \   000000F4   F60FBDE8           POP      {R1,R2,R4-R11}
+   \   000000F8   1EFF2FE1           BX       LR               ;; return
+   \                     ??ipaddr_ntoa_r_2:
+   \   000000FC   67666666           DC32     0x66666667
+    312          }
+    313          
+
+   Maximum stack usage in bytes:
+
+     Function               CSTACK
+     --------               ------
+     ip4_addr_isbroadcast       0
+     ip4_addr_netmask_valid     4
+     ipaddr_addr                8
+     ipaddr_aton               28
+     ipaddr_ntoa                4
+     ipaddr_ntoa_r             40
+
+
+   Segment part sizes:
+
+     Function/Label         Bytes
+     --------------         -----
+     ip_addr_any               4
+     ip_addr_broadcast         4
+     ip4_addr_isbroadcast     92
+     ip4_addr_netmask_valid   68
+     ipaddr_addr              36
+     ipaddr_aton             448
+     ipaddr_ntoa              28
+     str                      16
+     ipaddr_ntoa_r           256
+      Others                  48
+
+ 
+ 964 bytes in segment CODE
+   8 bytes in segment DATA_C
+  16 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 928 bytes of CODE  memory (+ 48 bytes shared)
+   8 bytes of CONST memory
+  16 bytes of DATA  memory
+
+Errors: none
+Warnings: none

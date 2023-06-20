@@ -1,0 +1,193 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       04/May/2023  10:24:01
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file  =  D:\S2Prog\IO\AN-ZBHART\Src\adc.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EWA40.tmp
+#        (D:\S2Prog\IO\AN-ZBHART\Src\adc.c --cpu=m1280 -ms -o
+#        D:\S2Prog\IO\AN-ZBHART\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\AN-ZBHART\Debug\List -y --initializers_in_flash --no_cse
+#        --no_inline --no_code_motion --no_cross_call --no_clustering --no_tbaa
+#        --debug -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\AN-ZBHART\INC\\ -I
+#        ..\..\..\Shared\Inc\\ --eeprom_size 4096 --clib -On)
+#    Locale       =  English_USA.1252
+#    List file    =  D:\S2Prog\IO\AN-ZBHART\Debug\List\adc.lst
+#    Object file  =  D:\S2Prog\IO\AN-ZBHART\Debug\Obj\adc.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\AN-ZBHART\Src\adc.c
+      1          /****************************************************************************************
+      2          / AD converter functions and interrupt
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x7c
+   \   union <unnamed> volatile __io _A_ADMUX
+   \                     _A_ADMUX:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x7b
+   \   union <unnamed> volatile __io _A_ADCSRB
+   \                     _A_ADCSRB:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x7a
+   \   union <unnamed> volatile __io _A_ADCSRA
+   \                     _A_ADCSRA:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x78
+   \   union <unnamed> volatile __io _A_ADC
+   \                     _A_ADC:
+   \   00000000                      DS8 2
+      7          #include "stdio.h"
+      8          #include "externals.h"
+      9          #include "version.h"
+     10          #include "hart.h"
+     11          
+     12          // Voltage Reference: AVCC pin
+     13          #define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
+     14          // Voltage Reference: 2.56V, cap. on AREF
+     15          //#define ADC_VREF_TYPE ((1<<REFS1) | (1<<REFS0) | (0<<ADLAR))
+     16          
+     17          
+     18          // Read the AD conversion result
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     19          unsigned read_adc(unsigned char adc_input) {
+   \                     read_adc:
+   \   00000000   938A               ST      -Y, R24
+   \   00000002   2F80               MOV     R24, R16
+     20              ADMUX = (adc_input & 0x1f) | ADC_VREF_TYPE;
+   \   00000004   2F08               MOV     R16, R24
+   \   00000006   710F               ANDI    R16, 0x1F
+   \   00000008   6400               ORI     R16, 0x40
+   \   0000000A   9300....           STS     _A_ADMUX, R16
+     21              if ( adc_input & 0x20 ) ADCSRB |= (1 << MUX5);
+   \   0000000E   FB85               BST     R24, 5
+   \   00000010   F436               BRTC    ??read_adc_0
+   \   00000012   9100007B           LDS     R16, 123
+   \   00000016   6008               ORI     R16, 0x08
+   \   00000018   9300007B           STS     123, R16
+   \   0000001C   C005               RJMP    ??read_adc_1
+     22              else ADCSRB &= ~(1 << MUX5);
+   \                     ??read_adc_0:
+   \   0000001E   9100007B           LDS     R16, 123
+   \   00000022   7F07               ANDI    R16, 0xF7
+   \   00000024   9300007B           STS     123, R16
+     23          // Delay needed for the stabilization of the ADC input voltage
+     24              OS_Delayus(10);
+   \                     ??read_adc_1:
+   \   00000028   E00A               LDI     R16, 10
+   \   0000002A   E010               LDI     R17, 0
+   \   0000002C   ........           CALL    OS_Delayus
+     25              //OS_Delay(1);
+     26          // Start the AD conversion
+     27              ADCSRA |= (1 << ADSC);
+   \   00000030   9100007A           LDS     R16, 122
+   \   00000034   6400               ORI     R16, 0x40
+   \   00000036   9300007A           STS     122, R16
+     28          // Wait for the AD conversion to complete
+     29              while ( (ADCSRA & (1 << ADIF)) == 0 );
+   \                     ??read_adc_2:
+   \   0000003A   9100....           LDS     R16, _A_ADCSRA
+   \   0000003E   2F10               MOV     R17, R16
+   \   00000040   FF14               SBRS    R17, 4
+   \   00000042   CFFB               RJMP    ??read_adc_2
+     30              ADCSRA |= (1 << ADIF);
+   \   00000044   9100007A           LDS     R16, 122
+   \   00000048   6100               ORI     R16, 0x10
+   \   0000004A   9300007A           STS     122, R16
+     31              return ADC; // Reading ADCL and ADCH in one run;
+   \   0000004E   9100....           LDS     R16, _A_ADC
+   \   00000052   9110....           LDS     R17, (_A_ADC + 1)
+   \   00000056   9189               LD      R24, Y+
+   \   00000058   9508               RET
+   \   0000005A                      REQUIRE _A_ADMUX
+   \   0000005A                      REQUIRE _A_ADCSRB
+   \   0000005A                      REQUIRE _A_ADCSRA
+   \   0000005A                      REQUIRE _A_ADC
+     32          }
+     33          
+     34          
+     35          /*************************************************************************
+     36          *   (This is a task)
+     37          *  InternalADCHandler
+     38          *
+     39          *************************************************************************/
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     40          float FileterdADVal = 24.0;  // Initialize to 24V as default
+   \                     FileterdADVal:
+   \   00000000                      DS8 4
+   \   00000004                      REQUIRE `?<Initializer for FileterdADVal>`
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     41          void InternalADCHandler(void) {
+   \                     InternalADCHandler:
+     42          	while (1) {
+     43          		OS_Delay(1000);
+   \                     ??InternalADCHandler_0:
+   \   00000000   EE08               LDI     R16, 232
+   \   00000002   E013               LDI     R17, 3
+   \   00000004   ........           CALL    OS_Delay
+     44          		ADInt.Result[0] = (short)read_adc(38);
+   \   00000008   E206               LDI     R16, 38
+   \   0000000A   ....               RCALL   read_adc
+   \   0000000C   ....               LDI     R30, LOW(ADInt)
+   \   0000000E   ....               LDI     R31, (ADInt) >> 8
+   \   00000010   8300               ST      Z, R16
+   \   00000012   8311               STD     Z+1, R17
+   \   00000014   CFF5               RJMP    ??InternalADCHandler_0
+     45          	}
+     46          }
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for FileterdADVal>`:
+   \   00000000   000041C0           DD 41C00000H
+     47          
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      0      2   InternalADCHandler
+        0      2   -> OS_Delay
+        0      2   -> read_adc
+      1      2   read_adc
+        1      2   -> OS_Delayus
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       4  ?<Initializer for FileterdADVal>
+       4  FileterdADVal
+      22  InternalADCHandler
+       2  _A_ADC
+       1  _A_ADCSRA
+       1  _A_ADCSRB
+       1  _A_ADMUX
+      90  read_adc
+       7  -- Other
+
+ 
+   5 bytes in segment ABSOLUTE
+ 112 bytes in segment CODE
+   7 bytes in segment INITTAB
+   4 bytes in segment NEAR_I
+   4 bytes in segment NEAR_ID
+ 
+ 116 bytes of CODE memory (+ 7 bytes shared)
+   4 bytes of DATA memory (+ 5 bytes shared)
+
+Errors: none
+Warnings: none

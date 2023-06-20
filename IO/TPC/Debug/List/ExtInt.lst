@@ -1,0 +1,742 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            18/Jan/2017  16:19:54
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+#
+#    Source file  =  D:\S2Prog\IO\TPC\Src\ExtInt.c
+#    Command line =  
+#        D:\S2Prog\IO\TPC\Src\ExtInt.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\TPC\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\TPC\Debug\List -y --initializers_in_flash --no_cse
+#        --no_inline --no_code_motion --no_cross_call --no_clustering --no_tbaa
+#        --debug -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\TPC\INC\ -I
+#        D:\S2Prog\IO\TPC\..\..\SHARED\INC\ --eeprom_size 4096 --clib -On
+#    List file    =  D:\S2Prog\IO\TPC\Debug\List\ExtInt.lst
+#    Object file  =  D:\S2Prog\IO\TPC\Debug\Obj\ExtInt.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\TPC\Src\ExtInt.c
+      1          /****************************************************************************************
+      2          / keyboard handling
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom128.h"
+      7          #include "stdio.h"
+      8          #include "math.h"
+      9          #include "externals.h"
+     10          
+     11          /*************************************************************************
+     12          *
+     13          *  External int 4 (Keyboard ???)
+     14          *
+     15          *************************************************************************/
+     16          #pragma vector=INT4_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     17          __interrupt void IntHandler_INT4( void ){
+   \                     IntHandler_INT4:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+     18          
+     19          
+     20              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_InInt
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_InInt, R16
+   \   0000002E   9100....           LDS     R16, OS_Counters
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     OS_Counters, R16
+   \   00000038   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000003C   9503               INC     R16
+   \   0000003E   9300....           STS     (OS_Counters + 1), R16
+     21              OS_EnterIntStack();
+   \   00000042   94F8               CLI
+   \   00000044   ........           CALL    OS__EnterIntStack
+   \   00000048   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000004C   7F00               ANDI    R16, 0xF0
+   \   0000004E   2300               TST     R16
+   \   00000050   F021               BREQ    ??IntHandler_INT4_0
+   \   00000052   E909               LDI     R16, 153
+   \   00000054   E010               LDI     R17, 0
+   \   00000056   ........           CALL    OS_Error
+   \                     ??IntHandler_INT4_0:
+   \   0000005A   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000005E   2300               TST     R16
+   \   00000060   F409               BRNE    ??IntHandler_INT4_1
+   \   00000062   9478               SEI
+     22          
+     23              if (!kbd_delay_cnt) {
+   \                     ??IntHandler_INT4_1:
+   \   00000064   9100....           LDS     R16, kbd_delay_cnt
+   \   00000068   2300               TST     R16
+   \   0000006A   F441               BRNE    ??IntHandler_INT4_2
+     24          
+     25                switch (UnitID) {
+   \   0000006C   9100....           LDS     R16, UnitID
+   \   00000070   2300               TST     R16
+     26                case 0x00:                  // TPC140 
+     27                  break;
+     28                }
+     29                OS_SignalEvent(1, &TCB_Info);
+   \   00000072   ....               LDI     R18, LOW(TCB_Info)
+   \   00000074   ....               LDI     R19, (TCB_Info) >> 8
+   \   00000076   E001               LDI     R16, 1
+   \   00000078   ........           CALL    OS_SignalEvent
+     30              }
+     31              OS_LeaveIntStack();
+   \                     ??IntHandler_INT4_2:
+   \   0000007C   94F8               CLI
+   \   0000007E   ........           CALL    OS__LeaveIntStack
+     32              OS_LeaveInterrupt();
+   \   00000082   9100....           LDS     R16, OS_InInt
+   \   00000086   2F10               MOV     R17, R16
+   \   00000088   951A               DEC     R17
+   \   0000008A   9310....           STS     OS_InInt, R17
+   \   0000008E   2300               TST     R16
+   \   00000090   F421               BRNE    ??IntHandler_INT4_3
+   \   00000092   E908               LDI     R16, 152
+   \   00000094   E010               LDI     R17, 0
+   \   00000096   ........           CALL    OS_Error
+   \                     ??IntHandler_INT4_3:
+   \   0000009A   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000009E   950A               DEC     R16
+   \   000000A0   9300....           STS     (OS_Counters + 1), R16
+   \   000000A4   9100....           LDS     R16, OS_Counters
+   \   000000A8   3001               CPI     R16, 1
+   \   000000AA   F431               BRNE    ??IntHandler_INT4_4
+   \   000000AC   9100....           LDS     R16, OS_Pending
+   \   000000B0   2300               TST     R16
+   \   000000B2   F011               BREQ    ??IntHandler_INT4_4
+   \   000000B4   ........           CALL    OS_SwitchFromInt
+   \                     ??IntHandler_INT4_4:
+   \   000000B8   9100....           LDS     R16, OS_Counters
+   \   000000BC   950A               DEC     R16
+   \   000000BE   9300....           STS     OS_Counters, R16
+     33          
+     34          }
+   \   000000C2   BF9B               OUT     0x3B, R25
+   \   000000C4   BF8F               OUT     0x3F, R24
+   \   000000C6   9109               LD      R16, Y+
+   \   000000C8   9119               LD      R17, Y+
+   \   000000CA   9129               LD      R18, Y+
+   \   000000CC   9139               LD      R19, Y+
+   \   000000CE   9149               LD      R20, Y+
+   \   000000D0   9159               LD      R21, Y+
+   \   000000D2   9169               LD      R22, Y+
+   \   000000D4   9179               LD      R23, Y+
+   \   000000D6   9009               LD      R0, Y+
+   \   000000D8   9019               LD      R1, Y+
+   \   000000DA   9029               LD      R2, Y+
+   \   000000DC   9039               LD      R3, Y+
+   \   000000DE   91E9               LD      R30, Y+
+   \   000000E0   91F9               LD      R31, Y+
+   \   000000E2   9189               LD      R24, Y+
+   \   000000E4   9199               LD      R25, Y+
+   \   000000E6   9518               RETI
+     35          
+     36          
+     37          /*************************************************************************
+     38          *
+     39          *  External int 5 (Alarm ack)
+     40          *
+     41          *************************************************************************/
+     42          #pragma vector=INT5_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     43          __interrupt void IntHandler_INT5( void ){
+   \                     IntHandler_INT5:
+   \   00000000   93AA               ST      -Y, R26
+   \   00000002   939A               ST      -Y, R25
+   \   00000004   938A               ST      -Y, R24
+   \   00000006   93FA               ST      -Y, R31
+   \   00000008   93EA               ST      -Y, R30
+   \   0000000A   923A               ST      -Y, R3
+   \   0000000C   922A               ST      -Y, R2
+   \   0000000E   921A               ST      -Y, R1
+   \   00000010   920A               ST      -Y, R0
+   \   00000012   937A               ST      -Y, R23
+   \   00000014   936A               ST      -Y, R22
+   \   00000016   935A               ST      -Y, R21
+   \   00000018   934A               ST      -Y, R20
+   \   0000001A   933A               ST      -Y, R19
+   \   0000001C   932A               ST      -Y, R18
+   \   0000001E   931A               ST      -Y, R17
+   \   00000020   930A               ST      -Y, R16
+   \   00000022   B79F               IN      R25, 0x3F
+   \   00000024   B7AB               IN      R26, 0x3B
+     44          
+     45              char i ;
+     46              
+     47              OS_EnterInterrupt();
+   \   00000026   9100....           LDS     R16, OS_InInt
+   \   0000002A   9503               INC     R16
+   \   0000002C   9300....           STS     OS_InInt, R16
+   \   00000030   9100....           LDS     R16, OS_Counters
+   \   00000034   9503               INC     R16
+   \   00000036   9300....           STS     OS_Counters, R16
+   \   0000003A   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000003E   9503               INC     R16
+   \   00000040   9300....           STS     (OS_Counters + 1), R16
+     48              OS_EnterIntStack();
+   \   00000044   94F8               CLI
+   \   00000046   ........           CALL    OS__EnterIntStack
+   \   0000004A   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000004E   7F00               ANDI    R16, 0xF0
+   \   00000050   2300               TST     R16
+   \   00000052   F021               BREQ    ??IntHandler_INT5_0
+   \   00000054   E909               LDI     R16, 153
+   \   00000056   E010               LDI     R17, 0
+   \   00000058   ........           CALL    OS_Error
+   \                     ??IntHandler_INT5_0:
+   \   0000005C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000060   2300               TST     R16
+   \   00000062   F409               BRNE    ??IntHandler_INT5_1
+   \   00000064   9478               SEI
+     49          
+     50            
+     51              if (!kbd_delay_cnt) {
+   \                     ??IntHandler_INT5_1:
+   \   00000066   9100....           LDS     R16, kbd_delay_cnt
+   \   0000006A   2300               TST     R16
+   \   0000006C   F571               BRNE    ??IntHandler_INT5_2
+     52                switch (UnitID) {
+   \   0000006E   9100....           LDS     R16, UnitID
+   \   00000072   5001               SUBI    R16, 1
+   \   00000074   F011               BREQ    ??IntHandler_INT5_3
+   \   00000076   500F               SUBI    R16, 15
+   \   00000078   F519               BRNE    ??IntHandler_INT5_4
+     53                case TPC140:           
+     54                case TPC196:           
+     55                  if (Disp.disp_vt == ALARM_VT) {
+   \                     ??IntHandler_INT5_3:
+   \   0000007A   9100....           LDS     R16, (Disp + 1752)
+   \   0000007E   2300               TST     R16
+   \   00000080   F4E1               BRNE    ??IntHandler_INT5_5
+     56                      if (Disp.alarmLED == ALARM_FLASH) {
+   \   00000082   9100....           LDS     R16, (Disp + 1751)
+   \   00000086   3002               CPI     R16, 2
+   \   00000088   F419               BRNE    ??IntHandler_INT5_6
+     57                          Disp.alarmLED =  ALARM_ON ;          // reset alarm
+   \   0000008A   E001               LDI     R16, 1
+   \   0000008C   9300....           STS     (Disp + 1751), R16
+     58                      }
+     59                      for (i=0; i < 20; i++) {
+   \                     ??IntHandler_INT5_6:
+   \   00000090   E080               LDI     R24, 0
+   \                     ??IntHandler_INT5_7:
+   \   00000092   3184               CPI     R24, 20
+   \   00000094   F460               BRCC    ??IntHandler_INT5_8
+     60                          Disp.image[i] &= ~0x80 ;          // disp blink off
+   \   00000096   2F08               MOV     R16, R24
+   \   00000098   E010               LDI     R17, 0
+   \   0000009A   0F00               LSL     R16
+   \   0000009C   1F11               ROL     R17
+   \   0000009E   01F8               MOVW    R31:R30, R17:R16
+   \   000000A0   ....               SUBI    R30, LOW((-(Disp) & 0xFFFF))
+   \   000000A2   ....               SBCI    R31, (-(Disp) & 0xFFFF) >> 8
+   \   000000A4   8100               LD      R16, Z
+   \   000000A6   770F               ANDI    R16, 0x7F
+   \   000000A8   8300               ST      Z, R16
+     61                      }
+   \   000000AA   9583               INC     R24
+   \   000000AC   CFF2               RJMP    ??IntHandler_INT5_7
+     62                      tx_status |= ALARM_SEND ;           // Flag data to send
+   \                     ??IntHandler_INT5_8:
+   \   000000AE   ....               LDI     R30, LOW(tx_status)
+   \   000000B0   ....               LDI     R31, (tx_status) >> 8
+   \   000000B2   8100               LD      R16, Z
+   \   000000B4   6002               ORI     R16, 0x02
+   \   000000B6   8300               ST      Z, R16
+   \   000000B8   C003               RJMP    ??IntHandler_INT5_4
+     63                  } else {
+     64                      Disp.disp_vt = ALARM_VT ;
+   \                     ??IntHandler_INT5_5:
+   \   000000BA   E000               LDI     R16, 0
+   \   000000BC   9300....           STS     (Disp + 1752), R16
+     65                  }
+     66                  break;
+     67                }
+     68                OS_SignalEvent(1, &TCB_Info);
+   \                     ??IntHandler_INT5_4:
+   \   000000C0   ....               LDI     R18, LOW(TCB_Info)
+   \   000000C2   ....               LDI     R19, (TCB_Info) >> 8
+   \   000000C4   E001               LDI     R16, 1
+   \   000000C6   ........           CALL    OS_SignalEvent
+     69              }
+     70              OS_LeaveIntStack();
+   \                     ??IntHandler_INT5_2:
+   \   000000CA   94F8               CLI
+   \   000000CC   ........           CALL    OS__LeaveIntStack
+     71              OS_LeaveInterrupt();
+   \   000000D0   9100....           LDS     R16, OS_InInt
+   \   000000D4   2F10               MOV     R17, R16
+   \   000000D6   951A               DEC     R17
+   \   000000D8   9310....           STS     OS_InInt, R17
+   \   000000DC   2300               TST     R16
+   \   000000DE   F421               BRNE    ??IntHandler_INT5_9
+   \   000000E0   E908               LDI     R16, 152
+   \   000000E2   E010               LDI     R17, 0
+   \   000000E4   ........           CALL    OS_Error
+   \                     ??IntHandler_INT5_9:
+   \   000000E8   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000EC   950A               DEC     R16
+   \   000000EE   9300....           STS     (OS_Counters + 1), R16
+   \   000000F2   9100....           LDS     R16, OS_Counters
+   \   000000F6   3001               CPI     R16, 1
+   \   000000F8   F431               BRNE    ??IntHandler_INT5_10
+   \   000000FA   9100....           LDS     R16, OS_Pending
+   \   000000FE   2300               TST     R16
+   \   00000100   F011               BREQ    ??IntHandler_INT5_10
+   \   00000102   ........           CALL    OS_SwitchFromInt
+   \                     ??IntHandler_INT5_10:
+   \   00000106   9100....           LDS     R16, OS_Counters
+   \   0000010A   950A               DEC     R16
+   \   0000010C   9300....           STS     OS_Counters, R16
+     72          }
+   \   00000110   BFAB               OUT     0x3B, R26
+   \   00000112   BF9F               OUT     0x3F, R25
+   \   00000114   9109               LD      R16, Y+
+   \   00000116   9119               LD      R17, Y+
+   \   00000118   9129               LD      R18, Y+
+   \   0000011A   9139               LD      R19, Y+
+   \   0000011C   9149               LD      R20, Y+
+   \   0000011E   9159               LD      R21, Y+
+   \   00000120   9169               LD      R22, Y+
+   \   00000122   9179               LD      R23, Y+
+   \   00000124   9009               LD      R0, Y+
+   \   00000126   9019               LD      R1, Y+
+   \   00000128   9029               LD      R2, Y+
+   \   0000012A   9039               LD      R3, Y+
+   \   0000012C   91E9               LD      R30, Y+
+   \   0000012E   91F9               LD      R31, Y+
+   \   00000130   9189               LD      R24, Y+
+   \   00000132   9199               LD      R25, Y+
+   \   00000134   91A9               LD      R26, Y+
+   \   00000136   9518               RETI
+     73          
+     74          /*************************************************************************
+     75          *
+     76          *  External int 6 (Arrow up)
+     77          *
+     78          *************************************************************************/
+     79          #pragma vector=INT6_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     80          __interrupt void IntHandler_INT6( void ){
+   \                     IntHandler_INT6:
+   \   00000000   924A               ST      -Y, R4
+   \   00000002   93BA               ST      -Y, R27
+   \   00000004   93AA               ST      -Y, R26
+   \   00000006   939A               ST      -Y, R25
+   \   00000008   938A               ST      -Y, R24
+   \   0000000A   93FA               ST      -Y, R31
+   \   0000000C   93EA               ST      -Y, R30
+   \   0000000E   923A               ST      -Y, R3
+   \   00000010   922A               ST      -Y, R2
+   \   00000012   921A               ST      -Y, R1
+   \   00000014   920A               ST      -Y, R0
+   \   00000016   937A               ST      -Y, R23
+   \   00000018   936A               ST      -Y, R22
+   \   0000001A   935A               ST      -Y, R21
+   \   0000001C   934A               ST      -Y, R20
+   \   0000001E   933A               ST      -Y, R19
+   \   00000020   932A               ST      -Y, R18
+   \   00000022   931A               ST      -Y, R17
+   \   00000024   930A               ST      -Y, R16
+   \   00000026   B79F               IN      R25, 0x3F
+   \   00000028   B64B               IN      R4, 0x3B
+   \   0000002A                      REQUIRE ?Register_R4_is_cg_reg
+     81          
+     82              char i, j ;
+     83              OS_EnterInterrupt();
+   \   0000002A   9100....           LDS     R16, OS_InInt
+   \   0000002E   9503               INC     R16
+   \   00000030   9300....           STS     OS_InInt, R16
+   \   00000034   9100....           LDS     R16, OS_Counters
+   \   00000038   9503               INC     R16
+   \   0000003A   9300....           STS     OS_Counters, R16
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   9503               INC     R16
+   \   00000044   9300....           STS     (OS_Counters + 1), R16
+     84              OS_EnterIntStack();
+   \   00000048   94F8               CLI
+   \   0000004A   ........           CALL    OS__EnterIntStack
+   \   0000004E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000052   7F00               ANDI    R16, 0xF0
+   \   00000054   2300               TST     R16
+   \   00000056   F021               BREQ    ??IntHandler_INT6_0
+   \   00000058   E909               LDI     R16, 153
+   \   0000005A   E010               LDI     R17, 0
+   \   0000005C   ........           CALL    OS_Error
+   \                     ??IntHandler_INT6_0:
+   \   00000060   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000064   2300               TST     R16
+   \   00000066   F409               BRNE    ??IntHandler_INT6_1
+   \   00000068   9478               SEI
+     85          
+     86              if (!kbd_delay_cnt) {  
+   \                     ??IntHandler_INT6_1:
+   \   0000006A   9100....           LDS     R16, kbd_delay_cnt
+   \   0000006E   2300               TST     R16
+   \   00000070   F519               BRNE    ??IntHandler_INT6_2
+     87                switch (UnitID) {
+   \   00000072   9100....           LDS     R16, UnitID
+   \   00000076   3100               CPI     R16, 16
+   \   00000078   F4D1               BRNE    ??IntHandler_INT6_3
+     88                case TPC140:        
+     89                    i = Disp.disp_vt ;
+   \   0000007A   9100....           LDS     R16, (Disp + 1752)
+   \   0000007E   2FA0               MOV     R26, R16
+     90                    for (j=0; (j < NO_OF_VT); j++) {
+   \   00000080   E080               LDI     R24, 0
+   \                     ??IntHandler_INT6_4:
+   \   00000082   3684               CPI     R24, 100
+   \   00000084   F480               BRCC    ??IntHandler_INT6_5
+     91                        if (++i >= NO_OF_VT) {
+   \   00000086   95A3               INC     R26
+   \   00000088   36A4               CPI     R26, 100
+   \   0000008A   F008               BRCS    ??IntHandler_INT6_6
+     92                            i = 0 ;
+   \   0000008C   E0A0               LDI     R26, 0
+     93                        }
+     94                        if (Disp.window_enable[i] == true) {
+   \                     ??IntHandler_INT6_6:
+   \   0000008E   E0B0               LDI     R27, 0
+   \   00000090   01FD               MOVW    R31:R30, R27:R26
+   \   00000092   ....               SUBI    R30, LOW((-(Disp + 100) & 0xFFFF))
+   \   00000094   ....               SBCI    R31, HIGH((-(Disp + 100) & 0xFFFF))
+   \   00000096   8100               LD      R16, Z
+   \   00000098   3001               CPI     R16, 1
+   \   0000009A   F419               BRNE    ??IntHandler_INT6_7
+     95                            Disp.disp_vt = i ;
+   \   0000009C   93A0....           STS     (Disp + 1752), R26
+     96                            j = NO_OF_VT ;                  // terminate for loop
+   \   000000A0   E684               LDI     R24, 100
+     97                        }
+     98                    }
+   \                     ??IntHandler_INT6_7:
+   \   000000A2   9583               INC     R24
+   \   000000A4   CFEE               RJMP    ??IntHandler_INT6_4
+     99                   	RefreshDisplay( Disp.disp_vt );
+   \                     ??IntHandler_INT6_5:
+   \   000000A6   9100....           LDS     R16, (Disp + 1752)
+   \   000000AA   ........           CALL    RefreshDisplay
+    100                    break;
+    101                }
+    102                OS_SignalEvent(1, &TCB_Info);
+   \                     ??IntHandler_INT6_3:
+   \   000000AE   ....               LDI     R18, LOW(TCB_Info)
+   \   000000B0   ....               LDI     R19, (TCB_Info) >> 8
+   \   000000B2   E001               LDI     R16, 1
+   \   000000B4   ........           CALL    OS_SignalEvent
+    103              }
+    104              OS_LeaveIntStack();
+   \                     ??IntHandler_INT6_2:
+   \   000000B8   94F8               CLI
+   \   000000BA   ........           CALL    OS__LeaveIntStack
+    105              OS_LeaveInterrupt();
+   \   000000BE   9100....           LDS     R16, OS_InInt
+   \   000000C2   2F10               MOV     R17, R16
+   \   000000C4   951A               DEC     R17
+   \   000000C6   9310....           STS     OS_InInt, R17
+   \   000000CA   2300               TST     R16
+   \   000000CC   F421               BRNE    ??IntHandler_INT6_8
+   \   000000CE   E908               LDI     R16, 152
+   \   000000D0   E010               LDI     R17, 0
+   \   000000D2   ........           CALL    OS_Error
+   \                     ??IntHandler_INT6_8:
+   \   000000D6   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000DA   950A               DEC     R16
+   \   000000DC   9300....           STS     (OS_Counters + 1), R16
+   \   000000E0   9100....           LDS     R16, OS_Counters
+   \   000000E4   3001               CPI     R16, 1
+   \   000000E6   F431               BRNE    ??IntHandler_INT6_9
+   \   000000E8   9100....           LDS     R16, OS_Pending
+   \   000000EC   2300               TST     R16
+   \   000000EE   F011               BREQ    ??IntHandler_INT6_9
+   \   000000F0   ........           CALL    OS_SwitchFromInt
+   \                     ??IntHandler_INT6_9:
+   \   000000F4   9100....           LDS     R16, OS_Counters
+   \   000000F8   950A               DEC     R16
+   \   000000FA   9300....           STS     OS_Counters, R16
+    106          }
+   \   000000FE   BE4B               OUT     0x3B, R4
+   \   00000100   BF9F               OUT     0x3F, R25
+   \   00000102   9109               LD      R16, Y+
+   \   00000104   9119               LD      R17, Y+
+   \   00000106   9129               LD      R18, Y+
+   \   00000108   9139               LD      R19, Y+
+   \   0000010A   9149               LD      R20, Y+
+   \   0000010C   9159               LD      R21, Y+
+   \   0000010E   9169               LD      R22, Y+
+   \   00000110   9179               LD      R23, Y+
+   \   00000112   9009               LD      R0, Y+
+   \   00000114   9019               LD      R1, Y+
+   \   00000116   9029               LD      R2, Y+
+   \   00000118   9039               LD      R3, Y+
+   \   0000011A   91E9               LD      R30, Y+
+   \   0000011C   91F9               LD      R31, Y+
+   \   0000011E   9189               LD      R24, Y+
+   \   00000120   9199               LD      R25, Y+
+   \   00000122   91A9               LD      R26, Y+
+   \   00000124   91B9               LD      R27, Y+
+   \   00000126   9049               LD      R4, Y+
+   \   00000128   9518               RETI
+    107          
+    108          /*************************************************************************
+    109          *
+    110          *  External int 7 (Arrow down)
+    111          *
+    112          *************************************************************************/
+    113          #pragma vector=INT7_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    114          __interrupt void IntHandler_INT7( void ){
+   \                     IntHandler_INT7:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   939A               ST      -Y, R25
+   \   00000006   938A               ST      -Y, R24
+   \   00000008   93FA               ST      -Y, R31
+   \   0000000A   93EA               ST      -Y, R30
+   \   0000000C   923A               ST      -Y, R3
+   \   0000000E   922A               ST      -Y, R2
+   \   00000010   921A               ST      -Y, R1
+   \   00000012   920A               ST      -Y, R0
+   \   00000014   937A               ST      -Y, R23
+   \   00000016   936A               ST      -Y, R22
+   \   00000018   935A               ST      -Y, R21
+   \   0000001A   934A               ST      -Y, R20
+   \   0000001C   933A               ST      -Y, R19
+   \   0000001E   932A               ST      -Y, R18
+   \   00000020   931A               ST      -Y, R17
+   \   00000022   930A               ST      -Y, R16
+   \   00000024   B7AF               IN      R26, 0x3F
+   \   00000026   B7BB               IN      R27, 0x3B
+    115          
+    116               char i, j ;
+    117              OS_EnterInterrupt();
+   \   00000028   9100....           LDS     R16, OS_InInt
+   \   0000002C   9503               INC     R16
+   \   0000002E   9300....           STS     OS_InInt, R16
+   \   00000032   9100....           LDS     R16, OS_Counters
+   \   00000036   9503               INC     R16
+   \   00000038   9300....           STS     OS_Counters, R16
+   \   0000003C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000040   9503               INC     R16
+   \   00000042   9300....           STS     (OS_Counters + 1), R16
+    118              OS_EnterIntStack();
+   \   00000046   94F8               CLI
+   \   00000048   ........           CALL    OS__EnterIntStack
+   \   0000004C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000050   7F00               ANDI    R16, 0xF0
+   \   00000052   2300               TST     R16
+   \   00000054   F021               BREQ    ??IntHandler_INT7_0
+   \   00000056   E909               LDI     R16, 153
+   \   00000058   E010               LDI     R17, 0
+   \   0000005A   ........           CALL    OS_Error
+   \                     ??IntHandler_INT7_0:
+   \   0000005E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000062   2300               TST     R16
+   \   00000064   F409               BRNE    ??IntHandler_INT7_1
+   \   00000066   9478               SEI
+    119          
+    120              if (!kbd_delay_cnt) {
+   \                     ??IntHandler_INT7_1:
+   \   00000068   9100....           LDS     R16, kbd_delay_cnt
+   \   0000006C   2300               TST     R16
+   \   0000006E   F521               BRNE    ??IntHandler_INT7_2
+    121                switch (UnitID) {
+   \   00000070   9100....           LDS     R16, UnitID
+   \   00000074   3100               CPI     R16, 16
+   \   00000076   F4D9               BRNE    ??IntHandler_INT7_3
+    122                case TPC140:             
+    123            
+    124                    i = Disp.disp_vt ;
+   \   00000078   9100....           LDS     R16, (Disp + 1752)
+   \   0000007C   2F80               MOV     R24, R16
+    125                    for (j=0; (j < NO_OF_VT); j++) {
+   \   0000007E   E090               LDI     R25, 0
+   \                     ??IntHandler_INT7_4:
+   \   00000080   3694               CPI     R25, 100
+   \   00000082   F488               BRCC    ??IntHandler_INT7_5
+    126                        if (--i >= NO_OF_VT) {
+   \   00000084   958A               DEC     R24
+   \   00000086   3684               CPI     R24, 100
+   \   00000088   F008               BRCS    ??IntHandler_INT7_6
+    127                            i = NO_OF_VT -1 ;
+   \   0000008A   E683               LDI     R24, 99
+    128                        }
+    129                        if (Disp.window_enable[i] == true) {
+   \                     ??IntHandler_INT7_6:
+   \   0000008C   2F08               MOV     R16, R24
+   \   0000008E   E010               LDI     R17, 0
+   \   00000090   01F8               MOVW    R31:R30, R17:R16
+   \   00000092   ....               SUBI    R30, LOW((-(Disp + 100) & 0xFFFF))
+   \   00000094   ....               SBCI    R31, HIGH((-(Disp + 100) & 0xFFFF))
+   \   00000096   8100               LD      R16, Z
+   \   00000098   3001               CPI     R16, 1
+   \   0000009A   F419               BRNE    ??IntHandler_INT7_7
+    130          //              if ((Disp.vt_status >> i) & 0x01) {
+    131                            Disp.disp_vt = i ;
+   \   0000009C   9380....           STS     (Disp + 1752), R24
+    132                            j = NO_OF_VT ;                  // terminate for loop
+   \   000000A0   E694               LDI     R25, 100
+    133                        }
+    134                    }
+   \                     ??IntHandler_INT7_7:
+   \   000000A2   9593               INC     R25
+   \   000000A4   CFED               RJMP    ??IntHandler_INT7_4
+    135              	RefreshDisplay( Disp.disp_vt );
+   \                     ??IntHandler_INT7_5:
+   \   000000A6   9100....           LDS     R16, (Disp + 1752)
+   \   000000AA   ........           CALL    RefreshDisplay
+    136                  break;
+    137                }
+    138                OS_SignalEvent(1, &TCB_Info);
+   \                     ??IntHandler_INT7_3:
+   \   000000AE   ....               LDI     R18, LOW(TCB_Info)
+   \   000000B0   ....               LDI     R19, (TCB_Info) >> 8
+   \   000000B2   E001               LDI     R16, 1
+   \   000000B4   ........           CALL    OS_SignalEvent
+    139              }
+    140              OS_LeaveIntStack();
+   \                     ??IntHandler_INT7_2:
+   \   000000B8   94F8               CLI
+   \   000000BA   ........           CALL    OS__LeaveIntStack
+    141              OS_LeaveInterrupt();
+   \   000000BE   9100....           LDS     R16, OS_InInt
+   \   000000C2   2F10               MOV     R17, R16
+   \   000000C4   951A               DEC     R17
+   \   000000C6   9310....           STS     OS_InInt, R17
+   \   000000CA   2300               TST     R16
+   \   000000CC   F421               BRNE    ??IntHandler_INT7_8
+   \   000000CE   E908               LDI     R16, 152
+   \   000000D0   E010               LDI     R17, 0
+   \   000000D2   ........           CALL    OS_Error
+   \                     ??IntHandler_INT7_8:
+   \   000000D6   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000DA   950A               DEC     R16
+   \   000000DC   9300....           STS     (OS_Counters + 1), R16
+   \   000000E0   9100....           LDS     R16, OS_Counters
+   \   000000E4   3001               CPI     R16, 1
+   \   000000E6   F431               BRNE    ??IntHandler_INT7_9
+   \   000000E8   9100....           LDS     R16, OS_Pending
+   \   000000EC   2300               TST     R16
+   \   000000EE   F011               BREQ    ??IntHandler_INT7_9
+   \   000000F0   ........           CALL    OS_SwitchFromInt
+   \                     ??IntHandler_INT7_9:
+   \   000000F4   9100....           LDS     R16, OS_Counters
+   \   000000F8   950A               DEC     R16
+   \   000000FA   9300....           STS     OS_Counters, R16
+    142          }
+   \   000000FE   BFBB               OUT     0x3B, R27
+   \   00000100   BFAF               OUT     0x3F, R26
+   \   00000102   9109               LD      R16, Y+
+   \   00000104   9119               LD      R17, Y+
+   \   00000106   9129               LD      R18, Y+
+   \   00000108   9139               LD      R19, Y+
+   \   0000010A   9149               LD      R20, Y+
+   \   0000010C   9159               LD      R21, Y+
+   \   0000010E   9169               LD      R22, Y+
+   \   00000110   9179               LD      R23, Y+
+   \   00000112   9009               LD      R0, Y+
+   \   00000114   9019               LD      R1, Y+
+   \   00000116   9029               LD      R2, Y+
+   \   00000118   9039               LD      R3, Y+
+   \   0000011A   91E9               LD      R30, Y+
+   \   0000011C   91F9               LD      R31, Y+
+   \   0000011E   9189               LD      R24, Y+
+   \   00000120   9199               LD      R25, Y+
+   \   00000122   91A9               LD      R26, Y+
+   \   00000124   91B9               LD      R27, Y+
+   \   00000126   9518               RETI
+
+   \                                 In  segment INTVEC, offset 0x14, root
+   \                     `??IntHandler_INT4::??INTVEC 20`:
+   \   00000014   ........           JMP     IntHandler_INT4
+
+   \                                 In  segment INTVEC, offset 0x18, root
+   \                     `??IntHandler_INT5::??INTVEC 24`:
+   \   00000018   ........           JMP     IntHandler_INT5
+
+   \                                 In  segment INTVEC, offset 0x1c, root
+   \                     `??IntHandler_INT6::??INTVEC 28`:
+   \   0000001C   ........           JMP     IntHandler_INT6
+
+   \                                 In  segment INTVEC, offset 0x20, root
+   \                     `??IntHandler_INT7::??INTVEC 32`:
+   \   00000020   ........           JMP     IntHandler_INT7
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     16      2   IntHandler_INT4
+       16      2   -> OS_Error
+       16      2   -> OS_SignalEvent
+       16      2   -> OS_SwitchFromInt
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+     17      2   IntHandler_INT5
+       17      2   -> OS_Error
+       17      2   -> OS_SignalEvent
+       17      2   -> OS_SwitchFromInt
+       17      2   -> OS__EnterIntStack
+       17      2   -> OS__LeaveIntStack
+     19      2   IntHandler_INT6
+       19      2   -> OS_Error
+       19      2   -> OS_SignalEvent
+       19      2   -> OS_SwitchFromInt
+       19      2   -> OS__EnterIntStack
+       19      2   -> OS__LeaveIntStack
+       19      2   -> RefreshDisplay
+     18      2   IntHandler_INT7
+       18      2   -> OS_Error
+       18      2   -> OS_SignalEvent
+       18      2   -> OS_SwitchFromInt
+       18      2   -> OS__EnterIntStack
+       18      2   -> OS__LeaveIntStack
+       18      2   -> RefreshDisplay
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+     232  IntHandler_INT4
+       4  IntHandler_INT4::??INTVEC 20
+     312  IntHandler_INT5
+       4  IntHandler_INT5::??INTVEC 24
+     298  IntHandler_INT6
+       4  IntHandler_INT6::??INTVEC 28
+     296  IntHandler_INT7
+       4  IntHandler_INT7::??INTVEC 32
+
+ 
+ 1 138 bytes in segment CODE
+    16 bytes in segment INTVEC
+ 
+ 1 138 bytes of CODE memory (+ 16 bytes shared)
+
+Errors: none
+Warnings: none

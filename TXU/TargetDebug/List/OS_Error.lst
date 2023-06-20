@@ -1,0 +1,280 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               13/Sep/2016  09:47:27 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  E:\VMShare\working\trunk\TXU\src\OS_Error.c          #
+#    Command line    =  E:\VMShare\working\trunk\TXU\src\OS_Error.c --fpu    #
+#                       None -D OS_LIBMODE_DP -D OS_RAMVECT=0 -D             #
+#                       CPU_S3C2410 -D OS_UART=1 -D ANBOOTLOADER -D          #
+#                       __ARM_LIBRARY__ -lCN E:\VMShare\working\trunk\TXU\Ta #
+#                       rgetDebug\List\ -o E:\VMShare\working\trunk\TXU\Targ #
+#                       etDebug\Obj\ -s2 --no_cse --no_unroll --no_inline    #
+#                       --no_code_motion --no_tbaa --no_clustering           #
+#                       --no_scheduling --debug --cpu_mode arm --endian      #
+#                       little --cpu ARM920T --stack_align 4 --interwork -e  #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8f.h" -I                        #
+#                       E:\VMShare\working\trunk\TXU\GUI\CORE\ -I            #
+#                       E:\VMShare\working\trunk\TXU\GUI\WM\ -I              #
+#                       E:\VMShare\working\trunk\TXU\GUI\WIDGET\ -I          #
+#                       E:\VMShare\working\trunk\TXU\CONFIG\ -I              #
+#                       E:\VMShare\working\trunk\TXU\INC\ -I                 #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\INC\ -I       #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\SRC\ -I       #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\LZO\MINILZO.1 #
+#                       08\ -I "C:\Program Files (x86)\IAR Systems\Embedded  #
+#                       Workbench 4.0\arm\INC\"                              #
+#    List file       =  E:\VMShare\working\trunk\TXU\TargetDebug\List\OS_Err #
+#                       or.lst                                               #
+#    Object file     =  E:\VMShare\working\trunk\TXU\TargetDebug\Obj\OS_Erro #
+#                       r.r79                                                #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+E:\VMShare\working\trunk\TXU\src\OS_Error.c
+      1          /*********************************************************************
+      2          *               SEGGER MICROCONTROLLER GmbH & Co KG                  *
+      3          *       Solutions for real time microcontroller applications         *
+      4          **********************************************************************
+      5          *                                                                    *
+      6          *       (c) 1995 - 2008  SEGGER Microcontroller GmbH & Co KG         *
+      7          *                                                                    *
+      8          *       www.segger.com     Support: support@segger.com               *
+      9          *                                                                    *
+     10          **********************************************************************
+     11          *                                                                    *
+     12          *       embOS * Real time operating system for microcontrollers      *
+     13          *                                                                    *
+     14          *                                                                    *
+     15          *       Please note:                                                 *
+     16          *                                                                    *
+     17          *       Knowledge of this file may under no circumstances            *
+     18          *       be used to write a similar product or a real-time            *
+     19          *       operating system for in-house use.                           *
+     20          *                                                                    *
+     21          *       Thank you for your fairness !                                *
+     22          *                                                                    *
+     23          **********************************************************************
+     24          *                                                                    *
+     25          *       embOS version: 3.60d                                         *
+     26          *                                                                    *
+     27          **********************************************************************
+     28          
+     29          ----------------------------------------------------------------------
+     30          File    : OS_Error.c
+     31          Purpose : OS error handler. Not required in "R" (release) builds
+     32                    Feel free to modify this file acc. to your target system.
+     33          --------  END-OF-HEADER  ---------------------------------------------
+     34          */
+     35          
+     36          #include "RTOS.h"
+     37          
+     38          /*********************************************************************
+     39          *
+     40          *       Run-time error reaction (OS_Error)
+     41          *
+     42          **********************************************************************
+     43          
+     44           Run-time error reaction
+     45          
+     46           When this happens, a fatal error has occured and the kernel
+     47           can not continue. In linux, the equivalent would be a
+     48           "kernel panic"
+     49          
+     50           This routine can be modified to suit your needs ...
+     51           E.g. a red LED could light up. When using an
+     52           emulator, you may set a breakpoint here.
+     53           In the release builds of the library (R), this routine is not required
+     54           (as no checks are performed).
+     55           In the stack check builds (S/SP), only error 120 may occur.
+     56           In the debug builds(D/DP), all of the listed errors may occur.
+     57          
+     58           The following are the current errorcodes:
+     59           (Please refer to the documentation for more info)
+     60            
+     61          *** Port 100..119 ********************************
+     62          OS_ERR_ISR_INDEX                      (100 = 0x64)
+     63          OS_ERR_ISR_VECTOR                     (101 = 0x65)
+     64          OS_ERR_ISR_PRIO                       (102 = 0x66)
+     65          OS_ERR_WRONG_STACK                    (103 = 0x67)
+     66          
+     67          *** OS generic ***********************************
+     68          
+     69          *** Stack overflow or invalid stack **************
+     70          OS_ERR_STACK                          (120 = 0x78)
+     71          
+     72          *** Counting semaphore overflow ******************
+     73          OS_ERR_CSEMA_OVERFLOW                 (121 = 0x79)
+     74           
+     75          *** Power handling module ************************
+     76          OS_ERR_POWER_OVER                     (122 = 0x7A)
+     77          OS_ERR_POWER_UNDER                    (123 = 0x7B)
+     78          OS_ERR_POWER_INDEX                    (124 = 0x7C)
+     79                                                           
+     80          *** Invalid or non-initialized data structures ***
+     81          OS_ERR_INV_TASK                       (128 = 0x80)
+     82          OS_ERR_INV_TIMER                      (129 = 0x81)
+     83          OS_ERR_INV_MAILBOX                    (130 = 0x82)
+     84          OS_ERR_INV_CSEMA                      (132 = 0x84)
+     85          OS_ERR_INV_RSEMA                      (133 = 0x85)
+     86          
+     87          *** Using GetMail1, PutMail1, GetMailCond1 or PutMailCond1
+     88          *** on a non-1 byte mailbox  *********************
+     89          OS_ERR_MAILBOX_NOT1                   (135 = 0x87)
+     90          
+     91          *** Waitable objects deleted with waiting tasks or occupied by task ***
+     92          OS_ERR_MAILBOX_DELETE                 (136 = 0x88)
+     93          OS_ERR_CSEMA_DELETE                   (137 = 0x89)
+     94          OS_ERR_RSEMA_DELETE                   (138 = 0x8A)
+     95          
+     96          *** Internal errors, please contact SEGGER Microcontrollersysteme ***
+     97          OS_ERR_MAILBOX_NOT_IN_LIST            (140 = 0x8C)
+     98          OS_ERR_TASKLIST_CORRUPT               (142 = 0x8E)
+     99          
+    100          *** Not matching routine calls or macro usage ****
+    101          OS_ERR_UNUSE_BEFORE_USE               (150 = 0x96)
+    102          OS_ERR_LEAVEREGION_BEFORE_ENTERREGION (151 = 0x97)
+    103          OS_ERR_LEAVEINT                       (152 = 0x98)
+    104          OS_ERR_DICNT                          (153 = 0x99)
+    105          OS_ERR_INTERRUPT_DISABLED             (154 = 0x9A)
+    106          OS_ERR_TASK_ENDS_WITHOUT_TERMINATE    (155 = 0x9B)
+    107          OS_ERR_RESOURCE_OWNER                 (156 = 0x9C)
+    108                                                           
+    109          *** Not a legal system call during interrupt *****
+    110          OS_ERR_ILLEGAL_IN_ISR                 (160 = 0xA0)
+    111          
+    112          *** Not a legal system call during timer *********
+    113          OS_ERR_ILLEGAL_IN_TIMER               (161 = 0xA1)
+    114          
+    115          *** Not a legal system call outside interrupt ****
+    116          OS_ERR_ILLEGAL_OUT_ISR                (162 = 0xA2) 
+    117          
+    118          OS_ERR_NOT_IN_ISR                     (163 = 0xA3)  *** OS_EnterInterrupt() has been called, but CPU is not in ISR state
+    119          OS_ERR_IN_ISR                         (164 = 0xA4)  *** OS_EnterInterrupt() has not been called, but CPU is in ISR state
+    120          
+    121          OS_ERR_INIT_NOT_CALLED                (165 = 0xA5)  *** OS_InitKern() was not called
+    122          
+    123          *** Double used data structures **
+    124          OS_ERR_2USE_TASK                      (170 = 0xAA)
+    125          OS_ERR_2USE_TIMER                     (171 = 0xAB)
+    126          OS_ERR_2USE_MAILBOX                   (172 = 0xAC)
+    127          OS_ERR_2USE_BSEMA                     (173 = 0xAD)
+    128          OS_ERR_2USE_CSEMA                     (174 = 0xAE)
+    129          OS_ERR_2USE_RSEMA                     (175 = 0xAF)
+    130          OS_ERR_2USE_MEMF                      (176 = 0xB0)
+    131          
+    132          *** Communication errors (OSCOM) **
+    133          OS_ERR_NESTED_RX_INT                  (180 = 0xB4)
+    134          
+    135          *** Fixed block memory pool  ***
+    136          OS_ERR_MEMF_INV                       (190 = 0xBE)
+    137          OS_ERR_MEMF_INV_PTR                   (191 = 0xBF)
+    138          OS_ERR_MEMF_PTR_FREE                  (192 = 0xC0)
+    139          OS_ERR_MEMF_RELEASE                   (193 = 0xC1)
+    140          OS_ERR_POOLADDR                       (194 = 0xC2)
+    141          OS_ERR_BLOCKSIZE                      (195 = 0xC3)
+    142          
+    143          *** Task suspend / resume errors ***
+    144          OS_ERR_SUSPEND_TOO_OFTEN              (200 = 0xC8)
+    145          OS_ERR_RESUME_BEFORE_SUSPEND          (201 = 0xC9)
+    146          
+    147          *** Other task related errors ***
+    148          OS_ERR_TASK_PRIORITY                  (202 = 0xCA)
+    149          
+    150          *** Event object ***
+    151          OS_ERR_EVENTOBJ_INV                   (210 = 0xD2)
+    152          OS_ERR_2USE_EVENTOBJ                  (211 = 0xD3)
+    153          OS_ERR_EVENT_DELETE                   (212 = 0xD4)
+    154          
+    155          
+    156          *** Cache related ***
+    157          OS_ERR_NON_ALIGNED_INVALIDATE         (230 = 0xE6)      // Cache invalidation needs to be cache line aligned
+    158          
+    159          
+    160          *** embOS special build, or internal
+    161          OS_ERR_TRIAL_LIMIT                    (254 = 0xFE)
+    162          
+    163          */
+    164          #pragma diag_suppress=Pe550 
+
+   \                                 In segment CODE, align 4, keep-with-next
+    165          void OS_Error(int ErrCode) {
+   \                     OS_Error:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    166            OS_EnterRegion();     /* Avoid further task switches            */
+   \   00000008   4C009FE5           LDR      R0,??OS_Error_0  ;; OS_Counters
+   \   0000000C   48109FE5           LDR      R1,??OS_Error_0  ;; OS_Counters
+   \   00000010   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000014   011091E2           ADDS     R1,R1,#+1
+   \   00000018   0010C0E5           STRB     R1,[R0, #+0]
+    167            OS_DICnt = 0;         /* Allow interrupts so we can communicate */
+   \   0000001C   3C009FE5           LDR      R0,??OS_Error_0+0x4  ;; OS_Counters + 1
+   \   00000020   0010A0E3           MOV      R1,#+0
+   \   00000024   0010C0E5           STRB     R1,[R0, #+0]
+    168            OS_EI();
+   \   00000028   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+    169            static OS_TASKID CurrentTask;
+    170            CurrentTask = OS_GetTaskID();
+   \   0000002C   30009FE5           LDR      R0,??OS_Error_0+0x8  ;; ??CurrentTask
+   \   00000030   30109FE5           LDR      R1,??OS_Error_0+0xC  ;; OS_pCurrentTask
+   \   00000034   001091E5           LDR      R1,[R1, #+0]
+   \   00000038   001080E5           STR      R1,[R0, #+0]
+    171            //if ( ErrCode == OS_ERR_TRIAL_LIMIT ) return;
+    172            OS_Status = (OS_U8) ErrCode;
+   \   0000003C   28009FE5           LDR      R0,??OS_Error_0+0x10  ;; OS_Status
+   \   00000040   0040C0E5           STRB     R4,[R0, #+0]
+    173            while (OS_Status);
+   \                     ??OS_Error_1:
+   \   00000044   20009FE5           LDR      R0,??OS_Error_0+0x10  ;; OS_Status
+   \   00000048   0000D0E5           LDRB     R0,[R0, #+0]
+   \   0000004C   000050E3           CMP      R0,#+0
+   \   00000050   FBFFFF1A           BNE      ??OS_Error_1
+    174          }
+   \   00000054   1040BDE8           POP      {R4,LR}
+   \   00000058   1EFF2FE1           BX       LR               ;; return
+   \                     ??OS_Error_0:
+   \   0000005C   ........           DC32     OS_Counters
+   \   00000060   ........           DC32     OS_Counters + 1
+   \   00000064   ........           DC32     ??CurrentTask
+   \   00000068   ........           DC32     OS_pCurrentTask
+   \   0000006C   ........           DC32     OS_Status
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+   \                     ??CurrentTask:
+   \   00000000                      DS8 4
+    175          
+    176          /****** EOF *********************************************************/
+    177          
+
+   Maximum stack usage in bytes:
+
+     Function CSTACK
+     -------- ------
+     OS_Error     8
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+     OS_Error        112
+     CurrentTask       4
+      Others          28
+
+ 
+ 128 bytes in segment CODE
+   4 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 112 bytes of CODE memory (+ 28 bytes shared)
+   4 bytes of DATA memory
+
+Errors: none
+Warnings: none

@@ -1,0 +1,51 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2008   SEGGER Microcontroller GmbH & Co. KG       *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : TMPA910_Flash.mac
+Purpose : Setup file for EWARM and TMPA910 CPU Flash target.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+/*********************************************************************
+*
+*       _InitPLL() 
+*/
+_InitPLL() {
+  __message("TMPA910_Flash.mac: _InitPLL()");
+  __writeMemory32(0x00000007,0xF005000C,"Memory");  // PLL multiplier: Multiply by 8
+  __writeMemory32(0x00000065,0xF0050010,"Memory");  // PLL output frequence range >= 140 MHz
+  __writeMemory32(0x00000087,0xF005000C,"Memory");  // PLL control: ON
+  __sleep(100);                                     // Wait until PLL is locked
+  __writeMemory32(0x00000002,0xF0050008,"Memory");  // Select PLL output as system source
+  __writeMemory32(0x00000000,0xF0050004,"Memory");  // System clock gear = 0 => Full speed
+}
+
+/*********************************************************************
+*
+*       execUserReset()
+*/
+execUserReset() {
+  __message("execUserReset");
+  __hwReset(0);
+  _InitPLL();
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*/
+execUserPreload() {
+  __message("execUserPreload");
+  __hwReset(500);
+  _InitPLL();
+}

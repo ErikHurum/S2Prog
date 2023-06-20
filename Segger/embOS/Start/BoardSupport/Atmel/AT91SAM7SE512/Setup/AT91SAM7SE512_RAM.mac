@@ -1,0 +1,58 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2005   SEGGER Microcontroller Systeme GmbH        *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : SAM7_RAM.mac
+Purpose : Setup file for EWARM and AT91SAM7 CPUs.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+
+/*********************************************************************
+*
+*       _Init()
+*/
+_Init() {
+  __emulatorSpeed(30000);    // Slow JTAG speed to be on the safe side
+  __writeMemory32(0xA5000005,0xFFFFFD00,"Memory");    // Perform CPU & peripheral reset
+  __writeMemory32(0x002f0100,0xFFFFFF60,"Memory");    // Set 1 wait state for flash (2 cycles)
+  __sleep(20000);
+  __writeMemory32(0x00000601,0xFFFFFc20,"Memory");    // PLL
+  __sleep(20000);
+  __writeMemory32(0x10191c05,0xFFFFFc2c,"Memory");    // PLL
+  __sleep(20000);
+  __writeMemory32(0x00000007,0xFFFFFc30,"Memory");    // PLL
+  __sleep(20000);
+  __emulatorSpeed(4000000);                           // Use full JTAG speed
+  __writeMemory32(0x00008000,0xFFFFFD44,"Memory");    // Disable Watchdog
+  __writeMemory32(0x00000001,0xFFFFFF00,"Memory");    // Change mapping, putting RAM at addr. 0
+}
+
+/*********************************************************************
+*
+*       execUserReset()
+*/
+execUserReset() {
+  __message "execUserReset()";  
+  _Init();
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*/
+execUserPreload() {
+  __message "execUserPreload()";  
+  _Init();
+}
+
+/**************** End of file ***************************************/

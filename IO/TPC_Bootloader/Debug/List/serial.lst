@@ -1,0 +1,264 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            18/Jan/2017  11:06:42
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+#
+#    Source file  =  D:\S2Prog\IO\TPC_Bootloader\Src\serial.c
+#    Command line =  
+#        D:\S2Prog\IO\TPC_Bootloader\Src\serial.c -v3 --enhanced_core -ms -o
+#        D:\S2Prog\IO\TPC_Bootloader\Debug\Obj -D SPEED=19200 -D PORT0 -lCN
+#        D:\S2Prog\IO\TPC_Bootloader\Debug\List -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\TPC_Bootloader\INC\ -I
+#        D:\S2Prog\IO\TPC_Bootloader\..\..\SHARED\INC\ --dlib --dlib_config
+#        "C:\Program Files (x86)\IAR Systems\Embedded Workbench
+#        7.3\avr\LIB\DLIB\dlAVR-3s-ec_mul-n.h" -Oh
+#    List file    =  D:\S2Prog\IO\TPC_Bootloader\Debug\List\serial.lst
+#    Object file  =  D:\S2Prog\IO\TPC_Bootloader\Debug\Obj\serial.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\TPC_Bootloader\Src\serial.c
+      1          #include "iom128.h"
+
+   \                                 In  segment ABSOLUTE, at 0x2b
+   \   union <unnamed> volatile __io _A_UCSR0A
+   \                     _A_UCSR0A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2c
+   \   union <unnamed> volatile __io _A_UDR0
+   \                     _A_UDR0:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x9b
+   \   union <unnamed> volatile __io _A_UCSR1A
+   \                     _A_UCSR1A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x9c
+   \   union <unnamed> volatile __io _A_UDR1
+   \                     _A_UDR1:
+   \   00000000                      DS8 1
+      2          #include "stdio.h"
+      3          #include "math.h"
+      4          #include "externals.h"
+      5          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+      6          void sendchar(char ch, char c){
+   \                     sendchar:
+      7            if (ch == 0) {
+   \   00000000   2300               TST     R16
+   \   00000002   F429               BRNE    ??sendchar_0
+      8              UART_DATA_REG0 = c;                                   // prepare transmission
+   \   00000004   B91C               OUT     0x0C, R17
+      9              while (!(UART_STATUS_REG0 & (1 << TRANSMIT_COMPLETE_BIT0)));// wait until byte sendt
+   \                     ??sendchar_1:
+   \   00000006   9B5E               SBIS    0x0B, 0x06
+   \   00000008   CFFE               RJMP    ??sendchar_1
+     10              UART_STATUS_REG0 |= (1 << TRANSMIT_COMPLETE_BIT0);          // delete TXCflag
+   \   0000000A   9A5E               SBI     0x0B, 0x06
+   \   0000000C   9508               RET
+     11            }else if (ch == 1) {
+   \                     ??sendchar_0:
+   \   0000000E   3001               CPI     R16, 1
+   \   00000010   F459               BRNE    ??sendchar_2
+     12              UART_DATA_REG1 = c;                                   // prepare transmission
+   \   00000012   9310....           STS     _A_UDR1, R17
+     13              while (!(UART_STATUS_REG1 & (1 << TRANSMIT_COMPLETE_BIT1)));// wait until byte sendt
+   \                     ??sendchar_3:
+   \   00000016   9100....           LDS     R16, _A_UCSR1A
+   \   0000001A   FF06               SBRS    R16, 6
+   \   0000001C   CFFC               RJMP    ??sendchar_3
+     14              UART_STATUS_REG1 |= (1 << TRANSMIT_COMPLETE_BIT1);          // delete TXCflag
+   \   0000001E   9100009B           LDS     R16, 155
+   \   00000022   6400               ORI     R16, 0x40
+   \   00000024   9300009B           STS     155, R16
+     15            }  
+     16          }
+   \                     ??sendchar_2:
+   \   00000028   9508               RET
+   \   0000002A                      REQUIRE _A_UDR0
+   \   0000002A                      REQUIRE _A_UCSR0A
+   \   0000002A                      REQUIRE _A_UDR1
+   \   0000002A                      REQUIRE _A_UCSR1A
+     17          
+     18          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     19          void recchar(void){
+   \                     recchar:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+     20            if((UART_STATUS_REG0 & (1 << RECEIVE_COMPLETE_BIT0)) ||(UART_STATUS_REG0 & 0x10)){
+   \   00000004   995F               SBIC    0x0B, 0x07
+   \   00000006   C002               RJMP    ??recchar_0
+   \   00000008   9B5C               SBIS    0x0B, 0x04
+   \   0000000A   C043               RJMP    ??recchar_1
+     21              UART[0].pRxBuffer[ UART[0].RxFirst ] = UART_DATA_REG0;                     // Read the character 
+   \                     ??recchar_0:
+   \   0000000C   ....               LDI     R30, LOW(UART)
+   \   0000000E   ....               LDI     R31, (UART) >> 8
+   \   00000010   B10C               IN      R16, 0x0C
+   \   00000012   85A4               LDD     R26, Z+12
+   \   00000014   85B5               LDD     R27, Z+13
+   \   00000016   8526               LDD     R18, Z+14
+   \   00000018   8537               LDD     R19, Z+15
+   \   0000001A   0FA2               ADD     R26, R18
+   \   0000001C   1FB3               ADC     R27, R19
+   \   0000001E   930C               ST      X, R16
+     22                  if (UART[0].RxState != HANDLE) {        // ok to receive? 
+   \   00000020   8904               LDD     R16, Z+20
+   \   00000022   300A               CPI     R16, 10
+   \   00000024   F1B1               BREQ    ??recchar_1
+     23                      switch (UART[0].RxState) {                   // Yes, check state
+   \   00000026   2300               TST     R16
+   \   00000028   F529               BRNE    ??recchar_2
+     24                      case SYNC :
+     25                           if ( UART[0].pRxBuffer[ UART[0].RxFirst ] == ANPRO1_SYN) {
+   \   0000002A   85A4               LDD     R26, Z+12
+   \   0000002C   85B5               LDD     R27, Z+13
+   \   0000002E   8506               LDD     R16, Z+14
+   \   00000030   8517               LDD     R17, Z+15
+   \   00000032   0FA0               ADD     R26, R16
+   \   00000034   1FB1               ADC     R27, R17
+   \   00000036   910C               LD      R16, X
+   \   00000038   3002               CPI     R16, 2
+   \   0000003A   8905               LDD     R16, Z+21
+   \   0000003C   F431               BRNE    ??recchar_3
+     26                              UART[0].SyncCnt ++ ;                 // count sync
+   \   0000003E   9503               INC     R16
+   \   00000040   8B05               STD     Z+21, R16
+     27                              UART[0].RxFirst = 0;                 // start at start of buff
+   \   00000042   E000               LDI     R16, 0
+   \   00000044   8706               STD     Z+14, R16
+   \   00000046   8707               STD     Z+15, R16
+   \   00000048   C024               RJMP    ??recchar_1
+     28                          } else if (UART[0].SyncCnt >= 2) {       // minimum two sync bytes
+   \                     ??recchar_3:
+   \   0000004A   3002               CPI     R16, 2
+   \   0000004C   E000               LDI     R16, 0
+   \   0000004E   8B05               STD     Z+21, R16
+   \   00000050   F100               BRCS    ??recchar_1
+     29                              UART[0].SyncCnt = 0 ;                // reset counter
+     30                              UART[0].RxState = HEADER ;
+   \   00000052   E001               LDI     R16, 1
+   \   00000054   8B04               STD     Z+20, R16
+     31                              UART[0].RxLast = 0 ;
+   \   00000056   E000               LDI     R16, 0
+   \   00000058   E010               LDI     R17, 0
+   \   0000005A   8B00               STD     Z+16, R16
+   \   0000005C   8B01               STD     Z+17, R16
+     32                              UART[0].RxTimeout = RX_TO_TIME ;   // reset timeout
+   \   0000005E   EF0A               LDI     R16, 250
+   \   00000060   8B06               STD     Z+22, R16
+   \   00000062   8B17               STD     Z+23, R17
+     33                              ++UART[0].RxFirst;
+   \   00000064   8506               LDD     R16, Z+14
+   \   00000066   8517               LDD     R17, Z+15
+   \   00000068   5F0F               SUBI    R16, 255
+   \   0000006A   4F1F               SBCI    R17, 255
+   \   0000006C   8706               STD     Z+14, R16
+   \   0000006E   8717               STD     Z+15, R17
+     34                              ReceivePacketUart(0) ;              // Check package
+   \   00000070   E000               LDI     R16, 0
+   \   00000072   C00D               RJMP    ??recchar_4
+     35                          } else {
+     36                              UART[0].SyncCnt = 0 ;                // start over once more
+     37                          }
+     38                          break;
+     39                      default :
+     40                          if ((++UART[0].RxFirst) > RXSIZE_UART) { // Point to next location
+   \                     ??recchar_2:
+   \   00000074   8506               LDD     R16, Z+14
+   \   00000076   8517               LDD     R17, Z+15
+   \   00000078   5F0F               SUBI    R16, 255
+   \   0000007A   4F1F               SBCI    R17, 255
+   \   0000007C   8706               STD     Z+14, R16
+   \   0000007E   8717               STD     Z+15, R17
+   \   00000080   350F               CPI     R16, 95
+   \   00000082   4011               SBCI    R17, 1
+   \   00000084   E000               LDI     R16, 0
+   \   00000086   F018               BRCS    ??recchar_4
+     41                              GoToSyncUART(0) ;                       // go to sync mode
+   \   00000088   ........           CALL    GoToSyncUART
+   \   0000008C   C002               RJMP    ??recchar_1
+     42                          } else {
+     43                              ReceivePacketUart(0) ;              // Check package
+   \                     ??recchar_4:
+   \   0000008E   ........           CALL    ReceivePacketUart
+     44                          }
+     45                          break ;   
+     46                      }
+     47                  }
+     48            }
+     49          /* AStmark Not used on TPC
+     50            if((UART_STATUS_REG1 & (1 << RECEIVE_COMPLETE_BIT1)) ||(UART_STATUS_REG1 & 0x10)){
+     51              UART[1].pRxBuffer[ UART[1].RxFirst ] = UART_DATA_REG1;                     // Read the character 
+     52              if (UART[1].RxState != HANDLE) {        // ok to receive? 
+     53                  switch (UART[1].RxState) {                   // Yes, check state
+     54                  case SYNC :
+     55                      if ( UART[1].pRxBuffer[ UART[1].RxFirst ] == ANPRO10_SYN) {
+     56                          UART[1].SyncCnt ++ ;                 // count sync
+     57                          UART[1].RxFirst = 0;                 // start at start of buff
+     58                      } else if ((UART[1].SyncCnt >= 2) && 
+     59                                 (UART[1].pRxBuffer[ UART[1].RxFirst ] == ANPRO10_SOH)) {       // minimum two sync bytes
+     60                          UART[1].SyncCnt = 0 ;                // reset counter
+     61                          UART[1].RxState = HEADER ;
+     62                          UART[1].RxLast = 0 ;
+     63                          UART[1].RxTimeout = RX_TO_TIME ;   // reset timeout
+     64                      } else {
+     65                          UART[1].SyncCnt = 0 ;                // start over once more
+     66                      }
+     67                      break;
+     68                  default :
+     69                      if ((++UART[1].RxFirst) > RXSIZE_UART) { // Point to next location
+     70                          GoToSyncUART(1) ;                       // go to sync mode
+     71                      } else {
+     72                          ReceivePacketUart(1) ;              // Check package
+     73                      }
+     74                      break ;   
+     75                  }
+     76              }
+     77            }
+     78          */
+     79          }
+   \                     ??recchar_1:
+   \   00000092   91A9               LD      R26, Y+
+   \   00000094   91B9               LD      R27, Y+
+   \   00000096   9508               RET
+   \   00000098                      REQUIRE _A_UCSR0A
+   \   00000098                      REQUIRE _A_UDR0
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      2      2   recchar
+        2      2   -> GoToSyncUART
+        2      2   -> ReceivePacketUart
+      0      2   sendchar
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       1  _A_UCSR0A
+       1  _A_UCSR1A
+       1  _A_UDR0
+       1  _A_UDR1
+     152  recchar
+      42  sendchar
+
+ 
+   4 bytes in segment ABSOLUTE
+ 194 bytes in segment CODE
+ 
+ 194 bytes of CODE memory
+   0 bytes of DATA memory (+ 4 bytes shared)
+
+Errors: none
+Warnings: none

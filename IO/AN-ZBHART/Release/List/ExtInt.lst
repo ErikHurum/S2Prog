@@ -1,0 +1,697 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            29/May/2017  11:13:23
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.70
+#
+#    Source file  =  E:\VMShare\anzb_hart\hart\Src\ExtInt.c
+#    Command line =  
+#        E:\VMShare\anzb_hart\hart\Src\ExtInt.c --cpu=m1281 -ms -o
+#        E:\VMShare\anzb_hart\hart\Release\Obj -D OS_LIBMODE_S -D OS_UART=-1
+#        -lCN E:\VMShare\anzb_hart\hart\Release\List -y --initializers_in_flash
+#        --no_tbaa --enable_external_bus -DENABLE_BIT_DEFINITIONS -e -I
+#        E:\VMShare\anzb_hart\hart\INC\ -I E:\VMShare\working\trunk\Shared\Inc\
+#        --eeprom_size 4096 --clib -Oh
+#    List file    =  E:\VMShare\anzb_hart\hart\Release\List\ExtInt.lst
+#    Object file  =  E:\VMShare\anzb_hart\hart\Release\Obj\ExtInt.r90
+#
+###############################################################################
+
+E:\VMShare\anzb_hart\hart\Src\ExtInt.c
+      1          /****************************************************************************************
+      2          / AD converter handling , AD7715
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom1280.h"
+      7          #include "stdio.h"
+      8          #include "math.h"
+      9          #include "externals.h"
+     10          
+     11          /*************************************************************************
+     12          *
+     13          *  External int 0 (UART PC16554 on AN-ZB485 or ADready on AN-ZBANA)
+     14          *
+     15          *************************************************************************/
+     16          #pragma vector=INT0_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     17          __interrupt void IntHandler_INT0( void ){               //Int handler for ext int 0
+   \                     IntHandler_INT0:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   939A               ST      -Y, R25
+   \   00000006   938A               ST      -Y, R24
+   \   00000008   93FA               ST      -Y, R31
+   \   0000000A   93EA               ST      -Y, R30
+   \   0000000C   923A               ST      -Y, R3
+   \   0000000E   922A               ST      -Y, R2
+   \   00000010   921A               ST      -Y, R1
+   \   00000012   920A               ST      -Y, R0
+   \   00000014   937A               ST      -Y, R23
+   \   00000016   936A               ST      -Y, R22
+   \   00000018   935A               ST      -Y, R21
+   \   0000001A   934A               ST      -Y, R20
+   \   0000001C   933A               ST      -Y, R19
+   \   0000001E   932A               ST      -Y, R18
+   \   00000020   931A               ST      -Y, R17
+   \   00000022   930A               ST      -Y, R16
+   \   00000024   B78F               IN      R24, 0x3F
+   \   00000026   B79B               IN      R25, 0x3B
+   \   00000028                      REQUIRE __RSTACK_in_external_ram_new_way
+     18          
+     19              // OBS!!!
+     20              // Uses UART16552[].TxStatus as intreason and
+     21              // UART16552[].TxSeqCnt as counter because these needs to be globale 
+     22              // by using OS_EnterIntStack()
+     23          
+     24              
+     25              OS_EnterInterrupt();
+   \   00000028   9100....           LDS     R16, OS_Counters
+   \   0000002C   9503               INC     R16
+   \   0000002E   9300....           STS     OS_Counters, R16
+   \   00000032   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000036   9503               INC     R16
+   \   00000038   9300....           STS     (OS_Counters + 1), R16
+     26              OS_EnterIntStack();
+   \   0000003C   94F8               CLI
+   \   0000003E   ........           CALL    OS__EnterIntStack
+   \   00000042   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000046   2300               TST     R16
+   \   00000048   F409               BRNE    ??IntHandler_INT0_0
+   \   0000004A   9478               SEI
+     27          
+     28              switch (UnitID) {
+   \                     ??IntHandler_INT0_0:
+   \   0000004C   9100....           LDS     R16, UnitID
+   \   00000050   2300               TST     R16
+   \   00000052   F021               BREQ    ??IntHandler_INT0_1
+   \   00000054   950A               DEC     R16
+   \   00000056   F409               BRNE    $+2+2
+   \   00000058   C0A9               RJMP    ??IntHandler_INT0_2
+   \   0000005A   C0AD               RJMP    ??IntHandler_INT0_3
+     29              case 0x00:                  // AN-ZB485  
+     30                    UART16552[0].TxStatus = (U0_IIR & 0x0f);          // reason for interrupt
+   \                     ??IntHandler_INT0_1:
+   \   0000005C   ....               LDI     R26, LOW(UART16552)
+   \   0000005E   ....               LDI     R27, (UART16552) >> 8
+   \   00000060   9100220A           LDS     R16, 8714
+   \   00000064   700F               ANDI    R16, 0x0F
+   \   00000066   9300....           STS     (UART16552 + 8), R16
+     31                  do {
+     32                      switch (UART16552[0].TxStatus) {
+   \                     ??IntHandler_INT0_4:
+   \   0000006A   9100....           LDS     R16, (UART16552 + 8)
+   \   0000006E   2300               TST     R16
+   \   00000070   F409               BRNE    $+2+2
+   \   00000072   C092               RJMP    ??IntHandler_INT0_5
+   \   00000074   5002               SUBI    R16, 2
+   \   00000076   F049               BREQ    ??IntHandler_INT0_6
+   \   00000078   5002               SUBI    R16, 2
+   \   0000007A   F409               BRNE    $+2+2
+   \   0000007C   C042               RJMP    ??IntHandler_INT0_7
+   \   0000007E   5002               SUBI    R16, 2
+   \   00000080   F409               BRNE    $+2+2
+   \   00000082   C087               RJMP    ??IntHandler_INT0_8
+   \   00000084   5006               SUBI    R16, 6
+   \   00000086   F1E9               BREQ    ??IntHandler_INT0_7
+   \   00000088   C089               RJMP    ??IntHandler_INT0_9
+     33                      case 0x02 :             // transmit holding reg emty
+     34                          if (UART16552[0].TxCount == 0) {
+   \                     ??IntHandler_INT0_6:
+   \   0000008A   01FD               MOVW    R31:R30, R27:R26
+   \   0000008C   8106               LDD     R16, Z+6
+   \   0000008E   8117               LDD     R17, Z+7
+   \   00000090   2B01               OR      R16, R17
+   \   00000092   F451               BRNE    ??IntHandler_INT0_10
+     35                              U0_MCR &= ~RTS;        // set RTS off
+   \   00000094   E0EC               LDI     R30, LOW(8716)
+   \   00000096   E2F2               LDI     R31, (8716) >> 8
+   \   00000098   8100               LD      R16, Z
+   \   0000009A   7F0D               ANDI    R16, 0xFD
+   \   0000009C   8300               ST      Z, R16
+     36                              OS_StopTimer(&TimerUART0);                    // and stop timer
+   \   0000009E   ....               LDI     R16, LOW(TimerUART0)
+   \   000000A0   ....               LDI     R17, (TimerUART0) >> 8
+   \   000000A2   ........           CALL    OS_StopTimer
+   \   000000A6   C07A               RJMP    ??IntHandler_INT0_9
+     37                          } else {
+     38                              for (UART16552[0].TxSeqCnt = 0;( UART16552[0].TxSeqCnt < FIFO_TX_BUFSIZE ) && (UART16552[0].TxCount > 0 ); UART16552[0].TxSeqCnt++, --UART16552[0].TxCount) {
+   \                     ??IntHandler_INT0_10:
+   \   000000A8   E000               LDI     R16, 0
+   \   000000AA   8701               STD     Z+9, R16
+   \                     ??IntHandler_INT0_11:
+   \   000000AC   8106               LDD     R16, Z+6
+   \   000000AE   8117               LDD     R17, Z+7
+   \   000000B0   2B01               OR      R16, R17
+   \   000000B2   F409               BRNE    $+2+2
+   \   000000B4   C073               RJMP    ??IntHandler_INT0_9
+     39                                  U0_THR = UART16552[0].pTxBuffer[UART16552[0].TxLast++];
+   \   000000B6   8100               LD      R16, Z
+   \   000000B8   8111               LDD     R17, Z+1
+   \   000000BA   8124               LDD     R18, Z+4
+   \   000000BC   8135               LDD     R19, Z+5
+   \   000000BE   0F02               ADD     R16, R18
+   \   000000C0   1F13               ADC     R17, R19
+   \   000000C2   01F8               MOVW    R31:R30, R17:R16
+   \   000000C4   8100               LD      R16, Z
+   \   000000C6   93002208           STS     8712, R16
+   \   000000CA   01FD               MOVW    R31:R30, R27:R26
+   \   000000CC   8104               LDD     R16, Z+4
+   \   000000CE   8115               LDD     R17, Z+5
+   \   000000D0   5F0F               SUBI    R16, 255
+   \   000000D2   4F1F               SBCI    R17, 255
+   \   000000D4   8304               STD     Z+4, R16
+   \   000000D6   8315               STD     Z+5, R17
+     40                              }
+   \   000000D8   8501               LDD     R16, Z+9
+   \   000000DA   9503               INC     R16
+   \   000000DC   8701               STD     Z+9, R16
+   \   000000DE   8106               LDD     R16, Z+6
+   \   000000E0   8117               LDD     R17, Z+7
+   \   000000E2   5001               SUBI    R16, 1
+   \   000000E4   4010               SBCI    R17, 0
+   \   000000E6   8306               STD     Z+6, R16
+   \   000000E8   8317               STD     Z+7, R17
+   \   000000EA   8501               LDD     R16, Z+9
+   \   000000EC   3100               CPI     R16, 16
+   \   000000EE   F008               BRCS    $+2+2
+   \   000000F0   C055               RJMP    ??IntHandler_INT0_9
+   \   000000F2   CFDC               RJMP    ??IntHandler_INT0_11
+     41                          }
+     42                          break;
+     43                      case 0x04 :             // Receive data available    
+     44                      case 0x0C :             // or caracter timeout (FIFO)
+     45                          while (U0_LSR & DATA_READY) {
+     46          
+     47                              UART16552[0].pRxBuffer[ UART16552[0].RxFirst ] = U0_RBR;             // Read the character 
+     48          
+     49                              if (UART16552[0].RxState != HANDLE) {                 // ok to receive? 
+     50                                  switch (UART16552[0].RxState) {                   // Yes, check state
+     51                                  case SYNC :
+     52                                      if ( UART16552[0].pRxBuffer[ UART16552[0].RxFirst ] == ANPRO1_SYN) {
+     53                                          UART16552[0].SyncCnt ++ ;                 // count sync
+   \                     ??IntHandler_INT0_12:
+   \   000000F4   01FD               MOVW    R31:R30, R27:R26
+   \   000000F6   8903               LDD     R16, Z+19
+   \   000000F8   9503               INC     R16
+   \   000000FA   8B03               STD     Z+19, R16
+     54                                          UART16552[0].RxFirst = 0;                 // start at start of buff
+   \   000000FC   E000               LDI     R16, 0
+   \   000000FE   8704               STD     Z+12, R16
+   \   00000100   8705               STD     Z+13, R16
+     55                                      } else if (UART16552[0].SyncCnt >= 2) {       // minimum two sync bytes
+   \                     ??IntHandler_INT0_7:
+   \   00000102   9100220D           LDS     R16, 8717
+   \   00000106   FF00               SBRS    R16, 0
+   \   00000108   C049               RJMP    ??IntHandler_INT0_9
+   \   0000010A   91202208           LDS     R18, 8712
+   \   0000010E   01FD               MOVW    R31:R30, R27:R26
+   \   00000110   8502               LDD     R16, Z+10
+   \   00000112   8513               LDD     R17, Z+11
+   \   00000114   8544               LDD     R20, Z+12
+   \   00000116   8555               LDD     R21, Z+13
+   \   00000118   0F04               ADD     R16, R20
+   \   0000011A   1F15               ADC     R17, R21
+   \   0000011C   01F8               MOVW    R31:R30, R17:R16
+   \   0000011E   8320               ST      Z, R18
+   \   00000120   9100....           LDS     R16, (UART16552 + 18)
+   \   00000124   300A               CPI     R16, 10
+   \   00000126   F369               BREQ    ??IntHandler_INT0_7
+   \   00000128   2300               TST     R16
+   \   0000012A   01FD               MOVW    R31:R30, R27:R26
+   \   0000012C   F529               BRNE    ??IntHandler_INT0_13
+   \   0000012E   8502               LDD     R16, Z+10
+   \   00000130   8513               LDD     R17, Z+11
+   \   00000132   8524               LDD     R18, Z+12
+   \   00000134   8535               LDD     R19, Z+13
+   \   00000136   0F02               ADD     R16, R18
+   \   00000138   1F13               ADC     R17, R19
+   \   0000013A   01F8               MOVW    R31:R30, R17:R16
+   \   0000013C   8100               LD      R16, Z
+   \   0000013E   3002               CPI     R16, 2
+   \   00000140   F2C9               BREQ    ??IntHandler_INT0_12
+   \   00000142   9100....           LDS     R16, (UART16552 + 19)
+   \   00000146   3002               CPI     R16, 2
+   \   00000148   E000               LDI     R16, 0
+   \   0000014A   9300....           STS     (UART16552 + 19), R16
+   \   0000014E   F2C8               BRCS    ??IntHandler_INT0_7
+     56                                          UART16552[0].SyncCnt = 0 ;                // reset counter
+     57                                          UART16552[0].RxState = HEADER ;
+   \   00000150   E001               LDI     R16, 1
+   \   00000152   9300....           STS     (UART16552 + 18), R16
+     58                                          UART16552[0].RxLast = 0 ;
+   \   00000156   E000               LDI     R16, 0
+   \   00000158   E010               LDI     R17, 0
+   \   0000015A   01FD               MOVW    R31:R30, R27:R26
+   \   0000015C   8706               STD     Z+14, R16
+   \   0000015E   8707               STD     Z+15, R16
+     59                                          UART16552[0].RxTimeout = RX_TO_TIME ;   // reset timeout
+   \   00000160   EF0A               LDI     R16, 250
+   \   00000162   8B04               STD     Z+20, R16
+   \   00000164   8B15               STD     Z+21, R17
+     60                                          UART16552[0].RxFirst++ ;                 //  1. char OK, start on next
+   \   00000166   0189               MOVW    R17:R16, R19:R18
+   \   00000168   5F0F               SUBI    R16, 255
+   \   0000016A   4F1F               SBCI    R17, 255
+   \   0000016C   8704               STD     Z+12, R16
+   \   0000016E   8715               STD     Z+13, R17
+     61                                          ReceivePacketUart16552(0) ;              // Check package
+   \   00000170   E000               LDI     R16, 0
+   \                     ??IntHandler_INT0_14:
+   \   00000172   ........           CALL    ReceivePacketUart16552
+   \   00000176   CFC5               RJMP    ??IntHandler_INT0_7
+     62                                      } else {
+     63                                          UART16552[0].SyncCnt = 0 ;                // start over once more
+     64                                      }
+     65                                      break;
+     66                                  default :
+     67                                      if ((++UART16552[0].RxFirst) > RXSIZE_UART_16552) { // Point to next location
+   \                     ??IntHandler_INT0_13:
+   \   00000178   8504               LDD     R16, Z+12
+   \   0000017A   8515               LDD     R17, Z+13
+   \   0000017C   5F0F               SUBI    R16, 255
+   \   0000017E   4F1F               SBCI    R17, 255
+   \   00000180   8704               STD     Z+12, R16
+   \   00000182   8715               STD     Z+13, R17
+   \   00000184   3709               CPI     R16, 121
+   \   00000186   4010               SBCI    R17, 0
+   \   00000188   E000               LDI     R16, 0
+   \   0000018A   F398               BRCS    ??IntHandler_INT0_14
+     68                                          GoToSyncUART16552(0) ;                       // go to sync mode
+   \   0000018C   ........           CALL    GoToSyncUART16552
+   \   00000190   CFB8               RJMP    ??IntHandler_INT0_7
+     69                                      } else {
+     70                                          ReceivePacketUart16552(0) ;              // Check package
+     71                                      }
+     72                                      break ;   
+     73                                  }
+     74                              }
+     75                          } 
+     76                          break;
+     77                      case 0x06 :                 // Receiver line status, OR, PE, FR, Break int.
+     78                          U0_LSR;      // Dummy read to empty register        
+   \                     ??IntHandler_INT0_8:
+   \   00000192   9100220D           LDS     R16, 8717
+     79                          break;
+   \   00000196   C002               RJMP    ??IntHandler_INT0_9
+     80                      case 0x00 :                 // Modem status.
+     81                          U0_MSR;      // Dummy read to empty register           
+   \                     ??IntHandler_INT0_5:
+   \   00000198   9100220E           LDS     R16, 8718
+     82                          break;
+     83                      }
+     84                      UART16552[0].TxStatus = (U0_IIR & 0x0f) ;      // reason for interrupt, 
+   \                     ??IntHandler_INT0_9:
+   \   0000019C   9100220A           LDS     R16, 8714
+   \   000001A0   700F               ANDI    R16, 0x0F
+   \   000001A2   9300....           STS     (UART16552 + 8), R16
+     85                                                                                // check again before exit to avoid lost int. and hang
+     86                  } while ((UART16552[0].TxStatus & 0x01) != 0x01) ;  
+   \   000001A6   FD00               SBRC    R16, 0
+   \   000001A8   C006               RJMP    ??IntHandler_INT0_3
+   \   000001AA   CF5F               RJMP    ??IntHandler_INT0_4
+     87                  break;
+     88              case 0x01:                  // AN-ZBANA ADready
+     89                  OS_SignalEvent(1, &TCB_AD7715);
+   \                     ??IntHandler_INT0_2:
+   \   000001AC   ....               LDI     R18, LOW(TCB_AD7715)
+   \   000001AE   ....               LDI     R19, (TCB_AD7715) >> 8
+   \   000001B0   E001               LDI     R16, 1
+   \   000001B2   ........           CALL    OS_SignalEvent
+     90                  break;
+     91              }
+     92              OS_LeaveIntStack();
+   \                     ??IntHandler_INT0_3:
+   \   000001B6                      REQUIRE ?Subroutine0
+   \   000001B6                      ;               // Fall through to label ?Subroutine0
+     93              OS_LeaveInterruptNoSwitch();
+     94          
+     95          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine0:
+   \   00000000   94F8               CLI
+   \   00000002   ........           CALL    OS__LeaveIntStack
+   \   00000006   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000000A   950A               DEC     R16
+   \   0000000C   9300....           STS     (OS_Counters + 1), R16
+   \   00000010   9100....           LDS     R16, OS_Counters
+   \   00000014   950A               DEC     R16
+   \   00000016   9300....           STS     OS_Counters, R16
+   \   0000001A   BF9B               OUT     0x3B, R25
+   \   0000001C   BF8F               OUT     0x3F, R24
+   \   0000001E   9109               LD      R16, Y+
+   \   00000020   9119               LD      R17, Y+
+   \   00000022   9129               LD      R18, Y+
+   \   00000024   9139               LD      R19, Y+
+   \   00000026   9149               LD      R20, Y+
+   \   00000028   9159               LD      R21, Y+
+   \   0000002A   9169               LD      R22, Y+
+   \   0000002C   9179               LD      R23, Y+
+   \   0000002E   9009               LD      R0, Y+
+   \   00000030   9019               LD      R1, Y+
+   \   00000032   9029               LD      R2, Y+
+   \   00000034   9039               LD      R3, Y+
+   \   00000036   91E9               LD      R30, Y+
+   \   00000038   91F9               LD      R31, Y+
+   \   0000003A   9189               LD      R24, Y+
+   \   0000003C   9199               LD      R25, Y+
+   \   0000003E   91A9               LD      R26, Y+
+   \   00000040   91B9               LD      R27, Y+
+   \   00000042   9518               RETI
+     96          
+     97          
+     98          /*************************************************************************
+     99          *
+    100          *  External int 1 (UART PC16554 on AN-ZB485)
+    101          *
+    102          *************************************************************************/
+    103          #pragma vector=INT1_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    104          __interrupt void IntHandler_INT1( void ){               //Int handler for Ext int 1
+   \                     IntHandler_INT1:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   939A               ST      -Y, R25
+   \   00000006   938A               ST      -Y, R24
+   \   00000008   93FA               ST      -Y, R31
+   \   0000000A   93EA               ST      -Y, R30
+   \   0000000C   923A               ST      -Y, R3
+   \   0000000E   922A               ST      -Y, R2
+   \   00000010   921A               ST      -Y, R1
+   \   00000012   920A               ST      -Y, R0
+   \   00000014   937A               ST      -Y, R23
+   \   00000016   936A               ST      -Y, R22
+   \   00000018   935A               ST      -Y, R21
+   \   0000001A   934A               ST      -Y, R20
+   \   0000001C   933A               ST      -Y, R19
+   \   0000001E   932A               ST      -Y, R18
+   \   00000020   931A               ST      -Y, R17
+   \   00000022   930A               ST      -Y, R16
+   \   00000024   B78F               IN      R24, 0x3F
+   \   00000026   B79B               IN      R25, 0x3B
+   \   00000028                      REQUIRE __RSTACK_in_external_ram_new_way
+    105          
+    106              // OBS!!!
+    107              // Uses UART16552[].TxStatus as intreason and
+    108              // UART16552[].TxSeqCnt as counter because these needs to be globale 
+    109              // by using OS_EnterIntStack()
+    110              
+    111            
+    112              OS_EnterInterrupt();
+   \   00000028   9100....           LDS     R16, OS_Counters
+   \   0000002C   9503               INC     R16
+   \   0000002E   9300....           STS     OS_Counters, R16
+   \   00000032   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000036   9503               INC     R16
+   \   00000038   9300....           STS     (OS_Counters + 1), R16
+    113              OS_EnterIntStack();
+   \   0000003C   94F8               CLI
+   \   0000003E   ........           CALL    OS__EnterIntStack
+   \   00000042   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000046   2300               TST     R16
+   \   00000048   F409               BRNE    ??IntHandler_INT1_0
+   \   0000004A   9478               SEI
+    114          
+    115              switch (UnitID) {
+   \                     ??IntHandler_INT1_0:
+   \   0000004C   9100....           LDS     R16, UnitID
+   \   00000050   2300               TST     R16
+   \   00000052   F009               BREQ    $+2+2
+   \   00000054   C0A7               RJMP    ??IntHandler_INT1_1
+    116              case 0x00:               // AN-ZB485 
+    117                  UART16552[1].TxStatus = (U1_IIR & 0x0f) ;      // reason for interrupt
+   \   00000056   ....               LDI     R26, LOW(UART16552)
+   \   00000058   ....               LDI     R27, (UART16552) >> 8
+   \   0000005A   91002202           LDS     R16, 8706
+   \   0000005E   700F               ANDI    R16, 0x0F
+   \   00000060   9300....           STS     (UART16552 + 34), R16
+    118                  do {
+    119                      switch (UART16552[1].TxStatus) {
+   \                     ??IntHandler_INT1_2:
+   \   00000064   9100....           LDS     R16, (UART16552 + 34)
+   \   00000068   2300               TST     R16
+   \   0000006A   F409               BRNE    $+2+2
+   \   0000006C   C092               RJMP    ??IntHandler_INT1_3
+   \   0000006E   5002               SUBI    R16, 2
+   \   00000070   F049               BREQ    ??IntHandler_INT1_4
+   \   00000072   5002               SUBI    R16, 2
+   \   00000074   F409               BRNE    $+2+2
+   \   00000076   C042               RJMP    ??IntHandler_INT1_5
+   \   00000078   5002               SUBI    R16, 2
+   \   0000007A   F409               BRNE    $+2+2
+   \   0000007C   C087               RJMP    ??IntHandler_INT1_6
+   \   0000007E   5006               SUBI    R16, 6
+   \   00000080   F1E9               BREQ    ??IntHandler_INT1_5
+   \   00000082   C089               RJMP    ??IntHandler_INT1_7
+    120                      case 0x02 :             // transmit holding reg emty
+    121                          if (UART16552[1].TxCount == 0) {
+   \                     ??IntHandler_INT1_4:
+   \   00000084   01FD               MOVW    R31:R30, R27:R26
+   \   00000086   A100               LDD     R16, Z+32
+   \   00000088   A111               LDD     R17, Z+33
+   \   0000008A   2B01               OR      R16, R17
+   \   0000008C   F451               BRNE    ??IntHandler_INT1_8
+    122                              U1_MCR &= ~RTS;        // set RTS off
+   \   0000008E   E0E4               LDI     R30, LOW(8708)
+   \   00000090   E2F2               LDI     R31, (8708) >> 8
+   \   00000092   8100               LD      R16, Z
+   \   00000094   7F0D               ANDI    R16, 0xFD
+   \   00000096   8300               ST      Z, R16
+    123                              OS_StopTimer(&TimerUART1);                    // and stop timer
+   \   00000098   ....               LDI     R16, LOW(TimerUART1)
+   \   0000009A   ....               LDI     R17, (TimerUART1) >> 8
+   \   0000009C   ........           CALL    OS_StopTimer
+   \   000000A0   C07A               RJMP    ??IntHandler_INT1_7
+    124                          } else {
+    125                              for (UART16552[1].TxSeqCnt = 0;( UART16552[1].TxSeqCnt < FIFO_TX_BUFSIZE ) && (UART16552[1].TxCount > 0 ); UART16552[1].TxSeqCnt++, UART16552[1].TxCount--) {
+   \                     ??IntHandler_INT1_8:
+   \   000000A2   E000               LDI     R16, 0
+   \   000000A4   A303               STD     Z+35, R16
+   \                     ??IntHandler_INT1_9:
+   \   000000A6   A100               LDD     R16, Z+32
+   \   000000A8   A111               LDD     R17, Z+33
+   \   000000AA   2B01               OR      R16, R17
+   \   000000AC   F409               BRNE    $+2+2
+   \   000000AE   C073               RJMP    ??IntHandler_INT1_7
+    126                                 U1_THR = UART16552[1].pTxBuffer[UART16552[1].TxLast++] ;
+   \   000000B0   8D02               LDD     R16, Z+26
+   \   000000B2   8D13               LDD     R17, Z+27
+   \   000000B4   8D26               LDD     R18, Z+30
+   \   000000B6   8D37               LDD     R19, Z+31
+   \   000000B8   0F02               ADD     R16, R18
+   \   000000BA   1F13               ADC     R17, R19
+   \   000000BC   01F8               MOVW    R31:R30, R17:R16
+   \   000000BE   8100               LD      R16, Z
+   \   000000C0   93002200           STS     8704, R16
+   \   000000C4   01FD               MOVW    R31:R30, R27:R26
+   \   000000C6   8D06               LDD     R16, Z+30
+   \   000000C8   8D17               LDD     R17, Z+31
+   \   000000CA   5F0F               SUBI    R16, 255
+   \   000000CC   4F1F               SBCI    R17, 255
+   \   000000CE   8F06               STD     Z+30, R16
+   \   000000D0   8F17               STD     Z+31, R17
+    127                              }
+   \   000000D2   A103               LDD     R16, Z+35
+   \   000000D4   9503               INC     R16
+   \   000000D6   A303               STD     Z+35, R16
+   \   000000D8   A100               LDD     R16, Z+32
+   \   000000DA   A111               LDD     R17, Z+33
+   \   000000DC   5001               SUBI    R16, 1
+   \   000000DE   4010               SBCI    R17, 0
+   \   000000E0   A300               STD     Z+32, R16
+   \   000000E2   A311               STD     Z+33, R17
+   \   000000E4   A103               LDD     R16, Z+35
+   \   000000E6   3100               CPI     R16, 16
+   \   000000E8   F008               BRCS    $+2+2
+   \   000000EA   C055               RJMP    ??IntHandler_INT1_7
+   \   000000EC   CFDC               RJMP    ??IntHandler_INT1_9
+    128                          }
+    129                          break;
+    130                      case 0x04 :             // Receive data available    
+    131                      case 0x0C :             // or caracter timeout (FIFO)
+    132                          while (U1_LSR & DATA_READY) {
+    133          
+    134                              UART16552[1].pRxBuffer[ UART16552[1].RxFirst ] = U1_RBR;          // Read the character 
+    135          
+    136                              if (UART16552[1].RxState != HANDLE) {        // ok to receive? 
+    137                                  switch (UART16552[1].RxState) {                   // Yes, check state
+    138                                  case SYNC :
+    139                                      if ( UART16552[1].pRxBuffer[ UART16552[1].RxFirst ] == ANPRO1_SYN) {
+    140                                          UART16552[1].SyncCnt ++ ;                 // count sync
+   \                     ??IntHandler_INT1_10:
+   \   000000EE   01FD               MOVW    R31:R30, R27:R26
+   \   000000F0   A505               LDD     R16, Z+45
+   \   000000F2   9503               INC     R16
+   \   000000F4   A705               STD     Z+45, R16
+    141                                          UART16552[1].RxFirst = 0;                 // start at start of buff
+   \   000000F6   E000               LDI     R16, 0
+   \   000000F8   A306               STD     Z+38, R16
+   \   000000FA   A307               STD     Z+39, R16
+    142                                      } else if (UART16552[1].SyncCnt >= 2) {       // minimum two sync bytes
+   \                     ??IntHandler_INT1_5:
+   \   000000FC   91002205           LDS     R16, 8709
+   \   00000100   FF00               SBRS    R16, 0
+   \   00000102   C049               RJMP    ??IntHandler_INT1_7
+   \   00000104   91202200           LDS     R18, 8704
+   \   00000108   01FD               MOVW    R31:R30, R27:R26
+   \   0000010A   A104               LDD     R16, Z+36
+   \   0000010C   A115               LDD     R17, Z+37
+   \   0000010E   A146               LDD     R20, Z+38
+   \   00000110   A157               LDD     R21, Z+39
+   \   00000112   0F04               ADD     R16, R20
+   \   00000114   1F15               ADC     R17, R21
+   \   00000116   01F8               MOVW    R31:R30, R17:R16
+   \   00000118   8320               ST      Z, R18
+   \   0000011A   9100....           LDS     R16, (UART16552 + 44)
+   \   0000011E   300A               CPI     R16, 10
+   \   00000120   F369               BREQ    ??IntHandler_INT1_5
+   \   00000122   2300               TST     R16
+   \   00000124   01FD               MOVW    R31:R30, R27:R26
+   \   00000126   F529               BRNE    ??IntHandler_INT1_11
+   \   00000128   A104               LDD     R16, Z+36
+   \   0000012A   A115               LDD     R17, Z+37
+   \   0000012C   A126               LDD     R18, Z+38
+   \   0000012E   A137               LDD     R19, Z+39
+   \   00000130   0F02               ADD     R16, R18
+   \   00000132   1F13               ADC     R17, R19
+   \   00000134   01F8               MOVW    R31:R30, R17:R16
+   \   00000136   8100               LD      R16, Z
+   \   00000138   3002               CPI     R16, 2
+   \   0000013A   F2C9               BREQ    ??IntHandler_INT1_10
+   \   0000013C   9100....           LDS     R16, (UART16552 + 45)
+   \   00000140   3002               CPI     R16, 2
+   \   00000142   E000               LDI     R16, 0
+   \   00000144   9300....           STS     (UART16552 + 45), R16
+   \   00000148   F2C8               BRCS    ??IntHandler_INT1_5
+    143                                          UART16552[1].SyncCnt = 0 ;                // reset counter
+    144                                          UART16552[1].RxState = HEADER ;
+   \   0000014A   E001               LDI     R16, 1
+   \   0000014C   9300....           STS     (UART16552 + 44), R16
+    145                                          UART16552[1].RxLast = 0 ;
+   \   00000150   E000               LDI     R16, 0
+   \   00000152   E010               LDI     R17, 0
+   \   00000154   01FD               MOVW    R31:R30, R27:R26
+   \   00000156   A700               STD     Z+40, R16
+   \   00000158   A701               STD     Z+41, R16
+    146                                          UART16552[1].RxTimeout = RX_TO_TIME ;     // reset timeout
+   \   0000015A   EF0A               LDI     R16, 250
+   \   0000015C   A706               STD     Z+46, R16
+   \   0000015E   A717               STD     Z+47, R17
+    147                                          UART16552[1].RxFirst++ ;                  //  1. char OK, start on next
+   \   00000160   0189               MOVW    R17:R16, R19:R18
+   \   00000162   5F0F               SUBI    R16, 255
+   \   00000164   4F1F               SBCI    R17, 255
+   \   00000166   A306               STD     Z+38, R16
+   \   00000168   A317               STD     Z+39, R17
+    148                                          ReceivePacketUart16552(1) ;               // Check package
+   \   0000016A   E001               LDI     R16, 1
+   \                     ??IntHandler_INT1_12:
+   \   0000016C   ........           CALL    ReceivePacketUart16552
+   \   00000170   CFC5               RJMP    ??IntHandler_INT1_5
+    149                                      } else {
+    150                                          UART16552[1].SyncCnt = 0 ;                // start over once more
+    151                                      }
+    152                                      break;
+    153                                  default :
+    154                                      if ((++UART16552[1].RxFirst) > RXSIZE_UART_16552) { // Point to next location
+   \                     ??IntHandler_INT1_11:
+   \   00000172   A106               LDD     R16, Z+38
+   \   00000174   A117               LDD     R17, Z+39
+   \   00000176   5F0F               SUBI    R16, 255
+   \   00000178   4F1F               SBCI    R17, 255
+   \   0000017A   A306               STD     Z+38, R16
+   \   0000017C   A317               STD     Z+39, R17
+   \   0000017E   3709               CPI     R16, 121
+   \   00000180   4010               SBCI    R17, 0
+   \   00000182   E001               LDI     R16, 1
+   \   00000184   F398               BRCS    ??IntHandler_INT1_12
+    155                                          GoToSyncUART16552(1) ;                       // go to sync mode
+   \   00000186   ........           CALL    GoToSyncUART16552
+   \   0000018A   CFB8               RJMP    ??IntHandler_INT1_5
+    156                                      } else {
+    157                                          ReceivePacketUart16552(1) ;              // Check package
+    158                                      }
+    159                                      break ;   
+    160                                  }
+    161                              }
+    162                          }
+    163                          break;
+    164                      case 0x06 :                 // Receiver line status, OR, PE, FR, Break int.
+    165                          U1_LSR;      // Dummy read to empty register        
+   \                     ??IntHandler_INT1_6:
+   \   0000018C   91002205           LDS     R16, 8709
+    166                          break;
+   \   00000190   C002               RJMP    ??IntHandler_INT1_7
+    167                      case 0x00 :                 // Modem status.
+    168                          U1_MSR;      // Dummy read to empty register           
+   \                     ??IntHandler_INT1_3:
+   \   00000192   91002206           LDS     R16, 8710
+    169                          break;
+    170                      }
+    171                      UART16552[1].TxStatus = (U1_IIR & 0x0f) ;      // reason for interrupt, 
+   \                     ??IntHandler_INT1_7:
+   \   00000196   91002202           LDS     R16, 8706
+   \   0000019A   700F               ANDI    R16, 0x0F
+   \   0000019C   9300....           STS     (UART16552 + 34), R16
+    172                                                                                // check again before exit to avoid lost int. and hang
+    173                 } while ((UART16552[1].TxStatus & 0x01) != 0x01);  
+   \   000001A0   FF00               SBRS    R16, 0
+   \   000001A2   CF60               RJMP    ??IntHandler_INT1_2
+    174                  break;
+    175              case 0x01:                  // AN-ZBANA Not connected!
+    176                  break;
+    177              }
+    178              OS_LeaveIntStack();
+   \                     ??IntHandler_INT1_1:
+   \   000001A4   ....               RJMP    ?Subroutine0
+    179              OS_LeaveInterruptNoSwitch();
+    180          }
+
+   \                                 In  segment INTVEC, offset 0x4, root
+   \                     `??IntHandler_INT0::??INTVEC 4`:
+   \   00000004   ........           JMP     IntHandler_INT0
+
+   \                                 In  segment INTVEC, offset 0x8, root
+   \                     `??IntHandler_INT1::??INTVEC 8`:
+   \   00000008   ........           JMP     IntHandler_INT1
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     18      2   IntHandler_INT0
+       18      2   -> GoToSyncUART16552
+       18      2   -> OS_SignalEvent
+       18      2   -> OS_StopTimer
+       18      2   -> OS__EnterIntStack
+       18      2   -> OS__LeaveIntStack
+       18      2   -> ReceivePacketUart16552
+     18      2   IntHandler_INT1
+       18      2   -> GoToSyncUART16552
+       18      2   -> OS_StopTimer
+       18      2   -> OS__EnterIntStack
+       18      2   -> OS__LeaveIntStack
+       18      2   -> ReceivePacketUart16552
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      68  ?Subroutine0
+     438  IntHandler_INT0
+       4  IntHandler_INT0::??INTVEC 4
+     422  IntHandler_INT1
+       4  IntHandler_INT1::??INTVEC 8
+
+ 
+ 928 bytes in segment CODE
+   8 bytes in segment INTVEC
+ 
+ 928 bytes of CODE memory (+ 8 bytes shared)
+
+Errors: none
+Warnings: none

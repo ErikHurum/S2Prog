@@ -1,0 +1,140 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            18/Jan/2017  11:06:42
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+#
+#    Source file  =  D:\S2Prog\IO\TPC_Bootloader\Src\eeprom.c
+#    Command line =  
+#        D:\S2Prog\IO\TPC_Bootloader\Src\eeprom.c -v3 --enhanced_core -ms -o
+#        D:\S2Prog\IO\TPC_Bootloader\Debug\Obj -D SPEED=19200 -D PORT0 -lCN
+#        D:\S2Prog\IO\TPC_Bootloader\Debug\List -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\TPC_Bootloader\INC\ -I
+#        D:\S2Prog\IO\TPC_Bootloader\..\..\SHARED\INC\ --dlib --dlib_config
+#        "C:\Program Files (x86)\IAR Systems\Embedded Workbench
+#        7.3\avr\LIB\DLIB\dlAVR-3s-ec_mul-n.h" -Oh
+#    List file    =  D:\S2Prog\IO\TPC_Bootloader\Debug\List\eeprom.lst
+#    Object file  =  D:\S2Prog\IO\TPC_Bootloader\Debug\Obj\eeprom.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\TPC_Bootloader\Src\eeprom.c
+      1          /****************************************************************************************
+      2          / Read and write the eeprom
+      3          /
+      4          ***************************************************************************************/
+      5          #include "iom128.h"
+
+   \                                 In  segment ABSOLUTE, at 0x3c
+   \   union <unnamed> volatile __io _A_EECR
+   \                     _A_EECR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3d
+   \   union <unnamed> volatile __io _A_EEDR
+   \                     _A_EEDR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3e
+   \   union <unnamed> volatile __io _A_EEAR
+   \                     _A_EEAR:
+   \   00000000                      DS8 2
+      6          #include "stdio.h"
+      7          #include "math.h"
+      8          #include "externals.h"
+      9          #include "version.h"
+     10          #include "inavr.h"
+     11          
+     12          
+     13          /*---------------------------------------------------------------------------
+     14          **
+     15          **  Reads an address in the eeprom
+     16          **
+     17          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     18          char ReadEEPROMByte( unsigned int Address ) {
+   \                     ReadEEPROMByte:
+   \                     ??ReadEEPROMByte_0:
+     19          
+     20              unsigned char Data;
+     21          
+     22              while (EECR & (1<<EEWE))     // Wait until ready
+   \   00000000   99E1               SBIC    0x1C, 0x01
+   \   00000002   CFFE               RJMP    ??ReadEEPROMByte_0
+     23                  ;
+     24              EEAR = Address;
+   \   00000004   BB1F               OUT     0x1F, R17
+   \   00000006   BB0E               OUT     0x1E, R16
+     25              EECR |= (1 << EERE) ;       // Don't use SetBit macrod due to timing
+   \   00000008   9AE0               SBI     0x1C, 0x00
+     26          
+     27              Data = EEDR;
+     28              return Data;
+   \   0000000A   B30D               IN      R16, 0x1D
+   \   0000000C   9508               RET
+   \   0000000E                      REQUIRE _A_EECR
+   \   0000000E                      REQUIRE _A_EEAR
+   \   0000000E                      REQUIRE _A_EEDR
+     29          
+     30          }
+     31          
+     32          /*---------------------------------------------------------------------------
+     33          **
+     34          **  Write a caracther to the eeprom
+     35          **
+     36          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     37          void WriteEEPROMByte( unsigned int Address, char Data ) {   
+   \                     WriteEEPROMByte:
+   \                     ??WriteEEPROMByte_0:
+     38          
+     39              while (EECR & (1<<EEWE))     // Wait until ready
+   \   00000000   99E1               SBIC    0x1C, 0x01
+   \   00000002   CFFE               RJMP    ??WriteEEPROMByte_0
+     40                  ;
+     41              EEAR = Address;
+   \   00000004   BB1F               OUT     0x1F, R17
+   \   00000006   BB0E               OUT     0x1E, R16
+     42              EEDR = Data;
+   \   00000008   BB2D               OUT     0x1D, R18
+     43              EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+   \   0000000A   9AE2               SBI     0x1C, 0x02
+     44              EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+   \   0000000C   9AE1               SBI     0x1C, 0x01
+     45          }
+   \   0000000E   9508               RET
+   \   00000010                      REQUIRE _A_EECR
+   \   00000010                      REQUIRE _A_EEAR
+   \   00000010                      REQUIRE _A_EEDR
+     46          
+
+   Maximum stack usage in bytes:
+
+   RSTACK Function
+   ------ --------
+      2   ReadEEPROMByte
+      2   WriteEEPROMByte
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      14  ReadEEPROMByte
+      16  WriteEEPROMByte
+       2  _A_EEAR
+       1  _A_EECR
+       1  _A_EEDR
+
+ 
+  4 bytes in segment ABSOLUTE
+ 30 bytes in segment CODE
+ 
+ 30 bytes of CODE memory
+  0 bytes of DATA memory (+ 4 bytes shared)
+
+Errors: none
+Warnings: none

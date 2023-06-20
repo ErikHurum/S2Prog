@@ -1,0 +1,54 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.20.1.1511 for Microchip AVR       15/Aug/2019  23:09:41
+# Copyright 1996-2018 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Atmel AVR 7.20
+#
+#    Source file  =  D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Src\adc.c
+#    Command line =  
+#        -f C:\Users\esy\AppData\Local\Temp\EWFF82.tmp
+#        (D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Src\adc.c --cpu=m128a -ms -o
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\Obj -D OS_LIBMODE_R -D
+#        OS_UART=-1 -lCN D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\List -y
+#        --initializers_in_flash --no_cse --no_inline --no_code_motion
+#        --no_cross_call --no_clustering --no_tbaa --debug
+#        -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\INC\ -I
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\..\..\SHARED\INC\ --eeprom_size
+#        4096 --clib -On)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\List\adc.lst
+#    Object file  =  D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\Obj\adc.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Src\adc.c
+      1          /****************************************************************************************
+      2          / AD converter functions and interrupt
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom128a.h"
+      7          #include "stdio.h"
+      8          #include "math.h"
+      9          #include "externals.h"
+     10          #include "version.h"
+     11          
+     12          #pragma vector=ADC_vect
+     13          __interrupt void IntHandler_AD( void ){
+     14          
+     15              OS_EnterInterrupt();
+     16              OS_EnterIntStack();
+     17              ADInt.Result[ADChannel] = ADC; // Reading ADCL and ADCH in one run
+     18              if (++ADChannel > 0x01 ) {                //set next ADchannel
+     19                    ADChannel = 0x00 ;
+     20              }
+     21              ADMUX &= 0xe0 ;                           // set the channel
+     22              ADMUX |= ADChannel ;
+     23              ADCSR |= 0x40 ;                           //start new convertion
+     24              OS_LeaveIntStack();
+     25              OS_LeaveInterruptNoSwitch();
+     26          }
+
+Errors: 1
+Warnings: none

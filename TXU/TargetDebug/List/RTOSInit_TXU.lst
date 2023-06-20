@@ -1,0 +1,1877 @@
+###############################################################################
+#                                                                             #
+# IAR ANSI C/C++ Compiler V5.20.1.51006/W32 for ARM     06/Oct/2008  13:18:19 #
+# Copyright 1999-2008 IAR Systems AB.                                         #
+#                                                                             #
+#    Cpu mode     =  arm                                                      #
+#    Endian       =  little                                                   #
+#    Source file  =  D:\S2Prog\TXU\src\RTOSInit_TXU.c                         #
+#    Command line =  D:\S2Prog\TXU\src\RTOSInit_TXU.c --fpu=None -D           #
+#                    OS_LIBMODE_D -D CPU_S3C2410 -D OS_RAMVECT=0 -D           #
+#                    OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__ -D   #
+#                    WATCHDOG=1 -lC D:\S2Prog\TXU\TargetDebug\List\ -o        #
+#                    D:\S2Prog\TXU\TargetDebug\Obj\ --no_cse --no_unroll      #
+#                    --no_inline --no_code_motion --no_tbaa --no_clustering   #
+#                    --no_scheduling --debug --endian=little --cpu=ARM920T    #
+#                    -e --enable_multibytes --dlib_config "C:\Program         #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.0\ARM\INC\DLib_Config_Full.h" -I                       #
+#                    D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I      #
+#                    D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\ -I    #
+#                    D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC\ -I    #
+#                    D:\S2Prog\TXU\..\SHARED\SRC\ -I                          #
+#                    D:\S2Prog\TXU\..\SHARED\LZO\minilzo.108\ -I "C:\Program  #
+#                    Files\IAR Systems\Embedded Workbench                     #
+#                    5.0\ARM\src\lib\dlib\" -I "C:\Program Files\IAR          #
+#                    Systems\Embedded Workbench 5.0\ARM\INC\" --interwork     #
+#                    --cpu_mode arm -On                                       #
+#    List file    =  D:\S2Prog\TXU\TargetDebug\List\RTOSInit_TXU.lst          #
+#    Object file  =  D:\S2Prog\TXU\TargetDebug\Obj\RTOSInit_TXU.o             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+D:\S2Prog\TXU\src\RTOSInit_TXU.c
+      1          /*********************************************************************
+      2          *                SEGGER MICROCONTROLLER SYSTEME GmbH                 *
+      3          *        Solutions for real time microcontroller applications        *
+      4          **********************************************************************
+      5          
+      6          File        : RTOSInit.c
+      7          Purpose     : Initializes and handles the hardware fr embOS as far
+      8          				as required by embOS.
+      9          				Feel free to modify this file acc. to your
+     10          				target system.
+     11          ---------------------------END-OF-HEADER------------------------------
+     12          */
+     13          
+     14          /*
+     15          	Please note:
+     16          	We do automatic release tests for embOS. These tests are done with the
+     17          	CPU_KS32C50100. You will find drivers for additional CPUs, which are used
+     18          	by our customers. These drivers have also been   tested at least one time,
+     19          	but they are not part of our periodic automatic release tests. Therefore
+     20          	it might happen, that you encounter a problem with these additional drivers.
+     21          */
+     22          
+     23          #include "RTOS.H"
+     24          #include "2410addr.h"
+     25          #include "2410lib.h"
+     26          #include "ANPRO10Const.h"
+     27          #include "TSNConstants.h"
+     28          #include "Def.h"
+     29          #include <time.h>
+     30          #include "FixedVariables.h"
+     31          
+     32          extern short CurrentDeviceId;
+     33          
+
+   \                                 In section .bss, align 4
+     34          U16  TXUADData[8];
+   \                     TXUADData:
+   \   00000000                      DS8 16
+
+   \                                 In section .bss, align 1
+     35          U8    ADChannel = 0 ;
+   \                     ADChannel:
+   \   00000000                      DS8 1
+     36          
+
+   \                                 In section .bss, align 2
+     37          U16   Inc1CntUp   =0;
+   \                     Inc1CntUp:
+   \   00000000                      DS8 2
+
+   \                                 In section .bss, align 2
+     38          U16   Inc1CntDown =0;
+   \                     Inc1CntDown:
+   \   00000000                      DS8 2
+
+   \                                 In section .bss, align 2
+     39          U16   Inc2CntUp   =0;
+   \                     Inc2CntUp:
+   \   00000000                      DS8 2
+
+   \                                 In section .bss, align 2
+     40          U16   Inc2CntDown =0;
+   \                     Inc2CntDown:
+   \   00000000                      DS8 2
+     41          
+     42          
+     43          typedef struct {
+     44          	unsigned EnableStart:1;
+     45          	unsigned ReadStart:1;
+     46          	unsigned StdBM:1;
+     47          	unsigned SelMux:3;
+     48          	unsigned PrScVl:8;
+     49          	unsigned PrScEn:1;
+     50          	unsigned ECFlg:1;
+     51          	//unsigned Dummy:16;
+     52          }ADCConStruct;
+     53          
+
+   \                                 In section .bss, align 4
+     54          unsigned KbdIntCnt = 0;
+   \                     KbdIntCnt:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+     55          unsigned ADIntCnt = 0;
+   \                     ADIntCnt:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 1
+     56          unsigned char TouchKeyPressed = 0;					//status for the touch key
+   \                     TouchKeyPressed:
+   \   00000000                      DS8 1
+
+   \                                 In section .data, align 4
+     57          ADCConStruct *ADCCon = (ADCConStruct*)&rADCCON;
+   \                     ADCCon:
+   \   00000000   00000058           DC32 58000000H
+     58          
+     59          extern void HandleUARTInterrupt(int Port);
+     60          //#ifndef ANBOOTLOADER
+     61          extern OS_TASK *ReadTouchKey;								/* Task control blocks */
+     62          //#endif
+     63          
+     64          
+     65          void OS_USER_irq_func(void);
+     66          
+     67          /*
+     68          **********************************************************************
+     69          *
+     70          *                    Configuration
+     71          *
+     72          **********************************************************************
+     73          */
+     74          
+     75          /* Select UART for embOSView, set baudrate,
+     76          	 define clock frequency for CPU used
+     77          
+     78          	 If you do not want (or can not due to hardware limitations) to dedicate
+     79          	 a UART to embOSView, please define OS_UART to -1
+     80          */
+     81          
+     82          #ifndef CPU_S3C2410
+     83          //#error "This file is for S3C2410 CPU"
+     84          #endif
+     85          
+     86          
+     87          /*********************************************************************
+     88          *
+     89          *         Non HW dependent configuration defaults
+     90          *
+     91          **********************************************************************
+     92          */
+     93          
+     94          #ifndef OS_TICK_FREQ
+     95          	#define OS_TICK_FREQ 1000
+     96          #endif
+     97          
+     98          #ifndef USE_CACHE
+     99          	#define USE_CACHE 1   /* 0: No chache */
+    100          #endif
+    101          
+    102          
+    103          
+    104          #ifndef OS_BAUDRATE
+    105          	#define OS_BAUDRATE 38400
+    106          #endif
+    107          
+    108          #ifndef OS_RAMVECT
+    109          	#define OS_RAMVECT 0
+    110          #endif
+    111          
+    112          
+    113          
+    114          #define TIMER_PRESCALE0  1              /* prescaler for timer frequency */
+    115          #define TIMER_PRESCALE1  5            /* prescaler for timer frequency */
+    116          #define TIMER_RELOAD       (OS_FSYS/8/(TIMER_PRESCALE0+1)/OS_TICK_FREQ)
+    117          #define TIMER0_START  ( ( 1 << 3 ) | 1 ) // Reload and start
+    118          #define TIMER0_UPDATE ( ( 1 << 1 ) )
+    119          
+    120          
+    121          #define TIMER2_START  ( ( 0 << 15 ) | (1 << 12 )) // One shot and start
+    122          #define TIMER2_UPDATE ( ( 1 << 13 ) )
+    123          #define TIMER3_START  ( ( 0 << 19 ) | (1 << 16 )) // One shot and start
+    124          #define TIMER3_UPDATE ( ( 1 << 17 ) )
+    125          
+    126          /*
+    127          **********************************************************************
+    128          *
+    129          *                    OS_InitHW
+    130          *
+    131          **********************************************************************
+    132          
+    133          Initialize the hardware required for the OS to run. This will work
+    134          on any target hardware, but may have to be tailored a little
+    135          (regarding the clock frequency). Of course the same holds true
+    136          if for some reason you choose to use an other timer.
+    137          */
+    138          
+
+   \                                 In section .text, align 4, keep-with-next
+    139          void OS_InitHW(void) {
+   \                     OS_InitHW:
+   \   00000000   00502DE9           PUSH     {R12,LR}
+    140          	rINTMSK    = 0xffffffff;	 // Mask timer interrupt
+   \   00000004   0800A0E3           MOV      R0,#+8
+   \   00000008   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000000C   0010E0E3           MVN      R1,#+0
+   \   00000010   001080E5           STR      R1,[R0, #+0]
+    141          	rINTSUBMSK = 0x7ff;
+   \   00000014   1C00A0E3           MOV      R0,#+28
+   \   00000018   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000001C   FF10A0E3           MOV      R1,#+255
+   \   00000020   701E81E3           ORR      R1,R1,#0x700
+   \   00000024   001080E5           STR      R1,[R0, #+0]
+    142          	rSUBSRCPND = 0;
+   \   00000028   1800A0E3           MOV      R0,#+24
+   \   0000002C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000030   0010A0E3           MOV      R1,#+0
+   \   00000034   001080E5           STR      R1,[R0, #+0]
+    143          
+    144          
+    145          
+    146          
+    147          #if OS_RAMVECT
+    148          	{
+    149          		unsigned int vec;
+    150          		unsigned int *vector;
+    151          		extern void OS_IRQ_SERVICE(void);
+    152          		OS_DI();
+    153          		vector = (unsigned int*) 0x18;
+    154          		vec = (((unsigned int)&OS_IRQ_SERVICE - (unsigned int)vector - 8) >> 2);
+    155          		vec |= 0xea000000; /* add opcode for B instruction */
+    156          		*vector = vec;
+    157          		OS_EI();
+    158          	}
+    159          #endif
+    160          
+    161          
+    162          
+    163          	rTCFG0  = TIMER_PRESCALE0 | ( TIMER_PRESCALE1 << 8 ) | ( 0 << 16 );
+   \   00000038   5104A0E3           MOV      R0,#+1358954496
+   \   0000003C   0110A0E3           MOV      R1,#+1
+   \   00000040   501E81E3           ORR      R1,R1,#0x500
+   \   00000044   001080E5           STR      R1,[R0, #+0]
+    164          	rTCNTB0 = TIMER_RELOAD;
+   \   00000048   0C00A0E3           MOV      R0,#+12
+   \   0000004C   510480E3           ORR      R0,R0,#0x51000000
+   \   00000050   F210A0E3           MOV      R1,#+242
+   \   00000054   AC1D81E3           ORR      R1,R1,#0x2B00
+   \   00000058   001080E5           STR      R1,[R0, #+0]
+    165          	rTCNTB2 = 0xFFFF;
+   \   0000005C   2400A0E3           MOV      R0,#+36
+   \   00000060   510480E3           ORR      R0,R0,#0x51000000
+   \   00000064   FF10A0E3           MOV      R1,#+255
+   \   00000068   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   0000006C   001080E5           STR      R1,[R0, #+0]
+    166          	rTCMPB2 = 0xFFFF;
+   \   00000070   2800A0E3           MOV      R0,#+40
+   \   00000074   510480E3           ORR      R0,R0,#0x51000000
+   \   00000078   FF10A0E3           MOV      R1,#+255
+   \   0000007C   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   00000080   001080E5           STR      R1,[R0, #+0]
+    167          	rTCNTB3 = 0xFFFF;
+   \   00000084   3000A0E3           MOV      R0,#+48
+   \   00000088   510480E3           ORR      R0,R0,#0x51000000
+   \   0000008C   FF10A0E3           MOV      R1,#+255
+   \   00000090   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   00000094   001080E5           STR      R1,[R0, #+0]
+    168          	rTCMPB3 = 0xFFFF;
+   \   00000098   3400A0E3           MOV      R0,#+52
+   \   0000009C   510480E3           ORR      R0,R0,#0x51000000
+   \   000000A0   FF10A0E3           MOV      R1,#+255
+   \   000000A4   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   000000A8   001080E5           STR      R1,[R0, #+0]
+    169          	//rTCMPB0 = TIMER_RELOAD;
+    170          	switch ( CurrentDeviceId ) {
+   \   000000AC   90019FE5           LDR      R0,??OS_InitHW_1  ;; CurrentDeviceId
+   \   000000B0   F000D0E1           LDRSH    R0,[R0, #+0]
+   \   000000B4   200050E3           CMP      R0,#+32
+   \   000000B8   0200000A           BEQ      ??OS_InitHW_2
+   \   000000BC   300050E3           CMP      R0,#+48
+   \   000000C0   0B00000A           BEQ      ??OS_InitHW_3
+   \   000000C4   120000EA           B        ??OS_InitHW_4
+    171          		case DEVICE_TCU:	// TCU
+    172          			rTCON   = TIMER0_UPDATE | TIMER2_UPDATE | TIMER3_UPDATE;
+   \                     ??OS_InitHW_2:
+   \   000000C8   0800A0E3           MOV      R0,#+8
+   \   000000CC   510480E3           ORR      R0,R0,#0x51000000
+   \   000000D0   0210A0E3           MOV      R1,#+2
+   \   000000D4   881B81E3           ORR      R1,R1,#0x22000
+   \   000000D8   001080E5           STR      R1,[R0, #+0]
+    173          			rTCON   = TIMER0_START | TIMER2_START | TIMER3_START;	// Start timer 0,2,3.  0 shall be in reload mode
+   \   000000DC   0800A0E3           MOV      R0,#+8
+   \   000000E0   510480E3           ORR      R0,R0,#0x51000000
+   \   000000E4   0910A0E3           MOV      R1,#+9
+   \   000000E8   441B81E3           ORR      R1,R1,#0x11000
+   \   000000EC   001080E5           STR      R1,[R0, #+0]
+   \   000000F0   070000EA           B        ??OS_InitHW_4
+    174          			break;
+    175          		case DEVICE_TDU:	// TDU
+    176          			rTCON   = TIMER0_UPDATE;
+   \                     ??OS_InitHW_3:
+   \   000000F4   0800A0E3           MOV      R0,#+8
+   \   000000F8   510480E3           ORR      R0,R0,#0x51000000
+   \   000000FC   0210A0E3           MOV      R1,#+2
+   \   00000100   001080E5           STR      R1,[R0, #+0]
+    177          			rTCON   = TIMER0_START;	// Start timer 0 in reload mode
+   \   00000104   0800A0E3           MOV      R0,#+8
+   \   00000108   510480E3           ORR      R0,R0,#0x51000000
+   \   0000010C   0910A0E3           MOV      R1,#+9
+   \   00000110   001080E5           STR      R1,[R0, #+0]
+    178          			break;
+    179          	}
+    180          
+    181          
+    182          	rINTPND = 0x00000000;	 /* Clear pending interrupts */
+   \                     ??OS_InitHW_4:
+   \   00000114   1000A0E3           MOV      R0,#+16
+   \   00000118   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000011C   0010A0E3           MOV      R1,#+0
+   \   00000120   001080E5           STR      R1,[R0, #+0]
+    183          
+    184          
+    185          	//*((unsigned*)0x1c) = (unsigned)OS_fiq_handler;                   //Timer0 FIQ interrupt
+    186          
+    187          	//*((unsigned*)0x1c) |= 0xea000000; /* add opcode for B instruction */
+    188          	rINTMOD = 0x00000000;
+   \   00000124   0400A0E3           MOV      R0,#+4
+   \   00000128   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000012C   0010A0E3           MOV      R1,#+0
+   \   00000130   001080E5           STR      R1,[R0, #+0]
+    189          	//rINTMOD |= BIT_TIMER0;
+    190          	rINTMSK &= ~(BIT_TIMER0);	// Mask timer interrupt
+   \   00000134   0800A0E3           MOV      R0,#+8
+   \   00000138   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000013C   000090E5           LDR      R0,[R0, #+0]
+   \   00000140   400ED0E3           BICS     R0,R0,#0x400
+   \   00000144   0810A0E3           MOV      R1,#+8
+   \   00000148   4A1481E3           ORR      R1,R1,#0x4A000000
+   \   0000014C   000081E5           STR      R0,[R1, #+0]
+    191          
+    192          	// Start con to embOSView
+    193          	OS_COM_Init();
+   \   00000150   ........           BL       OS_COM_Init
+    194          	// start AD for touchscreen //AStmark ADU/TCU must be checked for int setup AD/touch
+    195          	//rADCDLY=(50000);	// ADC Start or Interval Delay
+    196          	rADCDLY= 50000;	// ADC Start or Interval Delay
+   \   00000154   0800A0E3           MOV      R0,#+8
+   \   00000158   580480E3           ORR      R0,R0,#0x58000000
+   \   0000015C   5010A0E3           MOV      R1,#+80
+   \   00000160   C31C81E3           ORR      R1,R1,#0xC300
+   \   00000164   001080E5           STR      R1,[R0, #+0]
+    197          	// Enable Prescaler,Prescaler,AIN5/7 fix,Normal,Disable read start,No operation
+    198          	rADCTSC = (0<<8)|(1<<7)|(1<<6)|(0<<5)|(1<<4)|(0<<3)|(0<<2)|3;//Original
+   \   00000168   0400A0E3           MOV      R0,#+4
+   \   0000016C   580480E3           ORR      R0,R0,#0x58000000
+   \   00000170   D310A0E3           MOV      R1,#+211
+   \   00000174   001080E5           STR      R1,[R0, #+0]
+    199          	rADCCON = (1<<14)|(255<<6)|(0<<3)|(0<<2)|(0<<1)|(1); // Was befor rADCTSC
+   \   00000178   5804A0E3           MOV      R0,#+1476395008
+   \   0000017C   C110A0E3           MOV      R1,#+193
+   \   00000180   7F1C81E3           ORR      R1,R1,#0x7F00
+   \   00000184   001080E5           STR      R1,[R0, #+0]
+    200          
+    201          
+    202          	// Down,YM:GND,YP:AIN5,XM:Hi-z,XP:AIN7,XP pullup En,Normal,Waiting for interrupt mode
+    203          	//pISR_ADC=(unsigned)Adc_or_TsAuto;
+    204          	rINTMSK &= ~(BIT_ADC);
+   \   00000188   0800A0E3           MOV      R0,#+8
+   \   0000018C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000190   000090E5           LDR      R0,[R0, #+0]
+   \   00000194   8000B0E1           LSLS     R0,R0,#+1
+   \   00000198   A000B0E1           LSRS     R0,R0,#+1
+   \   0000019C   0810A0E3           MOV      R1,#+8
+   \   000001A0   4A1481E3           ORR      R1,R1,#0x4A000000
+   \   000001A4   000081E5           STR      R0,[R1, #+0]
+    205          	switch ( GlobalDeviceHWId ) {
+   \   000001A8   98009FE5           LDR      R0,??OS_InitHW_1+0x4  ;; GlobalDeviceHWId
+   \   000001AC   F000D0E1           LDRSH    R0,[R0, #+0]
+   \   000001B0   030050E3           CMP      R0,#+3
+   \   000001B4   1200008A           BHI      ??OS_InitHW_5
+   \   000001B8   04108FE2           ADR      R1,??OS_InitHW_0
+   \   000001BC   0010D1E7           LDRB     R1,[R1, R0]
+   \   000001C0   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??OS_InitHW_0:
+   \   000001C4   08080000           DC8      +8,+8,+0,+0
+    206          		case TDU_R1:
+    207          		case TDU_R2:
+    208          			rINTSUBMSK &= ~(BIT_SUB_TC | BIT_SUB_ADC);
+   \                     ??OS_InitHW_6:
+   \   000001C8   1C00A0E3           MOV      R0,#+28
+   \   000001CC   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000001D0   000090E5           LDR      R0,[R0, #+0]
+   \   000001D4   600ED0E3           BICS     R0,R0,#0x600
+   \   000001D8   1C10A0E3           MOV      R1,#+28
+   \   000001DC   4A1481E3           ORR      R1,R1,#0x4A000000
+   \   000001E0   000081E5           STR      R0,[R1, #+0]
+   \   000001E4   060000EA           B        ??OS_InitHW_5
+    209          			break;
+    210          		case TCU_R1:
+    211          		case TCU_R2:
+    212          			rINTSUBMSK &= ~BIT_SUB_ADC;
+   \                     ??OS_InitHW_7:
+   \   000001E8   1C00A0E3           MOV      R0,#+28
+   \   000001EC   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000001F0   000090E5           LDR      R0,[R0, #+0]
+   \   000001F4   400ED0E3           BICS     R0,R0,#0x400
+   \   000001F8   1C10A0E3           MOV      R1,#+28
+   \   000001FC   4A1481E3           ORR      R1,R1,#0x4A000000
+   \   00000200   000081E5           STR      R0,[R1, #+0]
+    213          	}
+    214          
+    215          	rINTMSK &= ~(BIT_EINT4_7 | BIT_EINT8_23);
+   \                     ??OS_InitHW_5:
+   \   00000204   0800A0E3           MOV      R0,#+8
+   \   00000208   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000020C   000090E5           LDR      R0,[R0, #+0]
+   \   00000210   3000D0E3           BICS     R0,R0,#0x30
+   \   00000214   0810A0E3           MOV      R1,#+8
+   \   00000218   4A1481E3           ORR      R1,R1,#0x4A000000
+   \   0000021C   000081E5           STR      R0,[R1, #+0]
+    216          	rEINTMASK &=  ~(BIT_SUB_EINT5 | BIT_SUB_EINT6 | BIT_SUB_EINT7 | BIT_SUB_EINT8 );
+   \   00000220   A400A0E3           MOV      R0,#+164
+   \   00000224   560480E3           ORR      R0,R0,#0x56000000
+   \   00000228   000090E5           LDR      R0,[R0, #+0]
+   \   0000022C   780FD0E3           BICS     R0,R0,#0x1E0
+   \   00000230   A410A0E3           MOV      R1,#+164
+   \   00000234   561481E3           ORR      R1,R1,#0x56000000
+   \   00000238   000081E5           STR      R0,[R1, #+0]
+    217          
+    218          }
+   \   0000023C   0140BDE8           POP      {R0,LR}
+   \   00000240   1EFF2FE1           BX       LR               ;; return
+   \                     ??OS_InitHW_1:
+   \   00000244   ........           DC32     CurrentDeviceId
+   \   00000248   ........           DC32     GlobalDeviceHWId
+    219          
+    220          
+    221          
+    222          /*
+    223          **********************************************************************
+    224          *
+    225          *                     Idle task  (OS_Idle)
+    226          *
+    227          **********************************************************************
+    228          
+    229           Please note:
+    230           This is basically the "core" of the idle task.
+    231           This core loop can be changed, but:
+    232           The idle task does not have a stack of its own, therefor no
+    233           functionality should be implemented that relies on the stack
+    234           to be preserved. However, a simple program loop can be programmed
+    235           (like toggeling an output or incrementing a counter)
+    236          */
+    237          
+
+   \                                 In section .text, align 4, keep-with-next
+    238          void OS_Idle(void) {	 // Idle task: No task is ready to exec
+    239          	while ( 1 ) {
+   \                     OS_Idle:
+   \                     ??OS_Idle_0:
+   \   00000000   FEFFFFEA           B        ??OS_Idle_0
+    240          	}
+    241          }
+    242          
+    243          /*
+    244          **********************************************************************
+    245          *
+    246          *                    Get time [cycles]
+    247          *
+    248          **********************************************************************
+    249          
+    250          	This routine is required for task-info via embOS Viewer.
+    251          	It returns the system time in clock cycles.
+    252          */
+    253          
+    254          #define HW_TIMER rTCNTB0
+    255          #define HW_TIMER_INTERRUPT_PENDING() (rINTPND & BIT_TIMER0)
+    256          
+
+   \                                 In section .text, align 4, keep-with-next
+    257          OS_U32 OS_GetTime_Cycles(void) {
+    258          	unsigned int t_cnt = TIMER_RELOAD - HW_TIMER;
+   \                     OS_GetTime_Cycles:
+   \   00000000   F220A0E3           MOV      R2,#+242
+   \   00000004   AC2D82E3           ORR      R2,R2,#0x2B00
+   \   00000008   0C30A0E3           MOV      R3,#+12
+   \   0000000C   513483E3           ORR      R3,R3,#0x51000000
+   \   00000010   003093E5           LDR      R3,[R3, #+0]
+   \   00000014   032052E0           SUBS     R2,R2,R3
+   \   00000018   0200B0E1           MOVS     R0,R2
+    259          	OS_U32 time = OS_Time;
+   \   0000001C   48209FE5           LDR      R2,??OS_GetTime_Cycles_0  ;; OS_Time
+   \   00000020   002092E5           LDR      R2,[R2, #+0]
+   \   00000024   0210B0E1           MOVS     R1,R2
+    260          	if ( HW_TIMER_INTERRUPT_PENDING() ) {
+   \   00000028   1020A0E3           MOV      R2,#+16
+   \   0000002C   4A2482E3           ORR      R2,R2,#0x4A000000
+   \   00000030   002092E5           LDR      R2,[R2, #+0]
+   \   00000034   400E12E3           TST      R2,#0x400
+   \   00000038   0700000A           BEQ      ??OS_GetTime_Cycles_1
+    261          		t_cnt = TIMER_RELOAD - HW_TIMER;
+   \   0000003C   F220A0E3           MOV      R2,#+242
+   \   00000040   AC2D82E3           ORR      R2,R2,#0x2B00
+   \   00000044   0C30A0E3           MOV      R3,#+12
+   \   00000048   513483E3           ORR      R3,R3,#0x51000000
+   \   0000004C   003093E5           LDR      R3,[R3, #+0]
+   \   00000050   032052E0           SUBS     R2,R2,R3
+   \   00000054   0200B0E1           MOVS     R0,R2
+    262          		time++;
+   \   00000058   011091E2           ADDS     R1,R1,#+1
+    263          	}
+    264          	return(OS_FSYS/TIMER_PRESCALE0/OS_TICK_FREQ)*time  + t_cnt;
+   \                     ??OS_GetTime_Cycles_1:
+   \   0000005C   AC2BA0E3           MOV      R2,#+176128
+   \   00000060   F22E82E3           ORR      R2,R2,#0xF20
+   \   00000064   920120E0           MLA      R0,R2,R1,R0
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+   \                     ??OS_GetTime_Cycles_0:
+   \   0000006C   ........           DC32     OS_Time
+    265          }
+    266          
+    267          
+    268          /*
+    269          **********************************************************************
+    270          *
+    271          *                    OS_ConvertCycles2us
+    272          *
+    273          **********************************************************************
+    274          
+    275          Purpose:
+    276          	 Convert Cycles into micro seconds. (For profiling only)
+    277          
+    278          	 If you have a clock frequency which is not a multiple of 1 MHz,
+    279          	 you may have to modify this routine in order to get proper
+    280          	 diagonstics.
+    281          Please note:
+    282          	 This routine is required for profiling only.
+    283          	 It does not affect operation of the OS.
+    284          */
+    285          
+
+   \                                 In section .text, align 4, keep-with-next
+    286          OS_U32 OS_ConvertCycles2us(OS_U32 Cycles) {
+   \                     OS_ConvertCycles2us:
+   \   00000000   00502DE9           PUSH     {R12,LR}
+    287          	Cycles *= TIMER_PRESCALE0;				/* eliminate effect of prescaler */
+    288          	return(Cycles/(OS_FSYS/1000000));
+   \   00000004   B410A0E3           MOV      R1,#+180
+   \   00000008   ........           BL       __aeabi_uidivmod
+   \   0000000C   0240BDE8           POP      {R1,LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    289          }
+    290          
+    291          /*********************************************************************
+    292          *
+    293          *          Communication (UART)
+    294          *
+    295          **********************************************************************
+    296          */
+    297          
+    298          #if (OS_UART!=-1)
+    299          	#if (OS_UART==1)
+    300          		#define INTOFF_UART      INTOFF_UART1
+    301          		#define UART_PENDING     BIT_UART1
+    302          		#define UART_SUBMASK     (BIT_SUB_TXD1 | BIT_SUB_RXD1)
+    303          		#define UART_SUB_RX      BIT_SUB_RXD1
+    304          		#define UART_SUB_TX      BIT_SUB_TXD1
+    305          		#define UART_STATUS      rUTRSTAT1
+    306          		#define UART_RXBUF       rURXH1
+    307          		#define UART_TXBUF       rUTXH1
+    308          		#define UART_LINECON     rULCON1
+    309          		#define UART_CONTROL     rUCON1
+    310          		#define UART_BAUD        rUBRDIV1
+    311          	#elif (OS_UART==0)
+    312          		#define INTOFF_UART      INTOFF_UART0
+    313          		#define UART_PENDING     BIT_UART0
+    314          		#define UART_SUBMASK     (BIT_SUB_TXD0 | BIT_SUB_RXD0)
+    315          		#define UART_SUB_RX      BIT_SUB_RXD0
+    316          		#define UART_SUB_TX      BIT_SUB_TXD0
+    317          		#define UART_STATUS      rUTRSTAT0
+    318          		#define UART_RXBUF       rURXH0
+    319          		#define UART_TXBUF       rUTXH0
+    320          		#define UART_LINECON     rULCON0
+    321          		#define UART_CONTROL     rUCON0
+    322          		#define UART_BAUD        rUBRDIV0
+    323          	#endif
+    324          
+    325          void OS_COM_Init(void) {
+    326          	UART_CONTROL = 0x00;
+    327          	UART_LINECON = 0x03;
+    328          	UART_CONTROL = 0x85; // RxTimeout and Interrupt request or polling mode
+    329          	UART_BAUD = (OS_FSYS/4)/(16*OS_BAUDRATE)-1 ;
+    330          	rINTMSK    &= ~UART_PENDING;
+    331          	rINTSUBMSK &= ~UART_SUBMASK;
+    332          }
+    333          
+    334          void OS_ISR_rx(void) {
+    335          	unsigned UartStatus = UART_STATUS;
+    336          	if ( UartStatus & 0x01 ) {
+    337          		unsigned char RxBuf = UART_RXBUF;
+    338          		OS_OnRx(RxBuf);
+    339          		//UART_TXBUF = RxBuf;
+    340          	}
+    341          }
+    342          
+    343          void OS_ISR_tx(void) {
+    344          	OS_OnTx();
+    345          }
+    346          
+    347          void OS_COM_Send1(OS_U8 c) {
+    348          	UART_TXBUF = c;
+    349          }
+    350          
+    351          #else  /* UART handlers not defined, using dummys */
+    352          
+
+   \                                 In section .text, align 4, keep-with-next
+    353          void OS_COM_Init(void) {}
+   \                     OS_COM_Init:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In section .text, align 4, keep-with-next
+    354          void OS_COM_Send1(OS_U8 c) {
+   \                     OS_COM_Send1:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    355          	OS_USEPARA(c);
+    356          	OS_COM_ClearTxActive();	 /* let OS know that transmitter is not busy */
+   \   00000008   ........           BL       OS_COM_ClearTxActive
+    357          }
+   \   0000000C   1040BDE8           POP      {R4,LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    358          
+    359          #endif
+    360          
+
+   \                                 In section .text, align 4, keep-with-next
+    361          __swi __arm int SWI_Handler(int a, int b)
+    362          {
+   \                     SWI_Handler:
+   \   00000000   0020B0E1           MOVS     R2,R0
+    363          	LastErrAddress = 0;
+   \   00000004   ........           LDR      R0,??DataTable6  ;; 0x31fff048
+   \   00000008   0030A0E3           MOV      R3,#+0
+   \   0000000C   003080E5           STR      R3,[R0, #+0]
+    364          	asm("STR      R2,[R0, #+0]");
+   \   00000010   002080E5           STR      R2,[R0, #+0] 
+    365          	LastOSError = 0xf1;
+   \   00000014   ........           LDR      R0,??DataTable7  ;; 0x31fff010
+   \   00000018   F130A0E3           MOV      R3,#+241
+   \   0000001C   003080E5           STR      R3,[R0, #+0]
+    366          	//asm ("MOVS pc, lr");
+    367          	return 0;
+   \   00000020   0000A0E3           MOV      R0,#+0
+   \   00000024   0EF0B0E1           MOVS     PC,LR            ;; return
+   \   00000028                      REQUIRE LastOSError
+   \   00000028                      REQUIRE LastErrAddress
+    368          }
+
+   \                                 In section .text, align 4, keep-with-next
+    369          __irq __arm void Undefined_Handler(void)
+    370          {
+   \                     Undefined_Handler:
+   \   00000000   03002DE9           PUSH     {R0,R1}
+    371          	LastErrAddress = 0;
+   \   00000004   ........           LDR      R0,??DataTable6  ;; 0x31fff048
+   \   00000008   0010A0E3           MOV      R1,#+0
+   \   0000000C   001080E5           STR      R1,[R0, #+0]
+    372                  asm("STR      R2,[R0, #+0]");
+   \   00000010   002080E5           STR      R2,[R0, #+0] 
+    373          	LastOSError    = 0xf2;
+   \   00000014   ........           LDR      R0,??DataTable7  ;; 0x31fff010
+   \   00000018   F210A0E3           MOV      R1,#+242
+   \   0000001C   001080E5           STR      R1,[R0, #+0]
+    374          	asm ("MOVS pc, lr");
+   \   00000020   0EF0B0E1           MOVS pc, lr      
+    375          }
+   \   00000024   0300BDE8           POP      {R0,R1}
+   \   00000028   04F05EE2           SUBS     PC,LR,#+4        ;; return
+   \   0000002C                      REQUIRE LastOSError
+   \   0000002C                      REQUIRE LastErrAddress
+
+   \                                 In section .text, align 4, keep-with-next
+    376          __irq __arm void Prefetch_Handler(void)
+    377          {
+   \                     Prefetch_Handler:
+   \   00000000   03002DE9           PUSH     {R0,R1}
+    378          	LastErrAddress = 0;
+   \   00000004   ........           LDR      R0,??DataTable6  ;; 0x31fff048
+   \   00000008   0010A0E3           MOV      R1,#+0
+   \   0000000C   001080E5           STR      R1,[R0, #+0]
+    379          	asm("STR      R2,[R0, #+0]");
+   \   00000010   002080E5           STR      R2,[R0, #+0] 
+    380          	LastOSError    = 0xf3;
+   \   00000014   ........           LDR      R0,??DataTable7  ;; 0x31fff010
+   \   00000018   F310A0E3           MOV      R1,#+243
+   \   0000001C   001080E5           STR      R1,[R0, #+0]
+    381          	asm ("SUBS pc,lr,#4");
+   \   00000020   04F05EE2           SUBS pc,lr,#4    
+    382          }
+   \   00000024   0300BDE8           POP      {R0,R1}
+   \   00000028   04F05EE2           SUBS     PC,LR,#+4        ;; return
+   \   0000002C                      REQUIRE LastOSError
+   \   0000002C                      REQUIRE LastErrAddress
+    383          
+
+   \                                 In section .text, align 4, keep-with-next
+    384          __irq __arm void Abort_Handler(void)
+    385          {
+   \                     Abort_Handler:
+   \   00000000   03002DE9           PUSH     {R0,R1}
+    386          	LastErrAddress = 0;
+   \   00000004   ........           LDR      R0,??DataTable6  ;; 0x31fff048
+   \   00000008   0010A0E3           MOV      R1,#+0
+   \   0000000C   001080E5           STR      R1,[R0, #+0]
+    387          	asm("STR      R2,[R0, #+0]");
+   \   00000010   002080E5           STR      R2,[R0, #+0] 
+    388          	LastOSError = 0xf4;
+   \   00000014   ........           LDR      R0,??DataTable7  ;; 0x31fff010
+   \   00000018   F410A0E3           MOV      R1,#+244
+   \   0000001C   001080E5           STR      R1,[R0, #+0]
+    389          	asm ("SUBS pc,lr,#8");
+   \   00000020   08F05EE2           SUBS pc,lr,#8    
+    390          }
+   \   00000024   0300BDE8           POP      {R0,R1}
+   \   00000028   04F05EE2           SUBS     PC,LR,#+4        ;; return
+   \   0000002C                      REQUIRE LastOSError
+   \   0000002C                      REQUIRE LastErrAddress
+    391          
+    392          
+
+   \                                 In section .text, align 4, keep-with-next
+    393          __irq __arm void FIQ_Handler(void)
+    394          {
+    395          }
+   \                     FIQ_Handler:
+   \   00000000   04F05EE2           SUBS     PC,LR,#+4        ;; return
+    396          
+    397          
+    398          
+
+   \                                 In section .bss, align 4
+    399          volatile  time_t FastTime   =0;
+   \                     FastTime:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+    400          volatile  time_t CurrentTime=0;
+   \                     CurrentTime:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+    401          volatile  time_t RunningTime=0;
+   \                     RunningTime:
+   \   00000000                      DS8 4
+    402          
+    403          
+    404          
+    405          
+    406          /*
+    407          **********************************************************************
+    408          *
+    409          *                    OS_irq_handler
+    410          *
+    411          **********************************************************************
+    412          
+    413          Purpose:
+    414          	 Detect reason for IRQ and call correspondig service routine.
+    415          
+    416          Please note:
+    417          	 If you allow nesting, bits in __INTPND must be cleared before
+    418          	 calling OS_EnterNestableInterrupt.
+    419          */
+    420          #define rTEST     (*(volatile unsigned *)(0x30000040))
+
+   \                                 In section .bss, align 4
+    421          volatile int IrqCnt = 0;
+   \                     IrqCnt:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+    422          volatile int DefaultIrqCnt = 0;
+   \                     DefaultIrqCnt:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+    423          volatile int InTimerFlag = 0;
+   \                     InTimerFlag:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+    424          volatile int IsDown      = 0;
+   \                     IsDown:
+   \   00000000                      DS8 4
+
+   \                                 In section .bss, align 4
+    425          volatile int TCCnt           = 0;
+   \                     TCCnt:
+   \   00000000                      DS8 4
+
+   \                                 In section .text, align 4, keep-with-next
+    426          void OS_irq_handler(void) {
+   \                     OS_irq_handler:
+   \   00000000   F8402DE9           PUSH     {R3-R7,LR}
+    427          	unsigned IntSource;
+    428          	unsigned IntOffset;
+    429          	OS_EnterInterrupt();
+   \   00000004   D00A9FE5           LDR      R0,??OS_irq_handler_2  ;; OS_InInt
+   \   00000008   0000D0E5           LDRB     R0,[R0, #+0]
+   \   0000000C   010090E2           ADDS     R0,R0,#+1
+   \   00000010   C41A9FE5           LDR      R1,??OS_irq_handler_2  ;; OS_InInt
+   \   00000014   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000018   C00A9FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   0000001C   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000020   010090E2           ADDS     R0,R0,#+1
+   \   00000024   B41A9FE5           LDR      R1,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000028   0000C1E5           STRB     R0,[R1, #+0]
+   \   0000002C   B00A9FE5           LDR      R0,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000030   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000034   010090E2           ADDS     R0,R0,#+1
+   \   00000038   A41A9FE5           LDR      R1,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   0000003C   0000C1E5           STRB     R0,[R1, #+0]
+    430          	IntSource    = rINTPND;
+   \   00000040   1000A0E3           MOV      R0,#+16
+   \   00000044   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000048   000090E5           LDR      R0,[R0, #+0]
+   \   0000004C   0040B0E1           MOVS     R4,R0
+    431          	IntOffset    = rINTOFFSET;
+   \   00000050   1400A0E3           MOV      R0,#+20
+   \   00000054   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000058   000090E5           LDR      R0,[R0, #+0]
+   \   0000005C   0050B0E1           MOVS     R5,R0
+    432          
+    433          	//OS_USER_irq_func();
+    434          
+    435          	IrqCnt++;
+   \   00000060   800A9FE5           LDR      R0,??OS_irq_handler_2+0xC  ;; IrqCnt
+   \   00000064   000090E5           LDR      R0,[R0, #+0]
+   \   00000068   010090E2           ADDS     R0,R0,#+1
+   \   0000006C   741A9FE5           LDR      R1,??OS_irq_handler_2+0xC  ;; IrqCnt
+   \   00000070   000081E5           STR      R0,[R1, #+0]
+    436          	switch ( IntOffset ) {
+   \   00000074   0500B0E1           MOVS     R0,R5
+   \   00000078   1F0050E3           CMP      R0,#+31
+   \   0000007C   5C02008A           BHI      ??OS_irq_handler_3
+   \   00000080   08108FE2           ADR      R1,??OS_irq_handler_0
+   \   00000084   8000A0E1           MOV      R0,R0, LSL #+1
+   \   00000088   B01091E1           LDRH     R1,[R1, R0]
+   \   0000008C   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??OS_irq_handler_0:
+   \   00000090   240231023E02       DC16     +548,+561,+574,+587
+   \              4B02        
+   \   00000098   740074005802       DC16     +116,+116,+600,+600
+   \              5802        
+   \   000000A0   580258023600       DC16     +600,+600,+54,+600
+   \              5802        
+   \   000000A8   580258025802       DC16     +600,+600,+600,+41
+   \              2900        
+   \   000000B0   580258025802       DC16     +600,+600,+600,+600
+   \              5802        
+   \   000000B8   580258025802       DC16     +600,+600,+600,+28
+   \              1C00        
+   \   000000C0   580258025802       DC16     +600,+600,+600,+600
+   \              5802        
+   \   000000C8   0F0058025802       DC16     +15,+600,+600,+314
+   \              3A01        
+    437          #if (OS_UART != 0)
+    438          		case INTOFF_UART0:
+    439          			ClearPending(BIT_UART0);
+   \                     ??OS_irq_handler_4:
+   \   000000D0   4A04A0E3           MOV      R0,#+1241513984
+   \   000000D4   4015A0E3           MOV      R1,#+268435456
+   \   000000D8   001080E5           STR      R1,[R0, #+0]
+   \   000000DC   1000A0E3           MOV      R0,#+16
+   \   000000E0   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000000E4   4015A0E3           MOV      R1,#+268435456
+   \   000000E8   001080E5           STR      R1,[R0, #+0]
+   \   000000EC   1000A0E3           MOV      R0,#+16
+   \   000000F0   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000000F4   006090E5           LDR      R6,[R0, #+0]
+    440          			HandleUARTInterrupt(0);
+   \   000000F8   0000A0E3           MOV      R0,#+0
+   \   000000FC   ........           BL       HandleUARTInterrupt
+   \   00000100   5F0200EA           B        ??OS_irq_handler_5
+    441          			//OS_LeaveInterrupt();
+    442          			//return;
+    443          			break;
+    444          #endif
+    445          #if (OS_UART != 1)
+    446          		case INTOFF_UART1:
+    447          			ClearPending(BIT_UART1);
+   \                     ??OS_irq_handler_6:
+   \   00000104   4A04A0E3           MOV      R0,#+1241513984
+   \   00000108   8018A0E3           MOV      R1,#+8388608
+   \   0000010C   001080E5           STR      R1,[R0, #+0]
+   \   00000110   1000A0E3           MOV      R0,#+16
+   \   00000114   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000118   8018A0E3           MOV      R1,#+8388608
+   \   0000011C   001080E5           STR      R1,[R0, #+0]
+   \   00000120   1000A0E3           MOV      R0,#+16
+   \   00000124   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000128   006090E5           LDR      R6,[R0, #+0]
+    448          			HandleUARTInterrupt(1);
+   \   0000012C   0100A0E3           MOV      R0,#+1
+   \   00000130   ........           BL       HandleUARTInterrupt
+   \   00000134   520200EA           B        ??OS_irq_handler_5
+    449          			//OS_LeaveInterrupt();
+    450          			//return;
+    451          			break;
+    452          #endif
+    453          		case INTOFF_UART2:
+    454          			ClearPending(BIT_UART2);
+   \                     ??OS_irq_handler_7:
+   \   00000138   4A04A0E3           MOV      R0,#+1241513984
+   \   0000013C   801CA0E3           MOV      R1,#+32768
+   \   00000140   001080E5           STR      R1,[R0, #+0]
+   \   00000144   1000A0E3           MOV      R0,#+16
+   \   00000148   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000014C   801CA0E3           MOV      R1,#+32768
+   \   00000150   001080E5           STR      R1,[R0, #+0]
+   \   00000154   1000A0E3           MOV      R0,#+16
+   \   00000158   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000015C   006090E5           LDR      R6,[R0, #+0]
+    455          			HandleUARTInterrupt(2);
+   \   00000160   0200A0E3           MOV      R0,#+2
+   \   00000164   ........           BL       HandleUARTInterrupt
+   \   00000168   450200EA           B        ??OS_irq_handler_5
+    456          			//OS_LeaveInterrupt();
+    457          			//return;
+    458          			break;
+    459          #if ((OS_UART == 0) || (OS_UART == 1))
+    460          		case INTOFF_UART:				// UART for embOSView
+    461          			ClearPending(UART_PENDING);
+    462          			{
+    463          				unsigned IntSubSource = rSUBSRCPND;
+    464          				unsigned InsSubMask   = rINTSUBMSK;
+    465          				if ( IntSubSource & UART_SUB_RX ) {
+    466          					rSUBSRCPND = UART_SUB_RX;
+    467          					OS_ISR_rx();
+    468          				}
+    469          				if ( IntSubSource & UART_SUB_TX ) {
+    470          					rSUBSRCPND = UART_SUB_TX;
+    471          					OS_ISR_tx();
+    472          				}
+    473          			}
+    474          			// OS_LeaveInterruptNoSwitch();
+    475          			// return;
+    476          			OS_LeaveInterrupt();
+    477          			return;
+    478          #endif
+    479          		case INTOFF_TIMER0:				// Timer for OS
+    480          			// Clear interrupt controller service pending bit.
+    481          			ClearPending(BIT_TIMER0);
+   \                     ??OS_irq_handler_8:
+   \   0000016C   4A04A0E3           MOV      R0,#+1241513984
+   \   00000170   401EA0E3           MOV      R1,#+1024
+   \   00000174   001080E5           STR      R1,[R0, #+0]
+   \   00000178   1000A0E3           MOV      R0,#+16
+   \   0000017C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000180   401EA0E3           MOV      R1,#+1024
+   \   00000184   001080E5           STR      R1,[R0, #+0]
+   \   00000188   1000A0E3           MOV      R0,#+16
+   \   0000018C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000190   000090E5           LDR      R0,[R0, #+0]
+    482          			if ( FastTime++ >= 1000 ) {
+   \   00000194   50199FE5           LDR      R1,??OS_irq_handler_2+0x10  ;; FastTime
+   \   00000198   001091E5           LDR      R1,[R1, #+0]
+   \   0000019C   012091E2           ADDS     R2,R1,#+1
+   \   000001A0   44399FE5           LDR      R3,??OS_irq_handler_2+0x10  ;; FastTime
+   \   000001A4   002083E5           STR      R2,[R3, #+0]
+   \   000001A8   FA0F51E3           CMP      R1,#+1000
+   \   000001AC   0C00003A           BCC      ??OS_irq_handler_9
+    483          				FastTime = 0;
+   \   000001B0   34099FE5           LDR      R0,??OS_irq_handler_2+0x10  ;; FastTime
+   \   000001B4   0010A0E3           MOV      R1,#+0
+   \   000001B8   001080E5           STR      R1,[R0, #+0]
+    484          				CurrentTime++;
+   \   000001BC   2C099FE5           LDR      R0,??OS_irq_handler_2+0x14  ;; CurrentTime
+   \   000001C0   000090E5           LDR      R0,[R0, #+0]
+   \   000001C4   010090E2           ADDS     R0,R0,#+1
+   \   000001C8   20199FE5           LDR      R1,??OS_irq_handler_2+0x14  ;; CurrentTime
+   \   000001CC   000081E5           STR      R0,[R1, #+0]
+    485          				RunningTime++;
+   \   000001D0   1C099FE5           LDR      R0,??OS_irq_handler_2+0x18  ;; RunningTime
+   \   000001D4   000090E5           LDR      R0,[R0, #+0]
+   \   000001D8   010090E2           ADDS     R0,R0,#+1
+   \   000001DC   10199FE5           LDR      R1,??OS_irq_handler_2+0x18  ;; RunningTime
+   \   000001E0   000081E5           STR      R0,[R1, #+0]
+    486          			}
+    487          			OS_HandleTick();
+   \                     ??OS_irq_handler_9:
+   \   000001E4   ........           BL       OS_HandleTick
+    488          			OS_LeaveInterrupt();
+   \   000001E8   EC089FE5           LDR      R0,??OS_irq_handler_2  ;; OS_InInt
+   \   000001EC   0000D0E5           LDRB     R0,[R0, #+0]
+   \   000001F0   011050E2           SUBS     R1,R0,#+1
+   \   000001F4   E0289FE5           LDR      R2,??OS_irq_handler_2  ;; OS_InInt
+   \   000001F8   0010C2E5           STRB     R1,[R2, #+0]
+   \   000001FC   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   00000200   000050E3           CMP      R0,#+0
+   \   00000204   0100001A           BNE      ??OS_irq_handler_10
+   \   00000208   9800A0E3           MOV      R0,#+152
+   \   0000020C   ........           BL       OS_Error
+   \                     ??OS_irq_handler_10:
+   \   00000210   CC089FE5           LDR      R0,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000214   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000218   010050E2           SUBS     R0,R0,#+1
+   \   0000021C   C0189FE5           LDR      R1,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000220   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000224   B4089FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000228   0000D0E5           LDRB     R0,[R0, #+0]
+   \   0000022C   010050E3           CMP      R0,#+1
+   \   00000230   0500001A           BNE      ??OS_irq_handler_11
+   \   00000234   BC089FE5           LDR      R0,??OS_irq_handler_2+0x1C  ;; OS_Pending
+   \   00000238   0000D0E5           LDRB     R0,[R0, #+0]
+   \   0000023C   000050E3           CMP      R0,#+0
+   \   00000240   0100000A           BEQ      ??OS_irq_handler_11
+   \   00000244   ........           BL       OS_SwitchFromInt
+   \   00000248   210200EA           B        ??OS_irq_handler_12
+   \                     ??OS_irq_handler_11:
+   \   0000024C   8C089FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000250   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000254   010050E2           SUBS     R0,R0,#+1
+   \   00000258   80189FE5           LDR      R1,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   0000025C   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000260   1B0200EA           B        ??OS_irq_handler_12
+    489          			return;
+    490          		case INTOFF_4_7:
+    491          		case INTOFF_8_23:
+    492          			{
+    493          				U32 BitOffset;
+    494          				U32 IntRequest = rEINTPEND;
+   \                     ??OS_irq_handler_13:
+   \   00000264   A820A0E3           MOV      R2,#+168
+   \   00000268   562482E3           ORR      R2,R2,#0x56000000
+   \   0000026C   002092E5           LDR      R2,[R2, #+0]
+   \   00000270   0210B0E1           MOVS     R1,R2
+    495          				rEINTPEND = IntRequest;
+   \   00000274   A820A0E3           MOV      R2,#+168
+   \   00000278   562482E3           ORR      R2,R2,#0x56000000
+   \   0000027C   001082E5           STR      R1,[R2, #+0]
+    496          
+    497          				for ( BitOffset=4; BitOffset <= 23; BitOffset++ ) {
+   \   00000280   0420A0E3           MOV      R2,#+4
+   \   00000284   0200B0E1           MOVS     R0,R2
+   \                     ??OS_irq_handler_14:
+   \   00000288   180050E3           CMP      R0,#+24
+   \   0000028C   B100002A           BCS      ??OS_irq_handler_15
+    498          					U32 BitMask = (1 << BitOffset) & IntRequest;
+   \   00000290   0130A0E3           MOV      R3,#+1
+   \   00000294   133011E0           ANDS     R3,R1,R3, LSL R0
+   \   00000298   0320B0E1           MOVS     R2,R3
+    499          					if ( BitMask ) {
+   \   0000029C   000052E3           CMP      R2,#+0
+   \   000002A0   AA00000A           BEQ      ??OS_irq_handler_16
+    500          						switch ( BitOffset ) {
+   \   000002A4   0030B0E1           MOVS     R3,R0
+   \   000002A8   053043E2           SUB      R3,R3,#+5
+   \   000002AC   030053E3           CMP      R3,#+3
+   \   000002B0   A600008A           BHI      ??OS_irq_handler_16
+   \   000002B4   04C08FE2           ADR      R12,??OS_irq_handler_1
+   \   000002B8   03C0DCE7           LDRB     R12,[R12, R3]
+   \   000002BC   0CF18FE0           ADD      PC,PC,R12, LSL #+2
+   \                     ??OS_irq_handler_1:
+   \   000002C0   0029527B           DC8      +0,+41,+82,+123
+    501          							case INTOFF_SILENCE:
+    502          								// For external silence
+    503          								break;
+    504          							case INTOFF_IC1_UP  :
+    505          								rTCON   &= ~TIMER2_START;	// Stop timer 2
+   \                     ??OS_irq_handler_17:
+   \   000002C4   0830A0E3           MOV      R3,#+8
+   \   000002C8   513483E3           ORR      R3,R3,#0x51000000
+   \   000002CC   003093E5           LDR      R3,[R3, #+0]
+   \   000002D0   403DD3E3           BICS     R3,R3,#0x1000
+   \   000002D4   08C0A0E3           MOV      R12,#+8
+   \   000002D8   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000002DC   00308CE5           STR      R3,[R12, #+0]
+    506          								Inc1CntUp = 0xffff - rTCNTO2;
+   \   000002E0   FF30A0E3           MOV      R3,#+255
+   \   000002E4   FF3C83E3           ORR      R3,R3,#0xFF00
+   \   000002E8   2CC0A0E3           MOV      R12,#+44
+   \   000002EC   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000002F0   00C09CE5           LDR      R12,[R12, #+0]
+   \   000002F4   0C3053E0           SUBS     R3,R3,R12
+   \   000002F8   FCC79FE5           LDR      R12,??OS_irq_handler_2+0x20  ;; Inc1CntUp
+   \   000002FC   B030CCE1           STRH     R3,[R12, #+0]
+    507          								rTCNTO2   = 0;
+   \   00000300   2C30A0E3           MOV      R3,#+44
+   \   00000304   513483E3           ORR      R3,R3,#0x51000000
+   \   00000308   00C0A0E3           MOV      R12,#+0
+   \   0000030C   00C083E5           STR      R12,[R3, #+0]
+    508          								rTCON   |= TIMER2_UPDATE;
+   \   00000310   0830A0E3           MOV      R3,#+8
+   \   00000314   513483E3           ORR      R3,R3,#0x51000000
+   \   00000318   003093E5           LDR      R3,[R3, #+0]
+   \   0000031C   803D93E3           ORRS     R3,R3,#0x2000
+   \   00000320   08C0A0E3           MOV      R12,#+8
+   \   00000324   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000328   00308CE5           STR      R3,[R12, #+0]
+    509          								rTCON   &= ~TIMER2_UPDATE;
+   \   0000032C   0830A0E3           MOV      R3,#+8
+   \   00000330   513483E3           ORR      R3,R3,#0x51000000
+   \   00000334   003093E5           LDR      R3,[R3, #+0]
+   \   00000338   803DD3E3           BICS     R3,R3,#0x2000
+   \   0000033C   08C0A0E3           MOV      R12,#+8
+   \   00000340   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000344   00308CE5           STR      R3,[R12, #+0]
+    510          								rTCON   |= TIMER2_START;	// Start timer 2
+   \   00000348   0830A0E3           MOV      R3,#+8
+   \   0000034C   513483E3           ORR      R3,R3,#0x51000000
+   \   00000350   003093E5           LDR      R3,[R3, #+0]
+   \   00000354   403D93E3           ORRS     R3,R3,#0x1000
+   \   00000358   08C0A0E3           MOV      R12,#+8
+   \   0000035C   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000360   00308CE5           STR      R3,[R12, #+0]
+   \   00000364   790000EA           B        ??OS_irq_handler_16
+    511          								break;
+    512          							case INTOFF_IC1_DOWN:
+    513          								rTCON   &= ~TIMER2_START;	// Stop timer 2
+   \                     ??OS_irq_handler_18:
+   \   00000368   0830A0E3           MOV      R3,#+8
+   \   0000036C   513483E3           ORR      R3,R3,#0x51000000
+   \   00000370   003093E5           LDR      R3,[R3, #+0]
+   \   00000374   403DD3E3           BICS     R3,R3,#0x1000
+   \   00000378   08C0A0E3           MOV      R12,#+8
+   \   0000037C   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000380   00308CE5           STR      R3,[R12, #+0]
+    514          								Inc1CntDown = 0xffff - rTCNTO2;
+   \   00000384   FF30A0E3           MOV      R3,#+255
+   \   00000388   FF3C83E3           ORR      R3,R3,#0xFF00
+   \   0000038C   2CC0A0E3           MOV      R12,#+44
+   \   00000390   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000394   00C09CE5           LDR      R12,[R12, #+0]
+   \   00000398   0C3053E0           SUBS     R3,R3,R12
+   \   0000039C   5CC79FE5           LDR      R12,??OS_irq_handler_2+0x24  ;; Inc1CntDown
+   \   000003A0   B030CCE1           STRH     R3,[R12, #+0]
+    515          								rTCNTO2 = 0;
+   \   000003A4   2C30A0E3           MOV      R3,#+44
+   \   000003A8   513483E3           ORR      R3,R3,#0x51000000
+   \   000003AC   00C0A0E3           MOV      R12,#+0
+   \   000003B0   00C083E5           STR      R12,[R3, #+0]
+    516          								rTCON   |= TIMER2_UPDATE;
+   \   000003B4   0830A0E3           MOV      R3,#+8
+   \   000003B8   513483E3           ORR      R3,R3,#0x51000000
+   \   000003BC   003093E5           LDR      R3,[R3, #+0]
+   \   000003C0   803D93E3           ORRS     R3,R3,#0x2000
+   \   000003C4   08C0A0E3           MOV      R12,#+8
+   \   000003C8   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000003CC   00308CE5           STR      R3,[R12, #+0]
+    517          								rTCON   &= ~TIMER2_UPDATE;
+   \   000003D0   0830A0E3           MOV      R3,#+8
+   \   000003D4   513483E3           ORR      R3,R3,#0x51000000
+   \   000003D8   003093E5           LDR      R3,[R3, #+0]
+   \   000003DC   803DD3E3           BICS     R3,R3,#0x2000
+   \   000003E0   08C0A0E3           MOV      R12,#+8
+   \   000003E4   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000003E8   00308CE5           STR      R3,[R12, #+0]
+    518          								rTCON   |= TIMER2_START;	// Start timer 2
+   \   000003EC   0830A0E3           MOV      R3,#+8
+   \   000003F0   513483E3           ORR      R3,R3,#0x51000000
+   \   000003F4   003093E5           LDR      R3,[R3, #+0]
+   \   000003F8   403D93E3           ORRS     R3,R3,#0x1000
+   \   000003FC   08C0A0E3           MOV      R12,#+8
+   \   00000400   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000404   00308CE5           STR      R3,[R12, #+0]
+   \   00000408   500000EA           B        ??OS_irq_handler_16
+    519          								break;
+    520          							case INTOFF_IC2_UP  :
+    521          								rTCON   &= ~TIMER3_START;	// Stop timer 3
+   \                     ??OS_irq_handler_19:
+   \   0000040C   0830A0E3           MOV      R3,#+8
+   \   00000410   513483E3           ORR      R3,R3,#0x51000000
+   \   00000414   003093E5           LDR      R3,[R3, #+0]
+   \   00000418   403BD3E3           BICS     R3,R3,#0x10000
+   \   0000041C   08C0A0E3           MOV      R12,#+8
+   \   00000420   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000424   00308CE5           STR      R3,[R12, #+0]
+    522          								Inc2CntUp = 0xffff - rTCNTO3;
+   \   00000428   FF30A0E3           MOV      R3,#+255
+   \   0000042C   FF3C83E3           ORR      R3,R3,#0xFF00
+   \   00000430   38C0A0E3           MOV      R12,#+56
+   \   00000434   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000438   00C09CE5           LDR      R12,[R12, #+0]
+   \   0000043C   0C3053E0           SUBS     R3,R3,R12
+   \   00000440   BCC69FE5           LDR      R12,??OS_irq_handler_2+0x28  ;; Inc2CntUp
+   \   00000444   B030CCE1           STRH     R3,[R12, #+0]
+    523          								rTCNTO3   = 0;
+   \   00000448   3830A0E3           MOV      R3,#+56
+   \   0000044C   513483E3           ORR      R3,R3,#0x51000000
+   \   00000450   00C0A0E3           MOV      R12,#+0
+   \   00000454   00C083E5           STR      R12,[R3, #+0]
+    524          								rTCON   |= TIMER3_UPDATE;
+   \   00000458   0830A0E3           MOV      R3,#+8
+   \   0000045C   513483E3           ORR      R3,R3,#0x51000000
+   \   00000460   003093E5           LDR      R3,[R3, #+0]
+   \   00000464   803B93E3           ORRS     R3,R3,#0x20000
+   \   00000468   08C0A0E3           MOV      R12,#+8
+   \   0000046C   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000470   00308CE5           STR      R3,[R12, #+0]
+    525          								rTCON   &= ~TIMER3_UPDATE;
+   \   00000474   0830A0E3           MOV      R3,#+8
+   \   00000478   513483E3           ORR      R3,R3,#0x51000000
+   \   0000047C   003093E5           LDR      R3,[R3, #+0]
+   \   00000480   803BD3E3           BICS     R3,R3,#0x20000
+   \   00000484   08C0A0E3           MOV      R12,#+8
+   \   00000488   51C48CE3           ORR      R12,R12,#0x51000000
+   \   0000048C   00308CE5           STR      R3,[R12, #+0]
+    526          								rTCON   |= TIMER3_START;	// Start timer 3
+   \   00000490   0830A0E3           MOV      R3,#+8
+   \   00000494   513483E3           ORR      R3,R3,#0x51000000
+   \   00000498   003093E5           LDR      R3,[R3, #+0]
+   \   0000049C   403B93E3           ORRS     R3,R3,#0x10000
+   \   000004A0   08C0A0E3           MOV      R12,#+8
+   \   000004A4   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000004A8   00308CE5           STR      R3,[R12, #+0]
+   \   000004AC   270000EA           B        ??OS_irq_handler_16
+    527          								break;
+    528          							case INTOFF_IC2_DOWN:
+    529          								rTCON   &= ~TIMER3_START;	// Stop timer 3
+   \                     ??OS_irq_handler_20:
+   \   000004B0   0830A0E3           MOV      R3,#+8
+   \   000004B4   513483E3           ORR      R3,R3,#0x51000000
+   \   000004B8   003093E5           LDR      R3,[R3, #+0]
+   \   000004BC   403BD3E3           BICS     R3,R3,#0x10000
+   \   000004C0   08C0A0E3           MOV      R12,#+8
+   \   000004C4   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000004C8   00308CE5           STR      R3,[R12, #+0]
+    530          								Inc2CntDown = 0xffff - rTCNTO3;
+   \   000004CC   FF30A0E3           MOV      R3,#+255
+   \   000004D0   FF3C83E3           ORR      R3,R3,#0xFF00
+   \   000004D4   38C0A0E3           MOV      R12,#+56
+   \   000004D8   51C48CE3           ORR      R12,R12,#0x51000000
+   \   000004DC   00C09CE5           LDR      R12,[R12, #+0]
+   \   000004E0   0C3053E0           SUBS     R3,R3,R12
+   \   000004E4   1CC69FE5           LDR      R12,??OS_irq_handler_2+0x2C  ;; Inc2CntDown
+   \   000004E8   B030CCE1           STRH     R3,[R12, #+0]
+    531          								rTCNTO3 = 0;
+   \   000004EC   3830A0E3           MOV      R3,#+56
+   \   000004F0   513483E3           ORR      R3,R3,#0x51000000
+   \   000004F4   00C0A0E3           MOV      R12,#+0
+   \   000004F8   00C083E5           STR      R12,[R3, #+0]
+    532          								rTCON   |= TIMER3_UPDATE;
+   \   000004FC   0830A0E3           MOV      R3,#+8
+   \   00000500   513483E3           ORR      R3,R3,#0x51000000
+   \   00000504   003093E5           LDR      R3,[R3, #+0]
+   \   00000508   803B93E3           ORRS     R3,R3,#0x20000
+   \   0000050C   08C0A0E3           MOV      R12,#+8
+   \   00000510   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000514   00308CE5           STR      R3,[R12, #+0]
+    533          								rTCON   &= ~TIMER3_UPDATE;
+   \   00000518   0830A0E3           MOV      R3,#+8
+   \   0000051C   513483E3           ORR      R3,R3,#0x51000000
+   \   00000520   003093E5           LDR      R3,[R3, #+0]
+   \   00000524   803BD3E3           BICS     R3,R3,#0x20000
+   \   00000528   08C0A0E3           MOV      R12,#+8
+   \   0000052C   51C48CE3           ORR      R12,R12,#0x51000000
+   \   00000530   00308CE5           STR      R3,[R12, #+0]
+    534          								rTCON   |= TIMER3_START;	// Start timer 3
+   \   00000534   0830A0E3           MOV      R3,#+8
+   \   00000538   513483E3           ORR      R3,R3,#0x51000000
+   \   0000053C   003093E5           LDR      R3,[R3, #+0]
+   \   00000540   403B93E3           ORRS     R3,R3,#0x10000
+   \   00000544   08C0A0E3           MOV      R12,#+8
+   \   00000548   51C48CE3           ORR      R12,R12,#0x51000000
+   \   0000054C   00308CE5           STR      R3,[R12, #+0]
+    535          								break;
+    536          
+    537          						}
+    538          					}
+    539          				}
+   \                     ??OS_irq_handler_16:
+   \   00000550   010090E2           ADDS     R0,R0,#+1
+   \   00000554   4BFFFFEA           B        ??OS_irq_handler_14
+    540          				ClearPending(IntSource);
+   \                     ??OS_irq_handler_15:
+   \   00000558   4A24A0E3           MOV      R2,#+1241513984
+   \   0000055C   004082E5           STR      R4,[R2, #+0]
+   \   00000560   1020A0E3           MOV      R2,#+16
+   \   00000564   4A2482E3           ORR      R2,R2,#0x4A000000
+   \   00000568   004082E5           STR      R4,[R2, #+0]
+   \   0000056C   1020A0E3           MOV      R2,#+16
+   \   00000570   4A2482E3           ORR      R2,R2,#0x4A000000
+   \   00000574   002092E5           LDR      R2,[R2, #+0]
+   \   00000578   410100EA           B        ??OS_irq_handler_5
+    541          			}
+    542          			break;
+    543          		case INTOFF_ADC:			//ADC / Touchscreen //AStmark This is not completed for ADC!!!
+    544          			ClearPending(BIT_ADC);
+   \                     ??OS_irq_handler_21:
+   \   0000057C   4A04A0E3           MOV      R0,#+1241513984
+   \   00000580   8014A0E3           MOV      R1,#-2147483648
+   \   00000584   001080E5           STR      R1,[R0, #+0]
+   \   00000588   1000A0E3           MOV      R0,#+16
+   \   0000058C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000590   8014A0E3           MOV      R1,#-2147483648
+   \   00000594   001080E5           STR      R1,[R0, #+0]
+   \   00000598   1000A0E3           MOV      R0,#+16
+   \   0000059C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000005A0   000090E5           LDR      R0,[R0, #+0]
+    545          			{
+    546          				unsigned IntSubSource = rSUBSRCPND;
+   \   000005A4   1810A0E3           MOV      R1,#+24
+   \   000005A8   4A1481E3           ORR      R1,R1,#0x4A000000
+   \   000005AC   001091E5           LDR      R1,[R1, #+0]
+   \   000005B0   0160B0E1           MOVS     R6,R1
+    547          
+    548          				if ( IntSubSource &  BIT_SUB_TC ) {			 // TC(Touch screen Control) Interrupt
+   \   000005B4   800F16E3           TST      R6,#0x200
+   \   000005B8   6900000A           BEQ      ??OS_irq_handler_22
+    549          					ADIntCnt = 0;
+   \   000005BC   48059FE5           LDR      R0,??OS_irq_handler_2+0x30  ;; ADIntCnt
+   \   000005C0   0010A0E3           MOV      R1,#+0
+   \   000005C4   001080E5           STR      R1,[R0, #+0]
+    550          					rSUBSRCPND = BIT_SUB_TC;
+   \   000005C8   1800A0E3           MOV      R0,#+24
+   \   000005CC   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000005D0   801FA0E3           MOV      R1,#+512
+   \   000005D4   001080E5           STR      R1,[R0, #+0]
+    551          					if ( rADCTSC & 0x100 ) {
+   \   000005D8   0400A0E3           MOV      R0,#+4
+   \   000005DC   580480E3           ORR      R0,R0,#0x58000000
+   \   000005E0   000090E5           LDR      R0,[R0, #+0]
+   \   000005E4   400F10E3           TST      R0,#0x100
+   \   000005E8   0F00000A           BEQ      ??OS_irq_handler_23
+    552          						//TouchKeyPressed = 0 ;	//key up
+    553          						//OS_RetriggerTimer(&TouchTimeOutTimer);
+    554          						rADCTSC &= 0xff;	// Set stylus down interrupt
+   \   000005EC   0400A0E3           MOV      R0,#+4
+   \   000005F0   580480E3           ORR      R0,R0,#0x58000000
+   \   000005F4   000090E5           LDR      R0,[R0, #+0]
+   \   000005F8   FF0010E2           ANDS     R0,R0,#0xFF
+   \   000005FC   0410A0E3           MOV      R1,#+4
+   \   00000600   581481E3           ORR      R1,R1,#0x58000000
+   \   00000604   000081E5           STR      R0,[R1, #+0]
+    555          						if ( ReadTouchKey ) {
+   \   00000608   00059FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   0000060C   000090E5           LDR      R0,[R0, #+0]
+   \   00000610   000050E3           CMP      R0,#+0
+   \   00000614   5200000A           BEQ      ??OS_irq_handler_22
+    556          							OS_SignalEvent(TOUCH_SCREEN_UP,ReadTouchKey);
+   \   00000618   F0049FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   0000061C   001090E5           LDR      R1,[R0, #+0]
+   \   00000620   0100A0E3           MOV      R0,#+1
+   \   00000624   ........           BL       OS_SignalEvent
+   \   00000628   4D0000EA           B        ??OS_irq_handler_22
+    557          						}
+    558          					} else {
+    559          						//rADCTSC &= 0xff;	// Set stylus down interrupt
+    560          						// <Auto X-Position and Y-Position Read>
+    561          						rADCTSC=(0<<8)|(1<<7)|(1<<6)|(0<<5)|(1<<4)|(1<<3)|(1<<2)|(0);
+   \                     ??OS_irq_handler_23:
+   \   0000062C   0400A0E3           MOV      R0,#+4
+   \   00000630   580480E3           ORR      R0,R0,#0x58000000
+   \   00000634   DC10A0E3           MOV      R1,#+220
+   \   00000638   001080E5           STR      R1,[R0, #+0]
+    562          						// Stylus Down,Don't care,Don't care,Don't care,Don't care,XP pullup Dis,Auto,No operation
+    563          
+    564          						rADCCON |= 0x1;	// Start Auto conversion
+   \   0000063C   5804A0E3           MOV      R0,#+1476395008
+   \   00000640   000090E5           LDR      R0,[R0, #+0]
+   \   00000644   010090E3           ORRS     R0,R0,#0x1
+   \   00000648   5814A0E3           MOV      R1,#+1476395008
+   \   0000064C   000081E5           STR      R0,[R1, #+0]
+    565          
+    566          						while ( rADCCON & 0x1 );		 //check if Enable_start is low
+   \                     ??OS_irq_handler_24:
+   \   00000650   5804A0E3           MOV      R0,#+1476395008
+   \   00000654   000090E5           LDR      R0,[R0, #+0]
+   \   00000658   010010E3           TST      R0,#0x1
+   \   0000065C   FBFFFF1A           BNE      ??OS_irq_handler_24
+    567          						while ( !(0x8000 & rADCCON) ); // Check ECFLG
+   \                     ??OS_irq_handler_25:
+   \   00000660   5804A0E3           MOV      R0,#+1476395008
+   \   00000664   000090E5           LDR      R0,[R0, #+0]
+   \   00000668   800C10E3           TST      R0,#0x8000
+   \   0000066C   FBFFFF0A           BEQ      ??OS_irq_handler_25
+    568          
+    569          						TXUADData[7] = (0x3ff & rADCDAT0) ;	// Catch the possition
+   \   00000670   0C00A0E3           MOV      R0,#+12
+   \   00000674   580480E3           ORR      R0,R0,#0x58000000
+   \   00000678   000090E5           LDR      R0,[R0, #+0]
+   \   0000067C   000BB0E1           LSLS     R0,R0,#+22
+   \   00000680   200BB0E1           LSRS     R0,R0,#+22
+   \   00000684   88149FE5           LDR      R1,??OS_irq_handler_2+0x38  ;; TXUADData + 14
+   \   00000688   B000C1E1           STRH     R0,[R1, #+0]
+    570          						TXUADData[5] = (0x3ff & rADCDAT1) ;
+   \   0000068C   1000A0E3           MOV      R0,#+16
+   \   00000690   580480E3           ORR      R0,R0,#0x58000000
+   \   00000694   000090E5           LDR      R0,[R0, #+0]
+   \   00000698   000BB0E1           LSLS     R0,R0,#+22
+   \   0000069C   200BB0E1           LSRS     R0,R0,#+22
+   \   000006A0   70149FE5           LDR      R1,??OS_irq_handler_2+0x3C  ;; TXUADData + 10
+   \   000006A4   B000C1E1           STRH     R0,[R1, #+0]
+    571          						rADCTSC=(1<<8)|(1<<7)|(1<<6)|(0<<5)|(1<<4)|(0<<3)|(0<<2)|(1<<1) | 1;
+   \   000006A8   0400A0E3           MOV      R0,#+4
+   \   000006AC   580480E3           ORR      R0,R0,#0x58000000
+   \   000006B0   D310A0E3           MOV      R1,#+211
+   \   000006B4   401F81E3           ORR      R1,R1,#0x100
+   \   000006B8   001080E5           STR      R1,[R0, #+0]
+    572          						// Stylus Up,Don't care,Don't care,Don't care,Don't care,XP pullup En,Normal,Waiting mode
+    573          						rADCCON |= 0x1;															// Start Auto conversion
+   \   000006BC   5804A0E3           MOV      R0,#+1476395008
+   \   000006C0   000090E5           LDR      R0,[R0, #+0]
+   \   000006C4   010090E3           ORRS     R0,R0,#0x1
+   \   000006C8   5814A0E3           MOV      R1,#+1476395008
+   \   000006CC   000081E5           STR      R0,[R1, #+0]
+    574          
+    575          						if ( ReadTouchKey ) {
+   \   000006D0   38049FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   000006D4   000090E5           LDR      R0,[R0, #+0]
+   \   000006D8   000050E3           CMP      R0,#+0
+   \   000006DC   0300000A           BEQ      ??OS_irq_handler_26
+    576          							OS_SignalEvent(TOUCH_SCREEN_DOWN,ReadTouchKey);
+   \   000006E0   28049FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   000006E4   001090E5           LDR      R1,[R0, #+0]
+   \   000006E8   0200A0E3           MOV      R0,#+2
+   \   000006EC   ........           BL       OS_SignalEvent
+    577          						}
+    578          						KbdIntCnt++;
+   \                     ??OS_irq_handler_26:
+   \   000006F0   24049FE5           LDR      R0,??OS_irq_handler_2+0x40  ;; KbdIntCnt
+   \   000006F4   000090E5           LDR      R0,[R0, #+0]
+   \   000006F8   010090E2           ADDS     R0,R0,#+1
+   \   000006FC   18149FE5           LDR      R1,??OS_irq_handler_2+0x40  ;; KbdIntCnt
+   \   00000700   000081E5           STR      R0,[R1, #+0]
+    579          						TCCnt = 5;
+   \   00000704   14049FE5           LDR      R0,??OS_irq_handler_2+0x44  ;; TCCnt
+   \   00000708   0510A0E3           MOV      R1,#+5
+   \   0000070C   001080E5           STR      R1,[R0, #+0]
+    580          						OS_LeaveInterruptNoSwitch();
+   \   00000710   C4039FE5           LDR      R0,??OS_irq_handler_2  ;; OS_InInt
+   \   00000714   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000718   011050E2           SUBS     R1,R0,#+1
+   \   0000071C   B8239FE5           LDR      R2,??OS_irq_handler_2  ;; OS_InInt
+   \   00000720   0010C2E5           STRB     R1,[R2, #+0]
+   \   00000724   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   00000728   000050E3           CMP      R0,#+0
+   \   0000072C   0100001A           BNE      ??OS_irq_handler_27
+   \   00000730   9800A0E3           MOV      R0,#+152
+   \   00000734   ........           BL       OS_Error
+   \                     ??OS_irq_handler_27:
+   \   00000738   A4039FE5           LDR      R0,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   0000073C   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000740   010050E2           SUBS     R0,R0,#+1
+   \   00000744   98139FE5           LDR      R1,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000748   0000C1E5           STRB     R0,[R1, #+0]
+   \   0000074C   8C039FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000750   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000754   010050E2           SUBS     R0,R0,#+1
+   \   00000758   80139FE5           LDR      R1,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   0000075C   0000C1E5           STRB     R0,[R1, #+0]
+    581          						return;
+   \   00000760   DB0000EA           B        ??OS_irq_handler_12
+    582          					}
+    583          				}
+    584          				if ( IntSubSource &  BIT_SUB_ADC ) {	// AD converter
+   \                     ??OS_irq_handler_22:
+   \   00000764   400E16E3           TST      R6,#0x400
+   \   00000768   C500000A           BEQ      ??OS_irq_handler_5
+    585          					rSUBSRCPND = BIT_SUB_ADC;
+   \   0000076C   1800A0E3           MOV      R0,#+24
+   \   00000770   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000774   401EA0E3           MOV      R1,#+1024
+   \   00000778   001080E5           STR      R1,[R0, #+0]
+    586          					U16 ADVal  = rADCDAT0;
+   \   0000077C   0C00A0E3           MOV      R0,#+12
+   \   00000780   580480E3           ORR      R0,R0,#0x58000000
+   \   00000784   000090E5           LDR      R0,[R0, #+0]
+   \   00000788   0070B0E1           MOVS     R7,R0
+    587          					// Is not normal ADC?
+    588          					if ( ADVal & 0x4000 ) {
+   \   0000078C   400C17E3           TST      R7,#0x4000
+   \   00000790   2F00000A           BEQ      ??OS_irq_handler_28
+    589          						TCCnt = 5;
+   \   00000794   84039FE5           LDR      R0,??OS_irq_handler_2+0x44  ;; TCCnt
+   \   00000798   0510A0E3           MOV      R1,#+5
+   \   0000079C   001080E5           STR      R1,[R0, #+0]
+    590          						TXUADData[7] = (0x3ff & ADVal) ;	// Catch the possition
+   \   000007A0   6C039FE5           LDR      R0,??OS_irq_handler_2+0x38  ;; TXUADData + 14
+   \   000007A4   071BB0E1           LSLS     R1,R7,#+22
+   \   000007A8   211BB0E1           LSRS     R1,R1,#+22
+   \   000007AC   B010C0E1           STRH     R1,[R0, #+0]
+    591          						TXUADData[5] = (0x3ff & rADCDAT1) ;
+   \   000007B0   1000A0E3           MOV      R0,#+16
+   \   000007B4   580480E3           ORR      R0,R0,#0x58000000
+   \   000007B8   000090E5           LDR      R0,[R0, #+0]
+   \   000007BC   000BB0E1           LSLS     R0,R0,#+22
+   \   000007C0   200BB0E1           LSRS     R0,R0,#+22
+   \   000007C4   4C139FE5           LDR      R1,??OS_irq_handler_2+0x3C  ;; TXUADData + 10
+   \   000007C8   B000C1E1           STRH     R0,[R1, #+0]
+    592          						// Stylus up = 1
+    593          						if ( ADVal & 0x8000 ) {
+   \   000007CC   800C17E3           TST      R7,#0x8000
+   \   000007D0   0F00000A           BEQ      ??OS_irq_handler_29
+    594          							if ( IsDown ) {
+   \   000007D4   48039FE5           LDR      R0,??OS_irq_handler_2+0x48  ;; IsDown
+   \   000007D8   000090E5           LDR      R0,[R0, #+0]
+   \   000007DC   000050E3           CMP      R0,#+0
+   \   000007E0   A700000A           BEQ      ??OS_irq_handler_5
+    595          								IsDown = 0;
+   \   000007E4   38039FE5           LDR      R0,??OS_irq_handler_2+0x48  ;; IsDown
+   \   000007E8   0010A0E3           MOV      R1,#+0
+   \   000007EC   001080E5           STR      R1,[R0, #+0]
+    596          								if ( ReadTouchKey ) {
+   \   000007F0   18039FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   000007F4   000090E5           LDR      R0,[R0, #+0]
+   \   000007F8   000050E3           CMP      R0,#+0
+   \   000007FC   A000000A           BEQ      ??OS_irq_handler_5
+    597          									OS_SignalEvent(TOUCH_SCREEN_UP,ReadTouchKey);
+   \   00000800   08039FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   00000804   001090E5           LDR      R1,[R0, #+0]
+   \   00000808   0100A0E3           MOV      R0,#+1
+   \   0000080C   ........           BL       OS_SignalEvent
+   \   00000810   9B0000EA           B        ??OS_irq_handler_5
+    598          								}
+    599          							}
+    600          						} else {
+    601          							if ( !IsDown ) {
+   \                     ??OS_irq_handler_29:
+   \   00000814   08039FE5           LDR      R0,??OS_irq_handler_2+0x48  ;; IsDown
+   \   00000818   000090E5           LDR      R0,[R0, #+0]
+   \   0000081C   000050E3           CMP      R0,#+0
+   \   00000820   9700001A           BNE      ??OS_irq_handler_5
+    602          								IsDown = 1;
+   \   00000824   F8029FE5           LDR      R0,??OS_irq_handler_2+0x48  ;; IsDown
+   \   00000828   0110A0E3           MOV      R1,#+1
+   \   0000082C   001080E5           STR      R1,[R0, #+0]
+    603          								if ( ReadTouchKey ) {
+   \   00000830   D8029FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   00000834   000090E5           LDR      R0,[R0, #+0]
+   \   00000838   000050E3           CMP      R0,#+0
+   \   0000083C   9000000A           BEQ      ??OS_irq_handler_5
+    604          									OS_SignalEvent(TOUCH_SCREEN_DOWN,ReadTouchKey);
+   \   00000840   C8029FE5           LDR      R0,??OS_irq_handler_2+0x34  ;; ReadTouchKey
+   \   00000844   001090E5           LDR      R1,[R0, #+0]
+   \   00000848   0200A0E3           MOV      R0,#+2
+   \   0000084C   ........           BL       OS_SignalEvent
+   \   00000850   8B0000EA           B        ??OS_irq_handler_5
+    605          								}
+    606          							}
+    607          						}
+    608          						// rADCTSC=(1<<8)|(1<<7)|(1<<6)|(0<<5)|(1<<4)|(0<<3)|(0<<2)|(1<<1) | 1;
+    609          						// Stylus Up,Don't care,Don't care,Don't care,Don't care,XP pullup En,Normal,Waiting mode
+    610          						//rADCCON |= 0x1;															// Start Auto conversion
+    611          					} else {
+    612          						if (TCCnt) {
+   \                     ??OS_irq_handler_28:
+   \   00000854   C4029FE5           LDR      R0,??OS_irq_handler_2+0x44  ;; TCCnt
+   \   00000858   000090E5           LDR      R0,[R0, #+0]
+   \   0000085C   000050E3           CMP      R0,#+0
+   \   00000860   0500000A           BEQ      ??OS_irq_handler_30
+    613          							TCCnt--;
+   \   00000864   B4029FE5           LDR      R0,??OS_irq_handler_2+0x44  ;; TCCnt
+   \   00000868   000090E5           LDR      R0,[R0, #+0]
+   \   0000086C   010050E2           SUBS     R0,R0,#+1
+   \   00000870   A8129FE5           LDR      R1,??OS_irq_handler_2+0x44  ;; TCCnt
+   \   00000874   000081E5           STR      R0,[R1, #+0]
+   \   00000878   810000EA           B        ??OS_irq_handler_5
+    614          						} else {
+    615          							TXUADData[ADChannel] = (ADVal & 0x3ff);
+   \                     ??OS_irq_handler_30:
+   \   0000087C   A4029FE5           LDR      R0,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   00000880   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000884   0210A0E3           MOV      R1,#+2
+   \   00000888   9C229FE5           LDR      R2,??OS_irq_handler_2+0x50  ;; TXUADData
+   \   0000088C   912020E0           MLA      R0,R1,R0,R2
+   \   00000890   071BB0E1           LSLS     R1,R7,#+22
+   \   00000894   211BB0E1           LSRS     R1,R1,#+22
+   \   00000898   B010C0E1           STRH     R1,[R0, #+0]
+    616          							if ( ++ADChannel == 5 ) {											// skip touchscreen
+   \   0000089C   84029FE5           LDR      R0,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   000008A0   0000D0E5           LDRB     R0,[R0, #+0]
+   \   000008A4   010090E2           ADDS     R0,R0,#+1
+   \   000008A8   78129FE5           LDR      R1,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   000008AC   0000C1E5           STRB     R0,[R1, #+0]
+   \   000008B0   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   000008B4   050050E3           CMP      R0,#+5
+   \   000008B8   0500001A           BNE      ??OS_irq_handler_31
+    617          								ADChannel++;															// go to channel 6
+   \   000008BC   64029FE5           LDR      R0,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   000008C0   0000D0E5           LDRB     R0,[R0, #+0]
+   \   000008C4   010090E2           ADDS     R0,R0,#+1
+   \   000008C8   58129FE5           LDR      R1,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   000008CC   0000C1E5           STRB     R0,[R1, #+0]
+   \   000008D0   060000EA           B        ??OS_irq_handler_32
+    618          							} else if ( ADChannel > 6 ) {									// finished one round
+   \                     ??OS_irq_handler_31:
+   \   000008D4   4C029FE5           LDR      R0,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   000008D8   0000D0E5           LDRB     R0,[R0, #+0]
+   \   000008DC   070050E3           CMP      R0,#+7
+   \   000008E0   0200003A           BCC      ??OS_irq_handler_32
+    619          								ADChannel = 0;
+   \   000008E4   3C029FE5           LDR      R0,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   000008E8   0010A0E3           MOV      R1,#+0
+   \   000008EC   0010C0E5           STRB     R1,[R0, #+0]
+    620          							}
+    621          							ADCCon->SelMux  = ADChannel;
+   \                     ??OS_irq_handler_32:
+   \   000008F0   38029FE5           LDR      R0,??OS_irq_handler_2+0x54  ;; ADCCon
+   \   000008F4   000090E5           LDR      R0,[R0, #+0]
+   \   000008F8   000090E5           LDR      R0,[R0, #+0]
+   \   000008FC   3800D0E3           BICS     R0,R0,#0x38
+   \   00000900   20129FE5           LDR      R1,??OS_irq_handler_2+0x4C  ;; ADChannel
+   \   00000904   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000908   3820A0E3           MOV      R2,#+56
+   \   0000090C   811112E0           ANDS     R1,R2,R1, LSL #+3
+   \   00000910   000091E1           ORRS     R0,R1,R0
+   \   00000914   14129FE5           LDR      R1,??OS_irq_handler_2+0x54  ;; ADCCon
+   \   00000918   001091E5           LDR      R1,[R1, #+0]
+   \   0000091C   000081E5           STR      R0,[R1, #+0]
+   \   00000920   570000EA           B        ??OS_irq_handler_5
+    622          						}
+    623          					}
+    624          				}
+    625          			}
+    626          			//break;
+    627          			break;
+    628          		case INTOFF_UART_A:
+    629          			ClearPending(BIT_EINT0);
+   \                     ??OS_irq_handler_33:
+   \   00000924   4A04A0E3           MOV      R0,#+1241513984
+   \   00000928   0110A0E3           MOV      R1,#+1
+   \   0000092C   001080E5           STR      R1,[R0, #+0]
+   \   00000930   1000A0E3           MOV      R0,#+16
+   \   00000934   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000938   0110A0E3           MOV      R1,#+1
+   \   0000093C   001080E5           STR      R1,[R0, #+0]
+   \   00000940   1000A0E3           MOV      R0,#+16
+   \   00000944   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   00000948   006090E5           LDR      R6,[R0, #+0]
+    630          			HandleUARTInterrupt(3);
+   \   0000094C   0300A0E3           MOV      R0,#+3
+   \   00000950   ........           BL       HandleUARTInterrupt
+   \   00000954   4A0000EA           B        ??OS_irq_handler_5
+    631          			break;
+    632          		case INTOFF_UART_B:
+    633          			ClearPending(BIT_EINT1);
+   \                     ??OS_irq_handler_34:
+   \   00000958   4A04A0E3           MOV      R0,#+1241513984
+   \   0000095C   0210A0E3           MOV      R1,#+2
+   \   00000960   001080E5           STR      R1,[R0, #+0]
+   \   00000964   1000A0E3           MOV      R0,#+16
+   \   00000968   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000096C   0210A0E3           MOV      R1,#+2
+   \   00000970   001080E5           STR      R1,[R0, #+0]
+   \   00000974   1000A0E3           MOV      R0,#+16
+   \   00000978   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   0000097C   006090E5           LDR      R6,[R0, #+0]
+    634          			HandleUARTInterrupt(4);
+   \   00000980   0400A0E3           MOV      R0,#+4
+   \   00000984   ........           BL       HandleUARTInterrupt
+   \   00000988   3D0000EA           B        ??OS_irq_handler_5
+    635          			break;
+    636          		case INTOFF_UART_C:
+    637          			ClearPending(BIT_EINT2);
+   \                     ??OS_irq_handler_35:
+   \   0000098C   4A04A0E3           MOV      R0,#+1241513984
+   \   00000990   0410A0E3           MOV      R1,#+4
+   \   00000994   001080E5           STR      R1,[R0, #+0]
+   \   00000998   1000A0E3           MOV      R0,#+16
+   \   0000099C   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000009A0   0410A0E3           MOV      R1,#+4
+   \   000009A4   001080E5           STR      R1,[R0, #+0]
+   \   000009A8   1000A0E3           MOV      R0,#+16
+   \   000009AC   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000009B0   006090E5           LDR      R6,[R0, #+0]
+    638          			HandleUARTInterrupt(5);
+   \   000009B4   0500A0E3           MOV      R0,#+5
+   \   000009B8   ........           BL       HandleUARTInterrupt
+   \   000009BC   300000EA           B        ??OS_irq_handler_5
+    639          			break;
+    640          		case INTOFF_UART_D:
+    641          			ClearPending(BIT_EINT3);
+   \                     ??OS_irq_handler_36:
+   \   000009C0   4A04A0E3           MOV      R0,#+1241513984
+   \   000009C4   0810A0E3           MOV      R1,#+8
+   \   000009C8   001080E5           STR      R1,[R0, #+0]
+   \   000009CC   1000A0E3           MOV      R0,#+16
+   \   000009D0   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000009D4   0810A0E3           MOV      R1,#+8
+   \   000009D8   001080E5           STR      R1,[R0, #+0]
+   \   000009DC   1000A0E3           MOV      R0,#+16
+   \   000009E0   4A0480E3           ORR      R0,R0,#0x4A000000
+   \   000009E4   006090E5           LDR      R6,[R0, #+0]
+    642          			HandleUARTInterrupt(6);
+   \   000009E8   0600A0E3           MOV      R0,#+6
+   \   000009EC   ........           BL       HandleUARTInterrupt
+   \   000009F0   230000EA           B        ??OS_irq_handler_5
+    643          			break;
+    644          		default:
+    645          			DefaultIrqCnt++;
+   \                     ??OS_irq_handler_3:
+   \   000009F4   38019FE5           LDR      R0,??OS_irq_handler_2+0x58  ;; DefaultIrqCnt
+   \   000009F8   000090E5           LDR      R0,[R0, #+0]
+   \   000009FC   010090E2           ADDS     R0,R0,#+1
+   \   00000A00   2C119FE5           LDR      R1,??OS_irq_handler_2+0x58  ;; DefaultIrqCnt
+   \   00000A04   000081E5           STR      R0,[R1, #+0]
+    646          			OS_LeaveInterrupt();
+   \   00000A08   CC009FE5           LDR      R0,??OS_irq_handler_2  ;; OS_InInt
+   \   00000A0C   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000A10   011050E2           SUBS     R1,R0,#+1
+   \   00000A14   C0209FE5           LDR      R2,??OS_irq_handler_2  ;; OS_InInt
+   \   00000A18   0010C2E5           STRB     R1,[R2, #+0]
+   \   00000A1C   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   00000A20   000050E3           CMP      R0,#+0
+   \   00000A24   0100001A           BNE      ??OS_irq_handler_37
+   \   00000A28   9800A0E3           MOV      R0,#+152
+   \   00000A2C   ........           BL       OS_Error
+   \                     ??OS_irq_handler_37:
+   \   00000A30   AC009FE5           LDR      R0,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000A34   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000A38   010050E2           SUBS     R0,R0,#+1
+   \   00000A3C   A0109FE5           LDR      R1,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000A40   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000A44   94009FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000A48   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000A4C   010050E3           CMP      R0,#+1
+   \   00000A50   0500001A           BNE      ??OS_irq_handler_38
+   \   00000A54   9C009FE5           LDR      R0,??OS_irq_handler_2+0x1C  ;; OS_Pending
+   \   00000A58   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000A5C   000050E3           CMP      R0,#+0
+   \   00000A60   0100000A           BEQ      ??OS_irq_handler_38
+   \   00000A64   ........           BL       OS_SwitchFromInt
+   \   00000A68   190000EA           B        ??OS_irq_handler_12
+   \                     ??OS_irq_handler_38:
+   \   00000A6C   6C009FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000A70   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000A74   010050E2           SUBS     R0,R0,#+1
+   \   00000A78   60109FE5           LDR      R1,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000A7C   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000A80   130000EA           B        ??OS_irq_handler_12
+    647          			return;
+    648          
+    649          	}
+    650          	OS_LeaveInterruptNoSwitch();
+   \                     ??OS_irq_handler_5:
+   \   00000A84   50009FE5           LDR      R0,??OS_irq_handler_2  ;; OS_InInt
+   \   00000A88   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000A8C   011050E2           SUBS     R1,R0,#+1
+   \   00000A90   44209FE5           LDR      R2,??OS_irq_handler_2  ;; OS_InInt
+   \   00000A94   0010C2E5           STRB     R1,[R2, #+0]
+   \   00000A98   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   00000A9C   000050E3           CMP      R0,#+0
+   \   00000AA0   0100001A           BNE      ??OS_irq_handler_39
+   \   00000AA4   9800A0E3           MOV      R0,#+152
+   \   00000AA8   ........           BL       OS_Error
+   \                     ??OS_irq_handler_39:
+   \   00000AAC   30009FE5           LDR      R0,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000AB0   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000AB4   010050E2           SUBS     R0,R0,#+1
+   \   00000AB8   24109FE5           LDR      R1,??OS_irq_handler_2+0x8  ;; OS_Counters + 1
+   \   00000ABC   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000AC0   18009FE5           LDR      R0,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000AC4   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000AC8   010050E2           SUBS     R0,R0,#+1
+   \   00000ACC   0C109FE5           LDR      R1,??OS_irq_handler_2+0x4  ;; OS_Counters
+   \   00000AD0   0000C1E5           STRB     R0,[R1, #+0]
+    651          }
+   \                     ??OS_irq_handler_12:
+   \   00000AD4   F140BDE8           POP      {R0,R4-R7,LR}
+   \   00000AD8   1EFF2FE1           BX       LR               ;; return
+   \                     ??OS_irq_handler_2:
+   \   00000ADC   ........           DC32     OS_InInt
+   \   00000AE0   ........           DC32     OS_Counters
+   \   00000AE4   ........           DC32     OS_Counters + 1
+   \   00000AE8   ........           DC32     IrqCnt
+   \   00000AEC   ........           DC32     FastTime
+   \   00000AF0   ........           DC32     CurrentTime
+   \   00000AF4   ........           DC32     RunningTime
+   \   00000AF8   ........           DC32     OS_Pending
+   \   00000AFC   ........           DC32     Inc1CntUp
+   \   00000B00   ........           DC32     Inc1CntDown
+   \   00000B04   ........           DC32     Inc2CntUp
+   \   00000B08   ........           DC32     Inc2CntDown
+   \   00000B0C   ........           DC32     ADIntCnt
+   \   00000B10   ........           DC32     ReadTouchKey
+   \   00000B14   ........           DC32     TXUADData + 14
+   \   00000B18   ........           DC32     TXUADData + 10
+   \   00000B1C   ........           DC32     KbdIntCnt
+   \   00000B20   ........           DC32     TCCnt
+   \   00000B24   ........           DC32     IsDown
+   \   00000B28   ........           DC32     ADChannel
+   \   00000B2C   ........           DC32     TXUADData
+   \   00000B30   ........           DC32     ADCCon
+   \   00000B34   ........           DC32     DefaultIrqCnt
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable6:
+   \   00000000   48F0FF31           DC32     0x31fff048
+
+   \                                 In section .text, align 4, keep-with-next
+   \                     ??DataTable7:
+   \   00000000   10F0FF31           DC32     0x31fff010
+    652          
+    653          
+
+   Maximum stack usage in bytes:
+
+     Function            .cstack
+     --------            -------
+     Abort_Handler            0
+     FIQ_Handler              0
+     OS_COM_Init              0
+     OS_COM_Send1             0
+     OS_ConvertCycles2us      0
+     OS_GetTime_Cycles        0
+     OS_Idle                  0
+     OS_InitHW                0
+     OS_irq_handler           0
+     Prefetch_Handler         0
+     SWI_Handler              0
+     Undefined_Handler        0
+
+
+   Section sizes:
+
+     Function/Label      Bytes
+     --------------      -----
+     TXUADData             16
+     ADChannel              1
+     Inc1CntUp              2
+     Inc1CntDown            2
+     Inc2CntUp              2
+     Inc2CntDown            2
+     KbdIntCnt              4
+     ADIntCnt               4
+     TouchKeyPressed        1
+     ADCCon                 4
+     OS_InitHW            588
+     OS_Idle                4
+     OS_GetTime_Cycles    112
+     OS_ConvertCycles2us   20
+     OS_COM_Init            4
+     OS_COM_Send1          20
+     SWI_Handler           40
+     Undefined_Handler     44
+     Prefetch_Handler      44
+     Abort_Handler         44
+     FIQ_Handler            4
+     FastTime               4
+     CurrentTime            4
+     RunningTime            4
+     IrqCnt                 4
+     DefaultIrqCnt          4
+     InTimerFlag            4
+     IsDown                 4
+     TCCnt                  4
+     OS_irq_handler      2872
+     ??DataTable6           4
+     ??DataTable7           4
+
+ 
+    66 bytes in section .bss
+     4 bytes in section .data
+ 3 804 bytes in section .text
+ 
+ 3 804 bytes of CODE memory
+    70 bytes of DATA memory
+
+Errors: none
+Warnings: none

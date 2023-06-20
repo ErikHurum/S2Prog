@@ -1,0 +1,984 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  14:42:34 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\api\tcpip.c             #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\api\tcpip.c --fpu None  #
+#                       -D OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D   #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\tcpip.lst                   #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\tcpip.r79                    #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\api\tcpip.c
+      1          /**
+      2           * @file
+      3           * Sequential API Main thread module
+      4           *
+      5           */
+      6          
+      7          /*
+      8           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+      9           * All rights reserved.
+     10           *
+     11           * Redistribution and use in source and binary forms, with or without modification,
+     12           * are permitted provided that the following conditions are met:
+     13           *
+     14           * 1. Redistributions of source code must retain the above copyright notice,
+     15           *    this list of conditions and the following disclaimer.
+     16           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     17           *    this list of conditions and the following disclaimer in the documentation
+     18           *    and/or other materials provided with the distribution.
+     19           * 3. The name of the author may not be used to endorse or promote products
+     20           *    derived from this software without specific prior written permission.
+     21           *
+     22           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     23           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     24           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     25           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     26           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     27           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     28           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     29           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     30           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     31           * OF SUCH DAMAGE.
+     32           *
+     33           * This file is part of the lwIP TCP/IP stack.
+     34           *
+     35           * Author: Adam Dunkels <adam@sics.se>
+     36           *
+     37           */
+     38          
+     39          #include "lwip/opt.h"
+     40          
+     41          #if !NO_SYS /* don't build if not configured for use in lwipopts.h */
+     42          
+     43          #include "lwip/sys.h"
+     44          #include "lwip/memp.h"
+     45          #include "lwip/mem.h"
+     46          #include "lwip/pbuf.h"
+     47          #include "lwip/tcpip.h"
+     48          #include "lwip/init.h"
+     49          #include "netif/etharp.h"
+     50          #include "netif/ppp_oe.h"
+     51          
+     52          /* global variables */
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     53          static tcpip_init_done_fn tcpip_init_done;
+   \                     tcpip_init_done:
+   \   00000000                      DS8 4
+   \   00000004                      DS8 4
+   \   00000008                      DS8 24
+     54          static void *tcpip_init_done_arg;
+     55          static sys_mbox_t mbox;
+     56          
+     57          #if LWIP_TCPIP_CORE_LOCKING
+     58          /** The global semaphore to lock the stack. */
+     59          sys_mutex_t lock_tcpip_core;
+     60          #endif /* LWIP_TCPIP_CORE_LOCKING */
+     61          
+     62          
+     63          /**
+     64           * The main lwIP thread. This thread has exclusive access to lwIP core functions
+     65           * (unless access to them is not locked). Other threads communicate with this
+     66           * thread using message boxes.
+     67           *
+     68           * It also starts all the timers to make sure they are running in the right
+     69           * thread context.
+     70           *
+     71           * @param arg unused argument
+     72           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     73          static void
+     74          tcpip_thread(void *arg)
+     75          {
+   \                     tcpip_thread:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+     76            struct tcpip_msg *msg;
+     77            LWIP_UNUSED_ARG(arg);
+     78          
+     79            if (tcpip_init_done != NULL) {
+   \   00000004   ........           LDR      R4,??DataTable7  ;; tcpip_init_done
+   \   00000008   04D04DE2           SUB      SP,SP,#+4
+   \   0000000C   001094E5           LDR      R1,[R4, #+0]
+   \   00000010   000051E3           CMP      R1,#+0
+   \   00000014   0900000A           BEQ      ??tcpip_thread_1
+     80              tcpip_init_done(tcpip_init_done_arg);
+   \   00000018   040094E5           LDR      R0,[R4, #+4]
+   \   0000001C   0FE0A0E1           MOV      LR,PC
+   \   00000020   11FF2FE1           BX       R1
+   \   00000024   050000EA           B        ??tcpip_thread_1
+     81            }
+     82          
+     83            LOCK_TCPIP_CORE();
+     84            while (1) {                          /* MAIN Loop */
+     85              UNLOCK_TCPIP_CORE();
+     86              LWIP_TCPIP_THREAD_ALIVE();
+     87              /* wait for a message, timeouts are processed while waiting */
+     88              sys_timeouts_mbox_fetch(&mbox, (void **)&msg);
+     89              LOCK_TCPIP_CORE();
+     90              switch (msg->type) {
+     91          #if LWIP_NETCONN
+     92              case TCPIP_MSG_API:
+     93                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: API message %p\n", (void *)msg));
+     94                msg->msg.apimsg->function(&(msg->msg.apimsg->msg));
+   \                     ??tcpip_thread_2:
+   \   00000028   00009DE5           LDR      R0,[SP, #+0]
+   \   0000002C   082090E5           LDR      R2,[R0, #+8]
+   \   00000030   040082E2           ADD      R0,R2,#+4
+   \   00000034   001092E5           LDR      R1,[R2, #+0]
+   \   00000038   0FE0A0E1           MOV      LR,PC
+   \   0000003C   11FF2FE1           BX       R1
+   \                     ??tcpip_thread_1:
+   \   00000040   0D10A0E1           MOV      R1,SP
+   \   00000044   080084E2           ADD      R0,R4,#+8
+   \   00000048   ........           _BLF     sys_timeouts_mbox_fetch,??sys_timeouts_mbox_fetch??rA
+   \   0000004C   00009DE5           LDR      R0,[SP, #+0]
+   \   00000050   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000054   050050E3           CMP      R0,#+5
+   \   00000058   F8FFFF8A           BHI      ??tcpip_thread_1
+   \   0000005C   011F8FE2           ADR      R1,??tcpip_thread_0
+   \   00000060   D01091E1           LDRSB    R1,[R1, R0]
+   \   00000064   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??tcpip_thread_0:
+   \   00000068   EF011119           DC8      +239,+1,+17,+25
+   \   0000006C   20270000           DC8      +32,+39,+0,+0
+     95                break;
+     96          #endif /* LWIP_NETCONN */
+     97          
+     98          #if !LWIP_TCPIP_CORE_LOCKING_INPUT
+     99              case TCPIP_MSG_INPKT:
+    100                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: PACKET %p\n", (void *)msg));
+    101          #if LWIP_ETHERNET
+    102                if (msg->msg.inp.netif->flags & (NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET)) {
+   \                     ??tcpip_thread_3:
+   \   00000070   00009DE5           LDR      R0,[SP, #+0]
+   \   00000074   082090E5           LDR      R2,[R0, #+8]
+   \   00000078   0C0090E5           LDR      R0,[R0, #+12]
+   \   0000007C   2900D0E5           LDRB     R0,[R0, #+41]
+   \   00000080   600010E3           TST      R0,#0x60
+   \   00000084   00009DE5           LDR      R0,[SP, #+0]
+   \   00000088   0C1090E5           LDR      R1,[R0, #+12]
+   \   0000008C   0200A0E1           MOV      R0,R2
+   \   00000090   0100000A           BEQ      ??tcpip_thread_4
+    103                  ethernet_input(msg->msg.inp.p, msg->msg.inp.netif);
+   \   00000094   ........           _BLF     ethernet_input,??ethernet_input??rA
+   \   00000098   000000EA           B        ??tcpip_thread_5
+    104                } else
+    105          #endif /* LWIP_ETHERNET */
+    106                {
+    107                  ip_input(msg->msg.inp.p, msg->msg.inp.netif);
+   \                     ??tcpip_thread_4:
+   \   0000009C   ........           _BLF     ip_input,??ip_input??rA
+    108                }
+    109                memp_free(MEMP_TCPIP_MSG_INPKT, msg);
+   \                     ??tcpip_thread_5:
+   \   000000A0   00109DE5           LDR      R1,[SP, #+0]
+   \   000000A4   0A00A0E3           MOV      R0,#+10
+   \                     ??tcpip_thread_6:
+   \   000000A8   ........           _BLF     memp_free,??memp_free??rA
+   \   000000AC   E3FFFFEA           B        ??tcpip_thread_1
+    110                break;
+    111          #endif /* LWIP_TCPIP_CORE_LOCKING_INPUT */
+    112          
+    113          #if LWIP_NETIF_API
+    114              case TCPIP_MSG_NETIFAPI:
+    115                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: Netif API message %p\n", (void *)msg));
+    116                msg->msg.netifapimsg->function(&(msg->msg.netifapimsg->msg));
+    117                break;
+    118          #endif /* LWIP_NETIF_API */
+    119          
+    120          #if LWIP_TCPIP_TIMEOUT
+    121              case TCPIP_MSG_TIMEOUT:
+    122                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: TIMEOUT %p\n", (void *)msg));
+    123                sys_timeout(msg->msg.tmo.msecs, msg->msg.tmo.h, msg->msg.tmo.arg);
+   \                     ??tcpip_thread_7:
+   \   000000B0   00009DE5           LDR      R0,[SP, #+0]
+   \   000000B4   102090E5           LDR      R2,[R0, #+16]
+   \   000000B8   0C1090E5           LDR      R1,[R0, #+12]
+   \   000000BC   080090E5           LDR      R0,[R0, #+8]
+   \   000000C0   ........           _BLF     sys_timeout,??sys_timeout??rA
+    124                memp_free(MEMP_TCPIP_MSG_API, msg);
+   \                     ??tcpip_thread_8:
+   \   000000C4   00109DE5           LDR      R1,[SP, #+0]
+   \   000000C8   0900A0E3           MOV      R0,#+9
+   \   000000CC   F5FFFFEA           B        ??tcpip_thread_6
+    125                break;
+    126              case TCPIP_MSG_UNTIMEOUT:
+    127                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: UNTIMEOUT %p\n", (void *)msg));
+    128                sys_untimeout(msg->msg.tmo.h, msg->msg.tmo.arg);
+   \                     ??tcpip_thread_9:
+   \   000000D0   00009DE5           LDR      R0,[SP, #+0]
+   \   000000D4   101090E5           LDR      R1,[R0, #+16]
+   \   000000D8   0C0090E5           LDR      R0,[R0, #+12]
+   \   000000DC   ........           _BLF     sys_untimeout,??sys_untimeout??rA
+    129                memp_free(MEMP_TCPIP_MSG_API, msg);
+   \   000000E0   00109DE5           LDR      R1,[SP, #+0]
+   \   000000E4   0900A0E3           MOV      R0,#+9
+   \   000000E8   EEFFFFEA           B        ??tcpip_thread_6
+    130                break;
+    131          #endif /* LWIP_TCPIP_TIMEOUT */
+    132          
+    133              case TCPIP_MSG_CALLBACK:
+    134                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: CALLBACK %p\n", (void *)msg));
+    135                msg->msg.cb.function(msg->msg.cb.ctx);
+   \                     ??tcpip_thread_10:
+   \   000000EC   00009DE5           LDR      R0,[SP, #+0]
+   \   000000F0   00109DE5           LDR      R1,[SP, #+0]
+   \   000000F4   0C0090E5           LDR      R0,[R0, #+12]
+   \   000000F8   081091E5           LDR      R1,[R1, #+8]
+   \   000000FC   0FE0A0E1           MOV      LR,PC
+   \   00000100   11FF2FE1           BX       R1
+    136                memp_free(MEMP_TCPIP_MSG_API, msg);
+   \   00000104   EEFFFFEA           B        ??tcpip_thread_8
+    137                break;
+    138          
+    139              case TCPIP_MSG_CALLBACK_STATIC:
+    140                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: CALLBACK_STATIC %p\n", (void *)msg));
+    141                msg->msg.cb.function(msg->msg.cb.ctx);
+   \                     ??tcpip_thread_11:
+   \   00000108   00009DE5           LDR      R0,[SP, #+0]
+   \   0000010C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000110   0C0090E5           LDR      R0,[R0, #+12]
+   \   00000114   081091E5           LDR      R1,[R1, #+8]
+   \   00000118   0FE0A0E1           MOV      LR,PC
+   \   0000011C   11FF2FE1           BX       R1
+   \   00000120   C6FFFFEA           B        ??tcpip_thread_1
+    142                break;
+    143          
+    144              default:
+    145                LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_thread: invalid message: %d\n", msg->type));
+    146                LWIP_ASSERT("tcpip_thread: invalid message", 0);
+    147                break;
+    148              }
+    149            }
+    150          }
+    151          
+    152          /**
+    153           * Pass a received packet to tcpip_thread for input processing
+    154           *
+    155           * @param p the received packet, p->payload pointing to the Ethernet header or
+    156           *          to an IP header (if inp doesn't have NETIF_FLAG_ETHARP or
+    157           *          NETIF_FLAG_ETHERNET flags)
+    158           * @param inp the network interface on which the packet was received
+    159           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    160          err_t
+    161          tcpip_input(struct pbuf *p, struct netif *inp)
+    162          {
+   \                     tcpip_input:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+    163          #if LWIP_TCPIP_CORE_LOCKING_INPUT
+    164            err_t ret;
+    165            LWIP_DEBUGF(TCPIP_DEBUG, ("tcpip_input: PACKET %p/%p\n", (void *)p, (void *)inp));
+    166            LOCK_TCPIP_CORE();
+    167          #if LWIP_ETHERNET
+    168            if (inp->flags & (NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET)) {
+    169              ret = ethernet_input(p, inp);
+    170            } else
+    171          #endif /* LWIP_ETHERNET */
+    172            {
+    173              ret = ip_input(p, inp);
+    174            }
+    175            UNLOCK_TCPIP_CORE();
+    176            return ret;
+    177          #else /* LWIP_TCPIP_CORE_LOCKING_INPUT */
+    178            struct tcpip_msg *msg;
+    179          
+    180            if (!sys_mbox_valid(&mbox)) {
+   \   00000004   ........           LDR      R6,??DataTable7  ;; tcpip_init_done
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   080086E2           ADD      R0,R6,#+8
+   \   00000014   ........           _BLF     sys_mbox_valid,??sys_mbox_valid??rA
+   \   00000018   000050E3           CMP      R0,#+0
+    181              return ERR_VAL;
+   \   0000001C   0500E003           MVNEQ    R0,#+5
+   \   00000020   1000000A           BEQ      ??tcpip_input_0
+    182            }
+    183            msg = (struct tcpip_msg *)memp_malloc(MEMP_TCPIP_MSG_INPKT);
+   \   00000024   0A00A0E3           MOV      R0,#+10
+   \   00000028   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   0000002C   0070B0E1           MOVS     R7,R0
+    184            if (msg == NULL) {
+   \   00000030   0B00000A           BEQ      ??tcpip_input_1
+    185              return ERR_MEM;
+    186            }
+    187          
+    188            msg->type = TCPIP_MSG_INPKT;
+   \   00000034   0100A0E3           MOV      R0,#+1
+   \   00000038   0000C7E5           STRB     R0,[R7, #+0]
+    189            msg->msg.inp.p = p;
+   \   0000003C   084087E5           STR      R4,[R7, #+8]
+    190            msg->msg.inp.netif = inp;
+   \   00000040   0C5087E5           STR      R5,[R7, #+12]
+    191            if (sys_mbox_trypost(&mbox, msg) != ERR_OK) {
+   \   00000044   0710A0E1           MOV      R1,R7
+   \   00000048   080086E2           ADD      R0,R6,#+8
+   \   0000004C   ........           _BLF     sys_mbox_trypost,??sys_mbox_trypost??rA
+   \   00000050   000050E3           CMP      R0,#+0
+   \   00000054   0300000A           BEQ      ??tcpip_input_0
+    192              memp_free(MEMP_TCPIP_MSG_INPKT, msg);
+   \   00000058   0710A0E1           MOV      R1,R7
+   \   0000005C   0A00A0E3           MOV      R0,#+10
+   \   00000060   ........           _BLF     memp_free,??memp_free??rA
+    193              return ERR_MEM;
+   \                     ??tcpip_input_1:
+   \   00000064   0000E0E3           MVN      R0,#+0
+    194            }
+    195            return ERR_OK;
+   \                     ??tcpip_input_0:
+   \   00000068   F040BDE8           POP      {R4-R7,LR}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    196          #endif /* LWIP_TCPIP_CORE_LOCKING_INPUT */
+    197          }
+    198          
+    199          /**
+    200           * Call a specific function in the thread context of
+    201           * tcpip_thread for easy access synchronization.
+    202           * A function called in that way may access lwIP core code
+    203           * without fearing concurrent access.
+    204           *
+    205           * @param f the function to call
+    206           * @param ctx parameter passed to f
+    207           * @param block 1 to block until the request is posted, 0 to non-blocking mode
+    208           * @return ERR_OK if the function was called, another err_t if not
+    209           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    210          err_t
+    211          tcpip_callback_with_block(tcpip_callback_fn function, void *ctx, u8_t block)
+    212          {
+   \                     tcpip_callback_with_block:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    213            struct tcpip_msg *msg;
+    214          
+    215            if (sys_mbox_valid(&mbox)) {
+   \   00000004   ........           LDR      R7,??DataTable7  ;; tcpip_init_done
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   080087E2           ADD      R0,R7,#+8
+   \   00000018   ........           _BLF     sys_mbox_valid,??sys_mbox_valid??rA
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   1800000A           BEQ      ??tcpip_callback_with_block_0
+    216              msg = (struct tcpip_msg *)memp_malloc(MEMP_TCPIP_MSG_API);
+   \   00000024   0900A0E3           MOV      R0,#+9
+   \   00000028   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   0000002C   0080B0E1           MOVS     R8,R0
+    217              if (msg == NULL) {
+   \   00000030   1100000A           BEQ      ??tcpip_callback_with_block_1
+    218                return ERR_MEM;
+    219              }
+    220          
+    221              msg->type = TCPIP_MSG_CALLBACK;
+   \                     ??tcpip_callback_with_block_2:
+   \   00000034   0400A0E3           MOV      R0,#+4
+   \   00000038   0000C8E5           STRB     R0,[R8, #+0]
+    222              msg->msg.cb.function = function;
+   \   0000003C   084088E5           STR      R4,[R8, #+8]
+    223              msg->msg.cb.ctx = ctx;
+   \   00000040   0C5088E5           STR      R5,[R8, #+12]
+    224              if (block) {
+   \   00000044   000056E3           CMP      R6,#+0
+   \   00000048   0810A0E1           MOV      R1,R8
+   \   0000004C   080087E2           ADD      R0,R7,#+8
+   \   00000050   0300000A           BEQ      ??tcpip_callback_with_block_3
+    225                sys_mbox_post(&mbox, msg);
+   \   00000054   ........           _BLF     sys_mbox_post,??sys_mbox_post??rA
+    226              } else {
+    227                if (sys_mbox_trypost(&mbox, msg) != ERR_OK) {
+    228                  memp_free(MEMP_TCPIP_MSG_API, msg);
+    229                  return ERR_MEM;
+    230                }
+    231              }
+    232              return ERR_OK;
+   \   00000058   F041BDE8           POP      {R4-R8,LR}
+   \   0000005C   0000A0E3           MOV      R0,#+0
+   \   00000060   1EFF2FE1           BX       LR
+   \                     ??tcpip_callback_with_block_3:
+   \   00000064   ........           _BLF     sys_mbox_trypost,??sys_mbox_trypost??rA
+   \   00000068   000050E3           CMP      R0,#+0
+   \   0000006C   0600000A           BEQ      ??tcpip_callback_with_block_4
+   \   00000070   0810A0E1           MOV      R1,R8
+   \   00000074   0900A0E3           MOV      R0,#+9
+   \   00000078   ........           _BLF     memp_free,??memp_free??rA
+   \                     ??tcpip_callback_with_block_1:
+   \   0000007C   F041BDE8           POP      {R4-R8,LR}
+   \   00000080   0000E0E3           MVN      R0,#+0
+   \   00000084   1EFF2FE1           BX       LR
+    233            }
+    234            return ERR_VAL;
+   \                     ??tcpip_callback_with_block_0:
+   \   00000088   0500E0E3           MVN      R0,#+5
+   \                     ??tcpip_callback_with_block_4:
+   \   0000008C   F041BDE8           POP      {R4-R8,LR}
+   \   00000090   1EFF2FE1           BX       LR               ;; return
+    235          }
+    236          
+    237          #if LWIP_TCPIP_TIMEOUT
+    238          /**
+    239           * call sys_timeout in tcpip_thread
+    240           *
+    241           * @param msec time in milliseconds for timeout
+    242           * @param h function to be called on timeout
+    243           * @param arg argument to pass to timeout function h
+    244           * @return ERR_MEM on memory error, ERR_OK otherwise
+    245           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    246          err_t
+    247          tcpip_timeout(u32_t msecs, sys_timeout_handler h, void *arg)
+    248          {
+   \                     tcpip_timeout:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+    249            struct tcpip_msg *msg;
+    250          
+    251            if (sys_mbox_valid(&mbox)) {
+   \   00000004   ........           LDR      R7,??DataTable7  ;; tcpip_init_done
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   080087E2           ADD      R0,R7,#+8
+   \   00000018   ........           _BLF     sys_mbox_valid,??sys_mbox_valid??rA
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   0F00000A           BEQ      ??tcpip_timeout_0
+    252              msg = (struct tcpip_msg *)memp_malloc(MEMP_TCPIP_MSG_API);
+   \   00000024   0900A0E3           MOV      R0,#+9
+   \   00000028   ........           _BLF     memp_malloc,??memp_malloc??rA
+    253              if (msg == NULL) {
+   \   0000002C   000050E3           CMP      R0,#+0
+    254                return ERR_MEM;
+   \   00000030   0000E003           MVNEQ    R0,#+0
+   \   00000034   0B00000A           BEQ      ??tcpip_timeout_1
+    255              }
+    256          
+    257              msg->type = TCPIP_MSG_TIMEOUT;
+   \   00000038   0210A0E3           MOV      R1,#+2
+   \   0000003C   0010C0E5           STRB     R1,[R0, #+0]
+    258              msg->msg.tmo.msecs = msecs;
+   \   00000040   084080E5           STR      R4,[R0, #+8]
+    259              msg->msg.tmo.h = h;
+   \   00000044   0C5080E5           STR      R5,[R0, #+12]
+    260              msg->msg.tmo.arg = arg;
+   \   00000048   106080E5           STR      R6,[R0, #+16]
+    261              sys_mbox_post(&mbox, msg);
+   \   0000004C   0010A0E1           MOV      R1,R0
+   \   00000050   080087E2           ADD      R0,R7,#+8
+   \   00000054   ........           _BLF     sys_mbox_post,??sys_mbox_post??rA
+    262              return ERR_OK;
+   \   00000058   F040BDE8           POP      {R4-R7,LR}
+   \   0000005C   0000A0E3           MOV      R0,#+0
+   \   00000060   1EFF2FE1           BX       LR
+    263            }
+    264            return ERR_VAL;
+   \                     ??tcpip_timeout_0:
+   \   00000064   0500E0E3           MVN      R0,#+5
+   \                     ??tcpip_timeout_1:
+   \   00000068   F040BDE8           POP      {R4-R7,LR}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    265          }
+    266          
+    267          /**
+    268           * call sys_untimeout in tcpip_thread
+    269           *
+    270           * @param msec time in milliseconds for timeout
+    271           * @param h function to be called on timeout
+    272           * @param arg argument to pass to timeout function h
+    273           * @return ERR_MEM on memory error, ERR_OK otherwise
+    274           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    275          err_t
+    276          tcpip_untimeout(sys_timeout_handler h, void *arg)
+    277          {
+   \                     tcpip_untimeout:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+    278            struct tcpip_msg *msg;
+    279          
+    280            if (sys_mbox_valid(&mbox)) {
+   \   00000004   ........           LDR      R6,??DataTable7  ;; tcpip_init_done
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   080086E2           ADD      R0,R6,#+8
+   \   00000014   ........           _BLF     sys_mbox_valid,??sys_mbox_valid??rA
+   \   00000018   000050E3           CMP      R0,#+0
+   \   0000001C   0E00000A           BEQ      ??tcpip_untimeout_0
+    281              msg = (struct tcpip_msg *)memp_malloc(MEMP_TCPIP_MSG_API);
+   \   00000020   0900A0E3           MOV      R0,#+9
+   \   00000024   ........           _BLF     memp_malloc,??memp_malloc??rA
+    282              if (msg == NULL) {
+   \   00000028   000050E3           CMP      R0,#+0
+    283                return ERR_MEM;
+   \   0000002C   0000E003           MVNEQ    R0,#+0
+   \   00000030   0A00000A           BEQ      ??tcpip_untimeout_1
+    284              }
+    285          
+    286              msg->type = TCPIP_MSG_UNTIMEOUT;
+   \   00000034   0310A0E3           MOV      R1,#+3
+   \   00000038   0010C0E5           STRB     R1,[R0, #+0]
+    287              msg->msg.tmo.h = h;
+   \   0000003C   0C4080E5           STR      R4,[R0, #+12]
+    288              msg->msg.tmo.arg = arg;
+   \   00000040   105080E5           STR      R5,[R0, #+16]
+    289              sys_mbox_post(&mbox, msg);
+   \   00000044   0010A0E1           MOV      R1,R0
+   \   00000048   080086E2           ADD      R0,R6,#+8
+   \   0000004C   ........           _BLF     sys_mbox_post,??sys_mbox_post??rA
+    290              return ERR_OK;
+   \   00000050   7040BDE8           POP      {R4-R6,LR}
+   \   00000054   0000A0E3           MOV      R0,#+0
+   \   00000058   1EFF2FE1           BX       LR
+    291            }
+    292            return ERR_VAL;
+   \                     ??tcpip_untimeout_0:
+   \   0000005C   0500E0E3           MVN      R0,#+5
+   \                     ??tcpip_untimeout_1:
+   \   00000060   7040BDE8           POP      {R4-R6,LR}
+   \   00000064   1EFF2FE1           BX       LR               ;; return
+    293          }
+    294          #endif /* LWIP_TCPIP_TIMEOUT */
+    295          
+    296          #if LWIP_NETCONN
+    297          /**
+    298           * Call the lower part of a netconn_* function
+    299           * This function is then running in the thread context
+    300           * of tcpip_thread and has exclusive access to lwIP core code.
+    301           *
+    302           * @param apimsg a struct containing the function to call and its parameters
+    303           * @return ERR_OK if the function was called, another err_t if not
+    304           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    305          err_t
+    306          tcpip_apimsg(struct api_msg *apimsg)
+    307          {
+   \                     tcpip_apimsg:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+    308            struct tcpip_msg msg;
+    309          #ifdef LWIP_DEBUG
+    310            /* catch functions that don't set err */
+    311            apimsg->msg.err = ERR_VAL;
+    312          #endif
+    313            
+    314            if (sys_mbox_valid(&mbox)) {
+   \   00000004   ........           LDR      R5,??DataTable7  ;; tcpip_init_done
+   \   00000008   14D04DE2           SUB      SP,SP,#+20
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   080085E2           ADD      R0,R5,#+8
+   \   00000014   ........           _BLF     sys_mbox_valid,??sys_mbox_valid??rA
+   \   00000018   000050E3           CMP      R0,#+0
+   \   0000001C   0D00000A           BEQ      ??tcpip_apimsg_0
+    315              msg.type = TCPIP_MSG_API;
+   \   00000020   0010A0E3           MOV      R1,#+0
+   \   00000024   0010CDE5           STRB     R1,[SP, #+0]
+    316              msg.msg.apimsg = apimsg;
+   \   00000028   08408DE5           STR      R4,[SP, #+8]
+    317              sys_mbox_post(&mbox, &msg);
+   \   0000002C   0D10A0E1           MOV      R1,SP
+   \   00000030   080085E2           ADD      R0,R5,#+8
+   \   00000034   ........           _BLF     sys_mbox_post,??sys_mbox_post??rA
+    318              sys_arch_sem_wait(&apimsg->msg.conn->op_completed, 0);
+   \   00000038   040094E5           LDR      R0,[R4, #+4]
+   \   0000003C   0010A0E3           MOV      R1,#+0
+   \   00000040   0C0080E2           ADD      R0,R0,#+12
+   \   00000044   ........           _BLF     sys_arch_sem_wait,??sys_arch_sem_wait??rA
+    319              return apimsg->msg.err;
+   \   00000048   D800D4E1           LDRSB    R0,[R4, #+8]
+   \   0000004C   14D08DE2           ADD      SP,SP,#+20
+   \   00000050   3040BDE8           POP      {R4,R5,LR}
+   \   00000054   1EFF2FE1           BX       LR
+    320            }
+    321            return ERR_VAL;
+   \                     ??tcpip_apimsg_0:
+   \   00000058   14D08DE2           ADD      SP,SP,#+20
+   \   0000005C   3040BDE8           POP      {R4,R5,LR}
+   \   00000060   0500E0E3           MVN      R0,#+5
+   \   00000064   1EFF2FE1           BX       LR               ;; return
+    322          }
+    323          
+    324          #if LWIP_TCPIP_CORE_LOCKING
+    325          /**
+    326           * Call the lower part of a netconn_* function
+    327           * This function has exclusive access to lwIP core code by locking it
+    328           * before the function is called.
+    329           *
+    330           * @param apimsg a struct containing the function to call and its parameters
+    331           * @return ERR_OK (only for compatibility fo tcpip_apimsg())
+    332           */
+    333          err_t
+    334          tcpip_apimsg_lock(struct api_msg *apimsg)
+    335          {
+    336          #ifdef LWIP_DEBUG
+    337            /* catch functions that don't set err */
+    338            apimsg->msg.err = ERR_VAL;
+    339          #endif
+    340          
+    341            LOCK_TCPIP_CORE();
+    342            apimsg->function(&(apimsg->msg));
+    343            UNLOCK_TCPIP_CORE();
+    344            return apimsg->msg.err;
+    345          
+    346          }
+    347          #endif /* LWIP_TCPIP_CORE_LOCKING */
+    348          #endif /* LWIP_NETCONN */
+    349          
+    350          #if LWIP_NETIF_API
+    351          #if !LWIP_TCPIP_CORE_LOCKING
+    352          /**
+    353           * Much like tcpip_apimsg, but calls the lower part of a netifapi_*
+    354           * function.
+    355           *
+    356           * @param netifapimsg a struct containing the function to call and its parameters
+    357           * @return error code given back by the function that was called
+    358           */
+    359          err_t
+    360          tcpip_netifapi(struct netifapi_msg* netifapimsg)
+    361          {
+    362            struct tcpip_msg msg;
+    363            
+    364            if (sys_mbox_valid(&mbox)) {
+    365              err_t err = sys_sem_new(&netifapimsg->msg.sem, 0);
+    366              if (err != ERR_OK) {
+    367                netifapimsg->msg.err = err;
+    368                return err;
+    369              }
+    370              
+    371              msg.type = TCPIP_MSG_NETIFAPI;
+    372              msg.msg.netifapimsg = netifapimsg;
+    373              sys_mbox_post(&mbox, &msg);
+    374              sys_sem_wait(&netifapimsg->msg.sem);
+    375              sys_sem_free(&netifapimsg->msg.sem);
+    376              return netifapimsg->msg.err;
+    377            }
+    378            return ERR_VAL;
+    379          }
+    380          #else /* !LWIP_TCPIP_CORE_LOCKING */
+    381          /**
+    382           * Call the lower part of a netifapi_* function
+    383           * This function has exclusive access to lwIP core code by locking it
+    384           * before the function is called.
+    385           *
+    386           * @param netifapimsg a struct containing the function to call and its parameters
+    387           * @return ERR_OK (only for compatibility fo tcpip_netifapi())
+    388           */
+    389          err_t
+    390          tcpip_netifapi_lock(struct netifapi_msg* netifapimsg)
+    391          {
+    392            LOCK_TCPIP_CORE();  
+    393            netifapimsg->function(&(netifapimsg->msg));
+    394            UNLOCK_TCPIP_CORE();
+    395            return netifapimsg->msg.err;
+    396          }
+    397          #endif /* !LWIP_TCPIP_CORE_LOCKING */
+    398          #endif /* LWIP_NETIF_API */
+    399          
+    400          /**
+    401           * Allocate a structure for a static callback message and initialize it.
+    402           * This is intended to be used to send "static" messages from interrupt context.
+    403           *
+    404           * @param function the function to call
+    405           * @param ctx parameter passed to function
+    406           * @return a struct pointer to pass to tcpip_trycallback().
+    407           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    408          struct tcpip_callback_msg* tcpip_callbackmsg_new(tcpip_callback_fn function, void *ctx)
+    409          {
+   \                     tcpip_callbackmsg_new:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+    410            struct tcpip_msg *msg = (struct tcpip_msg *)memp_malloc(MEMP_TCPIP_MSG_API);
+   \   0000000C   0900A0E3           MOV      R0,#+9
+   \   00000010   ........           _BLF     memp_malloc,??memp_malloc??rA
+    411            if (msg == NULL) {
+   \   00000014   000050E3           CMP      R0,#+0
+   \   00000018   0300000A           BEQ      ??tcpip_callbackmsg_new_0
+    412              return NULL;
+    413            }
+    414            msg->type = TCPIP_MSG_CALLBACK_STATIC;
+   \   0000001C   0510A0E3           MOV      R1,#+5
+   \   00000020   0010C0E5           STRB     R1,[R0, #+0]
+    415            msg->msg.cb.function = function;
+   \   00000024   084080E5           STR      R4,[R0, #+8]
+    416            msg->msg.cb.ctx = ctx;
+   \   00000028   0C5080E5           STR      R5,[R0, #+12]
+    417            return (struct tcpip_callback_msg*)msg;
+   \                     ??tcpip_callbackmsg_new_0:
+   \   0000002C   3040BDE8           POP      {R4,R5,LR}
+   \   00000030   1EFF2FE1           BX       LR               ;; return
+    418          }
+    419          
+    420          /**
+    421           * Free a callback message allocated by tcpip_callbackmsg_new().
+    422           *
+    423           * @param msg the message to free
+    424           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    425          void tcpip_callbackmsg_delete(struct tcpip_callback_msg* msg)
+    426          {
+   \                     tcpip_callbackmsg_delete:
+   \   00000000   00402DE9           PUSH     {LR}
+    427            memp_free(MEMP_TCPIP_MSG_API, msg);
+   \   00000004   0010A0E1           MOV      R1,R0
+   \   00000008   0900A0E3           MOV      R0,#+9
+   \   0000000C   ........           _BLF     memp_free,??memp_free??rA
+    428          }
+   \   00000010   0040BDE8           POP      {LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+    429          
+    430          /**
+    431           * Try to post a callback-message to the tcpip_thread mbox
+    432           * This is intended to be used to send "static" messages from interrupt context.
+    433           *
+    434           * @param msg pointer to the message to post
+    435           * @return sys_mbox_trypost() return code
+    436           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    437          err_t
+    438          tcpip_trycallback(struct tcpip_callback_msg* msg)
+    439          {
+   \                     tcpip_trycallback:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+    440            if (!sys_mbox_valid(&mbox)) {
+   \   00000004   ........           LDR      R5,??DataTable7  ;; tcpip_init_done
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   080085E2           ADD      R0,R5,#+8
+   \   00000010   ........           _BLF     sys_mbox_valid,??sys_mbox_valid??rA
+   \   00000014   000050E3           CMP      R0,#+0
+    441              return ERR_VAL;
+   \   00000018   0500E003           MVNEQ    R0,#+5
+   \   0000001C   0200000A           BEQ      ??tcpip_trycallback_0
+    442            }
+    443            return sys_mbox_trypost(&mbox, msg);
+   \   00000020   0410A0E1           MOV      R1,R4
+   \   00000024   080085E2           ADD      R0,R5,#+8
+   \   00000028   ........           _BLF     sys_mbox_trypost,??sys_mbox_trypost??rA
+   \                     ??tcpip_trycallback_0:
+   \   0000002C   3040BDE8           POP      {R4,R5,LR}
+   \   00000030   1EFF2FE1           BX       LR               ;; return
+    444          }
+    445          
+    446          /**
+    447           * Initialize this module:
+    448           * - initialize all sub modules
+    449           * - start the tcpip_thread
+    450           *
+    451           * @param initfunc a function to call when tcpip_thread is running and finished initializing
+    452           * @param arg argument to pass to initfunc
+    453           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    454          void
+    455          tcpip_init(tcpip_init_done_fn initfunc, void *arg)
+    456          {
+   \                     tcpip_init:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   40D04DE2           SUB      SP,SP,#+64
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+    457            lwip_init();
+   \   00000010   ........           _BLF     lwip_init,??lwip_init??rA
+    458          
+    459            tcpip_init_done = initfunc;
+   \   00000014   ........           LDR      R0,??DataTable7  ;; tcpip_init_done
+    460            tcpip_init_done_arg = arg;
+    461            if(sys_mbox_new(&mbox, TCPIP_MBOX_SIZE) != ERR_OK) {
+   \   00000018   4010A0E3           MOV      R1,#+64
+   \   0000001C   004080E5           STR      R4,[R0, #+0]
+   \   00000020   045080E5           STR      R5,[R0, #+4]
+   \   00000024   080080E2           ADD      R0,R0,#+8
+   \   00000028   ........           _BLF     sys_mbox_new,??sys_mbox_new??rA
+    462              LWIP_ASSERT("failed to create tcpip_thread mbox", 0);
+    463            }
+    464          #if LWIP_TCPIP_CORE_LOCKING
+    465            if(sys_mutex_new(&lock_tcpip_core) != ERR_OK) {
+    466              LWIP_ASSERT("failed to create lock_tcpip_core", 0);
+    467            }
+    468          #endif /* LWIP_TCPIP_CORE_LOCKING */
+    469          
+    470            sys_thread_new(TCPIP_THREAD_NAME, tcpip_thread, NULL, TCPIP_THREAD_STACKSIZE, TCPIP_THREAD_PRIO);
+   \   0000002C   28209FE5           LDR      R2,??tcpip_init_0  ;; tcpip_thread
+   \   00000030   28109FE5           LDR      R1,??tcpip_init_0+0x4  ;; `?<Constant "tcpip_thread">`
+   \   00000034   BE00A0E3           MOV      R0,#+190
+   \   00000038   01002DE9           PUSH     {R0}
+   \   0000003C   400DA0E3           MOV      R0,#+4096
+   \   00000040   01002DE9           PUSH     {R0}
+   \   00000044   0030A0E3           MOV      R3,#+0
+   \   00000048   08008DE2           ADD      R0,SP,#+8
+   \   0000004C   ........           _BLF     sys_thread_new,??sys_thread_new??rA
+    471          }
+   \   00000050   48D08DE2           ADD      SP,SP,#+72
+   \   00000054   3040BDE8           POP      {R4,R5,LR}
+   \   00000058   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcpip_init_0:
+   \   0000005C   ........           DC32     tcpip_thread
+   \   00000060   ........           DC32     `?<Constant "tcpip_thread">`
+    472          
+    473          /**
+    474           * Simple callback function used with tcpip_callback to free a pbuf
+    475           * (pbuf_free has a wrong signature for tcpip_callback)
+    476           *
+    477           * @param p The pbuf (chain) to be dereferenced.
+    478           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    479          static void
+    480          pbuf_free_int(void *p)
+    481          {
+   \                     pbuf_free_int:
+   \   00000000   00402DE9           PUSH     {LR}
+    482            struct pbuf *q = (struct pbuf *)p;
+    483            pbuf_free(q);
+   \   00000004   ........           _BLF     pbuf_free,??pbuf_free??rA
+    484          }
+   \   00000008   0040BDE8           POP      {LR}
+   \   0000000C   1EFF2FE1           BX       LR               ;; return
+    485          
+    486          /**
+    487           * A simple wrapper function that allows you to free a pbuf from interrupt context.
+    488           *
+    489           * @param p The pbuf (chain) to be dereferenced.
+    490           * @return ERR_OK if callback could be enqueued, an err_t if not
+    491           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    492          err_t
+    493          pbuf_free_callback(struct pbuf *p)
+    494          {
+    495            return tcpip_callback_with_block(pbuf_free_int, p, 0);
+   \                     pbuf_free_callback:
+   \   00000000   0010A0E1           MOV      R1,R0
+   \   00000004   10009FE5           LDR      R0,??pbuf_free_callback_0  ;; pbuf_free_int
+   \   00000008   00402DE9           PUSH     {LR}
+   \   0000000C   0020A0E3           MOV      R2,#+0
+   \   00000010   ........           BL       tcpip_callback_with_block
+   \   00000014   0040BDE8           POP      {LR}
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+   \                     ??pbuf_free_callback_0:
+   \   0000001C   ........           DC32     pbuf_free_int
+    496          }
+    497          
+    498          /**
+    499           * A simple wrapper function that allows you to free heap memory from
+    500           * interrupt context.
+    501           *
+    502           * @param m the heap memory to free
+    503           * @return ERR_OK if callback could be enqueued, an err_t if not
+    504           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    505          err_t
+    506          mem_free_callback(void *m)
+    507          {
+    508            return tcpip_callback_with_block(mem_free, m, 0);
+   \                     mem_free_callback:
+   \   00000000   0010A0E1           MOV      R1,R0
+   \   00000004   10009FE5           LDR      R0,??mem_free_callback_0  ;; mem_free
+   \   00000008   00402DE9           PUSH     {LR}
+   \   0000000C   0020A0E3           MOV      R2,#+0
+   \   00000010   ........           BL       tcpip_callback_with_block
+   \   00000014   0040BDE8           POP      {LR}
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+   \                     ??mem_free_callback_0:
+   \   0000001C   ........           DC32     mem_free
+    509          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable7:
+   \   00000000   ........           DC32     tcpip_init_done
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "tcpip_thread">`:
+   \   00000000   74637069705F       DC8 "tcpip_thread"
+   \              746872656164
+   \              00          
+   \   0000000D   000000             DC8 0, 0, 0
+    510          
+    511          #endif /* !NO_SYS */
+    512          
+
+   Maximum stack usage in bytes:
+
+     Function                  CSTACK
+     --------                  ------
+     mem_free_callback             4
+     pbuf_free_callback            4
+     pbuf_free_int                 4
+     tcpip_apimsg                 32
+     tcpip_callback_with_block    24
+     tcpip_callbackmsg_delete      4
+     tcpip_callbackmsg_new        12
+     tcpip_init                   84
+     tcpip_input                  20
+     tcpip_thread                 12
+     tcpip_timeout                20
+     tcpip_trycallback            12
+     tcpip_untimeout              16
+
+
+   Segment part sizes:
+
+     Function/Label             Bytes
+     --------------             -----
+     tcpip_init_done              32
+     tcpip_thread                292
+     tcpip_input                 112
+     tcpip_callback_with_block   148
+     tcpip_timeout               112
+     tcpip_untimeout             104
+     tcpip_apimsg                104
+     tcpip_callbackmsg_new        52
+     tcpip_callbackmsg_delete     24
+     tcpip_trycallback            52
+     tcpip_init                  100
+     pbuf_free_int                16
+     pbuf_free_callback           32
+     mem_free_callback            32
+     ??DataTable7                  4
+     ?<Constant "tcpip_thread">   16
+      Others                     244
+
+ 
+ 1 416 bytes in segment CODE
+    16 bytes in segment DATA_C
+    32 bytes in segment DATA_Z
+    12 bytes in segment INITTAB
+ 
+ 1 184 bytes of CODE  memory (+ 244 bytes shared)
+    16 bytes of CONST memory
+    32 bytes of DATA  memory
+
+Errors: none
+Warnings: none

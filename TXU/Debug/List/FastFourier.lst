@@ -1,0 +1,3536 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:13:42 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\FastFourier.cpp                 #
+#    Command line    =  D:\S2Prog\Shared\Src\FastFourier.cpp --fpu None -D   #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\FastFourier.lst             #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\FastFourier.r79              #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\FastFourier.cpp
+      1          #include <math.h>
+      2          /*
+      3          Fast Fourier/Cosine/Sine Transform
+      4              dimension   :one
+      5              data length :power of 2
+      6              decimation  :frequency
+      7              radix       :4, 2
+      8              data        :inplace
+      9              table       :use
+     10          functions
+     11              cdft: Complex Discrete Fourier Transform
+     12              rdft: Real Discrete Fourier Transform
+     13              ddct: Discrete Cosine Transform
+     14              ddst: Discrete Sine Transform
+     15              dfct: Cosine Transform of RDFT (Real Symmetric DFT)
+     16              dfst: Sine Transform of RDFT (Real Anti-symmetric DFT)
+     17          function prototypes
+     18              void cdft(int, int, double *, int *, double *);
+     19              void rdft(int, int, double *, int *, double *);
+     20              void ddct(int, int, double *, int *, double *);
+     21              void ddst(int, int, double *, int *, double *);
+     22              void dfct(int, double *, double *, int *, double *);
+     23              void dfst(int, double *, double *, int *, double *);
+     24          
+     25          
+     26          -------- Complex DFT (Discrete Fourier Transform) --------
+     27              [definition]
+     28                  <case1>
+     29                      X[k] = sum_j=0^n-1 x[j]*exp(2*pi*i*j*k/n), 0<=k<n
+     30                  <case2>
+     31                      X[k] = sum_j=0^n-1 x[j]*exp(-2*pi*i*j*k/n), 0<=k<n
+     32                  (notes: sum_j=0^n-1 is a summation from j=0 to n-1)
+     33              [usage]
+     34                  <case1>
+     35                      ip[0] = 0; // first time only
+     36                      cdft(2*n, 1, a, ip, w);
+     37                  <case2>
+     38                      ip[0] = 0; // first time only
+     39                      cdft(2*n, -1, a, ip, w);
+     40              [parameters]
+     41                  2*n            :data length (int)
+     42                                  n >= 1, n = power of 2
+     43                  a[0...2*n-1]   :input/output data (double *)
+     44                                  input data
+     45                                      a[2*j] = Re(x[j]), 
+     46                                      a[2*j+1] = Im(x[j]), 0<=j<n
+     47                                  output data
+     48                                      a[2*k] = Re(X[k]), 
+     49                                      a[2*k+1] = Im(X[k]), 0<=k<n
+     50                  ip[0...*]      :work area for bit reversal (int *)
+     51                                  length of ip >= 2+sqrt(n)  ; if n % 4 == 0
+     52                                                  2+sqrt(n/2); otherwise
+     53                                  ip[0],ip[1] are pointers of the cos/sin table.
+     54                  w[0...n/2-1]   :cos/sin table (double *)
+     55                                  w[],ip[] are initialized if ip[0] == 0.
+     56              [remark]
+     57                  Inverse of 
+     58                      cdft(2*n, -1, a, ip, w);
+     59                  is 
+     60                      cdft(2*n, 1, a, ip, w);
+     61                      for (j = 0; j <= 2 * n - 1; j++) {
+     62                          a[j] *= 1.0 / n;
+     63                      }
+     64                  .
+     65          
+     66          
+     67          -------- Real DFT / Inverse of Real DFT --------
+     68              [definition]
+     69                  <case1> RDFT
+     70                      R[k] = sum_j=0^n-1 a[j]*cos(2*pi*j*k/n), 0<=k<=n/2
+     71                      I[k] = sum_j=0^n-1 a[j]*sin(2*pi*j*k/n), 0<k<n/2
+     72                  <case2> IRDFT (excluding scale)
+     73                      a[k] = R[0]/2 + R[n/2]/2 + 
+     74                             sum_j=1^n/2-1 R[j]*cos(2*pi*j*k/n) + 
+     75                             sum_j=1^n/2-1 I[j]*sin(2*pi*j*k/n), 0<=k<n
+     76              [usage]
+     77                  <case1>
+     78                      ip[0] = 0; // first time only
+     79                      rdft(n, 1, a, ip, w);
+     80                  <case2>
+     81                      ip[0] = 0; // first time only
+     82                      rdft(n, -1, a, ip, w);
+     83              [parameters]
+     84                  n              :data length (int)
+     85                                  n >= 2, n = power of 2
+     86                  a[0...n-1]     :input/output data (double *)
+     87                                  <case1>
+     88                                      output data
+     89                                          a[2*k] = R[k], 0<=k<n/2
+     90                                          a[2*k+1] = I[k], 0<k<n/2
+     91                                          a[1] = R[n/2]
+     92                                  <case2>
+     93                                      input data
+     94                                          a[2*j] = R[j], 0<=j<n/2
+     95                                          a[2*j+1] = I[j], 0<j<n/2
+     96                                          a[1] = R[n/2]
+     97                  ip[0...*]      :work area for bit reversal (int *)
+     98                                  length of ip >= 2+sqrt(n/2); if n % 4 == 2
+     99                                                  2+sqrt(n/4); otherwise
+    100                                  ip[0],ip[1] are pointers of the cos/sin table.
+    101                  w[0...n/2-1]   :cos/sin table (double *)
+    102                                  w[],ip[] are initialized if ip[0] == 0.
+    103              [remark]
+    104                  Inverse of 
+    105                      rdft(n, 1, a, ip, w);
+    106                  is 
+    107                      rdft(n, -1, a, ip, w);
+    108                      for (j = 0; j <= n - 1; j++) {
+    109                          a[j] *= 2.0 / n;
+    110                      }
+    111                  .
+    112          
+    113          
+    114          -------- DCT (Discrete Cosine Transform) / Inverse of DCT --------
+    115              [definition]
+    116                  <case1> IDCT (excluding scale)
+    117                      C[k] = sum_j=0^n-1 a[j]*cos(pi*j*(k+1/2)/n), 0<=k<n
+    118                  <case2> DCT
+    119                      C[k] = sum_j=0^n-1 a[j]*cos(pi*(j+1/2)*k/n), 0<=k<n
+    120              [usage]
+    121                  <case1>
+    122                      ip[0] = 0; // first time only
+    123                      ddct(n, 1, a, ip, w);
+    124                  <case2>
+    125                      ip[0] = 0; // first time only
+    126                      ddct(n, -1, a, ip, w);
+    127              [parameters]
+    128                  n              :data length (int)
+    129                                  n >= 2, n = power of 2
+    130                  a[0...n-1]     :input/output data (double *)
+    131                                  output data
+    132                                      a[k] = C[k], 0<=k<n
+    133                  ip[0...*]      :work area for bit reversal (int *)
+    134                                  length of ip >= 2+sqrt(n/2); if n % 4 == 2
+    135                                                  2+sqrt(n/4); otherwise
+    136                                  ip[0],ip[1] are pointers of the cos/sin table.
+    137                  w[0...n*5/4-1] :cos/sin table (double *)
+    138                                  w[],ip[] are initialized if ip[0] == 0.
+    139              [remark]
+    140                  Inverse of 
+    141                      ddct(n, -1, a, ip, w);
+    142                  is 
+    143                      a[0] *= 0.5;
+    144                      ddct(n, 1, a, ip, w);
+    145                      for (j = 0; j <= n - 1; j++) {
+    146                          a[j] *= 2.0 / n;
+    147                      }
+    148                  .
+    149          
+    150          
+    151          -------- DST (Discrete Sine Transform) / Inverse of DST --------
+    152              [definition]
+    153                  <case1> IDST (excluding scale)
+    154                      S[k] = sum_j=1^n A[j]*sin(pi*j*(k+1/2)/n), 0<=k<n
+    155                  <case2> DST
+    156                      S[k] = sum_j=0^n-1 a[j]*sin(pi*(j+1/2)*k/n), 0<k<=n
+    157              [usage]
+    158                  <case1>
+    159                      ip[0] = 0; // first time only
+    160                      ddst(n, 1, a, ip, w);
+    161                  <case2>
+    162                      ip[0] = 0; // first time only
+    163                      ddst(n, -1, a, ip, w);
+    164              [parameters]
+    165                  n              :data length (int)
+    166                                  n >= 2, n = power of 2
+    167                  a[0...n-1]     :input/output data (double *)
+    168                                  <case1>
+    169                                      input data
+    170                                          a[j] = A[j], 0<j<n
+    171                                          a[0] = A[n]
+    172                                      output data
+    173                                          a[k] = S[k], 0<=k<n
+    174                                  <case2>
+    175                                      output data
+    176                                          a[k] = S[k], 0<k<n
+    177                                          a[0] = S[n]
+    178                  ip[0...*]      :work area for bit reversal (int *)
+    179                                  length of ip >= 2+sqrt(n/2); if n % 4 == 2
+    180                                                  2+sqrt(n/4); otherwise
+    181                                  ip[0],ip[1] are pointers of the cos/sin table.
+    182                  w[0...n*5/4-1] :cos/sin table (double *)
+    183                                  w[],ip[] are initialized if ip[0] == 0.
+    184              [remark]
+    185                  Inverse of 
+    186                      ddst(n, -1, a, ip, w);
+    187                  is 
+    188                      a[0] *= 0.5;
+    189                      ddst(n, 1, a, ip, w);
+    190                      for (j = 0; j <= n - 1; j++) {
+    191                          a[j] *= 2.0 / n;
+    192                      }
+    193                  .
+    194          
+    195          
+    196          -------- Cosine Transform of RDFT (Real Symmetric DFT) --------
+    197              [definition]
+    198                  C[k] = sum_j=0^n a[j]*cos(pi*j*k/n), 0<=k<=n
+    199              [usage]
+    200                  ip[0] = 0; // first time only
+    201                  dfct(n, a, t, ip, w);
+    202              [parameters]
+    203                  n              :data length - 1 (int)
+    204                                  n >= 2, n = power of 2
+    205                  a[0...n]       :input/output data (double *)
+    206                                  output data
+    207                                      a[k] = C[k], 0<=k<=n
+    208                  t[0...n/2]     :work area (double *)
+    209                  ip[0...*]      :work area for bit reversal (int *)
+    210                                  length of ip >= 2+sqrt(n/4); if n % 4 == 0
+    211                                                  2+sqrt(n/8); otherwise
+    212                                  ip[0],ip[1] are pointers of the cos/sin table.
+    213                  w[0...n*5/8-1] :cos/sin table (double *)
+    214                                  w[],ip[] are initialized if ip[0] == 0.
+    215              [remark]
+    216                  Inverse of 
+    217                      a[0] *= 0.5;
+    218                      a[n] *= 0.5;
+    219                      dfct(n, a, t, ip, w);
+    220                  is 
+    221                      a[0] *= 0.5;
+    222                      a[n] *= 0.5;
+    223                      dfct(n, a, t, ip, w);
+    224                      for (j = 0; j <= n; j++) {
+    225                          a[j] *= 2.0 / n;
+    226                      }
+    227                  .
+    228          
+    229          
+    230          -------- Sine Transform of RDFT (Real Anti-symmetric DFT) --------
+    231              [definition]
+    232                  S[k] = sum_j=1^n-1 a[j]*sin(pi*j*k/n), 0<k<n
+    233              [usage]
+    234                  ip[0] = 0; // first time only
+    235                  dfst(n, a, t, ip, w);
+    236              [parameters]
+    237                  n              :data length + 1 (int)
+    238                                  n >= 2, n = power of 2
+    239                  a[0...n-1]     :input/output data (double *)
+    240                                  output data
+    241                                      a[k] = S[k], 0<k<n
+    242                                  (a[0] is used for work area)
+    243                  t[0...n/2-1]   :work area (double *)
+    244                  ip[0...*]      :work area for bit reversal (int *)
+    245                                  length of ip >= 2+sqrt(n/4); if n % 4 == 0
+    246                                                  2+sqrt(n/8); otherwise
+    247                                  ip[0],ip[1] are pointers of the cos/sin table.
+    248                  w[0...n*5/8-1] :cos/sin table (double *)
+    249                                  w[],ip[] are initialized if ip[0] == 0.
+    250              [remark]
+    251                  Inverse of 
+    252                      dfst(n, a, t, ip, w);
+    253                  is 
+    254                      dfst(n, a, t, ip, w);
+    255                      for (j = 1; j <= n - 1; j++) {
+    256                          a[j] *= 2.0 / n;
+    257                      }
+    258                  .
+    259          */
+    260          
+    261          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    262          void cdft(int n, int isgn, double *a, int *ip, double *w)
+    263          {
+   \                     ??cdft:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   18609DE5           LDR      R6,[SP, #+24]
+   \   0000000C   0380A0E1           MOV      R8,R3
+    264              void makewt(int nw, int *ip, double *w);
+    265              void bitrv2(int n, int *ip, double *a);
+    266              void cftsub(int n, double *a, double *w);
+    267              int j;
+    268              
+    269              if (n > (ip[0] << 2)) {
+   \   00000010   000098E5           LDR      R0,[R8, #+0]
+   \   00000014   0170A0E1           MOV      R7,R1
+   \   00000018   0250A0E1           MOV      R5,R2
+   \   0000001C   000154E1           CMP      R4,R0, LSL #+2
+   \   00000020   030000DA           BLE      ??cdft_1
+    270                  makewt(n >> 2, ip, w);
+   \   00000024   0620A0E1           MOV      R2,R6
+   \   00000028   0810A0E1           MOV      R1,R8
+   \   0000002C   4401A0E1           ASR      R0,R4,#+2
+   \   00000030   ........           BL       ??makewt
+    271              }
+    272              if (n > 4) {
+   \                     ??cdft_1:
+   \   00000034   050054E3           CMP      R4,#+5
+   \   00000038   1C0000BA           BLT      ??cdft_2
+    273                  bitrv2(n, ip + 2, a);
+   \   0000003C   0520A0E1           MOV      R2,R5
+   \   00000040   081088E2           ADD      R1,R8,#+8
+   \   00000044   0400A0E1           MOV      R0,R4
+   \   00000048   ........           BL       ??bitrv2
+   \   0000004C   000057E3           CMP      R7,#+0
+   \   00000050   1600005A           BPL      ??cdft_2
+    274              }
+    275              if (n > 4 && isgn < 0) {
+    276                  for (j = 1; j <= n - 1; j += 2) {
+   \   00000054   0120A0E3           MOV      R2,#+1
+   \   00000058   017044E2           SUB      R7,R4,#+1
+   \   0000005C   040000EA           B        ??cdft_3
+    277                      a[j] = -a[j];
+   \                     ??cdft_4:
+   \   00000060   823185E0           ADD      R3,R5,R2, LSL #+3
+   \   00000064   030093E8           LDM      R3,{R0,R1}
+    278                  }
+   \   00000068   022082E2           ADD      R2,R2,#+2
+   \   0000006C   801421E2           EOR      R1,R1,#0x80000000
+   \   00000070   030083E8           STM      R3,{R0,R1}
+   \                     ??cdft_3:
+   \   00000074   020057E1           CMP      R7,R2
+   \   00000078   F8FFFFAA           BGE      ??cdft_4
+    279                  cftsub(n, a, w);
+   \   0000007C   0620A0E1           MOV      R2,R6
+   \   00000080   0510A0E1           MOV      R1,R5
+   \   00000084   0400A0E1           MOV      R0,R4
+   \   00000088   ........           BL       ??cftsub
+    280                  for (j = 1; j <= n - 1; j += 2) {
+   \   0000008C   0100A0E3           MOV      R0,#+1
+   \                     ??cdft_5:
+   \   00000090   000057E1           CMP      R7,R0
+   \   00000094   090000BA           BLT      ??cdft_6
+    281                      a[j] = -a[j];
+   \   00000098   801185E0           ADD      R1,R5,R0, LSL #+3
+   \   0000009C   0C0091E8           LDM      R1,{R2,R3}
+    282                  }
+   \   000000A0   020080E2           ADD      R0,R0,#+2
+   \   000000A4   803423E2           EOR      R3,R3,#0x80000000
+   \   000000A8   0C0081E8           STM      R1,{R2,R3}
+   \   000000AC   F7FFFFEA           B        ??cdft_5
+    283              } else {
+    284                  cftsub(n, a, w);
+   \                     ??cdft_2:
+   \   000000B0   0620A0E1           MOV      R2,R6
+   \   000000B4   0510A0E1           MOV      R1,R5
+   \   000000B8   0400A0E1           MOV      R0,R4
+   \   000000BC   ........           BL       ??cftsub
+    285              }
+    286          }
+   \                     ??cdft_6:
+   \   000000C0   F041BDE8           POP      {R4-R8,LR}
+   \   000000C4   1EFF2FE1           BX       LR               ;; return
+    287          
+    288          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    289          void rdft(int n, int isgn, double *a, int *ip, double *w)
+    290          {
+   \                     ??rdft:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+   \   00000004   24609DE5           LDR      R6,[SP, #+36]
+   \   00000008   03A0A0E1           MOV      R10,R3
+    291              void makewt(int nw, int *ip, double *w);
+    292              void makect(int nc, int *ip, double *c);
+    293              void bitrv2(int n, int *ip, double *a);
+    294              void cftsub(int n, double *a, double *w);
+    295              void rftsub(int n, double *a, int nc, double *c);
+    296              int j, nw, nc;
+    297              double xi;
+    298              
+    299              nw = ip[0];
+   \   0000000C   00909AE5           LDR      R9,[R10, #+0]
+   \   00000010   0040A0E1           MOV      R4,R0
+   \   00000014   0180A0E1           MOV      R8,R1
+   \   00000018   0250A0E1           MOV      R5,R2
+    300              if (n > (nw << 2)) {
+   \   0000001C   44B1A0E1           ASR      R11,R4,#+2
+   \   00000020   090154E1           CMP      R4,R9, LSL #+2
+   \   00000024   040000DA           BLE      ??rdft_1
+    301                  nw = n >> 2;
+   \   00000028   0B90A0E1           MOV      R9,R11
+    302                  makewt(nw, ip, w);
+   \   0000002C   0620A0E1           MOV      R2,R6
+   \   00000030   0A10A0E1           MOV      R1,R10
+   \   00000034   0900A0E1           MOV      R0,R9
+   \   00000038   ........           BL       ??makewt
+    303              }
+    304              nc = ip[1];
+   \                     ??rdft_1:
+   \   0000003C   04709AE5           LDR      R7,[R10, #+4]
+    305              if (n > (nc << 2)) {
+   \   00000040   899186E0           ADD      R9,R6,R9, LSL #+3
+   \   00000044   070154E1           CMP      R4,R7, LSL #+2
+   \   00000048   040000DA           BLE      ??rdft_2
+    306                  nc = n >> 2;
+   \   0000004C   0B70A0E1           MOV      R7,R11
+    307                  makect(nc, ip, w + nw);
+   \   00000050   0920A0E1           MOV      R2,R9
+   \   00000054   0A10A0E1           MOV      R1,R10
+   \   00000058   0700A0E1           MOV      R0,R7
+   \   0000005C   ........           BL       ??makect
+    308              }
+    309              if (isgn < 0) {
+   \                     ??rdft_2:
+   \   00000060   000058E3           CMP      R8,#+0
+   \   00000064   3400005A           BPL      ??rdft_3
+    310                  a[1] = 0.5 * (a[1] - a[0]);
+   \   00000068   0C0095E8           LDM      R5,{R2,R3}
+   \   0000006C   080095E5           LDR      R0,[R5, #+8]
+   \   00000070   0C1095E5           LDR      R1,[R5, #+12]
+    311                  a[0] += a[1];
+    312                  for (j = 3; j <= n - 1; j += 2) {
+   \   00000074   018044E2           SUB      R8,R4,#+1
+   \   00000078   ........           _BLF     __dSub,??__dSub??rA
+   \   0000007C   0020A0E1           MOV      R2,R0
+   \   00000080   0130A0E1           MOV      R3,R1
+   \   00000084   0000A0E3           MOV      R0,#+0
+   \   00000088   C015A0E3           MOV      R1,#+805306368
+   \   0000008C   FE1681E3           ORR      R1,R1,#0xFE00000
+   \   00000090   ........           _BLF     __dMul,??__dMul??rA
+   \   00000094   080085E5           STR      R0,[R5, #+8]
+   \   00000098   0C1085E5           STR      R1,[R5, #+12]
+   \   0000009C   030095E8           LDM      R5,{R0,R1}
+   \   000000A0   0020A0E1           MOV      R2,R0
+   \   000000A4   080095E5           LDR      R0,[R5, #+8]
+   \   000000A8   0130A0E1           MOV      R3,R1
+   \   000000AC   0C1095E5           LDR      R1,[R5, #+12]
+   \   000000B0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000B4   030085E8           STM      R5,{R0,R1}
+   \   000000B8   0320A0E3           MOV      R2,#+3
+   \   000000BC   040000EA           B        ??rdft_4
+    313                      a[j] = -a[j];
+   \                     ??rdft_5:
+   \   000000C0   823185E0           ADD      R3,R5,R2, LSL #+3
+   \   000000C4   030093E8           LDM      R3,{R0,R1}
+    314                  }
+   \   000000C8   022082E2           ADD      R2,R2,#+2
+   \   000000CC   801421E2           EOR      R1,R1,#0x80000000
+   \   000000D0   030083E8           STM      R3,{R0,R1}
+   \                     ??rdft_4:
+   \   000000D4   020058E1           CMP      R8,R2
+   \   000000D8   F8FFFFAA           BGE      ??rdft_5
+    315                  if (n > 4) {
+   \   000000DC   050054E3           CMP      R4,#+5
+   \   000000E0   080000BA           BLT      ??rdft_6
+    316                      rftsub(n, a, nc, w + nw);
+   \   000000E4   0930A0E1           MOV      R3,R9
+   \   000000E8   0720A0E1           MOV      R2,R7
+   \   000000EC   0510A0E1           MOV      R1,R5
+   \   000000F0   0400A0E1           MOV      R0,R4
+   \   000000F4   ........           BL       ??rftsub
+    317                      bitrv2(n, ip + 2, a);
+   \   000000F8   0520A0E1           MOV      R2,R5
+   \   000000FC   08108AE2           ADD      R1,R10,#+8
+   \   00000100   0400A0E1           MOV      R0,R4
+   \   00000104   ........           BL       ??bitrv2
+    318                  }
+    319                  cftsub(n, a, w);
+   \                     ??rdft_6:
+   \   00000108   0620A0E1           MOV      R2,R6
+   \   0000010C   0510A0E1           MOV      R1,R5
+   \   00000110   0400A0E1           MOV      R0,R4
+   \   00000114   ........           BL       ??cftsub
+    320                  for (j = 1; j <= n - 1; j += 2) {
+   \   00000118   0100A0E3           MOV      R0,#+1
+   \                     ??rdft_7:
+   \   0000011C   000058E1           CMP      R8,R0
+   \   00000120   230000BA           BLT      ??rdft_8
+    321                      a[j] = -a[j];
+   \   00000124   801185E0           ADD      R1,R5,R0, LSL #+3
+   \   00000128   0C0091E8           LDM      R1,{R2,R3}
+    322                  }
+   \   0000012C   020080E2           ADD      R0,R0,#+2
+   \   00000130   803423E2           EOR      R3,R3,#0x80000000
+   \   00000134   0C0081E8           STM      R1,{R2,R3}
+   \   00000138   F7FFFFEA           B        ??rdft_7
+    323              } else {
+    324                  if (n > 4) {
+   \                     ??rdft_3:
+   \   0000013C   050054E3           CMP      R4,#+5
+   \   00000140   030000BA           BLT      ??rdft_9
+    325                      bitrv2(n, ip + 2, a);
+   \   00000144   0520A0E1           MOV      R2,R5
+   \   00000148   08108AE2           ADD      R1,R10,#+8
+   \   0000014C   0400A0E1           MOV      R0,R4
+   \   00000150   ........           BL       ??bitrv2
+    326                  }
+    327                  cftsub(n, a, w);
+   \                     ??rdft_9:
+   \   00000154   0620A0E1           MOV      R2,R6
+   \   00000158   0510A0E1           MOV      R1,R5
+   \   0000015C   0400A0E1           MOV      R0,R4
+   \   00000160   ........           BL       ??cftsub
+    328                  if (n > 4) {
+   \   00000164   050054E3           CMP      R4,#+5
+   \   00000168   040000BA           BLT      ??rdft_10
+    329                      rftsub(n, a, nc, w + nw);
+   \   0000016C   0930A0E1           MOV      R3,R9
+   \   00000170   0720A0E1           MOV      R2,R7
+   \   00000174   0510A0E1           MOV      R1,R5
+   \   00000178   0400A0E1           MOV      R0,R4
+   \   0000017C   ........           BL       ??rftsub
+    330                  }
+    331                  xi = a[0] - a[1];
+   \                     ??rdft_10:
+   \   00000180   030095E8           LDM      R5,{R0,R1}
+   \   00000184   082095E5           LDR      R2,[R5, #+8]
+   \   00000188   0C3095E5           LDR      R3,[R5, #+12]
+   \   0000018C   ........           _BLF     __dSub,??__dSub??rA
+    332                  a[0] += a[1];
+   \   00000190   0C0095E8           LDM      R5,{R2,R3}
+   \   00000194   0060A0E1           MOV      R6,R0
+   \   00000198   080095E5           LDR      R0,[R5, #+8]
+   \   0000019C   0170A0E1           MOV      R7,R1
+   \   000001A0   0C1095E5           LDR      R1,[R5, #+12]
+   \   000001A4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001A8   030085E8           STM      R5,{R0,R1}
+    333                  a[1] = xi;
+   \   000001AC   086085E5           STR      R6,[R5, #+8]
+   \   000001B0   0C7085E5           STR      R7,[R5, #+12]
+    334              }
+    335          }
+   \                     ??rdft_8:
+   \   000001B4   ........           B        ??Subroutine13_1
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine13:
+   \   00000000   0C009BE8           LDM      R11,{R2,R3}
+   \   00000004   04009DE5           LDR      R0,[SP, #+4]
+   \   00000008   18109DE5           LDR      R1,[SP, #+24]
+   \   0000000C   808181E0           ADD      R8,R1,R0, LSL #+3
+   \   00000010   0000A0E3           MOV      R0,#+0
+   \   00000014   4014A0E3           MOV      R1,#+1073741824
+   \   00000018   ........           _BLF     __dMul,??__dMul??rA
+   \   0000001C   0C0098E8           LDM      R8,{R2,R3}
+   \   00000020   ........           _BLF     __dMul,??__dMul??rA
+   \   00000024   030088E8           STM      R8,{R0,R1}
+   \                     ??Subroutine13_0:
+   \   00000028   24D08DE2           ADD      SP,SP,#+36
+   \                     ??Subroutine13_1:
+   \   0000002C   F04FBDE8           POP      {R4-R11,LR}
+   \   00000030   1EFF2FE1           BX       LR               ;; return
+    336          
+    337          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    338          void ddct(int n, int isgn, double *a, int *ip, double *w)
+    339          {
+   \                     ??ddct:
+   \   00000000   FA4F2DE9           PUSH     {R1,R3-R11,LR}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+    340              void makewt(int nw, int *ip, double *w);
+    341              void makect(int nc, int *ip, double *c);
+    342              void bitrv2(int n, int *ip, double *a);
+    343              void cftsub(int n, double *a, double *w);
+    344              void rftsub(int n, double *a, int nc, double *c);
+    345              void dctsub(int n, double *a, int nc, double *c);
+    346              int j, nw, nc;
+    347              double xr;
+    348              
+    349              nw = ip[0];
+   \   00000008   006093E5           LDR      R6,[R3, #+0]
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   0250A0E1           MOV      R5,R2
+    350              if (n > (nw << 2)) {
+   \   00000014   060154E1           CMP      R4,R6, LSL #+2
+   \   00000018   040000DA           BLE      ??ddct_1
+    351                  nw = n >> 2;
+    352                  makewt(nw, ip, w);
+   \   0000001C   34209DE5           LDR      R2,[SP, #+52]
+   \   00000020   4461A0E1           ASR      R6,R4,#+2
+   \   00000024   0310A0E1           MOV      R1,R3
+   \   00000028   0600A0E1           MOV      R0,R6
+   \   0000002C   ........           BL       ??makewt
+    353              }
+    354              nc = ip[1];
+   \                     ??ddct_1:
+   \   00000030   0C009DE5           LDR      R0,[SP, #+12]
+    355              if (n > nc) {
+   \   00000034   34109DE5           LDR      R1,[SP, #+52]
+   \   00000038   048090E5           LDR      R8,[R0, #+4]
+   \   0000003C   861181E0           ADD      R1,R1,R6, LSL #+3
+   \   00000040   00108DE5           STR      R1,[SP, #+0]
+   \   00000044   040058E1           CMP      R8,R4
+   \   00000048   040000AA           BGE      ??ddct_2
+    356                  nc = n;
+   \   0000004C   0480A0E1           MOV      R8,R4
+    357                  makect(nc, ip, w + nw);
+   \   00000050   0120A0E1           MOV      R2,R1
+   \   00000054   0010A0E1           MOV      R1,R0
+   \   00000058   0800A0E1           MOV      R0,R8
+   \   0000005C   ........           BL       ??makect
+    358              }
+    359              if (isgn < 0) {
+   \                     ??ddct_2:
+   \   00000060   841185E0           ADD      R1,R5,R4, LSL #+3
+   \   00000064   04108DE5           STR      R1,[SP, #+4]
+   \   00000068   08009DE5           LDR      R0,[SP, #+8]
+   \   0000006C   0790E0E3           MVN      R9,#+7
+   \   00000070   000050E3           CMP      R0,#+0
+   \   00000074   3900005A           BPL      ??ddct_3
+    360                  xr = a[n - 1];
+   \   00000078   010089E0           ADD      R0,R9,R1
+   \   0000007C   000C90E8           LDM      R0,{R10,R11}
+    361                  for (j = n - 2; j >= 2; j -= 2) {
+   \   00000080   026044E2           SUB      R6,R4,#+2
+   \   00000084   0E0000EA           B        ??ddct_4
+    362                      a[j + 1] = a[j - 1] - a[j];
+   \                     ??ddct_5:
+   \   00000088   867185E0           ADD      R7,R5,R6, LSL #+3
+   \   0000008C   0C0097E8           LDM      R7,{R2,R3}
+   \   00000090   070089E0           ADD      R0,R9,R7
+   \   00000094   030090E8           LDM      R0,{R0,R1}
+    363                      a[j] += a[j - 1];
+    364                  }
+   \   00000098   026046E2           SUB      R6,R6,#+2
+   \   0000009C   ........           _BLF     __dSub,??__dSub??rA
+   \   000000A0   080087E5           STR      R0,[R7, #+8]
+   \   000000A4   0C1087E5           STR      R1,[R7, #+12]
+   \   000000A8   030097E8           LDM      R7,{R0,R1}
+   \   000000AC   0020A0E1           MOV      R2,R0
+   \   000000B0   0130A0E1           MOV      R3,R1
+   \   000000B4   070089E0           ADD      R0,R9,R7
+   \   000000B8   030090E8           LDM      R0,{R0,R1}
+   \   000000BC   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000C0   030087E8           STM      R7,{R0,R1}
+   \                     ??ddct_4:
+   \   000000C4   020056E3           CMP      R6,#+2
+   \   000000C8   EEFFFFAA           BGE      ??ddct_5
+    365                  a[1] = xr - a[0];
+   \   000000CC   0C0095E8           LDM      R5,{R2,R3}
+   \   000000D0   0A00A0E1           MOV      R0,R10
+   \   000000D4   0B10A0E1           MOV      R1,R11
+   \   000000D8   ........           _BLF     __dSub,??__dSub??rA
+   \   000000DC   080085E5           STR      R0,[R5, #+8]
+   \   000000E0   0C1085E5           STR      R1,[R5, #+12]
+    366                  a[0] += xr;
+   \   000000E4   030095E8           LDM      R5,{R0,R1}
+   \   000000E8   0A20A0E1           MOV      R2,R10
+   \   000000EC   0B30A0E1           MOV      R3,R11
+   \   000000F0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000F4   030085E8           STM      R5,{R0,R1}
+    367                  if (n > 4) {
+   \   000000F8   050054E3           CMP      R4,#+5
+   \   000000FC   090000BA           BLT      ??ddct_6
+    368                      rftsub(n, a, nc, w + nw);
+   \   00000100   00309DE5           LDR      R3,[SP, #+0]
+   \   00000104   0820A0E1           MOV      R2,R8
+   \   00000108   0510A0E1           MOV      R1,R5
+   \   0000010C   0400A0E1           MOV      R0,R4
+   \   00000110   ........           BL       ??rftsub
+    369                      bitrv2(n, ip + 2, a);
+   \   00000114   0C009DE5           LDR      R0,[SP, #+12]
+   \   00000118   0520A0E1           MOV      R2,R5
+   \   0000011C   081080E2           ADD      R1,R0,#+8
+   \   00000120   0400A0E1           MOV      R0,R4
+   \   00000124   ........           BL       ??bitrv2
+    370                  }
+    371                  cftsub(n, a, w);
+   \                     ??ddct_6:
+   \   00000128   34209DE5           LDR      R2,[SP, #+52]
+   \   0000012C   0510A0E1           MOV      R1,R5
+   \   00000130   0400A0E1           MOV      R0,R4
+   \   00000134   ........           BL       ??cftsub
+    372                  for (j = 1; j <= n - 1; j += 2) {
+   \   00000138   0160A0E3           MOV      R6,#+1
+   \   0000013C   040000EA           B        ??ddct_7
+    373                      a[j] = -a[j];
+   \                     ??ddct_8:
+   \   00000140   862185E0           ADD      R2,R5,R6, LSL #+3
+   \   00000144   030092E8           LDM      R2,{R0,R1}
+    374                  }
+   \   00000148   026086E2           ADD      R6,R6,#+2
+   \   0000014C   801421E2           EOR      R1,R1,#0x80000000
+   \   00000150   030082E8           STM      R2,{R0,R1}
+   \                     ??ddct_7:
+   \   00000154   010044E2           SUB      R0,R4,#+1
+   \   00000158   060050E1           CMP      R0,R6
+   \   0000015C   F7FFFFAA           BGE      ??ddct_8
+    375              }
+    376              dctsub(n, a, nc, w + nw);
+   \                     ??ddct_3:
+   \   00000160   00309DE5           LDR      R3,[SP, #+0]
+   \   00000164   0820A0E1           MOV      R2,R8
+   \   00000168   0510A0E1           MOV      R1,R5
+   \   0000016C   0400A0E1           MOV      R0,R4
+   \   00000170   ........           BL       ??dctsub
+    377              if (isgn >= 0) {
+   \   00000174   08009DE5           LDR      R0,[SP, #+8]
+   \   00000178   000050E3           CMP      R0,#+0
+   \   0000017C   3300004A           BMI      ??ddct_9
+    378                  if (n > 4) {
+   \   00000180   050054E3           CMP      R4,#+5
+   \   00000184   040000BA           BLT      ??ddct_10
+    379                      bitrv2(n, ip + 2, a);
+   \   00000188   0C009DE5           LDR      R0,[SP, #+12]
+   \   0000018C   0520A0E1           MOV      R2,R5
+   \   00000190   081080E2           ADD      R1,R0,#+8
+   \   00000194   0400A0E1           MOV      R0,R4
+   \   00000198   ........           BL       ??bitrv2
+    380                  }
+    381                  cftsub(n, a, w);
+   \                     ??ddct_10:
+   \   0000019C   34209DE5           LDR      R2,[SP, #+52]
+   \   000001A0   0510A0E1           MOV      R1,R5
+   \   000001A4   0400A0E1           MOV      R0,R4
+   \   000001A8   ........           BL       ??cftsub
+    382                  if (n > 4) {
+   \   000001AC   050054E3           CMP      R4,#+5
+   \   000001B0   040000BA           BLT      ??ddct_11
+    383                      rftsub(n, a, nc, w + nw);
+   \   000001B4   00309DE5           LDR      R3,[SP, #+0]
+   \   000001B8   0820A0E1           MOV      R2,R8
+   \   000001BC   0510A0E1           MOV      R1,R5
+   \   000001C0   0400A0E1           MOV      R0,R4
+   \   000001C4   ........           BL       ??rftsub
+    384                  }
+    385                  xr = a[0] - a[1];
+   \                     ??ddct_11:
+   \   000001C8   030095E8           LDM      R5,{R0,R1}
+   \   000001CC   082095E5           LDR      R2,[R5, #+8]
+   \   000001D0   0C3095E5           LDR      R3,[R5, #+12]
+    386                  a[0] += a[1];
+    387                  for (j = 2; j <= n - 2; j += 2) {
+   \   000001D4   0260A0E3           MOV      R6,#+2
+   \   000001D8   ........           _BLF     __dSub,??__dSub??rA
+   \   000001DC   0C0095E8           LDM      R5,{R2,R3}
+   \   000001E0   00A0A0E1           MOV      R10,R0
+   \   000001E4   080095E5           LDR      R0,[R5, #+8]
+   \   000001E8   01B0A0E1           MOV      R11,R1
+   \   000001EC   0C1095E5           LDR      R1,[R5, #+12]
+   \   000001F0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001F4   030085E8           STM      R5,{R0,R1}
+   \   000001F8   0E0000EA           B        ??ddct_12
+    388                      a[j - 1] = a[j] - a[j + 1];
+   \                     ??ddct_13:
+   \   000001FC   867185E0           ADD      R7,R5,R6, LSL #+3
+   \   00000200   030097E8           LDM      R7,{R0,R1}
+   \   00000204   082097E5           LDR      R2,[R7, #+8]
+   \   00000208   0C3097E5           LDR      R3,[R7, #+12]
+   \   0000020C   078089E0           ADD      R8,R9,R7
+   \   00000210   ........           _BLF     __dSub,??__dSub??rA
+   \   00000214   030088E8           STM      R8,{R0,R1}
+    389                      a[j] += a[j + 1];
+   \   00000218   030097E8           LDM      R7,{R0,R1}
+   \   0000021C   0020A0E1           MOV      R2,R0
+   \   00000220   080097E5           LDR      R0,[R7, #+8]
+   \   00000224   0130A0E1           MOV      R3,R1
+   \   00000228   0C1097E5           LDR      R1,[R7, #+12]
+    390                  }
+   \   0000022C   026086E2           ADD      R6,R6,#+2
+   \   00000230   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000234   030087E8           STM      R7,{R0,R1}
+   \                     ??ddct_12:
+   \   00000238   020044E2           SUB      R0,R4,#+2
+   \   0000023C   060050E1           CMP      R0,R6
+   \   00000240   EDFFFFAA           BGE      ??ddct_13
+    391                  a[n - 1] = xr;
+   \   00000244   04009DE5           LDR      R0,[SP, #+4]
+   \   00000248   000089E0           ADD      R0,R9,R0
+   \   0000024C   000C80E8           STM      R0,{R10,R11}
+    392              }
+    393          }
+   \                     ??ddct_9:
+   \   00000250   ........           B        ?Subroutine14
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine14:
+   \   00000000   FF4FBDE8           POP      {R0-R11,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    394          
+    395          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    396          void ddst(int n, int isgn, double *a, int *ip, double *w)
+    397          {
+   \                     ??ddst:
+   \   00000000   FA4F2DE9           PUSH     {R1,R3-R11,LR}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+    398              void makewt(int nw, int *ip, double *w);
+    399              void makect(int nc, int *ip, double *c);
+    400              void bitrv2(int n, int *ip, double *a);
+    401              void cftsub(int n, double *a, double *w);
+    402              void rftsub(int n, double *a, int nc, double *c);
+    403              void dstsub(int n, double *a, int nc, double *c);
+    404              int j, nw, nc;
+    405              double xr;
+    406              
+    407              nw = ip[0];
+   \   00000008   006093E5           LDR      R6,[R3, #+0]
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   0250A0E1           MOV      R5,R2
+    408              if (n > (nw << 2)) {
+   \   00000014   060154E1           CMP      R4,R6, LSL #+2
+   \   00000018   040000DA           BLE      ??ddst_1
+    409                  nw = n >> 2;
+    410                  makewt(nw, ip, w);
+   \   0000001C   34209DE5           LDR      R2,[SP, #+52]
+   \   00000020   4461A0E1           ASR      R6,R4,#+2
+   \   00000024   0310A0E1           MOV      R1,R3
+   \   00000028   0600A0E1           MOV      R0,R6
+   \   0000002C   ........           BL       ??makewt
+    411              }
+    412              nc = ip[1];
+   \                     ??ddst_1:
+   \   00000030   0C009DE5           LDR      R0,[SP, #+12]
+    413              if (n > nc) {
+   \   00000034   34109DE5           LDR      R1,[SP, #+52]
+   \   00000038   04A090E5           LDR      R10,[R0, #+4]
+   \   0000003C   861181E0           ADD      R1,R1,R6, LSL #+3
+   \   00000040   00108DE5           STR      R1,[SP, #+0]
+   \   00000044   04005AE1           CMP      R10,R4
+   \   00000048   040000AA           BGE      ??ddst_2
+    414                  nc = n;
+   \   0000004C   04A0A0E1           MOV      R10,R4
+    415                  makect(nc, ip, w + nw);
+   \   00000050   0120A0E1           MOV      R2,R1
+   \   00000054   0010A0E1           MOV      R1,R0
+   \   00000058   0A00A0E1           MOV      R0,R10
+   \   0000005C   ........           BL       ??makect
+    416              }
+    417              if (isgn < 0) {
+   \                     ??ddst_2:
+   \   00000060   841185E0           ADD      R1,R5,R4, LSL #+3
+   \   00000064   04108DE5           STR      R1,[SP, #+4]
+   \   00000068   08009DE5           LDR      R0,[SP, #+8]
+   \   0000006C   07B0E0E3           MVN      R11,#+7
+   \   00000070   000050E3           CMP      R0,#+0
+   \   00000074   3900005A           BPL      ??ddst_3
+    418                  xr = a[n - 1];
+   \   00000078   01008BE0           ADD      R0,R11,R1
+   \   0000007C   000390E8           LDM      R0,{R8,R9}
+    419                  for (j = n - 2; j >= 2; j -= 2) {
+   \   00000080   026044E2           SUB      R6,R4,#+2
+   \   00000084   0E0000EA           B        ??ddst_4
+    420                      a[j + 1] = a[j - 1] + a[j];
+   \                     ??ddst_5:
+   \   00000088   867185E0           ADD      R7,R5,R6, LSL #+3
+   \   0000008C   07008BE0           ADD      R0,R11,R7
+   \   00000090   030090E8           LDM      R0,{R0,R1}
+   \   00000094   0020A0E1           MOV      R2,R0
+   \   00000098   0130A0E1           MOV      R3,R1
+   \   0000009C   030097E8           LDM      R7,{R0,R1}
+    421                      a[j] -= a[j - 1];
+    422                  }
+   \   000000A0   026046E2           SUB      R6,R6,#+2
+   \   000000A4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000A8   080087E5           STR      R0,[R7, #+8]
+   \   000000AC   0C1087E5           STR      R1,[R7, #+12]
+   \   000000B0   030097E8           LDM      R7,{R0,R1}
+   \   000000B4   07208BE0           ADD      R2,R11,R7
+   \   000000B8   0C0092E8           LDM      R2,{R2,R3}
+   \   000000BC   ........           _BLF     __dSub,??__dSub??rA
+   \   000000C0   030087E8           STM      R7,{R0,R1}
+   \                     ??ddst_4:
+   \   000000C4   020056E3           CMP      R6,#+2
+   \   000000C8   EEFFFFAA           BGE      ??ddst_5
+    423                  a[1] = -xr - a[0];
+   \   000000CC   0C0095E8           LDM      R5,{R2,R3}
+   \   000000D0   0800A0E1           MOV      R0,R8
+   \   000000D4   801429E2           EOR      R1,R9,#0x80000000
+   \   000000D8   ........           _BLF     __dSub,??__dSub??rA
+   \   000000DC   080085E5           STR      R0,[R5, #+8]
+   \   000000E0   0C1085E5           STR      R1,[R5, #+12]
+    424                  a[0] -= xr;
+   \   000000E4   030095E8           LDM      R5,{R0,R1}
+   \   000000E8   0820A0E1           MOV      R2,R8
+   \   000000EC   0930A0E1           MOV      R3,R9
+   \   000000F0   ........           _BLF     __dSub,??__dSub??rA
+   \   000000F4   030085E8           STM      R5,{R0,R1}
+    425                  if (n > 4) {
+   \   000000F8   050054E3           CMP      R4,#+5
+   \   000000FC   090000BA           BLT      ??ddst_6
+    426                      rftsub(n, a, nc, w + nw);
+   \   00000100   00309DE5           LDR      R3,[SP, #+0]
+   \   00000104   0A20A0E1           MOV      R2,R10
+   \   00000108   0510A0E1           MOV      R1,R5
+   \   0000010C   0400A0E1           MOV      R0,R4
+   \   00000110   ........           BL       ??rftsub
+    427                      bitrv2(n, ip + 2, a);
+   \   00000114   0C009DE5           LDR      R0,[SP, #+12]
+   \   00000118   0520A0E1           MOV      R2,R5
+   \   0000011C   081080E2           ADD      R1,R0,#+8
+   \   00000120   0400A0E1           MOV      R0,R4
+   \   00000124   ........           BL       ??bitrv2
+    428                  }
+    429                  cftsub(n, a, w);
+   \                     ??ddst_6:
+   \   00000128   34209DE5           LDR      R2,[SP, #+52]
+   \   0000012C   0510A0E1           MOV      R1,R5
+   \   00000130   0400A0E1           MOV      R0,R4
+   \   00000134   ........           BL       ??cftsub
+    430                  for (j = 1; j <= n - 1; j += 2) {
+   \   00000138   0160A0E3           MOV      R6,#+1
+   \   0000013C   040000EA           B        ??ddst_7
+    431                      a[j] = -a[j];
+   \                     ??ddst_8:
+   \   00000140   862185E0           ADD      R2,R5,R6, LSL #+3
+   \   00000144   030092E8           LDM      R2,{R0,R1}
+    432                  }
+   \   00000148   026086E2           ADD      R6,R6,#+2
+   \   0000014C   801421E2           EOR      R1,R1,#0x80000000
+   \   00000150   030082E8           STM      R2,{R0,R1}
+   \                     ??ddst_7:
+   \   00000154   010044E2           SUB      R0,R4,#+1
+   \   00000158   060050E1           CMP      R0,R6
+   \   0000015C   F7FFFFAA           BGE      ??ddst_8
+    433              }
+    434              dstsub(n, a, nc, w + nw);
+   \                     ??ddst_3:
+   \   00000160   00309DE5           LDR      R3,[SP, #+0]
+   \   00000164   0A20A0E1           MOV      R2,R10
+   \   00000168   0510A0E1           MOV      R1,R5
+   \   0000016C   0400A0E1           MOV      R0,R4
+   \   00000170   ........           BL       ??dstsub
+    435              if (isgn >= 0) {
+   \   00000174   08009DE5           LDR      R0,[SP, #+8]
+   \   00000178   000050E3           CMP      R0,#+0
+   \   0000017C   3400004A           BMI      ??ddst_9
+    436                  if (n > 4) {
+   \   00000180   050054E3           CMP      R4,#+5
+   \   00000184   040000BA           BLT      ??ddst_10
+    437                      bitrv2(n, ip + 2, a);
+   \   00000188   0C009DE5           LDR      R0,[SP, #+12]
+   \   0000018C   0520A0E1           MOV      R2,R5
+   \   00000190   081080E2           ADD      R1,R0,#+8
+   \   00000194   0400A0E1           MOV      R0,R4
+   \   00000198   ........           BL       ??bitrv2
+    438                  }
+    439                  cftsub(n, a, w);
+   \                     ??ddst_10:
+   \   0000019C   34209DE5           LDR      R2,[SP, #+52]
+   \   000001A0   0510A0E1           MOV      R1,R5
+   \   000001A4   0400A0E1           MOV      R0,R4
+   \   000001A8   ........           BL       ??cftsub
+    440                  if (n > 4) {
+   \   000001AC   050054E3           CMP      R4,#+5
+   \   000001B0   040000BA           BLT      ??ddst_11
+    441                      rftsub(n, a, nc, w + nw);
+   \   000001B4   00309DE5           LDR      R3,[SP, #+0]
+   \   000001B8   0A20A0E1           MOV      R2,R10
+   \   000001BC   0510A0E1           MOV      R1,R5
+   \   000001C0   0400A0E1           MOV      R0,R4
+   \   000001C4   ........           BL       ??rftsub
+    442                  }
+    443                  xr = a[0] - a[1];
+   \                     ??ddst_11:
+   \   000001C8   030095E8           LDM      R5,{R0,R1}
+   \   000001CC   082095E5           LDR      R2,[R5, #+8]
+   \   000001D0   0C3095E5           LDR      R3,[R5, #+12]
+    444                  a[0] += a[1];
+    445                  for (j = 2; j <= n - 2; j += 2) {
+   \   000001D4   0260A0E3           MOV      R6,#+2
+   \   000001D8   ........           _BLF     __dSub,??__dSub??rA
+   \   000001DC   0C0095E8           LDM      R5,{R2,R3}
+   \   000001E0   0080A0E1           MOV      R8,R0
+   \   000001E4   080095E5           LDR      R0,[R5, #+8]
+   \   000001E8   0190A0E1           MOV      R9,R1
+   \   000001EC   0C1095E5           LDR      R1,[R5, #+12]
+   \   000001F0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001F4   030085E8           STM      R5,{R0,R1}
+   \   000001F8   0D0000EA           B        ??ddst_12
+    446                      a[j - 1] = -a[j] - a[j + 1];
+   \                     ??ddst_13:
+   \   000001FC   867185E0           ADD      R7,R5,R6, LSL #+3
+   \   00000200   030097E8           LDM      R7,{R0,R1}
+   \   00000204   082097E5           LDR      R2,[R7, #+8]
+   \   00000208   0C3097E5           LDR      R3,[R7, #+12]
+   \   0000020C   07A08BE0           ADD      R10,R11,R7
+   \   00000210   801421E2           EOR      R1,R1,#0x80000000
+   \   00000214   ........           _BLF     __dSub,??__dSub??rA
+   \   00000218   03008AE8           STM      R10,{R0,R1}
+    447                      a[j] -= a[j + 1];
+   \   0000021C   030097E8           LDM      R7,{R0,R1}
+   \   00000220   082097E5           LDR      R2,[R7, #+8]
+   \   00000224   0C3097E5           LDR      R3,[R7, #+12]
+    448                  }
+   \   00000228   026086E2           ADD      R6,R6,#+2
+   \   0000022C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000230   030087E8           STM      R7,{R0,R1}
+   \                     ??ddst_12:
+   \   00000234   020044E2           SUB      R0,R4,#+2
+   \   00000238   060050E1           CMP      R0,R6
+   \   0000023C   EEFFFFAA           BGE      ??ddst_13
+    449                  a[n - 1] = -xr;
+   \   00000240   04009DE5           LDR      R0,[SP, #+4]
+   \   00000244   0820A0E1           MOV      R2,R8
+   \   00000248   00008BE0           ADD      R0,R11,R0
+   \   0000024C   803429E2           EOR      R3,R9,#0x80000000
+   \   00000250   0C0080E8           STM      R0,{R2,R3}
+    450              }
+    451          }
+   \                     ??ddst_9:
+   \   00000254                      REQUIRE ?Subroutine14
+   \   00000254                      ;; // Fall through to label ?Subroutine14
+    452          
+    453          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    454          void dfct(int n, double *a, double *t, int *ip, double *w)
+    455          {
+   \                     ??dfct:
+   \   00000000   F94F2DE9           PUSH     {R0,R3-R11,LR}
+   \   00000004   1CD04DE2           SUB      SP,SP,#+28
+    456              void makewt(int nw, int *ip, double *w);
+    457              void makect(int nc, int *ip, double *c);
+    458              void bitrv2(int n, int *ip, double *a);
+    459              void cftsub(int n, double *a, double *w);
+    460              void rftsub(int n, double *a, int nc, double *c);
+    461              void dctsub(int n, double *a, int nc, double *c);
+    462              int j, k, l, m, mh, nw, nc;
+    463              double xr, xi;
+    464              
+    465              nw = ip[0];
+   \   00000008   006093E5           LDR      R6,[R3, #+0]
+    466              if (n > (nw << 3)) {
+   \   0000000C   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000010   0140A0E1           MOV      R4,R1
+   \   00000014   0250A0E1           MOV      R5,R2
+   \   00000018   860150E1           CMP      R0,R6, LSL #+3
+   \   0000001C   040000DA           BLE      ??dfct_1
+    467                  nw = n >> 3;
+    468                  makewt(nw, ip, w);
+   \   00000020   48209DE5           LDR      R2,[SP, #+72]
+   \   00000024   C061A0E1           ASR      R6,R0,#+3
+   \   00000028   0310A0E1           MOV      R1,R3
+   \   0000002C   0600A0E1           MOV      R0,R6
+   \   00000030   ........           BL       ??makewt
+    469              }
+    470              nc = ip[1];
+   \                     ??dfct_1:
+   \   00000034   20109DE5           LDR      R1,[SP, #+32]
+   \   00000038   041091E5           LDR      R1,[R1, #+4]
+   \   0000003C   04108DE5           STR      R1,[SP, #+4]
+    471              if (n > (nc << 1)) {
+   \   00000040   48109DE5           LDR      R1,[SP, #+72]
+   \   00000044   861181E0           ADD      R1,R1,R6, LSL #+3
+   \   00000048   08108DE5           STR      R1,[SP, #+8]
+   \   0000004C   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000050   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000054   C060A0E1           ASR      R6,R0,#+1
+   \   00000058   04009DE5           LDR      R0,[SP, #+4]
+   \   0000005C   800051E1           CMP      R1,R0, LSL #+1
+   \   00000060   040000DA           BLE      ??dfct_2
+    472                  nc = n >> 1;
+   \   00000064   04608DE5           STR      R6,[SP, #+4]
+    473                  makect(nc, ip, w + nw);
+   \   00000068   08209DE5           LDR      R2,[SP, #+8]
+   \   0000006C   20109DE5           LDR      R1,[SP, #+32]
+   \   00000070   0600A0E1           MOV      R0,R6
+   \   00000074   ........           BL       ??makect
+    474              }
+    475              m = n >> 1;
+    476              xr = a[0] + a[n];
+   \                     ??dfct_2:
+   \   00000078   1C109DE5           LDR      R1,[SP, #+28]
+   \   0000007C   10708DE2           ADD      R7,SP,#+16
+   \   00000080   811184E0           ADD      R1,R4,R1, LSL #+3
+   \   00000084   0C108DE5           STR      R1,[SP, #+12]
+   \   00000088   0C209DE5           LDR      R2,[SP, #+12]
+   \   0000008C   030094E8           LDM      R4,{R0,R1}
+   \   00000090   0C0092E8           LDM      R2,{R2,R3}
+    477              a[0] -= a[n];
+    478              t[0] = xr - a[m];
+    479              t[m] = xr + a[m];
+   \   00000094   868185E0           ADD      R8,R5,R6, LSL #+3
+   \   00000098   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000009C   030087E8           STM      R7,{R0,R1}
+   \   000000A0   0C209DE5           LDR      R2,[SP, #+12]
+   \   000000A4   030094E8           LDM      R4,{R0,R1}
+   \   000000A8   0C0092E8           LDM      R2,{R2,R3}
+   \   000000AC   867184E0           ADD      R7,R4,R6, LSL #+3
+   \   000000B0   ........           _BLF     __dSub,??__dSub??rA
+   \   000000B4   030084E8           STM      R4,{R0,R1}
+   \   000000B8   0C0097E8           LDM      R7,{R2,R3}
+   \   000000BC   10008DE2           ADD      R0,SP,#+16
+   \   000000C0   030090E8           LDM      R0,{R0,R1}
+   \   000000C4   ........           _BLF     __dSub,??__dSub??rA
+   \   000000C8   030085E8           STM      R5,{R0,R1}
+   \   000000CC   10008DE2           ADD      R0,SP,#+16
+   \   000000D0   0C0090E8           LDM      R0,{R2,R3}
+   \   000000D4   030097E8           LDM      R7,{R0,R1}
+   \   000000D8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000DC   030088E8           STM      R8,{R0,R1}
+    480              if (n > 2) {
+   \   000000E0   1C009DE5           LDR      R0,[SP, #+28]
+   \   000000E4   030050E3           CMP      R0,#+3
+   \   000000E8   FE0000BA           BLT      ??dfct_3
+    481                  mh = m >> 1;
+   \   000000EC   C610A0E1           ASR      R1,R6,#+1
+   \   000000F0   00108DE5           STR      R1,[SP, #+0]
+    482                  for (j = 1; j <= mh - 1; j++) {
+   \   000000F4   01A0A0E3           MOV      R10,#+1
+   \   000000F8   300000EA           B        ??dfct_4
+    483                      k = m - j;
+   \                     ??dfct_5:
+   \   000000FC   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000100   8A8184E0           ADD      R8,R4,R10, LSL #+3
+   \   00000104   0A0040E0           SUB      R0,R0,R10
+   \   00000108   809184E0           ADD      R9,R4,R0, LSL #+3
+   \   0000010C   030098E8           LDM      R8,{R0,R1}
+   \   00000110   0020A0E1           MOV      R2,R0
+   \   00000114   0130A0E1           MOV      R3,R1
+   \   00000118   030099E8           LDM      R9,{R0,R1}
+   \   0000011C   10B08DE2           ADD      R11,SP,#+16
+   \   00000120   0A7046E0           SUB      R7,R6,R10
+   \   00000124   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000128   03008BE8           STM      R11,{R0,R1}
+    484                      xr = a[j] + a[n - j];
+    485                      a[j] -= a[n - j];
+   \   0000012C   030098E8           LDM      R8,{R0,R1}
+   \   00000130   0C0099E8           LDM      R9,{R2,R3}
+   \   00000134   87B184E0           ADD      R11,R4,R7, LSL #+3
+   \   00000138   ........           _BLF     __dSub,??__dSub??rA
+   \   0000013C   030088E8           STM      R8,{R0,R1}
+   \   00000140   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000144   071041E0           SUB      R1,R1,R7
+   \   00000148   811184E0           ADD      R1,R4,R1, LSL #+3
+   \   0000014C   18108DE5           STR      R1,[SP, #+24]
+   \   00000150   03009BE8           LDM      R11,{R0,R1}
+    486                      xi = a[k] + a[n - k];
+    487                      a[k] -= a[n - k];
+    488                      t[j] = xr - xi;
+    489                      t[k] = xr + xi;
+   \   00000154   877185E0           ADD      R7,R5,R7, LSL #+3
+   \   00000158   0020A0E1           MOV      R2,R0
+   \   0000015C   18009DE5           LDR      R0,[SP, #+24]
+   \   00000160   0130A0E1           MOV      R3,R1
+   \   00000164   030090E8           LDM      R0,{R0,R1}
+   \   00000168   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000016C   18209DE5           LDR      R2,[SP, #+24]
+   \   00000170   0080A0E1           MOV      R8,R0
+   \   00000174   0C0092E8           LDM      R2,{R2,R3}
+   \   00000178   0190A0E1           MOV      R9,R1
+   \   0000017C   03009BE8           LDM      R11,{R0,R1}
+   \   00000180   ........           _BLF     __dSub,??__dSub??rA
+   \   00000184   03008BE8           STM      R11,{R0,R1}
+   \   00000188   10008DE2           ADD      R0,SP,#+16
+   \   0000018C   030090E8           LDM      R0,{R0,R1}
+   \   00000190   8AB185E0           ADD      R11,R5,R10, LSL #+3
+   \   00000194   0820A0E1           MOV      R2,R8
+   \   00000198   0930A0E1           MOV      R3,R9
+   \   0000019C   ........           _BLF     __dSub,??__dSub??rA
+   \   000001A0   03008BE8           STM      R11,{R0,R1}
+   \   000001A4   10008DE2           ADD      R0,SP,#+16
+   \   000001A8   030090E8           LDM      R0,{R0,R1}
+   \   000001AC   0820A0E1           MOV      R2,R8
+   \   000001B0   0930A0E1           MOV      R3,R9
+    490                  }
+   \   000001B4   01A08AE2           ADD      R10,R10,#+1
+   \   000001B8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001BC   030087E8           STM      R7,{R0,R1}
+   \                     ??dfct_4:
+   \   000001C0   00009DE5           LDR      R0,[SP, #+0]
+   \   000001C4   010040E2           SUB      R0,R0,#+1
+   \   000001C8   0A0050E1           CMP      R0,R10
+   \   000001CC   CAFFFFAA           BGE      ??dfct_5
+   \   000001D0   1C009DE5           LDR      R0,[SP, #+28]
+   \   000001D4   00109DE5           LDR      R1,[SP, #+0]
+   \   000001D8   010040E0           SUB      R0,R0,R1
+   \   000001DC   808184E0           ADD      R8,R4,R0, LSL #+3
+   \   000001E0   817184E0           ADD      R7,R4,R1, LSL #+3
+   \   000001E4   819185E0           ADD      R9,R5,R1, LSL #+3
+   \   000001E8   030097E8           LDM      R7,{R0,R1}
+   \   000001EC   0020A0E1           MOV      R2,R0
+   \   000001F0   0130A0E1           MOV      R3,R1
+   \   000001F4   030098E8           LDM      R8,{R0,R1}
+   \   000001F8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001FC   030089E8           STM      R9,{R0,R1}
+    491                  t[mh] = a[mh] + a[n - mh];
+    492                  a[mh] -= a[n - mh];
+   \   00000200   030097E8           LDM      R7,{R0,R1}
+   \   00000204   0C0098E8           LDM      R8,{R2,R3}
+   \   00000208   ........           _BLF     __dSub,??__dSub??rA
+   \   0000020C   030087E8           STM      R7,{R0,R1}
+    493                  dctsub(m, a, nc, w + nw);
+   \   00000210   08309DE5           LDR      R3,[SP, #+8]
+   \   00000214   04209DE5           LDR      R2,[SP, #+4]
+   \   00000218   0410A0E1           MOV      R1,R4
+   \   0000021C   0600A0E1           MOV      R0,R6
+   \   00000220   ........           BL       ??dctsub
+    494                  if (m > 4) {
+   \   00000224   050056E3           CMP      R6,#+5
+   \   00000228   040000BA           BLT      ??dfct_6
+    495                      bitrv2(m, ip + 2, a);
+   \   0000022C   20009DE5           LDR      R0,[SP, #+32]
+   \   00000230   0420A0E1           MOV      R2,R4
+   \   00000234   081080E2           ADD      R1,R0,#+8
+   \   00000238   0600A0E1           MOV      R0,R6
+   \   0000023C   ........           BL       ??bitrv2
+    496                  }
+    497                  cftsub(m, a, w);
+   \                     ??dfct_6:
+   \   00000240   48209DE5           LDR      R2,[SP, #+72]
+   \   00000244   0410A0E1           MOV      R1,R4
+   \   00000248   0600A0E1           MOV      R0,R6
+   \   0000024C   ........           BL       ??cftsub
+    498                  if (m > 4) {
+   \   00000250   050056E3           CMP      R6,#+5
+   \   00000254   040000BA           BLT      ??dfct_7
+    499                      rftsub(m, a, nc, w + nw);
+   \   00000258   08309DE5           LDR      R3,[SP, #+8]
+   \   0000025C   04209DE5           LDR      R2,[SP, #+4]
+   \   00000260   0410A0E1           MOV      R1,R4
+   \   00000264   0600A0E1           MOV      R0,R6
+   \   00000268   ........           BL       ??rftsub
+    500                  }
+    501                  xr = a[0] + a[1];
+   \                     ??dfct_7:
+   \   0000026C   0C0094E8           LDM      R4,{R2,R3}
+   \   00000270   080094E5           LDR      R0,[R4, #+8]
+   \   00000274   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000278   10708DE2           ADD      R7,SP,#+16
+   \   0000027C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000280   030087E8           STM      R7,{R0,R1}
+    502                  a[n - 1] = a[0] - a[1];
+   \   00000284   0C009DE5           LDR      R0,[SP, #+12]
+   \   00000288   082094E5           LDR      R2,[R4, #+8]
+   \   0000028C   0C3094E5           LDR      R3,[R4, #+12]
+   \   00000290   0790E0E3           MVN      R9,#+7
+   \   00000294   007089E0           ADD      R7,R9,R0
+   \   00000298   030094E8           LDM      R4,{R0,R1}
+    503                  for (j = m - 2; j >= 2; j -= 2) {
+   \   0000029C   028046E2           SUB      R8,R6,#+2
+   \   000002A0   ........           _BLF     __dSub,??__dSub??rA
+   \   000002A4   030087E8           STM      R7,{R0,R1}
+   \   000002A8   100000EA           B        ??dfct_8
+    504                      a[(j << 1) + 1] = a[j] + a[j + 1];
+   \                     ??dfct_9:
+   \   000002AC   886184E0           ADD      R6,R4,R8, LSL #+3
+   \   000002B0   030096E8           LDM      R6,{R0,R1}
+   \   000002B4   0020A0E1           MOV      R2,R0
+   \   000002B8   080096E5           LDR      R0,[R6, #+8]
+   \   000002BC   0130A0E1           MOV      R3,R1
+   \   000002C0   0C1096E5           LDR      R1,[R6, #+12]
+   \   000002C4   087284E0           ADD      R7,R4,R8, LSL #+4
+   \   000002C8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000002CC   080087E5           STR      R0,[R7, #+8]
+   \   000002D0   0C1087E5           STR      R1,[R7, #+12]
+    505                      a[(j << 1) - 1] = a[j] - a[j + 1];
+   \   000002D4   030096E8           LDM      R6,{R0,R1}
+   \   000002D8   082096E5           LDR      R2,[R6, #+8]
+   \   000002DC   0C3096E5           LDR      R3,[R6, #+12]
+   \   000002E0   077089E0           ADD      R7,R9,R7
+   \   000002E4   ........           _BLF     __dSub,??__dSub??rA
+   \   000002E8   030087E8           STM      R7,{R0,R1}
+    506                  }
+   \   000002EC   028048E2           SUB      R8,R8,#+2
+   \                     ??dfct_8:
+   \   000002F0   020058E3           CMP      R8,#+2
+   \   000002F4   ECFFFFAA           BGE      ??dfct_9
+    507                  a[1] = xr;
+   \   000002F8   10008DE2           ADD      R0,SP,#+16
+   \   000002FC   030090E8           LDM      R0,{R0,R1}
+    508                  l = 2;
+   \   00000300   02A0A0E3           MOV      R10,#+2
+   \   00000304   080084E5           STR      R0,[R4, #+8]
+   \   00000308   0C1084E5           STR      R1,[R4, #+12]
+    509                  m = mh;
+   \   0000030C   1E0000EA           B        ??dfct_10
+    510                  while (m >= 2) {
+    511                      dctsub(m, t, nc, w + nw);
+    512                      if (m > 4) {
+    513                          bitrv2(m, ip + 2, t);
+    514                      }
+    515                      cftsub(m, t, w);
+    516                      if (m > 4) {
+    517                          rftsub(m, t, nc, w + nw);
+    518                      }
+    519                      a[n - l] = t[0] - t[1];
+    520                      a[l] = t[0] + t[1];
+    521                      k = 0;
+    522                      for (j = 2; j <= m - 2; j += 2) {
+    523                          k += l << 2;
+    524                          a[k - l] = t[j] - t[j + 1];
+    525                          a[k + l] = t[j] + t[j + 1];
+    526                      }
+    527                      l <<= 1;
+    528                      mh = m >> 1;
+    529                      for (j = 0; j <= mh - 1; j++) {
+    530                          k = m - j;
+   \                     ??dfct_11:
+   \   00000310   087046E0           SUB      R7,R6,R8
+   \   00000314   060087E0           ADD      R0,R7,R6
+   \   00000318   80B185E0           ADD      R11,R5,R0, LSL #+3
+   \   0000031C   060088E0           ADD      R0,R8,R6
+   \   00000320   809185E0           ADD      R9,R5,R0, LSL #+3
+   \   00000324   880185E0           ADD      R0,R5,R8, LSL #+3
+   \   00000328   01002DE9           PUSH     {R0}
+   \   0000032C   03009BE8           LDM      R11,{R0,R1}
+   \   00000330   0C0099E8           LDM      R9,{R2,R3}
+    531                          t[j] = t[m + k] - t[m + j];
+    532                          t[k] = t[m + k] + t[m + j];
+   \   00000334   877185E0           ADD      R7,R5,R7, LSL #+3
+    533                      }
+   \   00000338   018088E2           ADD      R8,R8,#+1
+   \   0000033C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000340   0400BDE8           POP      {R2}
+   \   00000344   030082E8           STM      R2,{R0,R1}
+   \   00000348   03009BE8           LDM      R11,{R0,R1}
+   \   0000034C   0020A0E1           MOV      R2,R0
+   \   00000350   0130A0E1           MOV      R3,R1
+   \   00000354   030099E8           LDM      R9,{R0,R1}
+   \   00000358   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000035C   030087E8           STM      R7,{R0,R1}
+   \                     ??dfct_12:
+   \   00000360   00009DE5           LDR      R0,[SP, #+0]
+   \   00000364   010040E2           SUB      R0,R0,#+1
+   \   00000368   080050E1           CMP      R0,R8
+   \   0000036C   E7FFFFAA           BGE      ??dfct_11
+    534                      t[mh] = t[m + mh];
+   \   00000370   00109DE5           LDR      R1,[SP, #+0]
+   \   00000374   00009DE5           LDR      R0,[SP, #+0]
+   \   00000378   061081E0           ADD      R1,R1,R6
+   \   0000037C   811185E0           ADD      R1,R5,R1, LSL #+3
+   \   00000380   0C0091E8           LDM      R1,{R2,R3}
+   \   00000384   800185E0           ADD      R0,R5,R0, LSL #+3
+   \   00000388   0C0080E8           STM      R0,{R2,R3}
+    535                      m = mh;
+   \                     ??dfct_10:
+   \   0000038C   00609DE5           LDR      R6,[SP, #+0]
+   \   00000390   8A7184E0           ADD      R7,R4,R10, LSL #+3
+   \   00000394   020056E3           CMP      R6,#+2
+   \   00000398   430000BA           BLT      ??dfct_13
+   \   0000039C   08309DE5           LDR      R3,[SP, #+8]
+   \   000003A0   04209DE5           LDR      R2,[SP, #+4]
+   \   000003A4   0510A0E1           MOV      R1,R5
+   \   000003A8   0600A0E1           MOV      R0,R6
+   \   000003AC   ........           BL       ??dctsub
+   \   000003B0   050056E3           CMP      R6,#+5
+   \   000003B4   040000BA           BLT      ??dfct_14
+   \   000003B8   20009DE5           LDR      R0,[SP, #+32]
+   \   000003BC   0520A0E1           MOV      R2,R5
+   \   000003C0   081080E2           ADD      R1,R0,#+8
+   \   000003C4   0600A0E1           MOV      R0,R6
+   \   000003C8   ........           BL       ??bitrv2
+   \                     ??dfct_14:
+   \   000003CC   48209DE5           LDR      R2,[SP, #+72]
+   \   000003D0   0510A0E1           MOV      R1,R5
+   \   000003D4   0600A0E1           MOV      R0,R6
+   \   000003D8   ........           BL       ??cftsub
+   \   000003DC   050056E3           CMP      R6,#+5
+   \   000003E0   040000BA           BLT      ??dfct_15
+   \   000003E4   08309DE5           LDR      R3,[SP, #+8]
+   \   000003E8   04209DE5           LDR      R2,[SP, #+4]
+   \   000003EC   0510A0E1           MOV      R1,R5
+   \   000003F0   0600A0E1           MOV      R0,R6
+   \   000003F4   ........           BL       ??rftsub
+   \                     ??dfct_15:
+   \   000003F8   1C009DE5           LDR      R0,[SP, #+28]
+   \   000003FC   082095E5           LDR      R2,[R5, #+8]
+   \   00000400   0C3095E5           LDR      R3,[R5, #+12]
+   \   00000404   0A0040E0           SUB      R0,R0,R10
+   \   00000408   808184E0           ADD      R8,R4,R0, LSL #+3
+   \   0000040C   030095E8           LDM      R5,{R0,R1}
+   \   00000410   0290A0E3           MOV      R9,#+2
+   \   00000414   ........           _BLF     __dSub,??__dSub??rA
+   \   00000418   030088E8           STM      R8,{R0,R1}
+   \   0000041C   030095E8           LDM      R5,{R0,R1}
+   \   00000420   0020A0E1           MOV      R2,R0
+   \   00000424   080095E5           LDR      R0,[R5, #+8]
+   \   00000428   0130A0E1           MOV      R3,R1
+   \   0000042C   0C1095E5           LDR      R1,[R5, #+12]
+   \   00000430   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000434   030087E8           STM      R7,{R0,R1}
+   \   00000438   0070A0E3           MOV      R7,#+0
+   \   0000043C   120000EA           B        ??dfct_16
+   \                     ??dfct_17:
+   \   00000440   0A7187E0           ADD      R7,R7,R10, LSL #+2
+   \   00000444   898185E0           ADD      R8,R5,R9, LSL #+3
+   \   00000448   082098E5           LDR      R2,[R8, #+8]
+   \   0000044C   0C3098E5           LDR      R3,[R8, #+12]
+   \   00000450   0A0047E0           SUB      R0,R7,R10
+   \   00000454   80B184E0           ADD      R11,R4,R0, LSL #+3
+   \   00000458   030098E8           LDM      R8,{R0,R1}
+   \   0000045C   029089E2           ADD      R9,R9,#+2
+   \   00000460   ........           _BLF     __dSub,??__dSub??rA
+   \   00000464   03008BE8           STM      R11,{R0,R1}
+   \   00000468   07008AE0           ADD      R0,R10,R7
+   \   0000046C   80B184E0           ADD      R11,R4,R0, LSL #+3
+   \   00000470   030098E8           LDM      R8,{R0,R1}
+   \   00000474   0020A0E1           MOV      R2,R0
+   \   00000478   080098E5           LDR      R0,[R8, #+8]
+   \   0000047C   0130A0E1           MOV      R3,R1
+   \   00000480   0C1098E5           LDR      R1,[R8, #+12]
+   \   00000484   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000488   03008BE8           STM      R11,{R0,R1}
+   \                     ??dfct_16:
+   \   0000048C   020046E2           SUB      R0,R6,#+2
+   \   00000490   090050E1           CMP      R0,R9
+   \   00000494   E9FFFFAA           BGE      ??dfct_17
+   \   00000498   8AA0A0E1           LSL      R10,R10,#+1
+   \   0000049C   C610A0E1           ASR      R1,R6,#+1
+   \   000004A0   00108DE5           STR      R1,[SP, #+0]
+   \   000004A4   0080A0E3           MOV      R8,#+0
+   \   000004A8   ACFFFFEA           B        ??dfct_12
+    536                  }
+    537                  a[l] = t[0];
+   \                     ??dfct_13:
+   \   000004AC   030095E8           LDM      R5,{R0,R1}
+   \   000004B0   030087E8           STM      R7,{R0,R1}
+    538                  a[n] = t[2] - t[1];
+   \   000004B4   0C609DE5           LDR      R6,[SP, #+12]
+   \   000004B8   100095E5           LDR      R0,[R5, #+16]
+   \   000004BC   141095E5           LDR      R1,[R5, #+20]
+   \   000004C0   082095E5           LDR      R2,[R5, #+8]
+   \   000004C4   0C3095E5           LDR      R3,[R5, #+12]
+   \   000004C8   ........           _BLF     __dSub,??__dSub??rA
+   \   000004CC   030086E8           STM      R6,{R0,R1}
+    539                  a[0] = t[2] + t[1];
+   \   000004D0   102095E5           LDR      R2,[R5, #+16]
+   \   000004D4   143095E5           LDR      R3,[R5, #+20]
+   \   000004D8   080095E5           LDR      R0,[R5, #+8]
+   \   000004DC   0C1095E5           LDR      R1,[R5, #+12]
+   \   000004E0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000004E4   070000EA           B        ??dfct_18
+    540              } else {
+    541                  a[1] = a[0];
+   \                     ??dfct_3:
+   \   000004E8   030094E8           LDM      R4,{R0,R1}
+   \   000004EC   080084E5           STR      R0,[R4, #+8]
+   \   000004F0   0C1084E5           STR      R1,[R4, #+12]
+    542                  a[2] = t[0];
+   \   000004F4   030095E8           LDM      R5,{R0,R1}
+   \   000004F8   100084E5           STR      R0,[R4, #+16]
+   \   000004FC   141084E5           STR      R1,[R4, #+20]
+    543                  a[0] = t[1];
+   \   00000500   080095E5           LDR      R0,[R5, #+8]
+   \   00000504   0C1095E5           LDR      R1,[R5, #+12]
+   \                     ??dfct_18:
+   \   00000508   030084E8           STM      R4,{R0,R1}
+    544              }
+    545          }
+   \   0000050C   ........           B        ??Subroutine13_0
+    546          
+    547          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    548          void dfst(int n, double *a, double *t, int *ip, double *w)
+    549          {
+   \                     ??dfst:
+   \   00000000   F94F2DE9           PUSH     {R0,R3-R11,LR}
+   \   00000004   18D04DE2           SUB      SP,SP,#+24
+    550              void makewt(int nw, int *ip, double *w);
+    551              void makect(int nc, int *ip, double *c);
+    552              void bitrv2(int n, int *ip, double *a);
+    553              void cftsub(int n, double *a, double *w);
+    554              void rftsub(int n, double *a, int nc, double *c);
+    555              void dstsub(int n, double *a, int nc, double *c);
+    556              int j, k, l, m, mh, nw, nc;
+    557              double xr, xi;
+    558              
+    559              nw = ip[0];
+   \   00000008   005093E5           LDR      R5,[R3, #+0]
+    560              if (n > (nw << 3)) {
+   \   0000000C   18009DE5           LDR      R0,[SP, #+24]
+   \   00000010   0180A0E1           MOV      R8,R1
+   \   00000014   0240A0E1           MOV      R4,R2
+   \   00000018   850150E1           CMP      R0,R5, LSL #+3
+   \   0000001C   040000DA           BLE      ??dfst_1
+    561                  nw = n >> 3;
+    562                  makewt(nw, ip, w);
+   \   00000020   44209DE5           LDR      R2,[SP, #+68]
+   \   00000024   C051A0E1           ASR      R5,R0,#+3
+   \   00000028   0310A0E1           MOV      R1,R3
+   \   0000002C   0500A0E1           MOV      R0,R5
+   \   00000030   ........           BL       ??makewt
+    563              }
+    564              nc = ip[1];
+   \                     ??dfst_1:
+   \   00000034   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000038   041091E5           LDR      R1,[R1, #+4]
+   \   0000003C   08108DE5           STR      R1,[SP, #+8]
+    565              if (n > (nc << 1)) {
+   \   00000040   44109DE5           LDR      R1,[SP, #+68]
+   \   00000044   851181E0           ADD      R1,R1,R5, LSL #+3
+   \   00000048   0C108DE5           STR      R1,[SP, #+12]
+   \   0000004C   18009DE5           LDR      R0,[SP, #+24]
+   \   00000050   18109DE5           LDR      R1,[SP, #+24]
+   \   00000054   C050A0E1           ASR      R5,R0,#+1
+   \   00000058   08009DE5           LDR      R0,[SP, #+8]
+   \   0000005C   800051E1           CMP      R1,R0, LSL #+1
+   \   00000060   040000DA           BLE      ??dfst_2
+    566                  nc = n >> 1;
+   \   00000064   08508DE5           STR      R5,[SP, #+8]
+    567                  makect(nc, ip, w + nw);
+   \   00000068   0C209DE5           LDR      R2,[SP, #+12]
+   \   0000006C   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000070   0500A0E1           MOV      R0,R5
+   \   00000074   ........           BL       ??makect
+    568              }
+    569              if (n > 2) {
+   \                     ??dfst_2:
+   \   00000078   18009DE5           LDR      R0,[SP, #+24]
+   \   0000007C   030050E3           CMP      R0,#+3
+   \   00000080   EF0000BA           BLT      ??dfst_3
+    570                  m = n >> 1;
+   \   00000084   00508DE5           STR      R5,[SP, #+0]
+    571                  mh = m >> 1;
+   \   00000088   0510A0E1           MOV      R1,R5
+   \   0000008C   C110A0E1           ASR      R1,R1,#+1
+   \   00000090   04108DE5           STR      R1,[SP, #+4]
+    572                  for (j = 1; j <= mh - 1; j++) {
+   \   00000094   0150A0E3           MOV      R5,#+1
+   \   00000098   2E0000EA           B        ??dfst_4
+    573                      k = m - j;
+   \                     ??dfst_5:
+   \   0000009C   00009DE5           LDR      R0,[SP, #+0]
+   \   000000A0   857188E0           ADD      R7,R8,R5, LSL #+3
+   \   000000A4   056040E0           SUB      R6,R0,R5
+   \   000000A8   18009DE5           LDR      R0,[SP, #+24]
+   \   000000AC   10A08DE2           ADD      R10,SP,#+16
+   \   000000B0   050040E0           SUB      R0,R0,R5
+   \   000000B4   809188E0           ADD      R9,R8,R0, LSL #+3
+   \   000000B8   030097E8           LDM      R7,{R0,R1}
+   \   000000BC   0C0099E8           LDM      R9,{R2,R3}
+   \   000000C0   ........           _BLF     __dSub,??__dSub??rA
+   \   000000C4   03008AE8           STM      R10,{R0,R1}
+    574                      xr = a[j] - a[n - j];
+    575                      a[j] += a[n - j];
+   \   000000C8   030097E8           LDM      R7,{R0,R1}
+   \   000000CC   0020A0E1           MOV      R2,R0
+   \   000000D0   0130A0E1           MOV      R3,R1
+   \   000000D4   030099E8           LDM      R9,{R0,R1}
+   \   000000D8   869188E0           ADD      R9,R8,R6, LSL #+3
+   \   000000DC   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000E0   030087E8           STM      R7,{R0,R1}
+   \   000000E4   18009DE5           LDR      R0,[SP, #+24]
+   \   000000E8   060040E0           SUB      R0,R0,R6
+   \   000000EC   807188E0           ADD      R7,R8,R0, LSL #+3
+   \   000000F0   030099E8           LDM      R9,{R0,R1}
+   \   000000F4   0C0097E8           LDM      R7,{R2,R3}
+    576                      xi = a[k] - a[n - k];
+    577                      a[k] += a[n - k];
+    578                      t[j] = xr + xi;
+    579                      t[k] = xr - xi;
+   \   000000F8   866184E0           ADD      R6,R4,R6, LSL #+3
+   \   000000FC   ........           _BLF     __dSub,??__dSub??rA
+   \   00000100   00A0A0E1           MOV      R10,R0
+   \   00000104   01B0A0E1           MOV      R11,R1
+   \   00000108   030099E8           LDM      R9,{R0,R1}
+   \   0000010C   0020A0E1           MOV      R2,R0
+   \   00000110   0130A0E1           MOV      R3,R1
+   \   00000114   030097E8           LDM      R7,{R0,R1}
+   \   00000118   857184E0           ADD      R7,R4,R5, LSL #+3
+    580                  }
+   \   0000011C   015085E2           ADD      R5,R5,#+1
+   \   00000120   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000124   030089E8           STM      R9,{R0,R1}
+   \   00000128   10008DE2           ADD      R0,SP,#+16
+   \   0000012C   030090E8           LDM      R0,{R0,R1}
+   \   00000130   0A20A0E1           MOV      R2,R10
+   \   00000134   0B30A0E1           MOV      R3,R11
+   \   00000138   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000013C   030087E8           STM      R7,{R0,R1}
+   \   00000140   10008DE2           ADD      R0,SP,#+16
+   \   00000144   030090E8           LDM      R0,{R0,R1}
+   \   00000148   0A20A0E1           MOV      R2,R10
+   \   0000014C   0B30A0E1           MOV      R3,R11
+   \   00000150   ........           _BLF     __dSub,??__dSub??rA
+   \   00000154   030086E8           STM      R6,{R0,R1}
+   \                     ??dfst_4:
+   \   00000158   04009DE5           LDR      R0,[SP, #+4]
+   \   0000015C   010040E2           SUB      R0,R0,#+1
+   \   00000160   050050E1           CMP      R0,R5
+   \   00000164   CCFFFFAA           BGE      ??dfst_5
+   \   00000168   18009DE5           LDR      R0,[SP, #+24]
+   \   0000016C   04109DE5           LDR      R1,[SP, #+4]
+   \   00000170   010040E0           SUB      R0,R0,R1
+   \   00000174   805188E0           ADD      R5,R8,R0, LSL #+3
+   \   00000178   0C0095E8           LDM      R5,{R2,R3}
+   \   0000017C   816188E0           ADD      R6,R8,R1, LSL #+3
+   \   00000180   030096E8           LDM      R6,{R0,R1}
+   \   00000184   ........           _BLF     __dSub,??__dSub??rA
+   \   00000188   030084E8           STM      R4,{R0,R1}
+    581                  t[0] = a[mh] - a[n - mh];
+    582                  a[mh] += a[n - mh];
+   \   0000018C   0C0096E8           LDM      R6,{R2,R3}
+   \   00000190   030095E8           LDM      R5,{R0,R1}
+   \   00000194   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000198   030086E8           STM      R6,{R0,R1}
+    583                  a[0] = a[m];
+   \   0000019C   00009DE5           LDR      R0,[SP, #+0]
+   \   000001A0   800188E0           ADD      R0,R8,R0, LSL #+3
+   \   000001A4   030090E8           LDM      R0,{R0,R1}
+   \   000001A8   030088E8           STM      R8,{R0,R1}
+    584                  dstsub(m, a, nc, w + nw);
+   \   000001AC   0C309DE5           LDR      R3,[SP, #+12]
+   \   000001B0   08209DE5           LDR      R2,[SP, #+8]
+   \   000001B4   00009DE5           LDR      R0,[SP, #+0]
+   \   000001B8   0810A0E1           MOV      R1,R8
+   \   000001BC   ........           BL       ??dstsub
+    585                  if (m > 4) {
+   \   000001C0   00009DE5           LDR      R0,[SP, #+0]
+   \   000001C4   050050E3           CMP      R0,#+5
+   \   000001C8   040000BA           BLT      ??dfst_6
+    586                      bitrv2(m, ip + 2, a);
+   \   000001CC   1C009DE5           LDR      R0,[SP, #+28]
+   \   000001D0   0820A0E1           MOV      R2,R8
+   \   000001D4   081080E2           ADD      R1,R0,#+8
+   \   000001D8   00009DE5           LDR      R0,[SP, #+0]
+   \   000001DC   ........           BL       ??bitrv2
+    587                  }
+    588                  cftsub(m, a, w);
+   \                     ??dfst_6:
+   \   000001E0   44209DE5           LDR      R2,[SP, #+68]
+   \   000001E4   00009DE5           LDR      R0,[SP, #+0]
+   \   000001E8   0810A0E1           MOV      R1,R8
+   \   000001EC   ........           BL       ??cftsub
+    589                  if (m > 4) {
+   \   000001F0   00009DE5           LDR      R0,[SP, #+0]
+   \   000001F4   050050E3           CMP      R0,#+5
+   \   000001F8   030000BA           BLT      ??dfst_7
+    590                      rftsub(m, a, nc, w + nw);
+   \   000001FC   0C309DE5           LDR      R3,[SP, #+12]
+   \   00000200   08209DE5           LDR      R2,[SP, #+8]
+   \   00000204   0810A0E1           MOV      R1,R8
+   \   00000208   ........           BL       ??rftsub
+    591                  }
+    592                  xr = a[0] + a[1];
+   \                     ??dfst_7:
+   \   0000020C   0C0098E8           LDM      R8,{R2,R3}
+   \   00000210   080098E5           LDR      R0,[R8, #+8]
+   \   00000214   0C1098E5           LDR      R1,[R8, #+12]
+    593                  a[n - 1] = a[1] - a[0];
+   \   00000218   0750E0E3           MVN      R5,#+7
+   \   0000021C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000220   0C0098E8           LDM      R8,{R2,R3}
+   \   00000224   00A0A0E1           MOV      R10,R0
+   \   00000228   18009DE5           LDR      R0,[SP, #+24]
+   \   0000022C   01B0A0E1           MOV      R11,R1
+   \   00000230   0C1098E5           LDR      R1,[R8, #+12]
+   \   00000234   800188E0           ADD      R0,R8,R0, LSL #+3
+   \   00000238   006085E0           ADD      R6,R5,R0
+   \   0000023C   080098E5           LDR      R0,[R8, #+8]
+   \   00000240   ........           _BLF     __dSub,??__dSub??rA
+   \   00000244   030086E8           STM      R6,{R0,R1}
+    594                  for (j = m - 2; j >= 2; j -= 2) {
+   \   00000248   00009DE5           LDR      R0,[SP, #+0]
+   \   0000024C   027040E2           SUB      R7,R0,#+2
+   \   00000250   0F0000EA           B        ??dfst_8
+    595                      a[(j << 1) + 1] = a[j] - a[j + 1];
+   \                     ??dfst_9:
+   \   00000254   876188E0           ADD      R6,R8,R7, LSL #+3
+   \   00000258   030096E8           LDM      R6,{R0,R1}
+   \   0000025C   082096E5           LDR      R2,[R6, #+8]
+   \   00000260   0C3096E5           LDR      R3,[R6, #+12]
+   \   00000264   079288E0           ADD      R9,R8,R7, LSL #+4
+   \   00000268   ........           _BLF     __dSub,??__dSub??rA
+   \   0000026C   080089E5           STR      R0,[R9, #+8]
+   \   00000270   0C1089E5           STR      R1,[R9, #+12]
+    596                      a[(j << 1) - 1] = -a[j] - a[j + 1];
+   \   00000274   030096E8           LDM      R6,{R0,R1}
+   \   00000278   082096E5           LDR      R2,[R6, #+8]
+   \   0000027C   0C3096E5           LDR      R3,[R6, #+12]
+   \   00000280   099085E0           ADD      R9,R5,R9
+   \   00000284   801421E2           EOR      R1,R1,#0x80000000
+   \   00000288   ........           _BLF     __dSub,??__dSub??rA
+   \   0000028C   030089E8           STM      R9,{R0,R1}
+    597                  }
+   \   00000290   027047E2           SUB      R7,R7,#+2
+   \                     ??dfst_8:
+   \   00000294   020057E3           CMP      R7,#+2
+   \   00000298   EDFFFFAA           BGE      ??dfst_9
+    598                  a[1] = xr;
+   \   0000029C   08A088E5           STR      R10,[R8, #+8]
+   \   000002A0   0CB088E5           STR      R11,[R8, #+12]
+    599                  l = 2;
+   \   000002A4   02A0A0E3           MOV      R10,#+2
+    600                  m = mh;
+   \   000002A8   1C0000EA           B        ??dfst_10
+    601                  while (m >= 2) {
+    602                      dstsub(m, t, nc, w + nw);
+    603                      if (m > 4) {
+    604                          bitrv2(m, ip + 2, t);
+    605                      }
+    606                      cftsub(m, t, w);
+    607                      if (m > 4) {
+    608                          rftsub(m, t, nc, w + nw);
+    609                      }
+    610                      a[n - l] = t[1] - t[0];
+    611                      a[l] = t[0] + t[1];
+    612                      k = 0;
+    613                      for (j = 2; j <= m - 2; j += 2) {
+    614                          k += l << 2;
+    615                          a[k - l] = -t[j] - t[j + 1];
+    616                          a[k + l] = t[j] - t[j + 1];
+    617                      }
+    618                      l <<= 1;
+    619                      mh = m >> 1;
+    620                      for (j = 1; j <= mh - 1; j++) {
+    621                          k = m - j;
+   \                     ??dfst_11:
+   \   000002AC   076045E0           SUB      R6,R5,R7
+   \   000002B0   050086E0           ADD      R0,R6,R5
+   \   000002B4   80B184E0           ADD      R11,R4,R0, LSL #+3
+   \   000002B8   050087E0           ADD      R0,R7,R5
+   \   000002BC   809184E0           ADD      R9,R4,R0, LSL #+3
+   \   000002C0   870184E0           ADD      R0,R4,R7, LSL #+3
+   \   000002C4   01002DE9           PUSH     {R0}
+   \   000002C8   03009BE8           LDM      R11,{R0,R1}
+   \   000002CC   0020A0E1           MOV      R2,R0
+   \   000002D0   0130A0E1           MOV      R3,R1
+   \   000002D4   030099E8           LDM      R9,{R0,R1}
+    622                          t[j] = t[m + k] + t[m + j];
+    623                          t[k] = t[m + k] - t[m + j];
+   \   000002D8   866184E0           ADD      R6,R4,R6, LSL #+3
+    624                      }
+   \   000002DC   017087E2           ADD      R7,R7,#+1
+   \   000002E0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000002E4   0400BDE8           POP      {R2}
+   \   000002E8   030082E8           STM      R2,{R0,R1}
+   \   000002EC   03009BE8           LDM      R11,{R0,R1}
+   \   000002F0   0C0099E8           LDM      R9,{R2,R3}
+   \   000002F4   ........           _BLF     __dSub,??__dSub??rA
+   \   000002F8   030086E8           STM      R6,{R0,R1}
+   \                     ??dfst_12:
+   \   000002FC   04009DE5           LDR      R0,[SP, #+4]
+   \   00000300   010040E2           SUB      R0,R0,#+1
+   \   00000304   070050E1           CMP      R0,R7
+   \   00000308   E7FFFFAA           BGE      ??dfst_11
+    625                      t[0] = t[m + mh];
+   \   0000030C   04009DE5           LDR      R0,[SP, #+4]
+   \   00000310   050080E0           ADD      R0,R0,R5
+   \   00000314   800184E0           ADD      R0,R4,R0, LSL #+3
+   \   00000318   030090E8           LDM      R0,{R0,R1}
+   \   0000031C   030084E8           STM      R4,{R0,R1}
+    626                      m = mh;
+   \                     ??dfst_10:
+   \   00000320   04509DE5           LDR      R5,[SP, #+4]
+   \   00000324   8A6188E0           ADD      R6,R8,R10, LSL #+3
+   \   00000328   020055E3           CMP      R5,#+2
+   \   0000032C   420000BA           BLT      ??dfst_13
+   \   00000330   0C309DE5           LDR      R3,[SP, #+12]
+   \   00000334   08209DE5           LDR      R2,[SP, #+8]
+   \   00000338   0410A0E1           MOV      R1,R4
+   \   0000033C   0500A0E1           MOV      R0,R5
+   \   00000340   ........           BL       ??dstsub
+   \   00000344   050055E3           CMP      R5,#+5
+   \   00000348   040000BA           BLT      ??dfst_14
+   \   0000034C   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000350   0420A0E1           MOV      R2,R4
+   \   00000354   081080E2           ADD      R1,R0,#+8
+   \   00000358   0500A0E1           MOV      R0,R5
+   \   0000035C   ........           BL       ??bitrv2
+   \                     ??dfst_14:
+   \   00000360   44209DE5           LDR      R2,[SP, #+68]
+   \   00000364   0410A0E1           MOV      R1,R4
+   \   00000368   0500A0E1           MOV      R0,R5
+   \   0000036C   ........           BL       ??cftsub
+   \   00000370   050055E3           CMP      R5,#+5
+   \   00000374   040000BA           BLT      ??dfst_15
+   \   00000378   0C309DE5           LDR      R3,[SP, #+12]
+   \   0000037C   08209DE5           LDR      R2,[SP, #+8]
+   \   00000380   0410A0E1           MOV      R1,R4
+   \   00000384   0500A0E1           MOV      R0,R5
+   \   00000388   ........           BL       ??rftsub
+   \                     ??dfst_15:
+   \   0000038C   0C0094E8           LDM      R4,{R2,R3}
+   \   00000390   18009DE5           LDR      R0,[SP, #+24]
+   \   00000394   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000398   0A0040E0           SUB      R0,R0,R10
+   \   0000039C   807188E0           ADD      R7,R8,R0, LSL #+3
+   \   000003A0   080094E5           LDR      R0,[R4, #+8]
+   \   000003A4   ........           _BLF     __dSub,??__dSub??rA
+   \   000003A8   030087E8           STM      R7,{R0,R1}
+   \   000003AC   030094E8           LDM      R4,{R0,R1}
+   \   000003B0   0020A0E1           MOV      R2,R0
+   \   000003B4   080094E5           LDR      R0,[R4, #+8]
+   \   000003B8   0130A0E1           MOV      R3,R1
+   \   000003BC   0C1094E5           LDR      R1,[R4, #+12]
+   \   000003C0   0270A0E3           MOV      R7,#+2
+   \   000003C4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000003C8   030086E8           STM      R6,{R0,R1}
+   \   000003CC   0060A0E3           MOV      R6,#+0
+   \   000003D0   110000EA           B        ??dfst_16
+   \                     ??dfst_17:
+   \   000003D4   0A6186E0           ADD      R6,R6,R10, LSL #+2
+   \   000003D8   879184E0           ADD      R9,R4,R7, LSL #+3
+   \   000003DC   082099E5           LDR      R2,[R9, #+8]
+   \   000003E0   0C3099E5           LDR      R3,[R9, #+12]
+   \   000003E4   0A0046E0           SUB      R0,R6,R10
+   \   000003E8   80B188E0           ADD      R11,R8,R0, LSL #+3
+   \   000003EC   030099E8           LDM      R9,{R0,R1}
+   \   000003F0   027087E2           ADD      R7,R7,#+2
+   \   000003F4   801421E2           EOR      R1,R1,#0x80000000
+   \   000003F8   ........           _BLF     __dSub,??__dSub??rA
+   \   000003FC   03008BE8           STM      R11,{R0,R1}
+   \   00000400   082099E5           LDR      R2,[R9, #+8]
+   \   00000404   0C3099E5           LDR      R3,[R9, #+12]
+   \   00000408   06008AE0           ADD      R0,R10,R6
+   \   0000040C   80B188E0           ADD      R11,R8,R0, LSL #+3
+   \   00000410   030099E8           LDM      R9,{R0,R1}
+   \   00000414   ........           _BLF     __dSub,??__dSub??rA
+   \   00000418   03008BE8           STM      R11,{R0,R1}
+   \                     ??dfst_16:
+   \   0000041C   020045E2           SUB      R0,R5,#+2
+   \   00000420   070050E1           CMP      R0,R7
+   \   00000424   EAFFFFAA           BGE      ??dfst_17
+   \   00000428   8AA0A0E1           LSL      R10,R10,#+1
+   \   0000042C   C510A0E1           ASR      R1,R5,#+1
+   \   00000430   04108DE5           STR      R1,[SP, #+4]
+   \   00000434   0170A0E3           MOV      R7,#+1
+   \   00000438   AFFFFFEA           B        ??dfst_12
+    627                  }
+    628                  a[l] = t[0];
+   \                     ??dfst_13:
+   \   0000043C   030094E8           LDM      R4,{R0,R1}
+   \   00000440   030086E8           STM      R6,{R0,R1}
+    629              }
+    630              a[0] = 0;
+   \                     ??dfst_3:
+   \   00000444   0000A0E3           MOV      R0,#+0
+   \   00000448   0010A0E3           MOV      R1,#+0
+   \   0000044C   030088E8           STM      R8,{R0,R1}
+    631          }
+   \   00000450   20D08DE2           ADD      SP,SP,#+32
+   \   00000454   ........           B        ??Subroutine13_1
+    632          
+    633          
+    634          /* -------- initializing routines -------- */
+    635          
+    636          
+    637          #include <math.h>
+    638          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    639          void makewt(int nw, int *ip, double *w)
+    640          {
+   \                     ??makewt:
+   \   00000000   F24F2DE9           PUSH     {R1,R4-R11,LR}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+   \   00000008   00A0A0E1           MOV      R10,R0
+    641              void bitrv2(int n, int *ip, double *a);
+    642              int nwh, j;
+    643              double delta, x, y;
+    644              
+    645              ip[0] = nw;
+   \   0000000C   00A081E5           STR      R10,[R1, #+0]
+    646              ip[1] = 1;
+   \   00000010   08009DE5           LDR      R0,[SP, #+8]
+   \   00000014   0270A0E1           MOV      R7,R2
+   \   00000018   0110A0E3           MOV      R1,#+1
+   \   0000001C   041080E5           STR      R1,[R0, #+4]
+    647              if (nw > 2) {
+   \   00000020   03005AE3           CMP      R10,#+3
+   \   00000024   450000BA           BLT      ??makewt_1
+    648                  nwh = nw >> 1;
+   \   00000028   CAB0A0E1           ASR      R11,R10,#+1
+    649                  delta = atan(1.0) / nwh;
+   \   0000002C   0B00A0E1           MOV      R0,R11
+   \   00000030   ........           _BLF     __longToDouble,??__longToDouble??rA
+   \   00000034   0040A0E1           MOV      R4,R0
+   \   00000038   0150A0E1           MOV      R5,R1
+   \   0000003C   0000A0E3           MOV      R0,#+0
+   \   00000040   C015A0E3           MOV      R1,#+805306368
+   \   00000044   FF1681E3           ORR      R1,R1,#0xFF00000
+   \   00000048   ........           _BLF     atan,??atan??rA
+   \   0000004C   0420A0E1           MOV      R2,R4
+   \   00000050   0530A0E1           MOV      R3,R5
+   \   00000054   ........           _BLF     __dDiv,??__dDiv??rA
+   \   00000058   0D20A0E1           MOV      R2,SP
+   \   0000005C   030082E8           STM      R2,{R0,R1}
+    650                  w[0] = 1;
+   \   00000060   0000A0E3           MOV      R0,#+0
+   \   00000064   C015A0E3           MOV      R1,#+805306368
+   \   00000068   FF1681E3           ORR      R1,R1,#0xFF00000
+   \   0000006C   030087E8           STM      R7,{R0,R1}
+    651                  w[1] = 0;
+   \   00000070   0010A0E3           MOV      R1,#+0
+   \   00000074   080087E5           STR      R0,[R7, #+8]
+   \   00000078   0C1087E5           STR      R1,[R7, #+12]
+    652                  w[nwh] = cos(delta * nwh);
+   \   0000007C   0D00A0E1           MOV      R0,SP
+   \   00000080   030090E8           LDM      R0,{R0,R1}
+   \   00000084   8B6187E0           ADD      R6,R7,R11, LSL #+3
+   \   00000088   0420A0E1           MOV      R2,R4
+   \   0000008C   0530A0E1           MOV      R3,R5
+   \   00000090   ........           _BLF     __dMul,??__dMul??rA
+   \   00000094   0120A0E3           MOV      R2,#+1
+   \   00000098   ........           _BLF     _Sin,??_Sin??rA
+   \   0000009C   030086E8           STM      R6,{R0,R1}
+    653                  w[nwh + 1] = w[nwh];
+   \   000000A0   030096E8           LDM      R6,{R0,R1}
+   \   000000A4   080086E5           STR      R0,[R6, #+8]
+   \   000000A8   0C1086E5           STR      R1,[R6, #+12]
+    654                  for (j = 2; j <= nwh - 2; j += 2) {
+   \   000000AC   0260A0E3           MOV      R6,#+2
+   \   000000B0   1A0000EA           B        ??makewt_2
+    655                      x = cos(delta * j);
+   \                     ??makewt_3:
+   \   000000B4   0D00A0E1           MOV      R0,SP
+   \   000000B8   300090E8           LDM      R0,{R4,R5}
+   \   000000BC   0600A0E1           MOV      R0,R6
+   \   000000C0   ........           _BLF     __longToDouble,??__longToDouble??rA
+   \   000000C4   0420A0E1           MOV      R2,R4
+   \   000000C8   0530A0E1           MOV      R3,R5
+   \   000000CC   ........           _BLF     __dMul,??__dMul??rA
+   \   000000D0   0040A0E1           MOV      R4,R0
+   \   000000D4   0150A0E1           MOV      R5,R1
+   \   000000D8   0120A0E3           MOV      R2,#+1
+   \   000000DC   ........           _BLF     _Sin,??_Sin??rA
+   \   000000E0   0080A0E1           MOV      R8,R0
+   \   000000E4   0190A0E1           MOV      R9,R1
+    656                      y = sin(delta * j);
+   \   000000E8   0020A0E3           MOV      R2,#+0
+   \   000000EC   0400A0E1           MOV      R0,R4
+   \   000000F0   0510A0E1           MOV      R1,R5
+   \   000000F4   ........           _BLF     _Sin,??_Sin??rA
+    657                      w[j] = x;
+   \   000000F8   862187E0           ADD      R2,R7,R6, LSL #+3
+   \   000000FC   000382E8           STM      R2,{R8,R9}
+    658                      w[j + 1] = y;
+   \   00000100   080082E5           STR      R0,[R2, #+8]
+   \   00000104   0C1082E5           STR      R1,[R2, #+12]
+   \   00000108   06204AE0           SUB      R2,R10,R6
+   \   0000010C   822187E0           ADD      R2,R7,R2, LSL #+3
+   \   00000110   030082E8           STM      R2,{R0,R1}
+    659                      w[nw - j] = y;
+    660                      w[nw - j + 1] = x;
+   \   00000114   088082E5           STR      R8,[R2, #+8]
+   \   00000118   0C9082E5           STR      R9,[R2, #+12]
+    661                  }
+   \   0000011C   026086E2           ADD      R6,R6,#+2
+   \                     ??makewt_2:
+   \   00000120   02004BE2           SUB      R0,R11,#+2
+   \   00000124   060050E1           CMP      R0,R6
+   \   00000128   E1FFFFAA           BGE      ??makewt_3
+    662                  bitrv2(nw, ip + 2, w);
+   \   0000012C   08009DE5           LDR      R0,[SP, #+8]
+   \   00000130   0720A0E1           MOV      R2,R7
+   \   00000134   081080E2           ADD      R1,R0,#+8
+   \   00000138   0A00A0E1           MOV      R0,R10
+   \   0000013C   ........           BL       ??bitrv2
+    663              }
+    664          }
+   \                     ??makewt_1:
+   \   00000140   ........           B        ?Subroutine15
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine15:
+   \   00000000   F74FBDE8           POP      {R0-R2,R4-R11,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    665          
+    666          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    667          void makect(int nc, int *ip, double *c)
+    668          {
+   \                     ??makect:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+   \   00000004   00B0A0E1           MOV      R11,R0
+   \   00000008   0290A0E1           MOV      R9,R2
+    669              int nch, j;
+    670              double delta;
+    671              
+    672              ip[1] = nc;
+   \   0000000C   04B081E5           STR      R11,[R1, #+4]
+    673              if (nc > 1) {
+   \   00000010   02005BE3           CMP      R11,#+2
+   \   00000014   400000BA           BLT      ??makect_1
+    674                  nch = nc >> 1;
+   \   00000018   CBA0A0E1           ASR      R10,R11,#+1
+    675                  delta = atan(1.0) / nch;
+   \   0000001C   0A00A0E1           MOV      R0,R10
+   \   00000020   ........           _BLF     __longToDouble,??__longToDouble??rA
+   \   00000024   0040A0E1           MOV      R4,R0
+   \   00000028   0150A0E1           MOV      R5,R1
+   \   0000002C   0000A0E3           MOV      R0,#+0
+   \   00000030   C015A0E3           MOV      R1,#+805306368
+   \   00000034   FF1681E3           ORR      R1,R1,#0xFF00000
+   \   00000038   ........           _BLF     atan,??atan??rA
+   \   0000003C   0420A0E1           MOV      R2,R4
+   \   00000040   0530A0E1           MOV      R3,R5
+   \   00000044   ........           _BLF     __dDiv,??__dDiv??rA
+   \   00000048   0060A0E1           MOV      R6,R0
+   \   0000004C   0170A0E1           MOV      R7,R1
+    676                  c[0] = 0.5;
+   \   00000050   0000A0E3           MOV      R0,#+0
+   \   00000054   C015A0E3           MOV      R1,#+805306368
+   \   00000058   FE1681E3           ORR      R1,R1,#0xFE00000
+   \   0000005C   030089E8           STM      R9,{R0,R1}
+    677                  c[nch] = 0.5 * cos(delta * nch);
+   \   00000060   0420A0E1           MOV      R2,R4
+   \   00000064   0530A0E1           MOV      R3,R5
+   \   00000068   0600A0E1           MOV      R0,R6
+   \   0000006C   0710A0E1           MOV      R1,R7
+   \   00000070   ........           _BLF     __dMul,??__dMul??rA
+   \   00000074   0120A0E3           MOV      R2,#+1
+   \   00000078   ........           _BLF     _Sin,??_Sin??rA
+   \   0000007C   0020A0E3           MOV      R2,#+0
+   \   00000080   C035A0E3           MOV      R3,#+805306368
+   \   00000084   FE3683E3           ORR      R3,R3,#0xFE00000
+   \   00000088   ........           _BLF     __dMul,??__dMul??rA
+   \   0000008C   8A2189E0           ADD      R2,R9,R10, LSL #+3
+   \   00000090   030082E8           STM      R2,{R0,R1}
+   \   00000094   0180A0E3           MOV      R8,#+1
+    678                  for (j = 1; j <= nch - 1; j++) {
+   \   00000098   1C0000EA           B        ??makect_2
+    679                      c[j] = 0.5 * cos(delta * j);
+   \                     ??makect_3:
+   \   0000009C   0800A0E1           MOV      R0,R8
+   \   000000A0   ........           _BLF     __longToDouble,??__longToDouble??rA
+   \   000000A4   0620A0E1           MOV      R2,R6
+   \   000000A8   0730A0E1           MOV      R3,R7
+   \   000000AC   ........           _BLF     __dMul,??__dMul??rA
+   \   000000B0   0040A0E1           MOV      R4,R0
+   \   000000B4   0150A0E1           MOV      R5,R1
+   \   000000B8   0120A0E3           MOV      R2,#+1
+   \   000000BC   ........           _BLF     _Sin,??_Sin??rA
+   \   000000C0   0020A0E3           MOV      R2,#+0
+   \   000000C4   C035A0E3           MOV      R3,#+805306368
+   \   000000C8   FE3683E3           ORR      R3,R3,#0xFE00000
+   \   000000CC   ........           _BLF     __dMul,??__dMul??rA
+   \   000000D0   882189E0           ADD      R2,R9,R8, LSL #+3
+   \   000000D4   030082E8           STM      R2,{R0,R1}
+    680                      c[nc - j] = 0.5 * sin(delta * j);
+   \   000000D8   0020A0E3           MOV      R2,#+0
+   \   000000DC   0400A0E1           MOV      R0,R4
+   \   000000E0   0510A0E1           MOV      R1,R5
+   \   000000E4   ........           _BLF     _Sin,??_Sin??rA
+   \   000000E8   0020A0E1           MOV      R2,R0
+   \   000000EC   0130A0E1           MOV      R3,R1
+   \   000000F0   0000A0E3           MOV      R0,#+0
+   \   000000F4   C015A0E3           MOV      R1,#+805306368
+   \   000000F8   FE1681E3           ORR      R1,R1,#0xFE00000
+   \   000000FC   ........           _BLF     __dMul,??__dMul??rA
+   \   00000100   08204BE0           SUB      R2,R11,R8
+   \   00000104   822189E0           ADD      R2,R9,R2, LSL #+3
+   \   00000108   030082E8           STM      R2,{R0,R1}
+    681                  }
+   \   0000010C   018088E2           ADD      R8,R8,#+1
+   \                     ??makect_2:
+   \   00000110   01004AE2           SUB      R0,R10,#+1
+   \   00000114   080050E1           CMP      R0,R8
+   \   00000118   DFFFFFAA           BGE      ??makect_3
+    682              }
+    683          }
+   \                     ??makect_1:
+   \   0000011C   ........           B        ??Subroutine13_1
+    684          
+    685          
+    686          /* -------- child routines -------- */
+    687          
+    688          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    689          void bitrv2(int n, int *ip, double *a)
+    690          {
+   \                     ??bitrv2:
+   \   00000000   F74F2DE9           PUSH     {R0-R2,R4-R11,LR}
+   \   00000004   0180A0E1           MOV      R8,R1
+   \   00000008   0250A0E1           MOV      R5,R2
+    691              int j, j1, k, k1, l, m, m2;
+    692              double xr, xi;
+    693              
+    694              ip[0] = 0;
+   \   0000000C   0010A0E3           MOV      R1,#+0
+   \   00000010   001088E5           STR      R1,[R8, #+0]
+    695              l = n;
+    696              m = 1;
+   \   00000014   0110A0E3           MOV      R1,#+1
+   \   00000018   070000EA           B        ??bitrv2_1
+    697              while ((m << 2) < l) {
+    698                  l >>= 1;
+    699                  for (j = 0; j <= m - 1; j++) {
+    700                      ip[m + j] = ip[j] + l;
+   \                     ??bitrv2_2:
+   \   0000001C   0C4198E7           LDR      R4,[R8, +R12, LSL #+2]
+   \   00000020   01308CE0           ADD      R3,R12,R1
+   \   00000024   044080E0           ADD      R4,R0,R4
+   \   00000028   034188E7           STR      R4,[R8, +R3, LSL #+2]
+    701                  }
+   \   0000002C   01C08CE2           ADD      R12,R12,#+1
+   \                     ??bitrv2_3:
+   \   00000030   0C005EE1           CMP      LR,R12
+   \   00000034   F8FFFFAA           BGE      ??bitrv2_2
+    702                  m <<= 1;
+   \   00000038   0210A0E1           MOV      R1,R2
+   \                     ??bitrv2_1:
+   \   0000003C   01E041E2           SUB      LR,R1,#+1
+   \   00000040   8120A0E1           LSL      R2,R1,#+1
+   \   00000044   0131A0E1           LSL      R3,R1,#+2
+   \   00000048   000053E1           CMP      R3,R0
+   \   0000004C   C000A0B1           ASRLT    R0,R0,#+1
+   \   00000050   00C0A0B3           MOVLT    R12,#+0
+   \   00000054   F5FFFFBA           BLT      ??bitrv2_3
+    703              }
+    704              if ((m << 2) > l) {
+   \   00000058   030050E1           CMP      R0,R3
+   \   0000005C   1C0000AA           BGE      ??bitrv2_4
+    705                  for (k = 1; k <= m - 1; k++) {
+   \   00000060   0140A0E3           MOV      R4,#+1
+   \   00000064   160000EA           B        ??bitrv2_5
+    706                      for (j = 0; j <= k - 1; j++) {
+    707                          j1 = (j << 1) + ip[k];
+    708                          k1 = (k << 1) + ip[j];
+   \                     ??bitrv2_6:
+   \   00000068   0C1198E7           LDR      R1,[R8, +R12, LSL #+2]
+   \   0000006C   040198E7           LDR      R0,[R8, +R4, LSL #+2]
+   \   00000070   846081E0           ADD      R6,R1,R4, LSL #+1
+    709                          xr = a[j1];
+    710                          xi = a[j1 + 1];
+    711                          a[j1] = a[k1];
+   \   00000074   86A185E0           ADD      R10,R5,R6, LSL #+3
+   \   00000078   C0009AE8           LDM      R10,{R6,R7}
+   \   0000007C   8C0080E0           ADD      R0,R0,R12, LSL #+1
+   \   00000080   809185E0           ADD      R9,R5,R0, LSL #+3
+   \   00000084   030099E8           LDM      R9,{R0,R1}
+   \   00000088   082099E5           LDR      R2,[R9, #+8]
+   \   0000008C   0C3099E5           LDR      R3,[R9, #+12]
+   \   00000090   C00089E8           STM      R9,{R6,R7}
+    712                          a[j1 + 1] = a[k1 + 1];
+   \   00000094   08609AE5           LDR      R6,[R10, #+8]
+   \   00000098   0C709AE5           LDR      R7,[R10, #+12]
+   \   0000009C   086089E5           STR      R6,[R9, #+8]
+   \   000000A0   0C7089E5           STR      R7,[R9, #+12]
+    713                          a[k1] = xr;
+   \   000000A4   03008AE8           STM      R10,{R0,R1}
+    714                          a[k1 + 1] = xi;
+   \   000000A8   08208AE5           STR      R2,[R10, #+8]
+   \   000000AC   0C308AE5           STR      R3,[R10, #+12]
+    715                      }
+   \   000000B0   01C08CE2           ADD      R12,R12,#+1
+   \                     ??bitrv2_7:
+   \   000000B4   010044E2           SUB      R0,R4,#+1
+   \   000000B8   0C0050E1           CMP      R0,R12
+   \   000000BC   E9FFFFAA           BGE      ??bitrv2_6
+   \   000000C0   014084E2           ADD      R4,R4,#+1
+   \                     ??bitrv2_5:
+   \   000000C4   04005EE1           CMP      LR,R4
+   \   000000C8   340000BA           BLT      ??bitrv2_8
+   \   000000CC   00C0A0E3           MOV      R12,#+0
+   \   000000D0   F7FFFFEA           B        ??bitrv2_7
+    716                  }
+    717              } else {
+    718                  m2 = m << 1;
+   \                     ??bitrv2_4:
+   \   000000D4   00208DE5           STR      R2,[SP, #+0]
+    719                  for (k = 1; k <= m - 1; k++) {
+   \   000000D8   0140A0E3           MOV      R4,#+1
+   \   000000DC   2C0000EA           B        ??bitrv2_9
+    720                      for (j = 0; j <= k - 1; j++) {
+    721                          j1 = (j << 1) + ip[k];
+   \                     ??bitrv2_10:
+   \   000000E0   040198E7           LDR      R0,[R8, +R4, LSL #+2]
+    722                          k1 = (k << 1) + ip[j];
+    723                          xr = a[j1];
+   \   000000E4   04708DE2           ADD      R7,SP,#+4
+   \   000000E8   8C2080E0           ADD      R2,R0,R12, LSL #+1
+   \   000000EC   0C0198E7           LDR      R0,[R8, +R12, LSL #+2]
+   \   000000F0   826185E0           ADD      R6,R5,R2, LSL #+3
+   \   000000F4   843080E0           ADD      R3,R0,R4, LSL #+1
+   \   000000F8   030096E8           LDM      R6,{R0,R1}
+    724                          xi = a[j1 + 1];
+    725                          a[j1] = a[k1];
+    726                          a[j1 + 1] = a[k1 + 1];
+    727                          a[k1] = xr;
+    728                          a[k1 + 1] = xi;
+    729                          j1 += m2;
+    730                          k1 += m2;
+    731                          xr = a[j1];
+    732                          xi = a[j1 + 1];
+    733                          a[j1] = a[k1];
+    734                          a[j1 + 1] = a[k1 + 1];
+    735                          a[k1] = xr;
+    736                          a[k1 + 1] = xi;
+    737                      }
+   \   000000FC   01C08CE2           ADD      R12,R12,#+1
+   \   00000100   030087E8           STM      R7,{R0,R1}
+   \   00000104   08A096E5           LDR      R10,[R6, #+8]
+   \   00000108   0CB096E5           LDR      R11,[R6, #+12]
+   \   0000010C   837185E0           ADD      R7,R5,R3, LSL #+3
+   \   00000110   030097E8           LDM      R7,{R0,R1}
+   \   00000114   030086E8           STM      R6,{R0,R1}
+   \   00000118   080097E5           LDR      R0,[R7, #+8]
+   \   0000011C   0C1097E5           LDR      R1,[R7, #+12]
+   \   00000120   080086E5           STR      R0,[R6, #+8]
+   \   00000124   0C1086E5           STR      R1,[R6, #+12]
+   \   00000128   04008DE2           ADD      R0,SP,#+4
+   \   0000012C   030090E8           LDM      R0,{R0,R1}
+   \   00000130   030087E8           STM      R7,{R0,R1}
+   \   00000134   08A087E5           STR      R10,[R7, #+8]
+   \   00000138   0CB087E5           STR      R11,[R7, #+12]
+   \   0000013C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000140   00009DE5           LDR      R0,[SP, #+0]
+   \   00000144   036081E0           ADD      R6,R1,R3
+   \   00000148   86A185E0           ADD      R10,R5,R6, LSL #+3
+   \   0000014C   C0009AE8           LDM      R10,{R6,R7}
+   \   00000150   020080E0           ADD      R0,R0,R2
+   \   00000154   809185E0           ADD      R9,R5,R0, LSL #+3
+   \   00000158   030099E8           LDM      R9,{R0,R1}
+   \   0000015C   082099E5           LDR      R2,[R9, #+8]
+   \   00000160   0C3099E5           LDR      R3,[R9, #+12]
+   \   00000164   C00089E8           STM      R9,{R6,R7}
+   \   00000168   08609AE5           LDR      R6,[R10, #+8]
+   \   0000016C   0C709AE5           LDR      R7,[R10, #+12]
+   \   00000170   086089E5           STR      R6,[R9, #+8]
+   \   00000174   0C7089E5           STR      R7,[R9, #+12]
+   \   00000178   03008AE8           STM      R10,{R0,R1}
+   \   0000017C   08208AE5           STR      R2,[R10, #+8]
+   \   00000180   0C308AE5           STR      R3,[R10, #+12]
+   \                     ??bitrv2_11:
+   \   00000184   010044E2           SUB      R0,R4,#+1
+   \   00000188   0C0050E1           CMP      R0,R12
+   \   0000018C   D3FFFFAA           BGE      ??bitrv2_10
+   \   00000190   014084E2           ADD      R4,R4,#+1
+   \                     ??bitrv2_9:
+   \   00000194   04005EE1           CMP      LR,R4
+   \   00000198   00C0A0A3           MOVGE    R12,#+0
+   \   0000019C   F8FFFFAA           BGE      ??bitrv2_11
+    738                  }
+    739              }
+    740          }
+   \                     ??bitrv2_8:
+   \   000001A0                      REQUIRE ?Subroutine15
+   \   000001A0                      ;; // Fall through to label ?Subroutine15
+    741          
+    742          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    743          void cftsub(int n, double *a, double *w)
+    744          {
+   \                     ??cftsub:
+   \   00000000   F74F2DE9           PUSH     {R0-R2,R4-R11,LR}
+   \   00000004   84D04DE2           SUB      SP,SP,#+132
+    745              int j, j1, j2, j3, k, k1, ks, l, m;
+    746              double wk1r, wk1i, wk2r, wk2i, wk3r, wk3i;
+    747              double x0r, x0i, x1r, x1i, x2r, x2i, x3r, x3i;
+    748              
+    749              l = 2;
+   \   00000008   0210A0E3           MOV      R1,#+2
+   \   0000000C   000000EA           B        ??cftsub_1
+    750              while ((l << 1) < n) {
+    751                  m = l << 2;
+    752                  for (j = 0; j <= l - 2; j += 2) {
+    753                      j1 = j + l;
+    754                      j2 = j1 + l;
+    755                      j3 = j2 + l;
+    756                      x0r = a[j] + a[j1];
+    757                      x0i = a[j + 1] + a[j1 + 1];
+    758                      x1r = a[j] - a[j1];
+    759                      x1i = a[j + 1] - a[j1 + 1];
+    760                      x2r = a[j2] + a[j3];
+    761                      x2i = a[j2 + 1] + a[j3 + 1];
+    762                      x3r = a[j2] - a[j3];
+    763                      x3i = a[j2 + 1] - a[j3 + 1];
+    764                      a[j] = x0r + x2r;
+    765                      a[j + 1] = x0i + x2i;
+    766                      a[j2] = x0r - x2r;
+    767                      a[j2 + 1] = x0i - x2i;
+    768                      a[j1] = x1r - x3i;
+    769                      a[j1 + 1] = x1i + x3r;
+    770                      a[j3] = x1r + x3i;
+    771                      a[j3 + 1] = x1i - x3r;
+    772                  }
+    773                  if (m < n) {
+    774                      wk1r = w[2];
+    775                      for (j = m; j <= l + m - 2; j += 2) {
+    776                          j1 = j + l;
+    777                          j2 = j1 + l;
+    778                          j3 = j2 + l;
+    779                          x0r = a[j] + a[j1];
+    780                          x0i = a[j + 1] + a[j1 + 1];
+    781                          x1r = a[j] - a[j1];
+    782                          x1i = a[j + 1] - a[j1 + 1];
+    783                          x2r = a[j2] + a[j3];
+    784                          x2i = a[j2 + 1] + a[j3 + 1];
+    785                          x3r = a[j2] - a[j3];
+    786                          x3i = a[j2 + 1] - a[j3 + 1];
+    787                          a[j] = x0r + x2r;
+    788                          a[j + 1] = x0i + x2i;
+    789                          a[j2] = x2i - x0i;
+    790                          a[j2 + 1] = x0r - x2r;
+    791                          x0r = x1r - x3i;
+    792                          x0i = x1i + x3r;
+    793                          a[j1] = wk1r * (x0r - x0i);
+    794                          a[j1 + 1] = wk1r * (x0r + x0i);
+    795                          x0r = x3i + x1r;
+    796                          x0i = x3r - x1i;
+    797                          a[j3] = wk1r * (x0i - x0r);
+    798                          a[j3 + 1] = wk1r * (x0i + x0r);
+    799                      }
+    800                      k1 = 1;
+    801                      ks = -1;
+    802                      for (k = (m << 1); k <= n - m; k += m) {
+    803                          k1++;
+    804                          ks = -ks;
+    805                          wk1r = w[k1 << 1];
+    806                          wk1i = w[(k1 << 1) + 1];
+    807                          wk2r = ks * w[k1];
+    808                          wk2i = w[k1 + ks];
+    809                          wk3r = wk1r - 2 * wk2i * wk1i;
+    810                          wk3i = 2 * wk2i * wk1r - wk1i;
+    811                          for (j = k; j <= l + k - 2; j += 2) {
+    812                              j1 = j + l;
+    813                              j2 = j1 + l;
+    814                              j3 = j2 + l;
+    815                              x0r = a[j] + a[j1];
+    816                              x0i = a[j + 1] + a[j1 + 1];
+    817                              x1r = a[j] - a[j1];
+    818                              x1i = a[j + 1] - a[j1 + 1];
+    819                              x2r = a[j2] + a[j3];
+    820                              x2i = a[j2 + 1] + a[j3 + 1];
+    821                              x3r = a[j2] - a[j3];
+    822                              x3i = a[j2 + 1] - a[j3 + 1];
+    823                              a[j] = x0r + x2r;
+    824                              a[j + 1] = x0i + x2i;
+    825                              x0r -= x2r;
+    826                              x0i -= x2i;
+    827                              a[j2] = wk2r * x0r - wk2i * x0i;
+    828                              a[j2 + 1] = wk2r * x0i + wk2i * x0r;
+    829                              x0r = x1r - x3i;
+    830                              x0i = x1i + x3r;
+    831                              a[j1] = wk1r * x0r - wk1i * x0i;
+    832                              a[j1 + 1] = wk1r * x0i + wk1i * x0r;
+    833                              x0r = x1r + x3i;
+    834                              x0i = x1i - x3r;
+    835                              a[j3] = wk3r * x0r - wk3i * x0i;
+    836                              a[j3 + 1] = wk3r * x0i + wk3i * x0r;
+    837                          }
+    838                      }
+    839                  }
+    840                  l = m;
+   \                     ??cftsub_2:
+   \   00000010   18109DE5           LDR      R1,[SP, #+24]
+   \                     ??cftsub_1:
+   \   00000014   0C108DE5           STR      R1,[SP, #+12]
+   \   00000018   0C109DE5           LDR      R1,[SP, #+12]
+   \   0000001C   021041E2           SUB      R1,R1,#+2
+   \   00000020   58108DE5           STR      R1,[SP, #+88]
+   \   00000024   0C009DE5           LDR      R0,[SP, #+12]
+   \   00000028   84109DE5           LDR      R1,[SP, #+132]
+   \   0000002C   800051E1           CMP      R1,R0, LSL #+1
+   \   00000030   9E0200DA           BLE      ??cftsub_3
+   \   00000034   0010A0E1           MOV      R1,R0
+   \   00000038   0111A0E1           LSL      R1,R1,#+2
+   \   0000003C   18108DE5           STR      R1,[SP, #+24]
+   \   00000040   0010A0E3           MOV      R1,#+0
+   \   00000044   940000EA           B        ??cftsub_4
+   \                     ??cftsub_5:
+   \   00000048   88209DE5           LDR      R2,[SP, #+136]
+   \   0000004C   0100A0E1           MOV      R0,R1
+   \   00000050   0C109DE5           LDR      R1,[SP, #+12]
+   \   00000054   20608DE2           ADD      R6,SP,#+32
+   \   00000058   000081E0           ADD      R0,R1,R0
+   \   0000005C   004081E0           ADD      R4,R1,R0
+   \   00000060   045081E0           ADD      R5,R1,R4
+   \   00000064   800182E0           ADD      R0,R2,R0, LSL #+3
+   \   00000068   14008DE5           STR      R0,[SP, #+20]
+   \   0000006C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000070   811182E0           ADD      R1,R2,R1, LSL #+3
+   \   00000074   10108DE5           STR      R1,[SP, #+16]
+   \   00000078   14209DE5           LDR      R2,[SP, #+20]
+   \   0000007C   030091E8           LDM      R1,{R0,R1}
+   \   00000080   0C0092E8           LDM      R2,{R2,R3}
+   \   00000084   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000088   030086E8           STM      R6,{R0,R1}
+   \   0000008C   10209DE5           LDR      R2,[SP, #+16]
+   \   00000090   14609DE5           LDR      R6,[SP, #+20]
+   \   00000094   080092E5           LDR      R0,[R2, #+8]
+   \   00000098   0C1092E5           LDR      R1,[R2, #+12]
+   \   0000009C   082096E5           LDR      R2,[R6, #+8]
+   \   000000A0   0C3096E5           LDR      R3,[R6, #+12]
+   \   000000A4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000A8   14209DE5           LDR      R2,[SP, #+20]
+   \   000000AC   0080A0E1           MOV      R8,R0
+   \   000000B0   10009DE5           LDR      R0,[SP, #+16]
+   \   000000B4   0C0092E8           LDM      R2,{R2,R3}
+   \   000000B8   0190A0E1           MOV      R9,R1
+   \   000000BC   030090E8           LDM      R0,{R0,R1}
+   \   000000C0   30608DE2           ADD      R6,SP,#+48
+   \   000000C4   ........           _BLF     __dSub,??__dSub??rA
+   \   000000C8   030086E8           STM      R6,{R0,R1}
+   \   000000CC   10209DE5           LDR      R2,[SP, #+16]
+   \   000000D0   14C09DE5           LDR      R12,[SP, #+20]
+   \   000000D4   080092E5           LDR      R0,[R2, #+8]
+   \   000000D8   0C1092E5           LDR      R1,[R2, #+12]
+   \   000000DC   08209CE5           LDR      R2,[R12, #+8]
+   \   000000E0   0C309CE5           LDR      R3,[R12, #+12]
+   \   000000E4   40608DE2           ADD      R6,SP,#+64
+   \   000000E8   ........           _BLF     __dSub,??__dSub??rA
+   \   000000EC   030086E8           STM      R6,{R0,R1}
+   \   000000F0   88109DE5           LDR      R1,[SP, #+136]
+   \   000000F4   851181E0           ADD      R1,R1,R5, LSL #+3
+   \   000000F8   04108DE5           STR      R1,[SP, #+4]
+   \   000000FC   88109DE5           LDR      R1,[SP, #+136]
+   \   00000100   841181E0           ADD      R1,R1,R4, LSL #+3
+   \   00000104   08108DE5           STR      R1,[SP, #+8]
+   \   00000108   04009DE5           LDR      R0,[SP, #+4]
+   \   0000010C   0C0091E8           LDM      R1,{R2,R3}
+   \   00000110   030090E8           LDM      R0,{R0,R1}
+   \   00000114   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000118   08209DE5           LDR      R2,[SP, #+8]
+   \   0000011C   04609DE5           LDR      R6,[SP, #+4]
+   \   00000120   0040A0E1           MOV      R4,R0
+   \   00000124   080092E5           LDR      R0,[R2, #+8]
+   \   00000128   0C3096E5           LDR      R3,[R6, #+12]
+   \   0000012C   0150A0E1           MOV      R5,R1
+   \   00000130   0C1092E5           LDR      R1,[R2, #+12]
+   \   00000134   082096E5           LDR      R2,[R6, #+8]
+   \   00000138   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000013C   04209DE5           LDR      R2,[SP, #+4]
+   \   00000140   0060A0E1           MOV      R6,R0
+   \   00000144   08009DE5           LDR      R0,[SP, #+8]
+   \   00000148   0C0092E8           LDM      R2,{R2,R3}
+   \   0000014C   0170A0E1           MOV      R7,R1
+   \   00000150   030090E8           LDM      R0,{R0,R1}
+   \   00000154   ........           _BLF     __dSub,??__dSub??rA
+   \   00000158   00A0A0E1           MOV      R10,R0
+   \   0000015C   38008DE2           ADD      R0,SP,#+56
+   \   00000160   01002DE9           PUSH     {R0}
+   \   00000164   0C209DE5           LDR      R2,[SP, #+12]
+   \   00000168   08C09DE5           LDR      R12,[SP, #+8]
+   \   0000016C   080092E5           LDR      R0,[R2, #+8]
+   \   00000170   0C309CE5           LDR      R3,[R12, #+12]
+   \   00000174   01B0A0E1           MOV      R11,R1
+   \   00000178   0C1092E5           LDR      R1,[R2, #+12]
+   \   0000017C   08209CE5           LDR      R2,[R12, #+8]
+   \   00000180   ........           _BLF     __dSub,??__dSub??rA
+   \   00000184   0400BDE8           POP      {R2}
+   \   00000188   0530A0E1           MOV      R3,R5
+   \   0000018C   030082E8           STM      R2,{R0,R1}
+   \   00000190   10009DE5           LDR      R0,[SP, #+16]
+   \   00000194   0420A0E1           MOV      R2,R4
+   \   00000198   01002DE9           PUSH     {R0}
+   \   0000019C   24008DE2           ADD      R0,SP,#+36
+   \   000001A0   030090E8           LDM      R0,{R0,R1}
+   \   000001A4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001A8   0400BDE8           POP      {R2}
+   \   000001AC   0730A0E1           MOV      R3,R7
+   \   000001B0   030082E8           STM      R2,{R0,R1}
+   \   000001B4   10009DE5           LDR      R0,[SP, #+16]
+   \   000001B8   0620A0E1           MOV      R2,R6
+   \   000001BC   01002DE9           PUSH     {R0}
+   \   000001C0   0800A0E1           MOV      R0,R8
+   \   000001C4   0910A0E1           MOV      R1,R9
+   \   000001C8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001CC   0400BDE8           POP      {R2}
+   \   000001D0   0530A0E1           MOV      R3,R5
+   \   000001D4   080082E5           STR      R0,[R2, #+8]
+   \   000001D8   0C1082E5           STR      R1,[R2, #+12]
+   \   000001DC   08009DE5           LDR      R0,[SP, #+8]
+   \   000001E0   0420A0E1           MOV      R2,R4
+   \   000001E4   01002DE9           PUSH     {R0}
+   \   000001E8   24008DE2           ADD      R0,SP,#+36
+   \   000001EC   030090E8           LDM      R0,{R0,R1}
+   \   000001F0   ........           _BLF     __dSub,??__dSub??rA
+   \   000001F4   0400BDE8           POP      {R2}
+   \   000001F8   0730A0E1           MOV      R3,R7
+   \   000001FC   030082E8           STM      R2,{R0,R1}
+   \   00000200   08409DE5           LDR      R4,[SP, #+8]
+   \   00000204   0800A0E1           MOV      R0,R8
+   \   00000208   0910A0E1           MOV      R1,R9
+   \   0000020C   0620A0E1           MOV      R2,R6
+   \   00000210   ........           _BLF     __dSub,??__dSub??rA
+   \   00000214   080084E5           STR      R0,[R4, #+8]
+   \   00000218   0C1084E5           STR      R1,[R4, #+12]
+   \   0000021C   30008DE2           ADD      R0,SP,#+48
+   \   00000220   030090E8           LDM      R0,{R0,R1}
+   \   00000224   14409DE5           LDR      R4,[SP, #+20]
+   \   00000228   38208DE2           ADD      R2,SP,#+56
+   \   0000022C   0C0092E8           LDM      R2,{R2,R3}
+   \   00000230   ........           _BLF     __dSub,??__dSub??rA
+   \   00000234   030084E8           STM      R4,{R0,R1}
+   \   00000238   14409DE5           LDR      R4,[SP, #+20]
+   \   0000023C   40008DE2           ADD      R0,SP,#+64
+   \   00000240   030090E8           LDM      R0,{R0,R1}
+   \   00000244   0A20A0E1           MOV      R2,R10
+   \   00000248   0B30A0E1           MOV      R3,R11
+   \   0000024C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000250   080084E5           STR      R0,[R4, #+8]
+   \   00000254   0C1084E5           STR      R1,[R4, #+12]
+   \   00000258   04409DE5           LDR      R4,[SP, #+4]
+   \   0000025C   30008DE2           ADD      R0,SP,#+48
+   \   00000260   0C0090E8           LDM      R0,{R2,R3}
+   \   00000264   38008DE2           ADD      R0,SP,#+56
+   \   00000268   030090E8           LDM      R0,{R0,R1}
+   \   0000026C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000270   030084E8           STM      R4,{R0,R1}
+   \   00000274   04409DE5           LDR      R4,[SP, #+4]
+   \   00000278   40008DE2           ADD      R0,SP,#+64
+   \   0000027C   030090E8           LDM      R0,{R0,R1}
+   \   00000280   0A20A0E1           MOV      R2,R10
+   \   00000284   0B30A0E1           MOV      R3,R11
+   \   00000288   ........           _BLF     __dSub,??__dSub??rA
+   \   0000028C   080084E5           STR      R0,[R4, #+8]
+   \   00000290   0C1084E5           STR      R1,[R4, #+12]
+   \   00000294   00109DE5           LDR      R1,[SP, #+0]
+   \   00000298   021081E2           ADD      R1,R1,#+2
+   \                     ??cftsub_4:
+   \   0000029C   00108DE5           STR      R1,[SP, #+0]
+   \   000002A0   58009DE5           LDR      R0,[SP, #+88]
+   \   000002A4   00109DE5           LDR      R1,[SP, #+0]
+   \   000002A8   010050E1           CMP      R0,R1
+   \   000002AC   65FFFFAA           BGE      ??cftsub_5
+   \   000002B0   18009DE5           LDR      R0,[SP, #+24]
+   \   000002B4   84109DE5           LDR      R1,[SP, #+132]
+   \   000002B8   010050E1           CMP      R0,R1
+   \   000002BC   53FFFFAA           BGE      ??cftsub_2
+   \   000002C0   8C109DE5           LDR      R1,[SP, #+140]
+   \   000002C4   102091E5           LDR      R2,[R1, #+16]
+   \   000002C8   143091E5           LDR      R3,[R1, #+20]
+   \   000002CC   28008DE2           ADD      R0,SP,#+40
+   \   000002D0   0C0080E8           STM      R0,{R2,R3}
+   \   000002D4   18109DE5           LDR      R1,[SP, #+24]
+   \   000002D8   A90000EA           B        ??cftsub_6
+   \                     ??cftsub_7:
+   \   000002DC   88209DE5           LDR      R2,[SP, #+136]
+   \   000002E0   0100A0E1           MOV      R0,R1
+   \   000002E4   0C109DE5           LDR      R1,[SP, #+12]
+   \   000002E8   50608DE2           ADD      R6,SP,#+80
+   \   000002EC   000081E0           ADD      R0,R1,R0
+   \   000002F0   004081E0           ADD      R4,R1,R0
+   \   000002F4   800182E0           ADD      R0,R2,R0, LSL #+3
+   \   000002F8   08008DE5           STR      R0,[SP, #+8]
+   \   000002FC   00009DE5           LDR      R0,[SP, #+0]
+   \   00000300   045081E0           ADD      R5,R1,R4
+   \   00000304   809182E0           ADD      R9,R2,R0, LSL #+3
+   \   00000308   08209DE5           LDR      R2,[SP, #+8]
+   \   0000030C   030099E8           LDM      R9,{R0,R1}
+   \   00000310   0C0092E8           LDM      R2,{R2,R3}
+   \   00000314   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000318   030086E8           STM      R6,{R0,R1}
+   \   0000031C   08809DE5           LDR      R8,[SP, #+8]
+   \   00000320   080099E5           LDR      R0,[R9, #+8]
+   \   00000324   0C1099E5           LDR      R1,[R9, #+12]
+   \   00000328   082098E5           LDR      R2,[R8, #+8]
+   \   0000032C   0C3098E5           LDR      R3,[R8, #+12]
+   \   00000330   48608DE2           ADD      R6,SP,#+72
+   \   00000334   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000338   030086E8           STM      R6,{R0,R1}
+   \   0000033C   08209DE5           LDR      R2,[SP, #+8]
+   \   00000340   030099E8           LDM      R9,{R0,R1}
+   \   00000344   0C0092E8           LDM      R2,{R2,R3}
+   \   00000348   30608DE2           ADD      R6,SP,#+48
+   \   0000034C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000350   030086E8           STM      R6,{R0,R1}
+   \   00000354   08809DE5           LDR      R8,[SP, #+8]
+   \   00000358   080099E5           LDR      R0,[R9, #+8]
+   \   0000035C   0C1099E5           LDR      R1,[R9, #+12]
+   \   00000360   082098E5           LDR      R2,[R8, #+8]
+   \   00000364   0C3098E5           LDR      R3,[R8, #+12]
+   \   00000368   40608DE2           ADD      R6,SP,#+64
+   \   0000036C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000370   030086E8           STM      R6,{R0,R1}
+   \   00000374   88109DE5           LDR      R1,[SP, #+136]
+   \   00000378   851181E0           ADD      R1,R1,R5, LSL #+3
+   \   0000037C   04108DE5           STR      R1,[SP, #+4]
+   \   00000380   88009DE5           LDR      R0,[SP, #+136]
+   \   00000384   848180E0           ADD      R8,R0,R4, LSL #+3
+   \   00000388   0C0098E8           LDM      R8,{R2,R3}
+   \   0000038C   030091E8           LDM      R1,{R0,R1}
+   \   00000390   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000394   04609DE5           LDR      R6,[SP, #+4]
+   \   00000398   0040A0E1           MOV      R4,R0
+   \   0000039C   080098E5           LDR      R0,[R8, #+8]
+   \   000003A0   082096E5           LDR      R2,[R6, #+8]
+   \   000003A4   0C3096E5           LDR      R3,[R6, #+12]
+   \   000003A8   0150A0E1           MOV      R5,R1
+   \   000003AC   0C1098E5           LDR      R1,[R8, #+12]
+   \   000003B0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000003B4   04209DE5           LDR      R2,[SP, #+4]
+   \   000003B8   0060A0E1           MOV      R6,R0
+   \   000003BC   0C0092E8           LDM      R2,{R2,R3}
+   \   000003C0   0170A0E1           MOV      R7,R1
+   \   000003C4   030098E8           LDM      R8,{R0,R1}
+   \   000003C8   ........           _BLF     __dSub,??__dSub??rA
+   \   000003CC   00A0A0E1           MOV      R10,R0
+   \   000003D0   38008DE2           ADD      R0,SP,#+56
+   \   000003D4   01002DE9           PUSH     {R0}
+   \   000003D8   08C09DE5           LDR      R12,[SP, #+8]
+   \   000003DC   080098E5           LDR      R0,[R8, #+8]
+   \   000003E0   08209CE5           LDR      R2,[R12, #+8]
+   \   000003E4   0C309CE5           LDR      R3,[R12, #+12]
+   \   000003E8   01B0A0E1           MOV      R11,R1
+   \   000003EC   0C1098E5           LDR      R1,[R8, #+12]
+   \   000003F0   ........           _BLF     __dSub,??__dSub??rA
+   \   000003F4   0400BDE8           POP      {R2}
+   \   000003F8   0530A0E1           MOV      R3,R5
+   \   000003FC   030082E8           STM      R2,{R0,R1}
+   \   00000400   50008DE2           ADD      R0,SP,#+80
+   \   00000404   030090E8           LDM      R0,{R0,R1}
+   \   00000408   0420A0E1           MOV      R2,R4
+   \   0000040C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000410   030089E8           STM      R9,{R0,R1}
+   \   00000414   48008DE2           ADD      R0,SP,#+72
+   \   00000418   030090E8           LDM      R0,{R0,R1}
+   \   0000041C   0620A0E1           MOV      R2,R6
+   \   00000420   0730A0E1           MOV      R3,R7
+   \   00000424   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000428   080089E5           STR      R0,[R9, #+8]
+   \   0000042C   0C1089E5           STR      R1,[R9, #+12]
+   \   00000430   48208DE2           ADD      R2,SP,#+72
+   \   00000434   0C0092E8           LDM      R2,{R2,R3}
+   \   00000438   0600A0E1           MOV      R0,R6
+   \   0000043C   0710A0E1           MOV      R1,R7
+   \   00000440   ........           _BLF     __dSub,??__dSub??rA
+   \   00000444   030088E8           STM      R8,{R0,R1}
+   \   00000448   50008DE2           ADD      R0,SP,#+80
+   \   0000044C   030090E8           LDM      R0,{R0,R1}
+   \   00000450   0420A0E1           MOV      R2,R4
+   \   00000454   0530A0E1           MOV      R3,R5
+   \   00000458   ........           _BLF     __dSub,??__dSub??rA
+   \   0000045C   080088E5           STR      R0,[R8, #+8]
+   \   00000460   0C1088E5           STR      R1,[R8, #+12]
+   \   00000464   30008DE2           ADD      R0,SP,#+48
+   \   00000468   030090E8           LDM      R0,{R0,R1}
+   \   0000046C   38208DE2           ADD      R2,SP,#+56
+   \   00000470   0C0092E8           LDM      R2,{R2,R3}
+   \   00000474   ........           _BLF     __dSub,??__dSub??rA
+   \   00000478   0060A0E1           MOV      R6,R0
+   \   0000047C   0170A0E1           MOV      R7,R1
+   \   00000480   40008DE2           ADD      R0,SP,#+64
+   \   00000484   030090E8           LDM      R0,{R0,R1}
+   \   00000488   0A20A0E1           MOV      R2,R10
+   \   0000048C   0B30A0E1           MOV      R3,R11
+   \   00000490   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000494   08809DE5           LDR      R8,[SP, #+8]
+   \   00000498   0040A0E1           MOV      R4,R0
+   \   0000049C   0150A0E1           MOV      R5,R1
+   \   000004A0   0600A0E1           MOV      R0,R6
+   \   000004A4   0710A0E1           MOV      R1,R7
+   \   000004A8   0420A0E1           MOV      R2,R4
+   \   000004AC   0530A0E1           MOV      R3,R5
+   \   000004B0   ........           _BLF     __dSub,??__dSub??rA
+   \   000004B4   0020A0E1           MOV      R2,R0
+   \   000004B8   0130A0E1           MOV      R3,R1
+   \   000004BC   28008DE2           ADD      R0,SP,#+40
+   \   000004C0   030090E8           LDM      R0,{R0,R1}
+   \   000004C4   ........           _BLF     __dMul,??__dMul??rA
+   \   000004C8   030088E8           STM      R8,{R0,R1}
+   \   000004CC   08809DE5           LDR      R8,[SP, #+8]
+   \   000004D0   0420A0E1           MOV      R2,R4
+   \   000004D4   0530A0E1           MOV      R3,R5
+   \   000004D8   0600A0E1           MOV      R0,R6
+   \   000004DC   0710A0E1           MOV      R1,R7
+   \   000004E0   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000004E4   28208DE2           ADD      R2,SP,#+40
+   \   000004E8   0C0092E8           LDM      R2,{R2,R3}
+   \   000004EC   ........           _BLF     __dMul,??__dMul??rA
+   \   000004F0   080088E5           STR      R0,[R8, #+8]
+   \   000004F4   0C1088E5           STR      R1,[R8, #+12]
+   \   000004F8   38008DE2           ADD      R0,SP,#+56
+   \   000004FC   0C0090E8           LDM      R0,{R2,R3}
+   \   00000500   30008DE2           ADD      R0,SP,#+48
+   \   00000504   030090E8           LDM      R0,{R0,R1}
+   \   00000508   20408DE2           ADD      R4,SP,#+32
+   \   0000050C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000510   030084E8           STM      R4,{R0,R1}
+   \   00000514   40208DE2           ADD      R2,SP,#+64
+   \   00000518   0C0092E8           LDM      R2,{R2,R3}
+   \   0000051C   0A00A0E1           MOV      R0,R10
+   \   00000520   0B10A0E1           MOV      R1,R11
+   \   00000524   ........           _BLF     __dSub,??__dSub??rA
+   \   00000528   04409DE5           LDR      R4,[SP, #+4]
+   \   0000052C   20208DE2           ADD      R2,SP,#+32
+   \   00000530   0C0092E8           LDM      R2,{R2,R3}
+   \   00000534   0080A0E1           MOV      R8,R0
+   \   00000538   0190A0E1           MOV      R9,R1
+   \   0000053C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000540   28208DE2           ADD      R2,SP,#+40
+   \   00000544   0C0092E8           LDM      R2,{R2,R3}
+   \   00000548   ........           _BLF     __dMul,??__dMul??rA
+   \   0000054C   030084E8           STM      R4,{R0,R1}
+   \   00000550   04409DE5           LDR      R4,[SP, #+4]
+   \   00000554   20008DE2           ADD      R0,SP,#+32
+   \   00000558   030090E8           LDM      R0,{R0,R1}
+   \   0000055C   0820A0E1           MOV      R2,R8
+   \   00000560   0930A0E1           MOV      R3,R9
+   \   00000564   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000568   28208DE2           ADD      R2,SP,#+40
+   \   0000056C   0C0092E8           LDM      R2,{R2,R3}
+   \   00000570   ........           _BLF     __dMul,??__dMul??rA
+   \   00000574   080084E5           STR      R0,[R4, #+8]
+   \   00000578   0C1084E5           STR      R1,[R4, #+12]
+   \   0000057C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000580   021081E2           ADD      R1,R1,#+2
+   \                     ??cftsub_6:
+   \   00000584   00108DE5           STR      R1,[SP, #+0]
+   \   00000588   0C009DE5           LDR      R0,[SP, #+12]
+   \   0000058C   18109DE5           LDR      R1,[SP, #+24]
+   \   00000590   000081E0           ADD      R0,R1,R0
+   \   00000594   00109DE5           LDR      R1,[SP, #+0]
+   \   00000598   020040E2           SUB      R0,R0,#+2
+   \   0000059C   010050E1           CMP      R0,R1
+   \   000005A0   4DFFFFAA           BGE      ??cftsub_7
+   \   000005A4   0110A0E3           MOV      R1,#+1
+   \   000005A8   10108DE5           STR      R1,[SP, #+16]
+   \   000005AC   001061E2           RSB      R1,R1,#+0
+   \   000005B0   14108DE5           STR      R1,[SP, #+20]
+   \   000005B4   18109DE5           LDR      R1,[SP, #+24]
+   \   000005B8   8110A0E1           LSL      R1,R1,#+1
+   \   000005BC   F50000EA           B        ??cftsub_8
+   \                     ??cftsub_9:
+   \   000005C0   88209DE5           LDR      R2,[SP, #+136]
+   \   000005C4   0100A0E1           MOV      R0,R1
+   \   000005C8   0C109DE5           LDR      R1,[SP, #+12]
+   \   000005CC   48608DE2           ADD      R6,SP,#+72
+   \   000005D0   000081E0           ADD      R0,R1,R0
+   \   000005D4   004081E0           ADD      R4,R1,R0
+   \   000005D8   800182E0           ADD      R0,R2,R0, LSL #+3
+   \   000005DC   04008DE5           STR      R0,[SP, #+4]
+   \   000005E0   00009DE5           LDR      R0,[SP, #+0]
+   \   000005E4   045081E0           ADD      R5,R1,R4
+   \   000005E8   808182E0           ADD      R8,R2,R0, LSL #+3
+   \   000005EC   04209DE5           LDR      R2,[SP, #+4]
+   \   000005F0   030098E8           LDM      R8,{R0,R1}
+   \   000005F4   0C0092E8           LDM      R2,{R2,R3}
+   \   000005F8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000005FC   030086E8           STM      R6,{R0,R1}
+   \   00000600   04909DE5           LDR      R9,[SP, #+4]
+   \   00000604   080098E5           LDR      R0,[R8, #+8]
+   \   00000608   0C1098E5           LDR      R1,[R8, #+12]
+   \   0000060C   082099E5           LDR      R2,[R9, #+8]
+   \   00000610   0C3099E5           LDR      R3,[R9, #+12]
+   \   00000614   50608DE2           ADD      R6,SP,#+80
+   \   00000618   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000061C   030086E8           STM      R6,{R0,R1}
+   \   00000620   04209DE5           LDR      R2,[SP, #+4]
+   \   00000624   030098E8           LDM      R8,{R0,R1}
+   \   00000628   0C0092E8           LDM      R2,{R2,R3}
+   \   0000062C   30608DE2           ADD      R6,SP,#+48
+   \   00000630   ........           _BLF     __dSub,??__dSub??rA
+   \   00000634   030086E8           STM      R6,{R0,R1}
+   \   00000638   04909DE5           LDR      R9,[SP, #+4]
+   \   0000063C   080098E5           LDR      R0,[R8, #+8]
+   \   00000640   0C1098E5           LDR      R1,[R8, #+12]
+   \   00000644   082099E5           LDR      R2,[R9, #+8]
+   \   00000648   0C3099E5           LDR      R3,[R9, #+12]
+   \   0000064C   40608DE2           ADD      R6,SP,#+64
+   \   00000650   ........           _BLF     __dSub,??__dSub??rA
+   \   00000654   030086E8           STM      R6,{R0,R1}
+   \   00000658   88109DE5           LDR      R1,[SP, #+136]
+   \   0000065C   851181E0           ADD      R1,R1,R5, LSL #+3
+   \   00000660   08108DE5           STR      R1,[SP, #+8]
+   \   00000664   88009DE5           LDR      R0,[SP, #+136]
+   \   00000668   08209DE5           LDR      R2,[SP, #+8]
+   \   0000066C   849180E0           ADD      R9,R0,R4, LSL #+3
+   \   00000670   030099E8           LDM      R9,{R0,R1}
+   \   00000674   0C0092E8           LDM      R2,{R2,R3}
+   \   00000678   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000067C   08609DE5           LDR      R6,[SP, #+8]
+   \   00000680   0040A0E1           MOV      R4,R0
+   \   00000684   080099E5           LDR      R0,[R9, #+8]
+   \   00000688   082096E5           LDR      R2,[R6, #+8]
+   \   0000068C   0C3096E5           LDR      R3,[R6, #+12]
+   \   00000690   0150A0E1           MOV      R5,R1
+   \   00000694   0C1099E5           LDR      R1,[R9, #+12]
+   \   00000698   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000069C   08209DE5           LDR      R2,[SP, #+8]
+   \   000006A0   0060A0E1           MOV      R6,R0
+   \   000006A4   0C0092E8           LDM      R2,{R2,R3}
+   \   000006A8   0170A0E1           MOV      R7,R1
+   \   000006AC   030099E8           LDM      R9,{R0,R1}
+   \   000006B0   ........           _BLF     __dSub,??__dSub??rA
+   \   000006B4   00A0A0E1           MOV      R10,R0
+   \   000006B8   38008DE2           ADD      R0,SP,#+56
+   \   000006BC   01002DE9           PUSH     {R0}
+   \   000006C0   0CC09DE5           LDR      R12,[SP, #+12]
+   \   000006C4   080099E5           LDR      R0,[R9, #+8]
+   \   000006C8   08209CE5           LDR      R2,[R12, #+8]
+   \   000006CC   0C309CE5           LDR      R3,[R12, #+12]
+   \   000006D0   01B0A0E1           MOV      R11,R1
+   \   000006D4   0C1099E5           LDR      R1,[R9, #+12]
+   \   000006D8   ........           _BLF     __dSub,??__dSub??rA
+   \   000006DC   0400BDE8           POP      {R2}
+   \   000006E0   0530A0E1           MOV      R3,R5
+   \   000006E4   030082E8           STM      R2,{R0,R1}
+   \   000006E8   48008DE2           ADD      R0,SP,#+72
+   \   000006EC   030090E8           LDM      R0,{R0,R1}
+   \   000006F0   0420A0E1           MOV      R2,R4
+   \   000006F4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000006F8   030088E8           STM      R8,{R0,R1}
+   \   000006FC   50008DE2           ADD      R0,SP,#+80
+   \   00000700   030090E8           LDM      R0,{R0,R1}
+   \   00000704   0620A0E1           MOV      R2,R6
+   \   00000708   0730A0E1           MOV      R3,R7
+   \   0000070C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000710   080088E5           STR      R0,[R8, #+8]
+   \   00000714   0C1088E5           STR      R1,[R8, #+12]
+   \   00000718   48008DE2           ADD      R0,SP,#+72
+   \   0000071C   030090E8           LDM      R0,{R0,R1}
+   \   00000720   0420A0E1           MOV      R2,R4
+   \   00000724   0530A0E1           MOV      R3,R5
+   \   00000728   ........           _BLF     __dSub,??__dSub??rA
+   \   0000072C   0040A0E1           MOV      R4,R0
+   \   00000730   0150A0E1           MOV      R5,R1
+   \   00000734   50008DE2           ADD      R0,SP,#+80
+   \   00000738   030090E8           LDM      R0,{R0,R1}
+   \   0000073C   0620A0E1           MOV      R2,R6
+   \   00000740   0730A0E1           MOV      R3,R7
+   \   00000744   ........           _BLF     __dSub,??__dSub??rA
+   \   00000748   0060A0E1           MOV      R6,R0
+   \   0000074C   0170A0E1           MOV      R7,R1
+   \   00000750   64008DE2           ADD      R0,SP,#+100
+   \   00000754   030090E8           LDM      R0,{R0,R1}
+   \   00000758   0620A0E1           MOV      R2,R6
+   \   0000075C   0730A0E1           MOV      R3,R7
+   \   00000760   ........           _BLF     __dMul,??__dMul??rA
+   \   00000764   0020A0E1           MOV      R2,R0
+   \   00000768   0130A0E1           MOV      R3,R1
+   \   0000076C   0C002DE9           PUSH     {R2,R3}
+   \   00000770   74008DE2           ADD      R0,SP,#+116
+   \   00000774   030090E8           LDM      R0,{R0,R1}
+   \   00000778   0420A0E1           MOV      R2,R4
+   \   0000077C   0530A0E1           MOV      R3,R5
+   \   00000780   ........           _BLF     __dMul,??__dMul??rA
+   \   00000784   0C00BDE8           POP      {R2,R3}
+   \   00000788   ........           _BLF     __dSub,??__dSub??rA
+   \   0000078C   030089E8           STM      R9,{R0,R1}
+   \   00000790   64008DE2           ADD      R0,SP,#+100
+   \   00000794   030090E8           LDM      R0,{R0,R1}
+   \   00000798   0420A0E1           MOV      R2,R4
+   \   0000079C   0530A0E1           MOV      R3,R5
+   \   000007A0   ........           _BLF     __dMul,??__dMul??rA
+   \   000007A4   0040A0E1           MOV      R4,R0
+   \   000007A8   0150A0E1           MOV      R5,R1
+   \   000007AC   6C008DE2           ADD      R0,SP,#+108
+   \   000007B0   030090E8           LDM      R0,{R0,R1}
+   \   000007B4   0620A0E1           MOV      R2,R6
+   \   000007B8   0730A0E1           MOV      R3,R7
+   \   000007BC   ........           _BLF     __dMul,??__dMul??rA
+   \   000007C0   0420A0E1           MOV      R2,R4
+   \   000007C4   0530A0E1           MOV      R3,R5
+   \   000007C8   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000007CC   080089E5           STR      R0,[R9, #+8]
+   \   000007D0   0C1089E5           STR      R1,[R9, #+12]
+   \   000007D4   30008DE2           ADD      R0,SP,#+48
+   \   000007D8   030090E8           LDM      R0,{R0,R1}
+   \   000007DC   38208DE2           ADD      R2,SP,#+56
+   \   000007E0   0C0092E8           LDM      R2,{R2,R3}
+   \   000007E4   ........           _BLF     __dSub,??__dSub??rA
+   \   000007E8   0040A0E1           MOV      R4,R0
+   \   000007EC   0150A0E1           MOV      R5,R1
+   \   000007F0   40008DE2           ADD      R0,SP,#+64
+   \   000007F4   030090E8           LDM      R0,{R0,R1}
+   \   000007F8   0A20A0E1           MOV      R2,R10
+   \   000007FC   0B30A0E1           MOV      R3,R11
+   \   00000800   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000804   0060A0E1           MOV      R6,R0
+   \   00000808   04009DE5           LDR      R0,[SP, #+4]
+   \   0000080C   0170A0E1           MOV      R7,R1
+   \   00000810   01002DE9           PUSH     {R0}
+   \   00000814   60008DE2           ADD      R0,SP,#+96
+   \   00000818   030090E8           LDM      R0,{R0,R1}
+   \   0000081C   0620A0E1           MOV      R2,R6
+   \   00000820   0730A0E1           MOV      R3,R7
+   \   00000824   ........           _BLF     __dMul,??__dMul??rA
+   \   00000828   0080A0E1           MOV      R8,R0
+   \   0000082C   0190A0E1           MOV      R9,R1
+   \   00000830   2C008DE2           ADD      R0,SP,#+44
+   \   00000834   030090E8           LDM      R0,{R0,R1}
+   \   00000838   0420A0E1           MOV      R2,R4
+   \   0000083C   0530A0E1           MOV      R3,R5
+   \   00000840   ........           _BLF     __dMul,??__dMul??rA
+   \   00000844   0820A0E1           MOV      R2,R8
+   \   00000848   0930A0E1           MOV      R3,R9
+   \   0000084C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000850   0400BDE8           POP      {R2}
+   \   00000854   0530A0E1           MOV      R3,R5
+   \   00000858   030082E8           STM      R2,{R0,R1}
+   \   0000085C   04809DE5           LDR      R8,[SP, #+4]
+   \   00000860   5C008DE2           ADD      R0,SP,#+92
+   \   00000864   030090E8           LDM      R0,{R0,R1}
+   \   00000868   0420A0E1           MOV      R2,R4
+   \   0000086C   ........           _BLF     __dMul,??__dMul??rA
+   \   00000870   0040A0E1           MOV      R4,R0
+   \   00000874   0150A0E1           MOV      R5,R1
+   \   00000878   28008DE2           ADD      R0,SP,#+40
+   \   0000087C   030090E8           LDM      R0,{R0,R1}
+   \   00000880   0620A0E1           MOV      R2,R6
+   \   00000884   0730A0E1           MOV      R3,R7
+   \   00000888   ........           _BLF     __dMul,??__dMul??rA
+   \   0000088C   0420A0E1           MOV      R2,R4
+   \   00000890   0530A0E1           MOV      R3,R5
+   \   00000894   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000898   080088E5           STR      R0,[R8, #+8]
+   \   0000089C   0C1088E5           STR      R1,[R8, #+12]
+   \   000008A0   30008DE2           ADD      R0,SP,#+48
+   \   000008A4   030090E8           LDM      R0,{R0,R1}
+   \   000008A8   38208DE2           ADD      R2,SP,#+56
+   \   000008AC   0C0092E8           LDM      R2,{R2,R3}
+   \   000008B0   20408DE2           ADD      R4,SP,#+32
+   \   000008B4   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000008B8   030084E8           STM      R4,{R0,R1}
+   \   000008BC   40008DE2           ADD      R0,SP,#+64
+   \   000008C0   030090E8           LDM      R0,{R0,R1}
+   \   000008C4   0A20A0E1           MOV      R2,R10
+   \   000008C8   0B30A0E1           MOV      R3,R11
+   \   000008CC   ........           _BLF     __dSub,??__dSub??rA
+   \   000008D0   0080A0E1           MOV      R8,R0
+   \   000008D4   0190A0E1           MOV      R9,R1
+   \   000008D8   08609DE5           LDR      R6,[SP, #+8]
+   \   000008DC   7C008DE2           ADD      R0,SP,#+124
+   \   000008E0   030090E8           LDM      R0,{R0,R1}
+   \   000008E4   0820A0E1           MOV      R2,R8
+   \   000008E8   0930A0E1           MOV      R3,R9
+   \   000008EC   ........           _BLF     __dMul,??__dMul??rA
+   \   000008F0   0040A0E1           MOV      R4,R0
+   \   000008F4   0150A0E1           MOV      R5,R1
+   \   000008F8   74008DE2           ADD      R0,SP,#+116
+   \   000008FC   030090E8           LDM      R0,{R0,R1}
+   \   00000900   20208DE2           ADD      R2,SP,#+32
+   \   00000904   0C0092E8           LDM      R2,{R2,R3}
+   \   00000908   ........           _BLF     __dMul,??__dMul??rA
+   \   0000090C   0420A0E1           MOV      R2,R4
+   \   00000910   0530A0E1           MOV      R3,R5
+   \   00000914   ........           _BLF     __dSub,??__dSub??rA
+   \   00000918   030086E8           STM      R6,{R0,R1}
+   \   0000091C   7C008DE2           ADD      R0,SP,#+124
+   \   00000920   030090E8           LDM      R0,{R0,R1}
+   \   00000924   08609DE5           LDR      R6,[SP, #+8]
+   \   00000928   20208DE2           ADD      R2,SP,#+32
+   \   0000092C   0C0092E8           LDM      R2,{R2,R3}
+   \   00000930   ........           _BLF     __dMul,??__dMul??rA
+   \   00000934   0040A0E1           MOV      R4,R0
+   \   00000938   0150A0E1           MOV      R5,R1
+   \   0000093C   74008DE2           ADD      R0,SP,#+116
+   \   00000940   030090E8           LDM      R0,{R0,R1}
+   \   00000944   0820A0E1           MOV      R2,R8
+   \   00000948   0930A0E1           MOV      R3,R9
+   \   0000094C   ........           _BLF     __dMul,??__dMul??rA
+   \   00000950   0420A0E1           MOV      R2,R4
+   \   00000954   0530A0E1           MOV      R3,R5
+   \   00000958   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000095C   080086E5           STR      R0,[R6, #+8]
+   \   00000960   0C1086E5           STR      R1,[R6, #+12]
+   \   00000964   00109DE5           LDR      R1,[SP, #+0]
+   \   00000968   021081E2           ADD      R1,R1,#+2
+   \                     ??cftsub_10:
+   \   0000096C   00108DE5           STR      R1,[SP, #+0]
+   \   00000970   0C009DE5           LDR      R0,[SP, #+12]
+   \   00000974   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000978   000081E0           ADD      R0,R1,R0
+   \   0000097C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000980   020040E2           SUB      R0,R0,#+2
+   \   00000984   010050E1           CMP      R0,R1
+   \   00000988   0CFFFFAA           BGE      ??cftsub_9
+   \   0000098C   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000990   18209DE5           LDR      R2,[SP, #+24]
+   \   00000994   011082E0           ADD      R1,R2,R1
+   \                     ??cftsub_8:
+   \   00000998   1C108DE5           STR      R1,[SP, #+28]
+   \   0000099C   84009DE5           LDR      R0,[SP, #+132]
+   \   000009A0   18109DE5           LDR      R1,[SP, #+24]
+   \   000009A4   010040E0           SUB      R0,R0,R1
+   \   000009A8   1C109DE5           LDR      R1,[SP, #+28]
+   \   000009AC   010050E1           CMP      R0,R1
+   \   000009B0   96FDFFBA           BLT      ??cftsub_2
+   \   000009B4   10109DE5           LDR      R1,[SP, #+16]
+   \   000009B8   6C408DE2           ADD      R4,SP,#+108
+   \   000009BC   011081E2           ADD      R1,R1,#+1
+   \   000009C0   10108DE5           STR      R1,[SP, #+16]
+   \   000009C4   14109DE5           LDR      R1,[SP, #+20]
+   \   000009C8   001061E2           RSB      R1,R1,#+0
+   \   000009CC   14108DE5           STR      R1,[SP, #+20]
+   \   000009D0   10009DE5           LDR      R0,[SP, #+16]
+   \   000009D4   8C109DE5           LDR      R1,[SP, #+140]
+   \   000009D8   000281E0           ADD      R0,R1,R0, LSL #+4
+   \   000009DC   0C0090E8           LDM      R0,{R2,R3}
+   \   000009E0   28108DE2           ADD      R1,SP,#+40
+   \   000009E4   0C0081E8           STM      R1,{R2,R3}
+   \   000009E8   082090E5           LDR      R2,[R0, #+8]
+   \   000009EC   0C3090E5           LDR      R3,[R0, #+12]
+   \   000009F0   5C108DE2           ADD      R1,SP,#+92
+   \   000009F4   0C0081E8           STM      R1,{R2,R3}
+   \   000009F8   14009DE5           LDR      R0,[SP, #+20]
+   \   000009FC   ........           _BLF     __longToDouble,??__longToDouble??rA
+   \   00000A00   10209DE5           LDR      R2,[SP, #+16]
+   \   00000A04   8C309DE5           LDR      R3,[SP, #+140]
+   \   00000A08   822183E0           ADD      R2,R3,R2, LSL #+3
+   \   00000A0C   0C0092E8           LDM      R2,{R2,R3}
+   \   00000A10   ........           _BLF     __dMul,??__dMul??rA
+   \   00000A14   030084E8           STM      R4,{R0,R1}
+   \   00000A18   10109DE5           LDR      R1,[SP, #+16]
+   \   00000A1C   14209DE5           LDR      R2,[SP, #+20]
+   \   00000A20   64008DE2           ADD      R0,SP,#+100
+   \   00000A24   011082E0           ADD      R1,R2,R1
+   \   00000A28   8C209DE5           LDR      R2,[SP, #+140]
+   \   00000A2C   811182E0           ADD      R1,R2,R1, LSL #+3
+   \   00000A30   0C0091E8           LDM      R1,{R2,R3}
+   \   00000A34   4014A0E3           MOV      R1,#+1073741824
+   \   00000A38   0C0080E8           STM      R0,{R2,R3}
+   \   00000A3C   0C0090E8           LDM      R0,{R2,R3}
+   \   00000A40   0000A0E3           MOV      R0,#+0
+   \   00000A44   ........           _BLF     __dMul,??__dMul??rA
+   \   00000A48   0040A0E1           MOV      R4,R0
+   \   00000A4C   0150A0E1           MOV      R5,R1
+   \   00000A50   5C008DE2           ADD      R0,SP,#+92
+   \   00000A54   030090E8           LDM      R0,{R0,R1}
+   \   00000A58   74608DE2           ADD      R6,SP,#+116
+   \   00000A5C   0420A0E1           MOV      R2,R4
+   \   00000A60   0530A0E1           MOV      R3,R5
+   \   00000A64   ........           _BLF     __dMul,??__dMul??rA
+   \   00000A68   0020A0E1           MOV      R2,R0
+   \   00000A6C   0130A0E1           MOV      R3,R1
+   \   00000A70   28008DE2           ADD      R0,SP,#+40
+   \   00000A74   030090E8           LDM      R0,{R0,R1}
+   \   00000A78   ........           _BLF     __dSub,??__dSub??rA
+   \   00000A7C   030086E8           STM      R6,{R0,R1}
+   \   00000A80   28008DE2           ADD      R0,SP,#+40
+   \   00000A84   030090E8           LDM      R0,{R0,R1}
+   \   00000A88   7C608DE2           ADD      R6,SP,#+124
+   \   00000A8C   0420A0E1           MOV      R2,R4
+   \   00000A90   0530A0E1           MOV      R3,R5
+   \   00000A94   ........           _BLF     __dMul,??__dMul??rA
+   \   00000A98   5C208DE2           ADD      R2,SP,#+92
+   \   00000A9C   0C0092E8           LDM      R2,{R2,R3}
+   \   00000AA0   ........           _BLF     __dSub,??__dSub??rA
+   \   00000AA4   030086E8           STM      R6,{R0,R1}
+   \   00000AA8   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000AAC   AEFFFFEA           B        ??cftsub_10
+    841              }
+    842              if (l < n) {
+   \                     ??cftsub_3:
+   \   00000AB0   010050E1           CMP      R0,R1
+   \   00000AB4   2B0000AA           BGE      ??cftsub_11
+    843                  for (j = 0; j <= l - 2; j += 2) {
+   \   00000AB8   0010A0E3           MOV      R1,#+0
+   \   00000ABC   240000EA           B        ??cftsub_12
+    844                      j1 = j + l;
+   \                     ??cftsub_13:
+   \   00000AC0   0100A0E1           MOV      R0,R1
+   \   00000AC4   0C109DE5           LDR      R1,[SP, #+12]
+    845                      x0r = a[j] - a[j1];
+   \   00000AC8   20608DE2           ADD      R6,SP,#+32
+   \   00000ACC   000081E0           ADD      R0,R1,R0
+   \   00000AD0   88109DE5           LDR      R1,[SP, #+136]
+   \   00000AD4   804181E0           ADD      R4,R1,R0, LSL #+3
+   \   00000AD8   00009DE5           LDR      R0,[SP, #+0]
+   \   00000ADC   0C0094E8           LDM      R4,{R2,R3}
+   \   00000AE0   805181E0           ADD      R5,R1,R0, LSL #+3
+   \   00000AE4   030095E8           LDM      R5,{R0,R1}
+   \   00000AE8   ........           _BLF     __dSub,??__dSub??rA
+   \   00000AEC   030086E8           STM      R6,{R0,R1}
+    846                      x0i = a[j + 1] - a[j1 + 1];
+   \   00000AF0   080095E5           LDR      R0,[R5, #+8]
+   \   00000AF4   0C1095E5           LDR      R1,[R5, #+12]
+   \   00000AF8   082094E5           LDR      R2,[R4, #+8]
+   \   00000AFC   0C3094E5           LDR      R3,[R4, #+12]
+   \   00000B00   ........           _BLF     __dSub,??__dSub??rA
+    847                      a[j] += a[j1];
+   \   00000B04   0C0095E8           LDM      R5,{R2,R3}
+   \   00000B08   0080A0E1           MOV      R8,R0
+   \   00000B0C   0190A0E1           MOV      R9,R1
+   \   00000B10   030094E8           LDM      R4,{R0,R1}
+   \   00000B14   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000B18   030085E8           STM      R5,{R0,R1}
+    848                      a[j + 1] += a[j1 + 1];
+   \   00000B1C   082095E5           LDR      R2,[R5, #+8]
+   \   00000B20   0C3095E5           LDR      R3,[R5, #+12]
+   \   00000B24   080094E5           LDR      R0,[R4, #+8]
+   \   00000B28   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000B2C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000B30   080085E5           STR      R0,[R5, #+8]
+   \   00000B34   0C1085E5           STR      R1,[R5, #+12]
+    849                      a[j1] = x0r;
+   \   00000B38   20008DE2           ADD      R0,SP,#+32
+   \   00000B3C   030090E8           LDM      R0,{R0,R1}
+   \   00000B40   030084E8           STM      R4,{R0,R1}
+    850                      a[j1 + 1] = x0i;
+   \   00000B44   088084E5           STR      R8,[R4, #+8]
+   \   00000B48   0C9084E5           STR      R9,[R4, #+12]
+    851                  }
+   \   00000B4C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000B50   021081E2           ADD      R1,R1,#+2
+   \                     ??cftsub_12:
+   \   00000B54   00108DE5           STR      R1,[SP, #+0]
+   \   00000B58   58009DE5           LDR      R0,[SP, #+88]
+   \   00000B5C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000B60   010050E1           CMP      R0,R1
+   \   00000B64   D5FFFFAA           BGE      ??cftsub_13
+    852              }
+    853          }
+   \                     ??cftsub_11:
+   \   00000B68   90D08DE2           ADD      SP,SP,#+144
+   \   00000B6C   ........           B        ??Subroutine13_1
+    854          
+    855          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    856          void rftsub(int n, double *a, int nc, double *c)
+    857          {
+   \                     ??rftsub:
+   \   00000000   FF4F2DE9           PUSH     {R0-R11,LR}
+   \   00000004   1CD04DE2           SUB      SP,SP,#+28
+    858              int j, k, kk, ks;
+    859              double wkr, wki, xr, xi, yr, yi;
+    860              
+    861              ks = (nc << 2) / n;
+   \   00000008   1C109DE5           LDR      R1,[SP, #+28]
+   \   0000000C   0200A0E1           MOV      R0,R2
+   \   00000010   0001A0E1           LSL      R0,R0,#+2
+   \   00000014   ........           _BLF     ??div32_a,??rA??div32_a
+   \   00000018   08108DE5           STR      R1,[SP, #+8]
+    862              kk = 0;
+   \   0000001C   0010A0E3           MOV      R1,#+0
+   \   00000020   04108DE5           STR      R1,[SP, #+4]
+    863              for (k = (n >> 1) - 2; k >= 2; k -= 2) {
+   \   00000024   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000028   C110A0E1           ASR      R1,R1,#+1
+   \   0000002C   640000EA           B        ??rftsub_1
+    864                  j = n - k;
+   \                     ??rftsub_2:
+   \   00000030   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000034   00109DE5           LDR      R1,[SP, #+0]
+    865                  kk += ks;
+   \   00000038   08209DE5           LDR      R2,[SP, #+8]
+   \   0000003C   018040E0           SUB      R8,R0,R1
+   \   00000040   04109DE5           LDR      R1,[SP, #+4]
+    866                  wkr = 0.5 - c[kk];
+   \   00000044   0C908DE2           ADD      R9,SP,#+12
+   \   00000048   011082E0           ADD      R1,R2,R1
+   \   0000004C   04108DE5           STR      R1,[SP, #+4]
+   \   00000050   04209DE5           LDR      R2,[SP, #+4]
+   \   00000054   28309DE5           LDR      R3,[SP, #+40]
+   \   00000058   0000A0E3           MOV      R0,#+0
+   \   0000005C   822183E0           ADD      R2,R3,R2, LSL #+3
+   \   00000060   0C0092E8           LDM      R2,{R2,R3}
+   \   00000064   C015A0E3           MOV      R1,#+805306368
+   \   00000068   FE1681E3           ORR      R1,R1,#0xFE00000
+   \   0000006C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000070   030089E8           STM      R9,{R0,R1}
+    867                  wki = c[nc - kk];
+   \   00000074   24109DE5           LDR      R1,[SP, #+36]
+   \   00000078   04209DE5           LDR      R2,[SP, #+4]
+   \   0000007C   14008DE2           ADD      R0,SP,#+20
+   \   00000080   021041E0           SUB      R1,R1,R2
+   \   00000084   28209DE5           LDR      R2,[SP, #+40]
+   \   00000088   811182E0           ADD      R1,R2,R1, LSL #+3
+   \   0000008C   0C0091E8           LDM      R1,{R2,R3}
+   \   00000090   0C0080E8           STM      R0,{R2,R3}
+    868                  xr = a[k] - a[j];
+   \   00000094   20009DE5           LDR      R0,[SP, #+32]
+   \   00000098   20109DE5           LDR      R1,[SP, #+32]
+   \   0000009C   888180E0           ADD      R8,R0,R8, LSL #+3
+   \   000000A0   00009DE5           LDR      R0,[SP, #+0]
+   \   000000A4   0C0098E8           LDM      R8,{R2,R3}
+   \   000000A8   809181E0           ADD      R9,R1,R0, LSL #+3
+   \   000000AC   030099E8           LDM      R9,{R0,R1}
+   \   000000B0   ........           _BLF     __dSub,??__dSub??rA
+    869                  xi = a[k + 1] + a[j + 1];
+   \   000000B4   082099E5           LDR      R2,[R9, #+8]
+   \   000000B8   0C3099E5           LDR      R3,[R9, #+12]
+   \   000000BC   0040A0E1           MOV      R4,R0
+   \   000000C0   080098E5           LDR      R0,[R8, #+8]
+   \   000000C4   0150A0E1           MOV      R5,R1
+   \   000000C8   0C1098E5           LDR      R1,[R8, #+12]
+   \   000000CC   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000000D0   0060A0E1           MOV      R6,R0
+   \   000000D4   0170A0E1           MOV      R7,R1
+    870                  yr = wkr * xr - wki * xi;
+   \   000000D8   14008DE2           ADD      R0,SP,#+20
+   \   000000DC   030090E8           LDM      R0,{R0,R1}
+   \   000000E0   0620A0E1           MOV      R2,R6
+   \   000000E4   0730A0E1           MOV      R3,R7
+   \   000000E8   ........           _BLF     __dMul,??__dMul??rA
+   \   000000EC   00A0A0E1           MOV      R10,R0
+   \   000000F0   01B0A0E1           MOV      R11,R1
+   \   000000F4   0C008DE2           ADD      R0,SP,#+12
+   \   000000F8   030090E8           LDM      R0,{R0,R1}
+   \   000000FC   0420A0E1           MOV      R2,R4
+   \   00000100   0530A0E1           MOV      R3,R5
+   \   00000104   ........           _BLF     __dMul,??__dMul??rA
+   \   00000108   0A20A0E1           MOV      R2,R10
+   \   0000010C   0B30A0E1           MOV      R3,R11
+   \   00000110   ........           _BLF     __dSub,??__dSub??rA
+   \   00000114   00A0A0E1           MOV      R10,R0
+   \   00000118   01B0A0E1           MOV      R11,R1
+    871                  yi = wkr * xi + wki * xr;
+   \   0000011C   14008DE2           ADD      R0,SP,#+20
+   \   00000120   030090E8           LDM      R0,{R0,R1}
+   \   00000124   0420A0E1           MOV      R2,R4
+   \   00000128   0530A0E1           MOV      R3,R5
+   \   0000012C   ........           _BLF     __dMul,??__dMul??rA
+   \   00000130   0040A0E1           MOV      R4,R0
+   \   00000134   0150A0E1           MOV      R5,R1
+   \   00000138   0C008DE2           ADD      R0,SP,#+12
+   \   0000013C   030090E8           LDM      R0,{R0,R1}
+   \   00000140   0620A0E1           MOV      R2,R6
+   \   00000144   0730A0E1           MOV      R3,R7
+   \   00000148   ........           _BLF     __dMul,??__dMul??rA
+   \   0000014C   0420A0E1           MOV      R2,R4
+   \   00000150   0530A0E1           MOV      R3,R5
+   \   00000154   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000158   0040A0E1           MOV      R4,R0
+   \   0000015C   0150A0E1           MOV      R5,R1
+    872                  a[k] -= yr;
+   \   00000160   030099E8           LDM      R9,{R0,R1}
+   \   00000164   0A20A0E1           MOV      R2,R10
+   \   00000168   0B30A0E1           MOV      R3,R11
+   \   0000016C   ........           _BLF     __dSub,??__dSub??rA
+   \   00000170   030089E8           STM      R9,{R0,R1}
+    873                  a[k + 1] -= yi;
+   \   00000174   080099E5           LDR      R0,[R9, #+8]
+   \   00000178   0C1099E5           LDR      R1,[R9, #+12]
+   \   0000017C   0420A0E1           MOV      R2,R4
+   \   00000180   0530A0E1           MOV      R3,R5
+   \   00000184   ........           _BLF     __dSub,??__dSub??rA
+   \   00000188   080089E5           STR      R0,[R9, #+8]
+   \   0000018C   0C1089E5           STR      R1,[R9, #+12]
+    874                  a[j] += yr;
+   \   00000190   030098E8           LDM      R8,{R0,R1}
+   \   00000194   0A20A0E1           MOV      R2,R10
+   \   00000198   0B30A0E1           MOV      R3,R11
+   \   0000019C   ........           _BLF     __dAdd,??__dAdd??rA
+   \   000001A0   030088E8           STM      R8,{R0,R1}
+    875                  a[j + 1] -= yi;
+   \   000001A4   080098E5           LDR      R0,[R8, #+8]
+   \   000001A8   0C1098E5           LDR      R1,[R8, #+12]
+   \   000001AC   0420A0E1           MOV      R2,R4
+   \   000001B0   0530A0E1           MOV      R3,R5
+   \   000001B4   ........           _BLF     __dSub,??__dSub??rA
+   \   000001B8   080088E5           STR      R0,[R8, #+8]
+   \   000001BC   0C1088E5           STR      R1,[R8, #+12]
+    876              }
+   \   000001C0   00109DE5           LDR      R1,[SP, #+0]
+   \                     ??rftsub_1:
+   \   000001C4   021041E2           SUB      R1,R1,#+2
+   \   000001C8   00108DE5           STR      R1,[SP, #+0]
+   \   000001CC   00009DE5           LDR      R0,[SP, #+0]
+   \   000001D0   020050E3           CMP      R0,#+2
+   \   000001D4   95FFFFAA           BGE      ??rftsub_2
+    877          }
+   \   000001D8   2CD08DE2           ADD      SP,SP,#+44
+   \   000001DC   ........           B        ??Subroutine13_1
+    878          
+    879          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    880          void dctsub(int n, double *a, int nc, double *c)
+    881          {
+   \                     ??dctsub:
+   \   00000000   FF4F2DE9           PUSH     {R0-R11,LR}
+   \   00000004   14D04DE2           SUB      SP,SP,#+20
+    882              int j, k, kk, ks, m;
+    883              double wkr, wki, xr;
+    884              
+    885              ks = nc / n;
+   \   00000008   14109DE5           LDR      R1,[SP, #+20]
+   \   0000000C   0200A0E1           MOV      R0,R2
+   \   00000010   ........           _BLF     ??div32_a,??rA??div32_a
+   \   00000014   00108DE5           STR      R1,[SP, #+0]
+    886              kk = ks;
+   \   00000018   0180A0E1           MOV      R8,R1
+    887              m = n >> 1;
+   \   0000001C   14109DE5           LDR      R1,[SP, #+20]
+    888              for (k = 1; k <= m - 1; k++) {
+   \   00000020   0190A0E3           MOV      R9,#+1
+   \   00000024   C110A0E1           ASR      R1,R1,#+1
+   \   00000028   04108DE5           STR      R1,[SP, #+4]
+   \   0000002C   390000EA           B        ??dctsub_1
+    889                  j = n - k;
+   \                     ??dctsub_2:
+   \   00000030   14109DE5           LDR      R1,[SP, #+20]
+   \   00000034   091041E0           SUB      R1,R1,R9
+   \   00000038   08108DE5           STR      R1,[SP, #+8]
+   \   0000003C   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000040   20109DE5           LDR      R1,[SP, #+32]
+   \   00000044   080040E0           SUB      R0,R0,R8
+   \   00000048   80A181E0           ADD      R10,R1,R0, LSL #+3
+   \   0000004C   03009BE8           LDM      R11,{R0,R1}
+   \   00000050   0C009AE8           LDM      R10,{R2,R3}
+   \   00000054   ........           _BLF     __dSub,??__dSub??rA
+    890                  wkr = c[kk] - c[nc - kk];
+    891                  wki = c[kk] + c[nc - kk];
+   \   00000058   0C009BE8           LDM      R11,{R2,R3}
+   \   0000005C   0040A0E1           MOV      R4,R0
+   \   00000060   0150A0E1           MOV      R5,R1
+   \   00000064   03009AE8           LDM      R10,{R0,R1}
+   \   00000068   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000006C   0060A0E1           MOV      R6,R0
+    892                  kk += ks;
+   \   00000070   00009DE5           LDR      R0,[SP, #+0]
+   \   00000074   0170A0E1           MOV      R7,R1
+    893                  xr = wki * a[k] - wkr * a[j];
+   \   00000078   18109DE5           LDR      R1,[SP, #+24]
+   \   0000007C   088080E0           ADD      R8,R0,R8
+   \   00000080   08009DE5           LDR      R0,[SP, #+8]
+   \   00000084   89B181E0           ADD      R11,R1,R9, LSL #+3
+   \   00000088   80A181E0           ADD      R10,R1,R0, LSL #+3
+   \   0000008C   0C008DE2           ADD      R0,SP,#+12
+   \   00000090   01002DE9           PUSH     {R0}
+   \   00000094   03009AE8           LDM      R10,{R0,R1}
+   \   00000098   0420A0E1           MOV      R2,R4
+   \   0000009C   0530A0E1           MOV      R3,R5
+    894                  a[k] = wkr * a[k] + wki * a[j];
+    895                  a[j] = xr;
+    896              }
+   \   000000A0   019089E2           ADD      R9,R9,#+1
+   \   000000A4   ........           _BLF     __dMul,??__dMul??rA
+   \   000000A8   0020A0E1           MOV      R2,R0
+   \   000000AC   0130A0E1           MOV      R3,R1
+   \   000000B0   0C002DE9           PUSH     {R2,R3}
+   \   000000B4   03009BE8           LDM      R11,{R0,R1}
+   \   000000B8   0620A0E1           MOV      R2,R6
+   \   000000BC   0730A0E1           MOV      R3,R7
+   \   000000C0   ........           _BLF     __dMul,??__dMul??rA
+   \   000000C4   0C00BDE8           POP      {R2,R3}
+   \   000000C8   ........           _BLF     __dSub,??__dSub??rA
+   \   000000CC   0400BDE8           POP      {R2}
+   \   000000D0   0730A0E1           MOV      R3,R7
+   \   000000D4   030082E8           STM      R2,{R0,R1}
+   \   000000D8   03009AE8           LDM      R10,{R0,R1}
+   \   000000DC   0620A0E1           MOV      R2,R6
+   \   000000E0   ........           _BLF     __dMul,??__dMul??rA
+   \   000000E4   0060A0E1           MOV      R6,R0
+   \   000000E8   0170A0E1           MOV      R7,R1
+   \   000000EC   03009BE8           LDM      R11,{R0,R1}
+   \   000000F0   0420A0E1           MOV      R2,R4
+   \   000000F4   0530A0E1           MOV      R3,R5
+   \   000000F8   ........           _BLF     __dMul,??__dMul??rA
+   \   000000FC   0620A0E1           MOV      R2,R6
+   \   00000100   0730A0E1           MOV      R3,R7
+   \   00000104   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000108   03008BE8           STM      R11,{R0,R1}
+   \   0000010C   0C008DE2           ADD      R0,SP,#+12
+   \   00000110   030090E8           LDM      R0,{R0,R1}
+   \   00000114   03008AE8           STM      R10,{R0,R1}
+   \                     ??dctsub_1:
+   \   00000118   20009DE5           LDR      R0,[SP, #+32]
+   \   0000011C   88B180E0           ADD      R11,R0,R8, LSL #+3
+   \   00000120   04009DE5           LDR      R0,[SP, #+4]
+   \   00000124   010040E2           SUB      R0,R0,#+1
+   \   00000128   090050E1           CMP      R0,R9
+   \   0000012C   BFFFFFAA           BGE      ??dctsub_2
+    897              a[m] *= 2 * c[kk];
+   \   00000130   ........           B        ?Subroutine13
+    898          }
+    899          
+    900          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    901          void dstsub(int n, double *a, int nc, double *c)
+    902          {
+   \                     ??dstsub:
+   \   00000000   FF4F2DE9           PUSH     {R0-R11,LR}
+   \   00000004   14D04DE2           SUB      SP,SP,#+20
+    903              int j, k, kk, ks, m;
+    904              double wkr, wki, xr;
+    905              
+    906              ks = nc / n;
+   \   00000008   14109DE5           LDR      R1,[SP, #+20]
+   \   0000000C   0200A0E1           MOV      R0,R2
+   \   00000010   ........           _BLF     ??div32_a,??rA??div32_a
+   \   00000014   00108DE5           STR      R1,[SP, #+0]
+    907              kk = ks;
+   \   00000018   0180A0E1           MOV      R8,R1
+    908              m = n >> 1;
+   \   0000001C   14109DE5           LDR      R1,[SP, #+20]
+    909              for (k = 1; k <= m - 1; k++) {
+   \   00000020   0190A0E3           MOV      R9,#+1
+   \   00000024   C110A0E1           ASR      R1,R1,#+1
+   \   00000028   04108DE5           STR      R1,[SP, #+4]
+   \   0000002C   390000EA           B        ??dstsub_1
+    910                  j = n - k;
+   \                     ??dstsub_2:
+   \   00000030   14109DE5           LDR      R1,[SP, #+20]
+   \   00000034   091041E0           SUB      R1,R1,R9
+   \   00000038   08108DE5           STR      R1,[SP, #+8]
+   \   0000003C   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000040   20109DE5           LDR      R1,[SP, #+32]
+   \   00000044   080040E0           SUB      R0,R0,R8
+   \   00000048   80A181E0           ADD      R10,R1,R0, LSL #+3
+   \   0000004C   03009BE8           LDM      R11,{R0,R1}
+   \   00000050   0C009AE8           LDM      R10,{R2,R3}
+   \   00000054   ........           _BLF     __dSub,??__dSub??rA
+    911                  wkr = c[kk] - c[nc - kk];
+    912                  wki = c[kk] + c[nc - kk];
+   \   00000058   0C009BE8           LDM      R11,{R2,R3}
+   \   0000005C   0040A0E1           MOV      R4,R0
+   \   00000060   0150A0E1           MOV      R5,R1
+   \   00000064   03009AE8           LDM      R10,{R0,R1}
+   \   00000068   ........           _BLF     __dAdd,??__dAdd??rA
+   \   0000006C   0060A0E1           MOV      R6,R0
+    913                  kk += ks;
+   \   00000070   00009DE5           LDR      R0,[SP, #+0]
+   \   00000074   0170A0E1           MOV      R7,R1
+    914                  xr = wki * a[j] - wkr * a[k];
+   \   00000078   18109DE5           LDR      R1,[SP, #+24]
+   \   0000007C   088080E0           ADD      R8,R0,R8
+   \   00000080   08009DE5           LDR      R0,[SP, #+8]
+   \   00000084   89B181E0           ADD      R11,R1,R9, LSL #+3
+   \   00000088   80A181E0           ADD      R10,R1,R0, LSL #+3
+   \   0000008C   0C008DE2           ADD      R0,SP,#+12
+   \   00000090   01002DE9           PUSH     {R0}
+   \   00000094   03009BE8           LDM      R11,{R0,R1}
+   \   00000098   0420A0E1           MOV      R2,R4
+   \   0000009C   0530A0E1           MOV      R3,R5
+    915                  a[j] = wkr * a[j] + wki * a[k];
+    916                  a[k] = xr;
+    917              }
+   \   000000A0   019089E2           ADD      R9,R9,#+1
+   \   000000A4   ........           _BLF     __dMul,??__dMul??rA
+   \   000000A8   0020A0E1           MOV      R2,R0
+   \   000000AC   0130A0E1           MOV      R3,R1
+   \   000000B0   0C002DE9           PUSH     {R2,R3}
+   \   000000B4   03009AE8           LDM      R10,{R0,R1}
+   \   000000B8   0620A0E1           MOV      R2,R6
+   \   000000BC   0730A0E1           MOV      R3,R7
+   \   000000C0   ........           _BLF     __dMul,??__dMul??rA
+   \   000000C4   0C00BDE8           POP      {R2,R3}
+   \   000000C8   ........           _BLF     __dSub,??__dSub??rA
+   \   000000CC   0400BDE8           POP      {R2}
+   \   000000D0   0730A0E1           MOV      R3,R7
+   \   000000D4   030082E8           STM      R2,{R0,R1}
+   \   000000D8   03009BE8           LDM      R11,{R0,R1}
+   \   000000DC   0620A0E1           MOV      R2,R6
+   \   000000E0   ........           _BLF     __dMul,??__dMul??rA
+   \   000000E4   0060A0E1           MOV      R6,R0
+   \   000000E8   0170A0E1           MOV      R7,R1
+   \   000000EC   03009AE8           LDM      R10,{R0,R1}
+   \   000000F0   0420A0E1           MOV      R2,R4
+   \   000000F4   0530A0E1           MOV      R3,R5
+   \   000000F8   ........           _BLF     __dMul,??__dMul??rA
+   \   000000FC   0620A0E1           MOV      R2,R6
+   \   00000100   0730A0E1           MOV      R3,R7
+   \   00000104   ........           _BLF     __dAdd,??__dAdd??rA
+   \   00000108   03008AE8           STM      R10,{R0,R1}
+   \   0000010C   0C008DE2           ADD      R0,SP,#+12
+   \   00000110   030090E8           LDM      R0,{R0,R1}
+   \   00000114   03008BE8           STM      R11,{R0,R1}
+   \                     ??dstsub_1:
+   \   00000118   20009DE5           LDR      R0,[SP, #+32]
+   \   0000011C   88B180E0           ADD      R11,R0,R8, LSL #+3
+   \   00000120   04009DE5           LDR      R0,[SP, #+4]
+   \   00000124   010040E2           SUB      R0,R0,#+1
+   \   00000128   090050E1           CMP      R0,R9
+   \   0000012C   BFFFFFAA           BGE      ??dstsub_2
+    918              a[m] *= 2 * c[kk];
+   \   00000130                      REQUIRE ?Subroutine13
+   \   00000130                      ;; // Fall through to label ?Subroutine13
+    919          }
+    920          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     bitrv2(int, int *, double *)      48
+     cdft(int, int, double *, int *, double *)
+                                       24
+     cftsub(int, double *, double *)
+                                      188
+     dctsub(int, double *, int, double *)
+                                       84
+     ddct(int, int, double *, int *, double *)
+                                       52
+     ddst(int, int, double *, int *, double *)
+                                       52
+     dfct(int, double *, double *, int *, double *)
+                                       76
+     dfst(int, double *, double *, int *, double *)
+                                       72
+     dstsub(int, double *, int, double *)
+                                       84
+     makect(int, int *, double *)      36
+     makewt(int, int *, double *)      48
+     rdft(int, int, double *, int *, double *)
+                                       36
+     rftsub(int, double *, int, double *)
+                                       80
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     cdft(int, int, double *, int *, double *)
+                                     200
+     rdft(int, int, double *, int *, double *)
+                                     440
+     ?Subroutine13                    52
+     ddct(int, int, double *, int *, double *)
+                                     596
+     ?Subroutine14                     8
+     ddst(int, int, double *, int *, double *)
+                                     596
+     dfct(int, double *, double *, int *, double *)
+                                    1296
+     dfst(int, double *, double *, int *, double *)
+                                    1112
+     makewt(int, int *, double *)    324
+     ?Subroutine15                     8
+     makect(int, int *, double *)    288
+     bitrv2(int, int *, double *)    416
+     cftsub(int, double *, double *)
+                                    2928
+     rftsub(int, double *, int, double *)
+                                     480
+     dctsub(int, double *, int, double *)
+                                     308
+     dstsub(int, double *, int, double *)
+                                     304
+      Others                         148
+
+ 
+ 9 504 bytes in segment CODE
+ 
+ 9 356 bytes of CODE memory (+ 148 bytes shared)
+
+Errors: none
+Warnings: none

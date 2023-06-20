@@ -1,0 +1,152 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:22 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  C:\Program Files (x86)\IAR Systems\Embedded          #
+#                       Workbench 4.0\arm\config\template\project\dlib\write #
+#                       .c                                                   #
+#    Command line    =  "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\config\template\project\dlib\write #
+#                       .c" --fpu None -D OS_LIBMODE_SP -D CPU_S3C2410 -D    #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\write.lst                   #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\write.r79                    #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\config\template\project\dlib\write.c
+      1          /*******************
+      2           *
+      3           * Copyright 1998-2003 IAR Systems.  All rights reserved.
+      4           *
+      5           * $Revision: 1.14 $
+      6           *
+      7           * This is a template implementation of the "__write" function used by
+      8           * the standard library.  Replace it with a system-specific
+      9           * implementation.
+     10           *
+     11           * The "__write" function should output "size" number of bytes from
+     12           * "buffer" in some application-specific way.  It should return the
+     13           * number of characters written, or _LLIO_ERROR on failure.
+     14           *
+     15           * If "buffer" is zero then __write should perform flushing of
+     16           * internal buffers, if any.  In this case "handle" can be -1 to
+     17           * indicate that all handles should be flushed.
+     18           *
+     19           * The template implementation below assumes that the application
+     20           * provides the function "MyLowLevelPutchar".  It should return the
+     21           * character written, or -1 on failure.
+     22           *
+     23           ********************/
+     24          
+     25          #include <yfuns.h>
+     26          
+     27          _STD_BEGIN
+     28          
+     29          #pragma module_name = "?__write"
+     30          
+     31          int MyLowLevelPutchar(int x);
+     32          
+     33          /*
+     34           * If the __write implementation uses internal buffering, uncomment
+     35           * the following line to ensure that we are called with "buffer" as 0
+     36           * (i.e. flush) when the application terminates.
+     37           */
+     38          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     39          size_t __write(int handle, const unsigned char * buffer, size_t size)
+     40          {
+     41            /* Remove the #if #endif pair to enable the implementation */
+     42          #if 0    
+     43          
+     44            size_t nChars = 0;
+     45          
+     46            if (buffer == 0)
+     47            {
+     48              /*
+     49               * This means that we should flush internal buffers.  Since we
+     50               * don't we just return.  (Remember, "handle" == -1 means that all
+     51               * handles should be flushed.)
+     52               */
+     53              return 0;
+     54            }
+     55          
+     56            /* This template only writes to "standard out" and "standard err",
+     57             * for all other file handles it returns failure. */
+     58            if (handle != _LLIO_STDOUT && handle != _LLIO_STDERR)
+     59            {
+     60              return _LLIO_ERROR;
+     61            }
+     62          
+     63            for (/* Empty */; size != 0; --size)
+     64            {
+     65              if (MyLowLevelPutchar(*buffer++) < 0)
+     66              {
+     67                return _LLIO_ERROR;
+     68              }
+     69          
+     70              ++nChars;
+     71            }
+     72          
+     73            return nChars;
+     74          
+     75          #else
+     76          
+     77            /* Always return error code when implementation is disabled. */
+     78            return _LLIO_ERROR;
+   \                     __write:
+   \   00000000   0000E0E3           MVN      R0,#+0
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+     79          
+     80          #endif
+     81          
+     82          }
+     83          
+     84          _STD_END
+
+   Maximum stack usage in bytes:
+
+     Function CSTACK
+     -------- ------
+     __write      0
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+     __write           8
+      Others           4
+
+ 
+ 12 bytes in segment CODE
+ 
+ 8 bytes of CODE memory (+ 4 bytes shared)
+
+Errors: none
+Warnings: none

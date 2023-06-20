@@ -1,0 +1,1081 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               19/Jan/2017  10:13:08 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\TSNUtilities.cpp                #
+#    Command line    =  D:\S2Prog\Shared\Src\TSNUtilities.cpp --fpu None -D  #
+#                       OS_LIBMODE_DP -D OS_RAMVECT=0 -D CPU_S3C2410 -D      #
+#                       OS_UART=1 -D ANBOOTLOADER -D __ARM_LIBRARY__ -lCN    #
+#                       D:\S2Prog\TXU\TargetDebug\List\ -o                   #
+#                       D:\S2Prog\TXU\TargetDebug\Obj\ -s2 --no_cse          #
+#                       --no_unroll --no_inline --no_code_motion --no_tbaa   #
+#                       --no_clustering --no_scheduling --debug --cpu_mode   #
+#                       arm --endian little --cpu ARM920T --stack_align 4    #
+#                       --interwork -e --eec++ --dlib_config "C:\Program     #
+#                       Files (x86)\IAR Systems\Embedded Workbench           #
+#                       4.0\arm\LIB\dl4tpainl8f.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\MINILZO.108\ -I          #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\INC\"                              #
+#    List file       =  D:\S2Prog\TXU\TargetDebug\List\TSNUtilities.lst      #
+#    Object file     =  D:\S2Prog\TXU\TargetDebug\Obj\TSNUtilities.r79       #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\TSNUtilities.cpp
+      1          #pragma hdrstop
+      2          #include <complex>
+      3          // ---------------------------------------------------------------------------
+      4          
+      5          #ifdef BORLAND
+      6          #ifdef ANWIN
+      7          #include "ANWinInc.h"
+      8          #include "MainUnit.h"
+      9          #pragma hdrstop
+     10          #else
+     11          #include "TSNIncludes.h"
+     12          #endif
+     13          #else
+     14          #ifdef ANBOOTLOADER
+     15          #include "Rtos.h"
+     16          #include "ANPRO10Inc.h"
+     17          #include "2410addr.h"
+     18          #include "2410slib.h"
+     19          #include "mx29LV160TB.h"
+     20          #include "FixedVariables.h"
+     21          
+     22          extern void LCD_BackLightOn(void);
+     23          extern short GlobalDeviceHWId;
+     24          #else
+     25          #include "TSNIncludes.h"
+     26          
+     27          #endif
+     28          #if (WATCHDOG == 1)
+     29          extern TSN_TASK WatchDogTaskHandle;
+     30          #endif
+     31          
+     32          #if defined(S2TXU) || defined(ANBOOTLOADER)
+     33          
+     34          extern "C" {
+     35          	extern time_t _Tzoff();
+     36          }
+     37          #endif
+     38          #endif
+     39          
+     40          /// Time defines
+     41          #define ONE_DAY 86400L
+     42          
+     43          // ---------------------------------------------------------------------------
+     44          
+     45          //////////////////////////////////////////////////////////////////////////////
+     46          //
+     47          // Event handling
+     48          //
+     49          //////////////////////////////////////////////////////////////////////////////
+     50          
+     51          #if defined(S2TXU) || defined(ANBOOTLOADER)
+     52          #else
+     53          volatile unsigned char PhysKeyPressed = 0x0;
+     54          TSN_HANDLE PWEventHandl;
+     55          
+     56          bool TSN_SetGuiEvent(TSN_HANDLE EventHandl) {
+     57          	return ((bool)SetEvent(EventHandl));
+     58          }
+     59          
+     60          void My_COM_Send1(char c) {
+     61          }
+     62          #endif
+     63          
+     64          ///////////////////////////////////////////////////////////////////
+     65          //
+     66          // Routines to get around alignment problems
+     67          //
+     68          //////////////////////////////////////////////////////////////////
+     69          
+     70          U16 GetU16(U8* Ptr) {
+     71          	return (Ptr[1] << 8) | Ptr[0];
+     72          }
+     73          
+     74          U32 GetU32(U8* Ptr) {
+     75          	return (Ptr[3] << 24) | (Ptr[2] << 16) | (Ptr[1] << 8) | Ptr[0];
+     76          }
+     77          
+     78          U32 GetU32BigEndian(U8* Ptr) {
+     79          	return (Ptr[0] << 24) | (Ptr[1] << 16) | (Ptr[2] << 8) | Ptr[3];
+     80          }
+     81          
+     82          void PutU16(U8* Ptr, U16 Val) {
+     83          	Ptr[0] = Val & 0xff;
+     84          	Ptr[1] = Val >> 8;
+     85          }
+     86          
+     87          void PutU32(U8* Ptr, unsigned Val) {
+     88          	Ptr[3] = Val >> 24;
+     89          	Ptr[2] = Val >> 16;
+     90          	Ptr[1] = Val >> 8;
+     91          	Ptr[0] = Val & 0xff;
+     92          }
+     93          
+     94          //////////////////////////////////////////////////////////////////////////////
+     95          //
+     96          // Date / Time functions
+     97          //
+     98          //////////////////////////////////////////////////////////////////////////////
+     99          #ifndef ANBOOTLOADER
+    100          
+    101          AnsiString TSNTime(const char Fmt[]) {
+    102          	const time_t SecsNow = time(NULL) + 3600 * GetDaylightSaving();
+    103          	struct tm *TimeNow = localtime(&SecsNow);
+    104          	char Buf[BUF_SIZE];
+    105          	strftime(Buf, BUF_SIZE, Fmt, TimeNow);
+    106          	return (AnsiString)Buf;
+    107          }
+    108          
+    109          AnsiString TSNTime(time_t Time, const char Fmt[]) {
+    110          	Time &= 0x7fffffff; // Remove the sign if any
+    111          #ifdef S2TXU
+    112          	Time += 3600 * GetDaylightSaving();
+    113          #endif
+    114          
+    115          	struct tm *TimeNow = localtime(&Time);
+    116          
+    117          #ifdef ANWIN
+    118          	// Ensure a time is always displayed for each alarm, even if time data is invalid
+    119          	// (actual local time values can become negative, hence illegal, due to timezone adjustments).
+    120          	if (TimeNow == NULL) {
+    121          		time_t replacementTime = 1;
+    122          		TimeNow = gmtime(&replacementTime);
+    123          	}
+    124          #endif
+    125          
+    126          	char Buf[BUF_SIZE];
+    127          
+    128          	strftime(Buf, BUF_SIZE, Fmt, TimeNow);
+    129          	return (AnsiString)Buf;
+    130          }
+    131          
+    132          AnsiString TSNDate(void) {
+    133          	return (TSNTime("%d %b %y"));
+    134          }
+    135          
+    136          AnsiString TSNTime(void) {
+    137          	return (TSNTime("%H:%M:%S"));
+    138          }
+    139          
+    140          int GetDaylightSaving(void) {
+    141          	bool Dst = false;
+    142          #ifdef WIN32
+    143          	/*
+    144          	 TIME_ZONE_INFORMATION TimeZoneInformationPtr;
+    145          	 GetTimeZoneInformation(&TimeZoneInformationPtr);
+    146          	 Dst = TimeZoneInformationPtr.DaylightBias;
+    147          	 */
+    148          	const time_t SecsNow = time(NULL);
+    149          	struct tm *TimeNow = localtime(&SecsNow);
+    150          	// Was a Bug in MS Windows. isdst is 1 when no dst!!!
+    151          	if (TimeNow->tm_isdst) {
+    152          		Dst = true;
+    153          	}
+    154          	PROSystemData::DaylightSaving = Dst;
+    155          #else
+    156          	Dst = PROSystemData::DaylightSaving;
+    157          #endif
+    158          	return (Dst);
+    159          }
+    160          
+    161          void SetDaylightSaving(int NewDst) {
+    162          #ifdef S2TXU
+    163          	PROSystemData::SetDST(NewDst);
+    164          	ANPRO10_SendTime();
+    165          #endif
+    166          }
+    167          
+    168          void TSNSetTimeZone(int NewZone) { // in minutes
+    169          	PROSystemData::SetTimeZone(NewZone);
+    170          	NewZone = -NewZone;
+    171          #ifdef S2TXU
+    172          #ifndef ANBOOTLOADER
+    173          	NewZone *= 60;
+    174          	SetTimeZone(NewZone);
+    175          #endif
+    176          #else
+    177          #ifdef WIN32
+    178          	TIME_ZONE_INFORMATION TimeZoneInformationPtr;
+    179          	GetTimeZoneInformation(&TimeZoneInformationPtr);
+    180          	TimeZoneInformationPtr.Bias = (int)NewZone;
+    181          	// TimeZoneInformationPtr.DaylightBias = 1;
+    182          	// Dont change the PC: bool error = SetTimeZoneInformation(&TimeZoneInformationPtr);
+    183          #endif
+    184          #endif
+    185          }
+    186          
+    187          int TSNTimeZone(void) {
+    188          	// in minutes
+    189          	int TZone = 0;
+    190          #ifdef S2TXU
+    191          	TZone = -int(_Tzoff()) / 60;
+    192          #else
+    193          #ifdef WIN32
+    194          	TIME_ZONE_INFORMATION TimeZoneInformationPtr;
+    195          	GetTimeZoneInformation(&TimeZoneInformationPtr);
+    196          	TZone = TimeZoneInformationPtr.Bias;
+    197          #endif
+    198          #endif
+    199          	return (-TZone);
+    200          }
+    201          
+    202          AnsiString TSNTimeZoneName(void) {
+    203          	// return TSNTime(Buf,BUF_SIZE,"%Z",TimeNow);
+    204          	return ("GMT");
+    205          }
+    206          
+    207          void SetGMT(int NewTime) {
+    208          	int CurrentTZ = TSNTimeZone();
+    209          	CurrentTZ += 60 * NewTime;
+    210          	TSNSetTimeZone(CurrentTZ);
+    211          	ANPRO10_SendTime();
+    212          
+    213          }
+    214          
+    215          AnsiString TSNDateTime(void) {
+    216          	return (TSNTime("%d %b %y %H:%M:%S"));
+    217          }
+    218          
+    219          AnsiString TSNAlarmTime(void) {
+    220          	return (TSNTime("%H:%M"));
+    221          }
+    222          
+    223          AnsiString TSNAlarmDateTime(void) {
+    224          	return (TSNTime("%d.%b %H:%M"));
+    225          }
+    226          #endif
+    227          
+    228          time_t TSNElapsedTime(const time_t OldTime) {
+    229          	const time_t NewTime = time(NULL);
+    230          	time_t Elapsed = NewTime - OldTime;
+    231          	return (Elapsed);
+    232          }
+    233          
+    234          clock_t TSNElapsedTicks(const clock_t OldTime) {
+    235          	return (clock() - OldTime);
+    236          }
+    237          
+    238          // ---------------------------------------------------------------------------
+    239          
+    240          void ScreenSaverOff(void) {
+    241          	switch (GlobalDeviceHWId) {
+    242          	case TDU_R1:
+    243          	case TDU_R2:
+    244          #ifndef WIN32
+    245          		LCD_BackLightOn();
+    246          #endif
+    247          		break;
+    248          	case TCU_R1:
+    249          	case TCU_R2:
+    250          		break;
+    251          #ifdef ANWIN
+    252          	case DEVICE_PCSW:
+    253          		// when new alarm, be sure that aplikation come to front
+    254          		// HWND hWnd = MainForm->Handle;
+    255          		{
+    256          			HWND hWndApplication = Application->Handle;
+    257          			if (IsIconic(hWndApplication)) {
+    258          				OpenIcon(hWndApplication);
+    259          			}
+    260          
+    261          			// Importent to use Application->Handle to get all ShowModal window
+    262          			SetForegroundWindow(hWndApplication); // Puts the thread that created the specified window
+    263          			// into the foreground and activates the window.
+    264          			// Keyboard input is directed to the window,
+    265          		}
+    266          		break;
+    267          #endif
+    268          	}
+    269          }
+    270          
+    271          ///////////////////////////////////////////////////////////////
+    272          // Second part of cargo type system
+    273          // The first part is in API.H
+    274          // Hisory:
+    275          // 8/4/98       Created.                        EHS
+    276          ////////////////////////////////////////////////////////////////
+    277          int SumOneCargo(int CargoType, float &Weight, float &Volume) {
+    278          	Weight = 0.0;
+    279          	Volume = 0.0;
+    280          	int Cnt = 0;
+    281          	/*
+    282          	 for( int i=0; i < OnlineTank::Number_of_Tanks; i++ ) {
+    283          	 OnlineTank  *T = OnlineTank::Table[i];
+    284          	 if( (T->Type == TT_CARGO ) && (T->Cargo[Cond].CI.Type == CargoType ) ) {
+    285          	 Weight += T->Weight[Cond];
+    286          	 Volume += T->RtData[Cond].Volume;
+    287          	 Cnt++;
+    288          	 }
+    289          	 } */
+    290          	return (Cnt);
+    291          }
+    292          
+    293          #ifndef ANBOOTLOADER
+    294          
+    295          ///////////////////////////////////////////////////////////////
+    296          // Include all tanks with onespecific cargo type
+    297          // Hisory:
+    298          // 5/9/01       Created.                        EHS/RB
+    299          ////////////////////////////////////////////////////////////////
+    300          int SumOneCargoAllTanks(int CargoTypeKey, int BaseCargoType, float *Weight, float *Volume,
+    301          	vector<PRogramObjectBase*>ObjVector) {
+    302          	float tWeight = 0.0;
+    303          	float tVolume = 0.0;
+    304          	int Cnt = 0;
+    305          	if (!ObjVector.empty()) {
+    306          		for (unsigned i = 0; i < ObjVector.size(); i++) {
+    307          			PROTank *TElement = (PROTank*)ObjVector[i];
+    308          			if (TElement && (TElement->CargoType->CargoTypeKey == CargoTypeKey) &&
+    309          				(TElement->CargoType->BaseCargoType == BaseCargoType)) {
+    310          				tWeight += TElement->Weight;
+    311          				tVolume += TElement->Volume;
+    312          				Cnt++;
+    313          			}
+    314          		}
+    315          	}
+    316          	*Volume = tVolume;
+    317          	*Weight = tWeight;
+    318          	return (Cnt);
+    319          }
+    320          
+    321          int SumTanks(int TankType, float &Weight, float &Volume) {
+    322          	Weight = 0.0;
+    323          	Volume = 0.0;
+    324          	int Cnt = 0;
+    325          	/*
+    326          	 for( int i=0; i < OnlineTank::Number_of_Tanks; i++ ) {
+    327          	 OnlineTank  *T = OnlineTank::Table[i];
+    328          	 if( T->Type == TankType ) {
+    329          	 Weight += T->Weight[Cond];
+    330          	 Volume += T->RtData[Cond].Volume;
+    331          	 Cnt++;
+    332          	 }
+    333          	 } */
+    334          	return (Cnt);
+    335          }
+    336          
+    337          double FindFrequencey(int Start, int Stop, int Samples, double *x) {
+    338          	double Sum = 0.0;
+    339          	for (int i = 1; i < Samples; i++) {
+    340          		Sum += x[i];
+    341          	}
+    342          	double Average = Sum / (Samples - 1);
+    343          	for (int i = 1; i < Samples; i++) {
+    344          		x[i] -= Average;
+    345          	}
+    346          	double MaxVal = x[1];
+    347          	int MaxIndex = 1;
+    348          	for (int i = Start; i < Stop; i++) {
+    349          		if (x[i] > MaxVal) {
+    350          			MaxVal = x[i];
+    351          			MaxIndex = i;
+    352          		}
+    353          	}
+    354          	double MinVal = x[MaxIndex - 1];
+    355          	double Difference = MaxVal - MinVal;
+    356          	double FreqCor = 0.0;
+    357          	if (Difference) {
+    358          		FreqCor = MinVal / Difference;
+    359          	}
+    360          	double Frequency = double(MaxIndex) + FreqCor;
+    361          	return Frequency;
+    362          }
+    363          
+    364          #endif
+    365          // ---------------------------------------------------------------------------
+    366          
+    367          void SendAlarmSilence(void) {
+    368          #ifdef S2TXU
+    369          	if (!AlarmBasic::AlarmSilence) {
+    370          		ANPRO10_SendAlarmSilence();
+    371          	}
+    372          #elif defined(ANWIN)
+    373          	ANPRO10_SendAlarmSilence();
+    374          	/* if( !ViewModePC ){
+    375          	 ANPRO10_SendAlarmSilence();
+    376          	 }else{
+    377          	 AlarmBasic::AlarmSilence = true;
+    378          	 } */
+    379          #endif
+    380          }
+    381          
+    382          //////////////////////////////////////////////////////////////////////////////
+    383          //
+    384          // This routine does not check that the actual string length exceeds BUF_SIZE
+    385          //
+    386          //////////////////////////////////////////////////////////////////////////////
+    387          int stricmp(char* Str1, char* Str2) {
+    388          	char la, lb;
+    389          
+    390          	for (; ;) {
+    391          		la = *Str1;
+    392          		lb = *Str2;
+    393          		if (isupper(la))
+    394          			la = tolower(la);
+    395          		if (isupper(lb))
+    396          			lb = tolower(lb);
+    397          		if (la != lb || !la)
+    398          			break;
+    399          		Str1++;
+    400          		Str2++;
+    401          	}
+    402          	return (la - lb);
+    403          }
+    404          
+    405          //////////////////////////////////////////////////////////////////////////////
+    406          //
+    407          // This routine check that the actual string not exceeds BUF_SIZE
+    408          //
+    409          //
+    410          //////////////////////////////////////////////////////////////////////////////
+    411          
+    412          int strincmp(char* Str1, char* Str2, int Length) {
+    413          	char la, lb;
+    414          
+    415          	for (; ;) {
+    416          		la = *Str1;
+    417          		lb = *Str2;
+    418          		if (isupper(la))
+    419          			la = tolower(la);
+    420          		if (isupper(lb))
+    421          			lb = tolower(lb);
+    422          		if (la != lb || !la || !Length)
+    423          			break;
+    424          		Str1++;
+    425          		Str2++;
+    426          		Length--;
+    427          	}
+    428          	if (Length)
+    429          		return (la - lb);
+    430          	return (0);
+    431          }
+    432          
+    433          #ifdef S2TXU
+    434          
+    435          void strncpy(char* Dest, char* Source, int MaxLength) {
+    436          	int i = 0;
+    437          	MaxLength--;
+    438          	while ((i < MaxLength) && (*Dest++ = *Source++))
+    439          		i++;
+    440          	*Dest = 0;
+    441          }
+    442          #endif
+    443          
+    444          //////////////////////////////////////////////////////////////////
+    445          //
+    446          // Math routines absent in Borland
+    447          //
+    448          //////////////////////////////////////////////////////////////////
+    449          int irint(float x) {
+    450          	int rounded;
+    451          	if ((x - 0.5) < x) {
+    452          		rounded = int(floor(x));
+    453          	}
+    454          	else {
+    455          		rounded = int(ceil(x));
+    456          	}
+    457          	return (rounded);
+    458          }
+    459          
+    460          /////////////////////////////////////////////////////////////
+    461          //
+    462          // Find coefficients for linear interpolation between input parameters.
+    463          //
+    464          /////////////////////////////////////////////////////////////
+    465          
+    466          void Calc_1stDeg_coeffs(float x1, float y1, float x2, float y2, float &a, float &b) {
+    467          	if (x1 != x2) {
+    468          		a = (y2 - y1) / (x2 - x1);
+    469          		b = y1 - a * x1;
+    470          	}
+    471          	else {
+    472          		a = 0.0;
+    473          		b = y1;
+    474          	}
+    475          }
+    476          
+    477          /////////////////////////////////////////////////////////////
+    478          //
+    479          // Linear interpolation between input parameters.
+    480          //
+    481          /////////////////////////////////////////////////////////////
+    482          float IntPol1stDeg(float x1, float x2, float y1, float y2, float x) {
+    483          	if (x1 != x2)
+    484          		return (y2 - y1) / (x2 - x1) * ((x - x1)) + y1;
+    485          	else
+    486          		return (y1);
+    487          }
+    488          
+    489          /////////////////////////////////////////////////////////////
+    490          //
+    491          // Find second order coefficients
+    492          //
+    493          // Second order formula: ax^2+bx+c
+    494          //
+    495          // y= a*x*x + b*x +c;
+    496          //
+    497          // a = ((y1-y2)*(x1-x3)-(y1-y3)*(x1-x2))/
+    498          // ((x1*x1-x2*x2)*(x1-x3)-(x1*x1-x3*x3)*(x1-x2));
+    499          // b = ((y1-y2)-(x1*x1-x2*x2)*a)/(x1-x2);
+    500          // c = y1-x1*b-x1*x1*a;
+    501          //
+    502          //
+    503          //////////////////////////////////////////////////////////////////////////
+    504          void Calc_2ndDeg_coeffs(float x1, float y1, float x2, float y2, float x3, float y3, float &a, float &b, float &c) {
+    505          	// See if we have different x values.
+    506          	//
+    507          	if (x1 == x2) {
+    508          		// We can not use the first pair of x-values
+    509          		if (x2 == x3) {
+    510          			// We can conclude that all x-values are equal
+    511          			a = 0.0;
+    512          			b = 0.0;
+    513          			c = y1;
+    514          		}
+    515          		else {
+    516          			// We can conclude that the second pair of x-values are useable
+    517          			a = 0.0;
+    518          			b = (y3 - y2) / (x3 - x2);
+    519          			c = y2 - b * x2;
+    520          		}
+    521          	}
+    522          	else if (x2 == x3) {
+    523          		// We can not use the second pair of x-values
+    524          		// We can conclude that the first pair of x-values are useable
+    525          		a = 0.0;
+    526          		b = (y2 - y1) / (x2 - x1); // Was x3-x2 Bug!!
+    527          		c = y2 - b * x2;
+    528          	}
+    529          	else {
+    530          		// Here we assume that we have data within permissible limits
+    531          		float xx1 = x1 * x1;
+    532          		float xx2 = x2 * x2;
+    533          		float xx3 = x3 * x3;
+    534          		float x1x2 = x1 - x2;
+    535          		float y1y2 = y1 - y2;
+    536          		float x1x3 = x1 - x3;
+    537          		float xx1xx2 = xx1 - xx2;
+    538          		a = (y1y2 * x1x3 - (y1 - y3) * x1x2) / (xx1xx2 * x1x3 - (xx1 - xx3) * x1x2);
+    539          		b = (y1y2 - a * xx1xx2) / x1x2;
+    540          		c = y1 - a * xx1 - b * x1;
+    541          	}
+    542          }
+    543          
+    544          ///////////////////////////////////////////////////////////////////////
+    545          //
+    546          // Second degree interpolation
+    547          //
+    548          ///////////////////////////////////////////////////////////////////////
+    549          float IntPol2ndDeg(float x1, float x2, float x3, float y1, float y2, float y3, float x) {
+    550          	float a, b, c;
+    551          
+    552          	Calc_2ndDeg_coeffs(x1, y1, x2, y2, x3, y3, a, b, c);
+    553          	return (a * x * x + b * x + c);
+    554          }
+    555          
+    556          /////////////////////////////////////////////////////////////////////
+    557          // Integration of function fx by Simpson's rule:
+    558          // A = S/3*[(F+L)+4E+2RO]
+    559          // F is the first point to use, L the last.
+    560          // A odd number of points must be used.
+    561          //
+    562          /////////////////////////////////////////////////////////////////////
+    563          
+    564          float Simpson(float First, float Last, int m, float(*Function)(float Val)) {
+    565          	float X = First;
+    566          
+    567          	if (m & 1)
+    568          		m++;
+    569          
+    570          	float h = (Last - First) / m;
+    571          	float t = (*Function)(First) - (*Function)(Last);
+    572          	for (register int i = 1; i <= m; i++) {
+    573          		X += h;
+    574          		t += (*Function)(X)*(1 + (i & 1))*2;
+    575          	}
+    576          	return (h / 3 * t);
+    577          }
+    578          
+    579          float Simpson(float First, float Last, int m, float(*Function)(float, float), float Val) {
+    580          	float X = First;
+    581          
+    582          	if (m & 1)
+    583          		m++;
+    584          	float h = (Last - First) / m;
+    585          	float t = (*Function)(First, Val) - (*Function)(Last, Val);
+    586          	for (register int i = 1; i <= m; i++) {
+    587          		X += h;
+    588          		t += (*Function)(X, Val)*(1 + (i & 1))*2;
+    589          	}
+    590          	return (h / 3 * t);
+    591          }
+    592          
+    593          float Simpson(float First, float Last, int m, float(*Function)(float, float, float), float Val1, float Val2) {
+    594          	float X = First;
+    595          
+    596          	if (m & 1)
+    597          		m++;
+    598          	float h = (Last - First) / m;
+    599          	float t = (*Function)(First, Val1, Val2) - (*Function)(Last, Val1, Val2);
+    600          	for (register int i = 1; i <= m; i++) {
+    601          		X += h;
+    602          		t += (*Function)(X, Val1, Val2)*(1 + (i & 1))*2;
+    603          	}
+    604          	return (h / 3 * t);
+    605          }
+    606          
+    607          bool IsInfinite(float A) {
+    608          	const int kInfAsInt = 0x7F800000;
+    609          
+    610          	// An infinity has an exponent of 255 (shift left 23 positions) and
+    611          	// a zero mantissa. There are two infinities - positive and negative.
+    612          	if ((*(int*)&A & 0x7FFFFFFF) == kInfAsInt)
+    613          		return (true);
+    614          	return (false);
+    615          }
+    616          
+    617          bool IsNan(float A) {
+    618          	// A NAN has an exponent of 255 (shifted left 23 positions) and
+    619          	// a non-zero mantissa.
+    620          	int exp = *(int*)&A & 0x7F800000;
+    621          	int mantissa = *(int*)&A & 0x007FFFFF;
+    622          	if (exp == 0x7F800000 && mantissa != 0)
+    623          		return (true);
+    624          	return (false);
+    625          }
+    626          
+    627          bool IsFloat(float A) {
+    628          	// A NAN has an exponent of 255 (shifted left 23 positions) and
+    629          	// Denormalized has an exponent set to 0
+    630          	int exp = *(int*)&A & 0x7F800000;
+    631          	// int mantissa = *(int*)&A & 0x007FFFFF;
+    632          	if (exp && (exp != 0x7F800000))
+    633          		return (true);
+    634          	return (false);
+    635          }
+    636          
+    637          #ifdef S2TXU
+    638          
+    639          void *lfind(const void *Key, void *Base, size_t *NElements, size_t Width, int(*Compar)(const void *, const void *)) {
+    640          	size_t Cnt = 0;
+    641          	bool Found = false;
+    642          	char *DataPtr = (char*)Base;
+    643          	do {
+    644          		char *ResultPtr = &DataPtr[Width * Cnt];
+    645          		if (!(*Compar)(Key, ResultPtr)) {
+    646          			return (void*)ResultPtr;
+    647          		}
+    648          		else {
+    649          			Cnt++;
+    650          		}
+    651          	}
+    652          	while (!Found && (Cnt < *NElements));
+    653          	return (NULL);
+    654          }
+    655          #endif
+    656          
+    657          int inet_aton(const char *cp) {
+    658          	unsigned parts[4];
+    659          	unsigned val;
+    660          	const char *c;
+    661          	char *endptr;
+    662          	int gotend, n;
+    663          
+    664          	c = (const char *)cp;
+    665          	n = 0;
+    666          
+    667          	/*
+    668          	 * Run through the string, grabbing numbers until
+    669          	 * the end of the string, or some error
+    670          	 */
+    671          	gotend = 0;
+    672          	while (!gotend) {
+    673          		unsigned long l;
+    674          
+    675          		l = strtoul(c, &endptr, 0);
+    676          
+    677          		if (l == ULONG_MAX || (l == 0 && endptr == c))
+    678          			return (0);
+    679          
+    680          		val = unsigned(l);
+    681          
+    682          		/*
+    683          		 * If the whole string is invalid, endptr will equal
+    684          		 * c.. this way we can make sure someone hasn't
+    685          		 * gone '.12' or something which would get past
+    686          		 * the next check.
+    687          		 */
+    688          		if (endptr == c)
+    689          			return (0);
+    690          		parts[n] = val;
+    691          		c = endptr;
+    692          
+    693          		/* Check the next character past the previous number's end */
+    694          		switch (*c) {
+    695          		case ':':
+    696          		case '.':
+    697          
+    698          			/* Make sure we only do 3 dots .. */
+    699          			if (n == 3) /* Whoops. Quit. */
+    700          					return (0);
+    701          			n++;
+    702          			c++;
+    703          			break;
+    704          
+    705          		case '\0':
+    706          			gotend = 1;
+    707          			break;
+    708          
+    709          		default:
+    710          			if (isspace((unsigned char) * c)) {
+    711          				gotend = 1;
+    712          				break;
+    713          			}
+    714          			else {
+    715          
+    716          				/* Invalid character, then fail. */
+    717          				return (0);
+    718          			}
+    719          		}
+    720          
+    721          	}
+    722          
+    723          	/* Concoct the address according to the number of parts specified. */
+    724          	switch (n) {
+    725          	case 0: /* a -- 32 bits */
+    726          
+    727          		/*
+    728          		 * Nothing is necessary here.  Overflow checking was
+    729          		 * already done in strtoul().
+    730          		 */
+    731          		break;
+    732          	case 1: /* a.b -- 8.24 bits */
+    733          		if (val > 0xffffff || parts[0] > 0xff)
+    734          			return (0);
+    735          		val |= parts[0] << 24;
+    736          		break;
+    737          
+    738          	case 2: /* a.b.c -- 8.8.16 bits */
+    739          		if (val > 0xffff || parts[0] > 0xff || parts[1] > 0xff)
+    740          			return (0);
+    741          		val |= (parts[0] << 24) | (parts[1] << 16);
+    742          		break;
+    743          
+    744          	case 3: /* a.b.c.d -- 8.8.8.8 bits */
+    745          		if (val > 0xff || parts[0] > 0xff || parts[1] > 0xff || parts[2] > 0xff)
+    746          			return (0);
+    747          		val |= (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8);
+    748          		break;
+    749          	}
+    750          	return val;
+    751          }
+    752          
+    753          void StartMainProgram(void) {
+    754          #ifdef ANBOOTLOADER
+    755          #ifdef TXU_RELEASE
+    756          	// OS_IncDI();
+    757          	MMU_DisableMMU();
+    758          
+    759          	char *StartAddress = (char*)0x30000000;
+    760          	FlashBaseAddress = 0x0; // We must do this because the MMU is not activated
+    761          	U8 *ConfigStartPtr;
+    762          	U32 ConfigSize;
+    763          	// OS_EnterRegion();     /* Avoid further task switches            */
+    764          	if (GetBlockInfoMX29LV(SectorConfigStart, SectorConfigEnd, &ConfigStartPtr, &ConfigSize) ||
+    765          		GetBlockInfoMX29LV(SectorConfigBakStart, SectorConfigBakEnd, &ConfigStartPtr, &ConfigSize)) {
+    766          #if (WATCHDOG == 1)
+    767          		OS_SignalEvent(WD_STOP, &WatchDogTaskHandle);
+    768          #endif
+    769          		if (CopyFromFlash(SectorProgStart, SectorProgEnd, (char*)StartAddress)) {
+    770          			ProgProgress = WD_BOOT_START_MAIN;
+    771          			rINTMSK = 0xffffffff;
+    772          			rEINTMASK = 0x3ff;
+    773          			void(*run)(void) = (void(*)(void))StartAddress;
+    774          			run();
+    775          		}
+    776          #if (WATCHDOG == 1)
+    777          		OS_SignalEvent(WD_START, &WatchDogTaskHandle);
+    778          #endif
+    779          	}
+    780          	// OS_DecRI();
+    781          #endif
+    782          	FlashBaseAddress = 0x4000000; // Prepare for the MMU
+    783          #endif
+    784          }
+    785          
+    786          #ifndef ANBOOTLOADER
+    787          
+    788          int CheckAlarms(set<AlarmBasic*>&AlarmSet, volatile bool *HWFailure) {
+    789          	int ActiveAlarmCnt = 0;
+    790          	bool ActiveHWAlarms = false;
+    791          	set<AlarmBasic*>::iterator pBIt;
+    792          	for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
+    793          		AlarmBasic *Element = *pBIt;
+    794          		Element->Check();
+    795          		if (Element->State != AlarmBasic::AlIdle) {
+    796          			if (Element->IsHWAlarm) {
+    797          				ActiveHWAlarms = true;
+    798          			}
+    799          			ActiveAlarmCnt++;
+    800          		}
+    801          	}
+    802          
+    803          	if (HWFailure) {
+    804          		*HWFailure = ActiveHWAlarms;
+    805          	}
+    806          
+    807          	return (ActiveAlarmCnt);
+    808          }
+    809          
+    810          void SetAlarmsToNormal(set<AlarmBasic*>&AlarmSet) {
+    811          	set<AlarmBasic*>::iterator pBIt;
+    812          	for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
+    813          		AlarmBasic *Element = *pBIt;
+    814          		Element->SetAlarmToNormal();
+    815          	}
+    816          }
+    817          
+    818          void GetAlarmTotals(set<AlarmBasic*>&AlarmInfoList, int &ActAl, int &AckAl, int &IdlAl, int &SuspAl, int &OutsideLim,
+    819          	int &OutsideLimEnabled) {
+    820          	ActAl = 0;
+    821          	AckAl = 0;
+    822          	IdlAl = 0;
+    823          	SuspAl = 0;
+    824          	OutsideLim = 0;
+    825          	OutsideLimEnabled = 0;
+    826          	set<AlarmBasic*>::iterator pBIt;
+    827          	for (pBIt = AlarmInfoList.begin(); pBIt != AlarmInfoList.end(); pBIt++) {
+    828          		AlarmBasic *TempElement = *pBIt;
+    829          		switch (TempElement->State) {
+    830          		case AlarmBasic::AlIdle:
+    831          			IdlAl++;
+    832          			break;
+    833          		case AlarmBasic::AlActive:
+    834          			ActAl++;
+    835          			break;
+    836          		case AlarmBasic::AlAknowledged:
+    837          			AckAl++;
+    838          			break;
+    839          		case AlarmBasic::AlSuspended:
+    840          			SuspAl++;
+    841          			break;
+    842          		}
+    843          		if (TempElement->OutsideLimit) {
+    844          			OutsideLim++;
+    845          			if (TempElement->Enable) {
+    846          				OutsideLimEnabled++;
+    847          			}
+    848          		}
+    849          	}
+    850          }
+    851          
+    852          int GetActiveAlarms(set<AlarmBasic*>&AlarmSet) {
+    853          	int ActAl = 0;
+    854          	set<AlarmBasic*>::iterator pBIt;
+    855          	for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
+    856          		AlarmBasic *Element = *pBIt;
+    857          		switch (Element->State) {
+    858          		case AlarmBasic::AlActive:
+    859          		case AlarmBasic::AlAknowledged:
+    860          			ActAl++;
+    861          			break;
+    862          		case AlarmBasic::AlIdle:
+    863          		case AlarmBasic::AlSuspended:
+    864          			break;
+    865          		}
+    866          	}
+    867          	return (ActAl);
+    868          }
+    869          
+    870          void AcknowledgeAlarms(set<AlarmBasic*>&AlarmSet) {
+    871          	set<AlarmBasic*>::iterator pBIt;
+    872          	for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
+    873          		AlarmBasic *element = *pBIt;
+    874          		switch (element->State) {
+    875          		case AlarmBasic::AlActive:
+    876          			element->MoveAlarmToAknowledge();
+    877          			break;
+    878          		case AlarmBasic::AlAknowledged:
+    879          			element->SetAlarmToNormal();
+    880          			break;
+    881          		case AlarmBasic::AlIdle:
+    882          		case AlarmBasic::AlSuspended:
+    883          			break;
+    884          		}
+    885          	}
+    886          }
+    887          
+    888          void AcknowledgeSoftAlarms(set<AlarmBasic*>&AlarmSet) {
+    889          	set<AlarmBasic*>::iterator pBIt;
+    890          	for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
+    891          		AlarmBasic *element = *pBIt;
+    892          		if (!element->IsHWAlarm) {
+    893          			switch (element->State) {
+    894          			case AlarmBasic::AlActive:
+    895          				element->MoveAlarmToAknowledge();
+    896          				break;
+    897          			case AlarmBasic::AlAknowledged:
+    898          				element->SetAlarmToNormal();
+    899          				break;
+    900          			case AlarmBasic::AlIdle:
+    901          			case AlarmBasic::AlSuspended:
+    902          				break;
+    903          			}
+    904          		}
+    905          	}
+    906          }
+    907          
+    908          void SetDataTime(set<PRogramObject*>&PROSet) {
+    909          	clock_t CurrentClock = clock();
+    910          	if (!PROSet.empty()) {
+    911          		set<PRogramObject*>::iterator pBIt;
+    912          		for (pBIt = PROSet.begin(); pBIt != PROSet.end(); pBIt++) {
+    913          			PRogramObject *TempElement = *pBIt;
+    914          			TempElement->TimeStamp = CurrentClock;
+    915          		}
+    916          	}
+    917          }
+    918          
+    919          void SetDataTime(set<PRogramObjectBase*>&PROList) {
+    920          	clock_t CurrentClock = clock();
+    921          	set<PRogramObjectBase*>::iterator pBIt;
+    922          	for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
+    923          		PRogramObject *TempElement = (PRogramObject*)*pBIt;
+    924          		TempElement->TimeStamp = CurrentClock;
+    925          	}
+    926          }
+    927          
+    928          void RecalcProgramObjects(set<PRogramObject*>&PROList) {
+    929          	set<PRogramObject*>::iterator pBIt;
+    930          	for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
+    931          		PRogramObject *TempElement = *pBIt;
+    932          		TempElement->RefreshData();
+    933          	}
+    934          }
+    935          
+    936          void AddList(PROLinkedList *DestList, PROLinkedList *SrcList) {
+    937          	if (DestList && SrcList) {
+    938          		if (!SrcList->isEmpty()) {
+    939          			int size = SrcList->Size();
+    940          			PRONode *node = SrcList->getHead();
+    941          			for (int count = 0; count < size; count++) {
+    942          				node = node->getNext();
+    943          				PRogramObjectBase *element = node->getElement();
+    944          				if (element)
+    945          					DestList->insertInOrder(element);
+    946          			}
+    947          		}
+    948          	}
+    949          }
+    950          
+    951          AnsiString MakeConfigStringFromList(set<PRogramObjectBase*>PROSet) {
+    952          	AnsiString TmpString;
+    953          	set<PRogramObjectBase*>::iterator pBIt;
+    954          	for (pBIt = PROSet.begin(); pBIt != PROSet.end(); pBIt++) {
+    955          		TmpString += (*pBIt)->MakeConfigString();
+    956          	}
+    957          	return (TmpString);
+    958          }
+    959          
+    960          void GiveRelayDutyMessage(int RelayNo, U8 Cmd, int DelayOn, int DelayOff) {
+    961          #ifndef WIN32
+    962          	DutyStruct Msg = {Cmd, DelayOn, DelayOff};
+    963          	OS_PutMail(&DutyMsgBuf[RelayNo], (char*)&Msg);
+    964          #endif
+    965          
+    966          }
+    967          
+    968          #endif
+    969          
+    970          float FilterVal(float OldVal, float NewVal, float Degree) {
+    971          
+    972          	OldVal += (NewVal - OldVal) / (Degree + 1.0);
+    973          	return OldVal;
+    974          }
+    975          
+    976          #if defined(S2TXU) || defined(ANBOOTLOADER)
+    977          extern "C" {
+    978          	void RestartIncMsg(char *Message) {
+    979          		strcpy(LastOSErrorTask, Message);
+    980          		LastOSError = 0xff;
+    981          		OS_Use(&FlashSema); // Block further operations on the flash
+    982          #if (WATCHDOG == 1)
+    983          		OS_SignalEvent(WD_RESTART, &WatchDogTaskHandle);
+    984          #else
+    985          		OS_Delay(5000);
+    986          		ProgProgress = WD_START_AGAIN;
+    987          		rWTCON = 0x8021;
+    988          #endif
+    989          	}
+    990          }
+    991          
+    992          void SetFactoryDefaults(void) {
+    993          	strcpy(LastOSErrorTask, "Factory defaults");
+    994          	LastOSError = 0xff;
+    995          #if (WATCHDOG == 1)
+    996          	OS_SignalEvent(WD_FACTORY_DEFAULT, &WatchDogTaskHandle);
+    997          #else
+    998          	ProgProgress = WD_ERASE_FLASH;
+    999          	EraseFlash(FLASH_ERASE_ALL_APP_DATA);
+   1000          	OS_Delay(5000);
+   1001          	ProgProgress = WD_START_AGAIN;
+   1002          	rWTCON = 0x8021;
+   1003          #endif
+   1004          }
+   1005          
+   1006          #endif
+   1007          #ifndef ANBOOTLOADER
+   1008          
+   1009          void MergeSet(set<unsigned>Dst, set<unsigned>Src) {
+   1010          	set<unsigned>::iterator ObjIt;
+   1011          	for (ObjIt = Src.begin(); ObjIt != Src.end(); ObjIt++) {
+   1012          		Dst.insert(*ObjIt);
+   1013          	}
+   1014          }
+   1015          #endif
+   1016          
+   1017          void SignalSaveSettings(int Signal) {
+   1018          #ifdef S2TXU
+   1019          	if (OS_IsTask(&SaveSettingsTaskHandle)) {
+   1020          		OS_SignalEvent(Signal, &SaveSettingsTaskHandle);
+   1021          	}
+   1022          #endif
+   1023          
+   1024          }
+   1025          
+   1026          vector<PRogramObjectBase*>GetReadPermissionVector(vector<PRogramObjectBase*>MyVect) {
+   1027          	vector<PRogramObjectBase*>ListVector;
+   1028          	for (unsigned i = 0; i < MyVect.size(); i++) {
+   1029          		if (MyVect[i]->ReadPermission()) {
+   1030          			ListVector.push_back(MyVect[i]);
+   1031          		}
+   1032          	}
+   1033          	return (ListVector);
+   1034          }
+   1035          
+   1036          vector<PRogramObjectBase*>GetWritePermissionVector(vector<PRogramObjectBase*>MyVect) {
+   1037          	vector<PRogramObjectBase*>ListVector;
+   1038          	for (unsigned i = 0; i < MyVect.size(); i++) {
+   1039          		if (MyVect[i]->WritePermission()) {
+   1040          			ListVector.push_back(MyVect[i]);
+   1041          		}
+   1042          	}
+   1043          	return (ListVector);
+   1044          }
+
+Errors: 16
+Warnings: none

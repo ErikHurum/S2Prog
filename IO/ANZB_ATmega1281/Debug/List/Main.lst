@@ -1,0 +1,767 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       10/May/2023  10:26:51
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file  =  D:\S2Prog\IO\ANZB_ATmega1281\Src\Main.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW9278.tmp
+#        (D:\S2Prog\IO\ANZB_ATmega1281\Src\Main.c --cpu=m1281 -ms -o
+#        D:\S2Prog\IO\ANZB_ATmega1281\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1
+#        -D USE_16552_DRIVER_TASK=1 -D USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=1
+#        -lCN D:\S2Prog\IO\ANZB_ATmega1281\Debug\List -y
+#        --initializers_in_flash --no_cse --no_inline --no_code_motion
+#        --no_cross_call --no_clustering --no_tbaa --debug
+#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB_ATmega1281\INC\\ -I
+#        D:\S2Prog\IO\ANZB_ATmega1281\..\..\SHARED\INC\\ --eeprom_size 4096
+#        --clib -On)
+#    Locale       =  English_USA.1252
+#    List file    =  D:\S2Prog\IO\ANZB_ATmega1281\Debug\List\Main.lst
+#    Object file  =  D:\S2Prog\IO\ANZB_ATmega1281\Debug\Obj\Main.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB_ATmega1281\Src\Main.c
+      1          /**********************************************************
+      2          *  
+      3          *   Main file for AN-ZB* program       
+      4          *  
+      5          ***********************************************************/
+      6          
+      7          #include "iom1281.h"
+
+   \                                 In  segment ABSOLUTE, at 0x60
+   \   union <unnamed> volatile __io _A_WDTCSR
+   \                     _A_WDTCSR:
+   \   00000000                      DS8 1
+      8          #include "stdio.h"
+      9          #include "math.h"
+     10          #include "variables.h"
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char UnitID
+   \                     UnitID:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char RestartStatus
+   \                     RestartStatus:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char volatile PortPair
+   \                     PortPair:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   UARTDataType UART[2]
+   \                     UART:
+   \   00000000                      DS8 52
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   UARTDataType UART16552[2]
+   \                     UART16552:
+   \   00000000                      DS8 52
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   AnalogInt ADInt
+   \                     ADInt:
+   \   00000000                      DS8 16
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   TargetData TData
+   \                     TData:
+   \   00000000                      DS8 1564
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char TxBufferCh0[275]
+   \                     TxBufferCh0:
+   \   00000000                      DS8 275
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char RxBufferCh0[150]
+   \                     RxBufferCh0:
+   \   00000000                      DS8 150
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char TxBufferCh1[275]
+   \                     TxBufferCh1:
+   \   00000000                      DS8 275
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char RxBufferCh1[150]
+   \                     RxBufferCh1:
+   \   00000000                      DS8 150
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char TxBuf16552Ch0[60]
+   \                     TxBuf16552Ch0:
+   \   00000000                      DS8 60
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char RxBuf16552Ch0[120]
+   \                     RxBuf16552Ch0:
+   \   00000000                      DS8 120
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char TxBuf16552Ch1[60]
+   \                     TxBuf16552Ch1:
+   \   00000000                      DS8 60
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char RxBuf16552Ch1[120]
+   \                     RxBuf16552Ch1:
+   \   00000000                      DS8 120
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char volatile ADChannel
+   \                     ADChannel:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char WriteCount
+   \                     WriteCount:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char *__near pWriteBuffer
+   \                     pWriteBuffer:
+   \   00000000                      DS8 2
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char EEPWriteOK
+   \                     EEPWriteOK:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char volatile hostAddress
+   \                     hostAddress:
+   \   00000000                      DS8 1
+
+   \                                 In  segment FAR_F, align 1, keep-with-next
+   \   char const __farflash crc[256]
+   \                     crc:
+   \   00000000   5E00E2BC3F61       DC8 0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31
+   \              83DD9CC2207E
+   \              FDA31F      
+   \   0000000F   9D4121C3FC7F       DC8 65, 157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96
+   \              40A25F1EE301
+   \              3EBD60      
+   \   0000001E   DC827D23C19F       DC8 130, 220, 35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128
+   \              1C42A0FEBFE1
+   \              035D80      
+   \   0000002D   3CDEBE6202E0       DC8 222, 60, 98, 190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158
+   \              DF5C63817C3D
+   \              C0229E      
+   \   0000003C   431DFFA11846       DC8 29, 67, 161, 255, 70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56
+   \              A4FA7927C59B
+   \              DA8438      
+   \   0000004B   E56659BBDB07       DC8 102, 229, 187, 89, 7, 219, 133, 103, 57, 186, 228, 6, 88, 25, 71
+   \              6785BA3906E4
+   \              195847      
+   \   0000005A   FBA526789AC4       DC8 165, 251, 120, 38, 196, 154, 101, 59, 217, 135, 4, 90, 184, 230
+   \              3B6587D95A04
+   \              E6B8        
+   \   00000068   F9A7451B98C6       DC8 167, 249, 27, 69, 198, 152, 122, 36, 248, 166, 68, 26, 153, 199, 37
+   \              247AA6F81A44
+   \              C79925      
+   \   00000077   3A7B86645BD8       DC8 123, 58, 100, 134, 216, 91, 5, 231, 185, 140, 210, 48, 110, 237
+   \              E7058CB930D2
+   \              ED6E        
+   \   00000085   51B34E0FF210       DC8 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205, 17, 79, 173, 243
+   \              2FAC937111CD
+   \              AD4FF3      
+   \   00000094   2E7092CC8DD3       DC8 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80, 175, 241
+   \              316FECB2500E
+   \              F1AF        
+   \   000000A2   4D1390CE2C72       DC8 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238, 50
+   \              336D8FD1520C
+   \              EEB032      
+   \   000000B1   8E6C53D0EF0D       DC8 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45
+   \              F0B14CAE9112
+   \              2DCF        
+   \   000000BF   CA737694AB28       DC8 115, 202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55
+   \              17F50849B456
+   \              69EA37      
+   \   000000CE   8BD50957B5EB       DC8 213, 139, 87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119
+   \              6836D48ACB95
+   \              7729        
+   \   000000DC   AAF41648B7E9       DC8 244, 170, 72, 22, 233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151
+   \              0B55D6886A34
+   \              752B97      
+   \   000000EB   4AC9F61474A8       DC8 201, 74, 20, 246, 168, 116, 42, 200, 150, 21, 75, 169, 247, 182
+   \              C82A1596A94B
+   \              B6F7        
+   \   000000F9   0AE8D7546B89       DC8 232, 10, 84, 215, 137, 107, 53
+   \              35          
+     11          #include "version.h"
+     12          #include "inavr.h"
+     13          #include "string.h"
+     14          
+     15          
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     16          OS_STACKPTR int Stack0[160], Stack1[160], Stack3[100], Stack10[200], Stack11[200]; /* Task stacks */
+   \                     Stack0:
+   \   00000000                      DS8 320
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     Stack1:
+   \   00000000                      DS8 320
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     Stack3:
+   \   00000000                      DS8 200
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     Stack10:
+   \   00000000                      DS8 400
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     Stack11:
+   \   00000000                      DS8 400
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     17          OS_TASK     TCB_USART0, TCB_USART1, TCB_WATCHDOG, TCB_RS485Ctl, TCB_RS485Rec, TCB_AD7715;               /* Task-control-blocks */
+   \                     TCB_USART0:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TCB_USART1:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TCB_WATCHDOG:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TCB_RS485Ctl:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TCB_RS485Rec:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TCB_AD7715:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     18          OS_RSEMA    UARTSEND;
+   \                     UARTSEND:
+   \   00000000                      DS8 8
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     19          OS_TIMER    TimerUSART0, TimerUSART1, TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
+   \                     TimerUSART0:
+   \   00000000                      DS8 10
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TimerUSART1:
+   \   00000000                      DS8 10
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TimerUART0:
+   \   00000000                      DS8 10
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TimerUART1:
+   \   00000000                      DS8 10
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TimerUSART0On:
+   \   00000000                      DS8 10
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     TimerUSART1On:
+   \   00000000                      DS8 10
+     20          
+     21          #if USE_MODBUS_PROTOCOL == 1
+     22          OS_RSEMA    adc_lock;
+     23          OS_RSEMA    rs485_tx_lock[2];
+     24          #endif
+     25          /**********************************************************
+     26          *
+     27          *       main
+     28          *
+     29          **********************************************************/
+     30          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     31          void main(void) {
+   \                     main:
+     32              asm("WDR");                             // Enable watchdog here because the OS hang some times during startup
+   \   00000000   95A8               WDR
+     33              WDTCSR = 0x1f;
+   \   00000002   E10F               LDI     R16, 31
+   \   00000004   9300....           STS     _A_WDTCSR, R16
+     34              WDTCSR = 0x0f;
+   \   00000008   E00F               LDI     R16, 15
+   \   0000000A   9300....           STS     _A_WDTCSR, R16
+     35              asm("WDR");                             // kick the dog!!
+   \   0000000E   95A8               WDR
+     36          
+     37              
+     38              OS_IncDI();
+   \   00000010   9100....           LDS     R16, (OS_Global + 1)
+   \   00000014   7F00               ANDI    R16, 0xF0
+   \   00000016   2300               TST     R16
+   \   00000018   F021               BREQ    ??main_0
+   \   0000001A   E909               LDI     R16, 153
+   \   0000001C   E010               LDI     R17, 0
+   \   0000001E   ........           CALL    OS_Error
+   \                     ??main_0:
+   \   00000022   94F8               cli
+   \   00000024   9100....           LDS     R16, (OS_Global + 1)
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     (OS_Global + 1), R16
+     39              OS_InitKern();        /* initialize OS                 */
+   \   0000002E   ........           CALL    OS_InitKern
+     40              OS_InitHW();          /* initialize Hardware for OS    */
+   \   00000032   ........           CALL    OS_InitHW
+     41              InitSystem();           // init the system according to board
+   \   00000036   ........           CALL    InitSystem
+     42          
+     43          #if USE_MODBUS_PROTOCOL == 0
+     44              OS_CREATERSEMA(&UARTSEND);                          // semaphore for sending on UARTs
+   \   0000003A   ....               LDI     R16, LOW(UARTSEND)
+   \   0000003C   ....               LDI     R17, (UARTSEND) >> 8
+   \   0000003E   ........           CALL    OS_CreateRSema
+     45              OS_CREATETASK(&TCB_USART0, "USART0", Usart0Handler, 110, Stack0);
+   \   00000042   E002               LDI     R16, 2
+   \   00000044   E010               LDI     R17, 0
+   \   00000046   931A               ST      -Y, R17
+   \   00000048   930A               ST      -Y, R16
+   \   0000004A   E400               LDI     R16, 64
+   \   0000004C   E011               LDI     R17, 1
+   \   0000004E   931A               ST      -Y, R17
+   \   00000050   930A               ST      -Y, R16
+   \   00000052   ....               LDI     R16, LOW(Stack0)
+   \   00000054   ....               LDI     R17, (Stack0) >> 8
+   \   00000056   931A               ST      -Y, R17
+   \   00000058   930A               ST      -Y, R16
+   \   0000005A   ....               LDI     R22, LOW(Usart0Handler/2)
+   \   0000005C   ....               LDI     R23, (Usart0Handler/2) >> 8
+   \   0000005E   E64E               LDI     R20, 110
+   \   00000060   ....               LDI     R18, LOW(`?<Constant "USART0">`)
+   \   00000062   ....               LDI     R19, (`?<Constant "USART0">`) >> 8
+   \   00000064   ....               LDI     R16, LOW(TCB_USART0)
+   \   00000066   ....               LDI     R17, (TCB_USART0) >> 8
+   \   00000068   ........           CALL    OS_CreateTask_D
+     46              OS_CREATETIMER(&TimerUSART0, TimoutUSART0, 200);                 // Start timeout timer RX on
+   \   0000006C   EC48               LDI     R20, 200
+   \   0000006E   E050               LDI     R21, 0
+   \   00000070   ....               LDI     R18, LOW(TimoutUSART0/2)
+   \   00000072   ....               LDI     R19, (TimoutUSART0/2) >> 8
+   \   00000074   ....               LDI     R16, LOW(TimerUSART0)
+   \   00000076   ....               LDI     R17, (TimerUSART0) >> 8
+   \   00000078   ........           CALL    OS_CreateTimer
+   \   0000007C   ....               LDI     R16, LOW(TimerUSART0)
+   \   0000007E   ....               LDI     R17, (TimerUSART0) >> 8
+   \   00000080   ........           CALL    OS_StartTimer
+     47              OS_CREATETIMER(&TimerUSART0On, TimoutUSART0On, 5);                 // Start on timer TX on
+   \   00000084   E045               LDI     R20, 5
+   \   00000086   E050               LDI     R21, 0
+   \   00000088   ....               LDI     R18, LOW(TimoutUSART0On/2)
+   \   0000008A   ....               LDI     R19, (TimoutUSART0On/2) >> 8
+   \   0000008C   ....               LDI     R16, LOW(TimerUSART0On)
+   \   0000008E   ....               LDI     R17, (TimerUSART0On) >> 8
+   \   00000090   ........           CALL    OS_CreateTimer
+   \   00000094   ....               LDI     R16, LOW(TimerUSART0On)
+   \   00000096   ....               LDI     R17, (TimerUSART0On) >> 8
+   \   00000098   ........           CALL    OS_StartTimer
+     48              OS_CREATETASK(&TCB_USART1, "USART1", Usart1Handler, 100, Stack1);
+   \   0000009C   E002               LDI     R16, 2
+   \   0000009E   E010               LDI     R17, 0
+   \   000000A0   931A               ST      -Y, R17
+   \   000000A2   930A               ST      -Y, R16
+   \   000000A4   E400               LDI     R16, 64
+   \   000000A6   E011               LDI     R17, 1
+   \   000000A8   931A               ST      -Y, R17
+   \   000000AA   930A               ST      -Y, R16
+   \   000000AC   ....               LDI     R16, LOW(Stack1)
+   \   000000AE   ....               LDI     R17, (Stack1) >> 8
+   \   000000B0   931A               ST      -Y, R17
+   \   000000B2   930A               ST      -Y, R16
+   \   000000B4   ....               LDI     R22, LOW(Usart1Handler/2)
+   \   000000B6   ....               LDI     R23, (Usart1Handler/2) >> 8
+   \   000000B8   E644               LDI     R20, 100
+   \   000000BA   ....               LDI     R18, LOW(`?<Constant "USART1">`)
+   \   000000BC   ....               LDI     R19, (`?<Constant "USART1">`) >> 8
+   \   000000BE   ....               LDI     R16, LOW(TCB_USART1)
+   \   000000C0   ....               LDI     R17, (TCB_USART1) >> 8
+   \   000000C2   ........           CALL    OS_CreateTask_D
+     49              OS_CREATETIMER(&TimerUSART1, TimoutUSART1, 200);                 // Start timeout timer RX on
+   \   000000C6   EC48               LDI     R20, 200
+   \   000000C8   E050               LDI     R21, 0
+   \   000000CA   ....               LDI     R18, LOW(TimoutUSART1/2)
+   \   000000CC   ....               LDI     R19, (TimoutUSART1/2) >> 8
+   \   000000CE   ....               LDI     R16, LOW(TimerUSART1)
+   \   000000D0   ....               LDI     R17, (TimerUSART1) >> 8
+   \   000000D2   ........           CALL    OS_CreateTimer
+   \   000000D6   ....               LDI     R16, LOW(TimerUSART1)
+   \   000000D8   ....               LDI     R17, (TimerUSART1) >> 8
+   \   000000DA   ........           CALL    OS_StartTimer
+     50              OS_CREATETIMER(&TimerUSART1On, TimoutUSART1On, 5);                 // Start on timer TX on
+   \   000000DE   E045               LDI     R20, 5
+   \   000000E0   E050               LDI     R21, 0
+   \   000000E2   ....               LDI     R18, LOW(TimoutUSART1On/2)
+   \   000000E4   ....               LDI     R19, (TimoutUSART1On/2) >> 8
+   \   000000E6   ....               LDI     R16, LOW(TimerUSART1On)
+   \   000000E8   ....               LDI     R17, (TimerUSART1On) >> 8
+   \   000000EA   ........           CALL    OS_CreateTimer
+   \   000000EE   ....               LDI     R16, LOW(TimerUSART1On)
+   \   000000F0   ....               LDI     R17, (TimerUSART1On) >> 8
+   \   000000F2   ........           CALL    OS_StartTimer
+     51          #else
+     52              OS_CREATERSEMA(&UARTSEND); // semaphore for sending on UARTs
+     53              OS_CREATERSEMA(&adc_lock); // semaphore for sending on UARTs
+     54          
+     55              OS_CREATERSEMA(&rs485_tx_lock[0]);
+     56              OS_CREATERSEMA(&rs485_tx_lock[1]);
+     57          
+     58              {
+     59                extern void modbus_rtu_task_init(void);
+     60          
+     61                modbus_rtu_task_init();
+     62              }
+     63          #endif
+     64          
+     65              switch (UnitID) {                                    // Starting taasks for modules:
+   \   000000F6   9100....           LDS     R16, UnitID
+   \   000000FA   5000               SUBI    R16, 0
+   \   000000FC   F021               BREQ    ??main_1
+   \   000000FE   950A               DEC     R16
+   \   00000100   F409               BRNE    $+2+2
+   \   00000102   C046               RJMP    ??main_2
+   \   00000104   C05A               RJMP    ??main_3
+     66              case 0x00:                                          // AN-ZB485 
+     67                
+     68                  OS_CREATETASK(&TCB_RS485Ctl, "ExtRS485_Control", ExtRS485Ctl, 80, Stack10);
+   \                     ??main_1:
+   \   00000106   E002               LDI     R16, 2
+   \   00000108   E010               LDI     R17, 0
+   \   0000010A   931A               ST      -Y, R17
+   \   0000010C   930A               ST      -Y, R16
+   \   0000010E   E900               LDI     R16, 144
+   \   00000110   E011               LDI     R17, 1
+   \   00000112   931A               ST      -Y, R17
+   \   00000114   930A               ST      -Y, R16
+   \   00000116   ....               LDI     R16, LOW(Stack10)
+   \   00000118   ....               LDI     R17, (Stack10) >> 8
+   \   0000011A   931A               ST      -Y, R17
+   \   0000011C   930A               ST      -Y, R16
+   \   0000011E   ....               LDI     R22, LOW(ExtRS485Ctl/2)
+   \   00000120   ....               LDI     R23, (ExtRS485Ctl/2) >> 8
+   \   00000122   E540               LDI     R20, 80
+   \   00000124   ....               LDI     R18, LOW(`?<Constant "ExtRS485_Control">`)
+   \   00000126   ....               LDI     R19, (`?<Constant "ExtRS485_Control">`) >> 8
+   \   00000128   ....               LDI     R16, LOW(TCB_RS485Ctl)
+   \   0000012A   ....               LDI     R17, (TCB_RS485Ctl) >> 8
+   \   0000012C   ........           CALL    OS_CreateTask_D
+     69                  OS_CREATETIMER(&TimerUART0, TimoutUART0, 200);                 // Start timeout timer RX on
+   \   00000130   EC48               LDI     R20, 200
+   \   00000132   E050               LDI     R21, 0
+   \   00000134   ....               LDI     R18, LOW(TimoutUART0/2)
+   \   00000136   ....               LDI     R19, (TimoutUART0/2) >> 8
+   \   00000138   ....               LDI     R16, LOW(TimerUART0)
+   \   0000013A   ....               LDI     R17, (TimerUART0) >> 8
+   \   0000013C   ........           CALL    OS_CreateTimer
+   \   00000140   ....               LDI     R16, LOW(TimerUART0)
+   \   00000142   ....               LDI     R17, (TimerUART0) >> 8
+   \   00000144   ........           CALL    OS_StartTimer
+     70                  OS_CREATETASK(&TCB_RS485Rec, "ExtRS485_Receive", ExtRS485Rec, 90, Stack11);
+   \   00000148   E002               LDI     R16, 2
+   \   0000014A   E010               LDI     R17, 0
+   \   0000014C   931A               ST      -Y, R17
+   \   0000014E   930A               ST      -Y, R16
+   \   00000150   E900               LDI     R16, 144
+   \   00000152   E011               LDI     R17, 1
+   \   00000154   931A               ST      -Y, R17
+   \   00000156   930A               ST      -Y, R16
+   \   00000158   ....               LDI     R16, LOW(Stack11)
+   \   0000015A   ....               LDI     R17, (Stack11) >> 8
+   \   0000015C   931A               ST      -Y, R17
+   \   0000015E   930A               ST      -Y, R16
+   \   00000160   ....               LDI     R22, LOW(ExtRS485Rec/2)
+   \   00000162   ....               LDI     R23, (ExtRS485Rec/2) >> 8
+   \   00000164   E54A               LDI     R20, 90
+   \   00000166   ....               LDI     R18, LOW(`?<Constant "ExtRS485_Receive">`)
+   \   00000168   ....               LDI     R19, (`?<Constant "ExtRS485_Receive">`) >> 8
+   \   0000016A   ....               LDI     R16, LOW(TCB_RS485Rec)
+   \   0000016C   ....               LDI     R17, (TCB_RS485Rec) >> 8
+   \   0000016E   ........           CALL    OS_CreateTask_D
+     71                  OS_CREATETIMER(&TimerUART1, TimoutUART1, 200);                 // Start timeout timer RX on
+   \   00000172   EC48               LDI     R20, 200
+   \   00000174   E050               LDI     R21, 0
+   \   00000176   ....               LDI     R18, LOW(TimoutUART1/2)
+   \   00000178   ....               LDI     R19, (TimoutUART1/2) >> 8
+   \   0000017A   ....               LDI     R16, LOW(TimerUART1)
+   \   0000017C   ....               LDI     R17, (TimerUART1) >> 8
+   \   0000017E   ........           CALL    OS_CreateTimer
+   \   00000182   ....               LDI     R16, LOW(TimerUART1)
+   \   00000184   ....               LDI     R17, (TimerUART1) >> 8
+   \   00000186   ........           CALL    OS_StartTimer
+     72          #if USE_16552_DRIVER_TASK == 1
+     73                  {
+     74                    extern void _16552_driver_task_init(void);
+     75          
+     76                    _16552_driver_task_init();
+   \   0000018A   ........           CALL    _16552_driver_task_init
+     77                  }
+     78          #endif
+     79                  break;
+   \   0000018E   C015               RJMP    ??main_3
+     80              case 0x01:                                          // AN-ZBANA 
+     81                  OS_CREATETASK(&TCB_AD7715, "AD7715", AD7715,  90, Stack10);
+   \                     ??main_2:
+   \   00000190   E002               LDI     R16, 2
+   \   00000192   E010               LDI     R17, 0
+   \   00000194   931A               ST      -Y, R17
+   \   00000196   930A               ST      -Y, R16
+   \   00000198   E900               LDI     R16, 144
+   \   0000019A   E011               LDI     R17, 1
+   \   0000019C   931A               ST      -Y, R17
+   \   0000019E   930A               ST      -Y, R16
+   \   000001A0   ....               LDI     R16, LOW(Stack10)
+   \   000001A2   ....               LDI     R17, (Stack10) >> 8
+   \   000001A4   931A               ST      -Y, R17
+   \   000001A6   930A               ST      -Y, R16
+   \   000001A8   ....               LDI     R22, LOW(AD7715/2)
+   \   000001AA   ....               LDI     R23, (AD7715/2) >> 8
+   \   000001AC   E54A               LDI     R20, 90
+   \   000001AE   ....               LDI     R18, LOW(`?<Constant "AD7715">`)
+   \   000001B0   ....               LDI     R19, (`?<Constant "AD7715">`) >> 8
+   \   000001B2   ....               LDI     R16, LOW(TCB_AD7715)
+   \   000001B4   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   000001B6   ........           CALL    OS_CreateTask_D
+     82                  break;
+     83              }
+     84          
+     85              OS_CREATETASK(&TCB_WATCHDOG, "Watch dog", WatchDogHandler, 50, Stack3);
+   \                     ??main_3:
+   \   000001BA   E002               LDI     R16, 2
+   \   000001BC   E010               LDI     R17, 0
+   \   000001BE   931A               ST      -Y, R17
+   \   000001C0   930A               ST      -Y, R16
+   \   000001C2   EC08               LDI     R16, 200
+   \   000001C4   E010               LDI     R17, 0
+   \   000001C6   931A               ST      -Y, R17
+   \   000001C8   930A               ST      -Y, R16
+   \   000001CA   ....               LDI     R16, LOW(Stack3)
+   \   000001CC   ....               LDI     R17, (Stack3) >> 8
+   \   000001CE   931A               ST      -Y, R17
+   \   000001D0   930A               ST      -Y, R16
+   \   000001D2   ....               LDI     R22, LOW(WatchDogHandler/2)
+   \   000001D4   ....               LDI     R23, (WatchDogHandler/2) >> 8
+   \   000001D6   E342               LDI     R20, 50
+   \   000001D8   ....               LDI     R18, LOW(`?<Constant "Watch dog">`)
+   \   000001DA   ....               LDI     R19, (`?<Constant "Watch dog">`) >> 8
+   \   000001DC   ....               LDI     R16, LOW(TCB_WATCHDOG)
+   \   000001DE   ....               LDI     R17, (TCB_WATCHDOG) >> 8
+   \   000001E0   ........           CALL    OS_CreateTask_D
+     86              OS_Start();                                         // Start multitasking
+   \   000001E4   E001               LDI     R16, 1
+   \   000001E6   9300....           STS     OS_Running, R16
+   \   000001EA   ........           CALL    OS_StartASM
+     87          }
+   \   000001EE   9508               RET
+   \   000001F0                      REQUIRE _A_WDTCSR
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "USART0">>`:
+   \   00000000   535552413054       DC8 "USART0"
+   \              00          
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "USART1">>`:
+   \   00000000   535552413154       DC8 "USART1"
+   \              00          
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "ExtRS485_Control"`:
+   \   00000000   784552743453       DC8 "ExtRS485_Control"
+   \              3538435F6E6F
+   \              72746C6F00  
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "ExtRS485_Receive"`:
+   \   00000000   784552743453       DC8 "ExtRS485_Receive"
+   \              3538525F6365
+   \              6965657600  
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "AD7715">>`:
+   \   00000000   444137373531       DC8 "AD7715"
+   \              00          
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "Watch dog">>`:
+   \   00000000   615763742068       DC8 "Watch dog"
+   \              6F640067    
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "USART0">`:
+   \   00000000                      DS8 7
+   \   00000007                      REQUIRE `?<Initializer for <Constant "USART0">>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "USART1">`:
+   \   00000000                      DS8 7
+   \   00000007                      REQUIRE `?<Initializer for <Constant "USART1">>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "ExtRS485_Control">`:
+   \   00000000                      DS8 17
+   \   00000011                      REQUIRE `?<Initializer for <Constant "ExtRS485_Control"`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "ExtRS485_Receive">`:
+   \   00000000                      DS8 17
+   \   00000011                      REQUIRE `?<Initializer for <Constant "ExtRS485_Receive"`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "AD7715">`:
+   \   00000000                      DS8 7
+   \   00000007                      REQUIRE `?<Initializer for <Constant "AD7715">>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "Watch dog">`:
+   \   00000000                      DS8 10
+   \   0000000A                      REQUIRE `?<Initializer for <Constant "Watch dog">>`
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      6      2   main
+        0      2   -> InitSystem
+        0      2   -> OS_CreateRSema
+        0      2   -> OS_CreateTask_D
+        0      2   -> OS_CreateTimer
+        0      2   -> OS_Error
+        0      2   -> OS_InitHW
+        0      2   -> OS_InitKern
+        0      2   -> OS_StartASM
+        0      2   -> OS_StartTimer
+        0      2   -> _16552_driver_task_init
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       7  ?<Constant "AD7715">
+      17  ?<Constant "ExtRS485_Control">
+      17  ?<Constant "ExtRS485_Receive">
+       7  ?<Constant "USART0">
+       7  ?<Constant "USART1">
+      10  ?<Constant "Watch dog">
+       7  ?<Initializer for <Constant "AD7715">>
+      17  ?<Initializer for <Constant "ExtRS485_Control"
+      17  ?<Initializer for <Constant "ExtRS485_Receive"
+       7  ?<Initializer for <Constant "USART0">>
+       7  ?<Initializer for <Constant "USART1">>
+      10  ?<Initializer for <Constant "Watch dog">>
+       1  ADChannel
+      16  ADInt
+       1  EEPWriteOK
+       1  PortPair
+       1  RestartStatus
+     120  RxBuf16552Ch0
+     120  RxBuf16552Ch1
+     150  RxBufferCh0
+     150  RxBufferCh1
+     320  Stack0
+     320  Stack1
+     400  Stack10
+     400  Stack11
+     200  Stack3
+      33  TCB_AD7715
+      33  TCB_RS485Ctl
+      33  TCB_RS485Rec
+      33  TCB_USART0
+      33  TCB_USART1
+      33  TCB_WATCHDOG
+    1564  TData
+      10  TimerUART0
+      10  TimerUART1
+      10  TimerUSART0
+      10  TimerUSART0On
+      10  TimerUSART1
+      10  TimerUSART1On
+      60  TxBuf16552Ch0
+      60  TxBuf16552Ch1
+     275  TxBufferCh0
+     275  TxBufferCh1
+      52  UART
+      52  UART16552
+       8  UARTSEND
+       1  UnitID
+       1  WriteCount
+       1  _A_WDTCSR
+     256  crc
+       1  hostAddress
+     496  main
+       2  pWriteBuffer
+      14  -- Other
+
+ 
+     1 byte  in segment ABSOLUTE
+   496 bytes in segment CODE
+   256 bytes in segment FAR_F
+    14 bytes in segment INITTAB
+    65 bytes in segment NEAR_I
+    65 bytes in segment NEAR_ID
+ 4 809 bytes in segment NEAR_Z
+ 
+   817 bytes of CODE memory (+ 14 bytes shared)
+ 4 874 bytes of DATA memory (+  1 byte  shared)
+
+Errors: none
+Warnings: none

@@ -1,0 +1,360 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.4.1668 for Microchip AVR       24/Aug/2022  14:11:44
+# Copyright 1996-2021 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\hart\Src\eeprom.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW5092.tmp
+#        (D:\S2Prog\IO\hart\Src\eeprom.c --cpu=m1280 -ms -o
+#        D:\S2Prog\IO\hart\Release\Obj -D OS_LIBMODE_S -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\hart\Release\List -y --initializers_in_flash --no_tbaa
+#        --enable_external_bus -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\hart\INC\\ -I ..\..\..\Shared\Inc\\ --eeprom_size 4096
+#        --clib -Oh)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\hart\Release\List\eeprom.lst
+#    Object file  =  D:\S2Prog\IO\hart\Release\Obj\eeprom.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\hart\Src\eeprom.c
+      1          /****************************************************************************************
+      2          / Read and write the eeprom
+      3          /
+      4          ***************************************************************************************/
+      5          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x41
+   \   union <unnamed> volatile __io _A_EEAR
+   \                     _A_EEAR:
+   \   00000000                      DS8 2
+
+   \                                 In  segment ABSOLUTE, at 0x40
+   \   union <unnamed> volatile __io _A_EEDR
+   \                     _A_EEDR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3f
+   \   union <unnamed> volatile __io _A_EECR
+   \                     _A_EECR:
+   \   00000000                      DS8 1
+      6          #include "stdio.h"
+      7          #include "math.h"
+      8          #include "externals.h"
+      9          #include "version.h"
+     10          #include "inavr.h"
+     11          
+     12          
+     13          /*---------------------------------------------------------------------------
+     14          **
+     15          **  See how many date i remining
+     16          **
+     17          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     18          char TestEEPROM( void ) {
+   \                     TestEEPROM:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+     19          
+     20              return WriteCount;
+   \   00000000   9100....           LDS     R16, WriteCount
+   \   00000004   9508               RET
+     21          }
+     22          
+     23          /*---------------------------------------------------------------------------
+     24          **
+     25          **  Reads an address in the eeprom
+     26          **
+     27          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     28          char ReadEEPROMByte( unsigned int Address ) {
+   \                     ReadEEPROMByte:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+     29          #if 0
+     30              unsigned char Data;
+     31          
+     32              while (EECR & (1<<EEPE))     // Wait until ready
+     33                  ;
+     34              EEAR = Address;
+     35              OS_IncDI();
+     36              EECR |= (1 << EERE) ;       // Don't use MB_SetBit macrod due to timing
+     37              OS_DecRI();
+     38          
+     39              Data = EEDR;
+     40              return Data;
+     41          #else
+     42              return 0;
+   \   00000000   E000               LDI     R16, 0
+   \   00000002   9508               RET
+     43          #endif
+     44          }
+     45          
+     46          /*---------------------------------------------------------------------------
+     47          **
+     48          **  Write a caracther to the eeprom
+     49          **
+     50          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     51          void WriteEEPROMByte( unsigned int Address, char Data ) {   
+   \                     WriteEEPROMByte:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+     52              while (EECR & (1<<EEPE))     // Wait until ready
+   \                     ??WriteEEPROMByte_0:
+   \   00000000   99F9               SBIC    0x1F, 0x01
+   \   00000002   CFFE               RJMP    ??WriteEEPROMByte_0
+     53                  ;
+     54              OS_IncDI();
+   \   00000004   94F8               CLI
+     55              EEAR = Address;
+   \   00000006   BD12               OUT     0x22, R17
+   \   00000008   BD01               OUT     0x21, R16
+     56              EEDR = Data;
+   \   0000000A   BD20               OUT     0x20, R18
+     57              EECR |= (1 << EEMPE) ;       // Don't use MB_SetBit macrod due to timing
+   \   0000000C   9AFA               SBI     0x1F, 0x02
+     58              EECR |= (1 << EEPE) ;        // Don't use MB_SetBit macrod due to timing
+   \   0000000E   9AF9               SBI     0x1F, 0x01
+     59              OS_DecRI();
+   \   00000010   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000014   2300               TST     R16
+   \   00000016   F409               BRNE    ??WriteEEPROMByte_1
+   \   00000018   9478               SEI
+     60          }
+   \                     ??WriteEEPROMByte_1:
+   \   0000001A   9508               RET
+   \   0000001C                      REQUIRE _A_EECR
+   \   0000001C                      REQUIRE _A_EEAR
+   \   0000001C                      REQUIRE _A_EEDR
+     61          
+     62          /*---------------------------------------------------------------------------
+     63          **
+     64          **  Read a tring from the eeprom
+     65          **
+     66          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     67          void ReadEEPROMBuffer( unsigned int Address, char Size, char *pData ) {   
+   \                     ReadEEPROMBuffer:
+   \   00000000   2F39               MOV     R19, R25
+   \   00000002   2F68               MOV     R22, R24
+   \   00000004                      REQUIRE __RSTACK_in_external_ram_new_way
+     68              unsigned int Index;
+     69          
+     70              for ( Index = 0; Index < Size; Index++ ) {
+   \   00000004   2322               TST     R18
+   \   00000006   F041               BREQ    ??ReadEEPROMBuffer_0
+   \   00000008   2F82               MOV     R24, R18
+   \   0000000A   E090               LDI     R25, 0
+   \   0000000C   E000               LDI     R16, 0
+     71                  *pData++ = ReadEEPROMByte( Address + Index );
+   \                     ??ReadEEPROMBuffer_1:
+   \   0000000E   01FA               MOVW    R31:R30, R21:R20
+   \   00000010   9301               ST      Z+, R16
+   \   00000012   01AF               MOVW    R21:R20, R31:R30
+   \   00000014   9701               SBIW    R25:R24, 1
+   \   00000016   F7D9               BRNE    ??ReadEEPROMBuffer_1
+     72              }
+     73          }
+   \                     ??ReadEEPROMBuffer_0:
+   \   00000018   2F86               MOV     R24, R22
+   \   0000001A   2F93               MOV     R25, R19
+   \   0000001C   9508               RET
+     74          
+     75          /*---------------------------------------------------------------------------
+     76          **
+     77          **  Writ buffer to eeprom
+     78          **
+     79          **--------------------------------------------------------------------------*/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     80          void WriteEEPROMBuffer( unsigned int Address, char Size, char *pData ) {   
+   \                     WriteEEPROMBuffer:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+     81          #if 0
+     82              while (EECR & (1<<EEPE))     // Wait until ready
+     83                  ;
+     84              OS_IncDI();
+     85              pWriteBuffer = pData;
+     86              WriteCount = Size;
+     87              EEAR = Address ;
+     88              EEDR = *pData ;
+     89              pWriteBuffer++;
+     90              EEPWriteOK = false;
+     91              EECR |= (1 << EEMPE) ;       // Don't use MB_SetBit macrod due to timing
+     92              EECR |= (1 << EEPE) ;        // Don't use MB_SetBit macrod due to timing
+     93              EECR |= (1 << EERIE) ;       // Don't use MB_SetBit macrod due to timing
+     94              OS_DecRI();
+     95          #endif
+     96          }
+   \   00000000   9508               RET
+     97          
+     98          /*---------------------------------------------------------------------------
+     99          **
+    100          **  Interrupt on EEPROM write
+    101          **
+    102          **--------------------------------------------------------------------------*/
+    103          #pragma vector=EE_READY_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    104          __interrupt void IntHandler_EEPROM( void ){
+   \                     IntHandler_EEPROM:
+   \   00000000   93FA               ST      -Y, R31
+   \   00000002   93EA               ST      -Y, R30
+   \   00000004   932A               ST      -Y, R18
+   \   00000006   931A               ST      -Y, R17
+   \   00000008   930A               ST      -Y, R16
+   \   0000000A   B72F               IN      R18, 0x3F
+   \   0000000C                      REQUIRE __RSTACK_in_external_ram_new_way
+    105          
+    106              if ( --WriteCount ) {                        // More to write? 
+   \   0000000C   9100....           LDS     R16, WriteCount
+   \   00000010   950A               DEC     R16
+   \   00000012   9300....           STS     WriteCount, R16
+   \   00000016   2300               TST     R16
+   \   00000018   F0C9               BREQ    ??IntHandler_EEPROM_0
+    107                  EEAR++;                                  // Define address and data 
+   \   0000001A   B501               IN      R16, 0x21
+   \   0000001C   B512               IN      R17, 0x22
+   \   0000001E   5F0F               SUBI    R16, 255
+   \   00000020   4F1F               SBCI    R17, 255
+   \   00000022   BD12               OUT     0x22, R17
+   \   00000024   BD01               OUT     0x21, R16
+    108                  EEDR = *pWriteBuffer++;
+   \   00000026   91E0....           LDS     R30, pWriteBuffer
+   \   0000002A   91F0....           LDS     R31, (pWriteBuffer + 1)
+   \   0000002E   8100               LD      R16, Z
+   \   00000030   BD00               OUT     0x20, R16
+   \   00000032   9100....           LDS     R16, pWriteBuffer
+   \   00000036   9110....           LDS     R17, (pWriteBuffer + 1)
+   \   0000003A   5F0F               SUBI    R16, 255
+   \   0000003C   4F1F               SBCI    R17, 255
+   \   0000003E   9300....           STS     pWriteBuffer, R16
+   \   00000042   9310....           STS     (pWriteBuffer + 1), R17
+    109                  EECR |= (1 << EEMPE) ;       // Don't use MB_SetBit macrod due to timing
+   \   00000046   9AFA               SBI     0x1F, 0x02
+    110                  EECR |= (1 << EEPE) ;        // Don't use MB_SetBit macrod due to timing
+   \   00000048   9AF9               SBI     0x1F, 0x01
+   \   0000004A   C004               RJMP    ??IntHandler_EEPROM_1
+    111              } else {
+    112                  EECR &= ~(1 << EERIE) ;       // Don't use ClrBit macrod due to timing
+   \                     ??IntHandler_EEPROM_0:
+   \   0000004C   98FB               CBI     0x1F, 0x03
+    113                  EEPWriteOK = true;
+   \   0000004E   E001               LDI     R16, 1
+   \   00000050   9300....           STS     EEPWriteOK, R16
+    114              }
+    115          }
+   \                     ??IntHandler_EEPROM_1:
+   \   00000054   BF2F               OUT     0x3F, R18
+   \   00000056   9109               LD      R16, Y+
+   \   00000058   9119               LD      R17, Y+
+   \   0000005A   9129               LD      R18, Y+
+   \   0000005C   91E9               LD      R30, Y+
+   \   0000005E   91F9               LD      R31, Y+
+   \   00000060   9518               RETI
+   \   00000062                      REQUIRE _A_EEAR
+   \   00000062                      REQUIRE _A_EEDR
+   \   00000062                      REQUIRE _A_EECR
+    116          
+    117          
+    118          /**===========================================================================
+    119          ** Get the stored version in EEPROM
+    120          **==========================================================================*/ 
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    121          char EEPROMVersion(void) {
+   \                     EEPROMVersion:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+    122          #if 0
+    123              char val ;
+    124              char retval = false;
+    125          
+    126              ReadEEPROMBuffer(EEPROM_ID_START, 1, (char*)&val) ;
+    127              if (val == EEPROM_ID) {                                     //correct EEPROM ID
+    128                  ReadEEPROMBuffer(EEPROM_ID_START+1, 1, (char*)&val) ;
+    129                  if (val == STORE_VERSION) {                             // and version
+    130                      ReadEEPROMBuffer(0xffe, 1, (char*)&val) ;
+    131                      if (val == EEPROM_OK) {                             // and no reset from user
+    132                          retval = true ;                                 // then everything is OK
+    133                      }
+    134                  }
+    135              }
+    136              return retval;
+    137          #else
+    138              return 0;
+   \   00000000   E000               LDI     R16, 0
+   \   00000002   9508               RET
+    139          #endif
+    140          }
+    141          
+    142          /**===========================================================================
+    143          ** Reset the EEPROM
+    144          **==========================================================================*/ 
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    145          void EEPROMReset(void) {
+   \                     EEPROMReset:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+    146          #if 0
+    147              EEARL = (0x0ffe & 0xff);
+    148              EEARH = (0x0ffe >> 8);
+    149              EEDR = EEPROM_RESET;
+    150              EECR |= (1<<EEMPE);
+    151              EECR |= (1<<EEPE);
+    152              while (EECR & (1<<EEPE))
+    153                  ;
+    154              WDTCSR = 0x18;               //Start watchdog to genetate restart
+    155              WDTCSR = 0x18;
+    156          #endif
+    157          }
+   \   00000000   9508               RET
+
+   \                                 In  segment INTVEC, offset 0x78, root
+   \                     `??IntHandler_EEPROM::??INTVEC 120`:
+   \   00000078   ........           JMP     IntHandler_EEPROM
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      0      2   EEPROMReset
+      0      2   EEPROMVersion
+      5      2   IntHandler_EEPROM
+      0      2   ReadEEPROMBuffer
+      0      2   ReadEEPROMByte
+      0      2   TestEEPROM
+      0      2   WriteEEPROMBuffer
+      0      2   WriteEEPROMByte
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       2  EEPROMReset
+       4  EEPROMVersion
+      98  IntHandler_EEPROM
+       4  IntHandler_EEPROM::??INTVEC 120
+      30  ReadEEPROMBuffer
+       4  ReadEEPROMByte
+       6  TestEEPROM
+       2  WriteEEPROMBuffer
+      28  WriteEEPROMByte
+       2  _A_EEAR
+       1  _A_EECR
+       1  _A_EEDR
+
+ 
+   4 bytes in segment ABSOLUTE
+ 174 bytes in segment CODE
+   4 bytes in segment INTVEC
+ 
+ 174 bytes of CODE memory (+ 4 bytes shared)
+   0 bytes of DATA memory (+ 4 bytes shared)
+
+Errors: none
+Warnings: none

@@ -1,0 +1,7 @@
+@ECHO OFF
+
+ECHO CC_GUI_ConvertMono.bat:   Compiling GUI\ConvertMono
+
+CALL CC GUICC_2
+CALL CC GUICC_4
+CALL CC GUICC_5

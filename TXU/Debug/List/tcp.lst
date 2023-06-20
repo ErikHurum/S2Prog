@@ -1,0 +1,3537 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:19 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\tcp.c              #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\tcp.c --fpu None   #
+#                       -D OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D   #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\tcp.lst                     #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\tcp.r79                      #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\tcp.c
+      1          /**
+      2           * @file
+      3           * Transmission Control Protocol for IP
+      4           *
+      5           * This file contains common functions for the TCP implementation, such as functinos
+      6           * for manipulating the data structures and the TCP timer functions. TCP functions
+      7           * related to input and output is found in tcp_in.c and tcp_out.c respectively.
+      8           *
+      9           */
+     10          
+     11          /*
+     12           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+     13           * All rights reserved. 
+     14           * 
+     15           * Redistribution and use in source and binary forms, with or without modification, 
+     16           * are permitted provided that the following conditions are met:
+     17           *
+     18           * 1. Redistributions of source code must retain the above copyright notice,
+     19           *    this list of conditions and the following disclaimer.
+     20           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     21           *    this list of conditions and the following disclaimer in the documentation
+     22           *    and/or other materials provided with the distribution.
+     23           * 3. The name of the author may not be used to endorse or promote products
+     24           *    derived from this software without specific prior written permission. 
+     25           *
+     26           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED 
+     27           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+     28           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+     29           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+     30           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+     31           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+     32           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+     33           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
+     34           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+     35           * OF SUCH DAMAGE.
+     36           *
+     37           * This file is part of the lwIP TCP/IP stack.
+     38           * 
+     39           * Author: Adam Dunkels <adam@sics.se>
+     40           *
+     41           */
+     42          
+     43          #include "lwip/opt.h"
+     44          
+     45          #if LWIP_TCP /* don't build if not configured for use in lwipopts.h */
+     46          
+     47          #include "lwip/def.h"
+     48          #include "lwip/mem.h"
+     49          #include "lwip/memp.h"
+     50          #include "lwip/snmp.h"
+     51          #include "lwip/tcp.h"
+     52          #include "lwip/tcp_impl.h"
+     53          #include "lwip/debug.h"
+     54          #include "lwip/stats.h"
+     55          
+     56          #include <string.h>
+     57          
+     58          #ifndef TCP_LOCAL_PORT_RANGE_START
+     59          /* From http://www.iana.org/assignments/port-numbers:
+     60             "The Dynamic and/or Private Ports are those from 49152 through 65535" */
+     61          #define TCP_LOCAL_PORT_RANGE_START        0xc000
+     62          #define TCP_LOCAL_PORT_RANGE_END          0xffff
+     63          #define TCP_ENSURE_LOCAL_PORT_RANGE(port) (((port) & ~TCP_LOCAL_PORT_RANGE_START) + TCP_LOCAL_PORT_RANGE_START)
+     64          #endif
+     65          
+     66          #if LWIP_TCP_KEEPALIVE
+     67          #define TCP_KEEP_DUR(pcb)   ((pcb)->keep_cnt * (pcb)->keep_intvl)
+     68          #define TCP_KEEP_INTVL(pcb) ((pcb)->keep_intvl)
+     69          #else /* LWIP_TCP_KEEPALIVE */
+     70          #define TCP_KEEP_DUR(pcb)   TCP_MAXIDLE
+     71          #define TCP_KEEP_INTVL(pcb) TCP_KEEPINTVL_DEFAULT
+     72          #endif /* LWIP_TCP_KEEPALIVE */
+     73          
+
+   \                                 In segment DATA_C, align 4, align-sorted
+     74          const char * const tcp_state_str[] = {
+   \                     tcp_state_str:
+   \   00000000   ............       DC32 `?<Constant "CLOSED">`, `?<Constant "LISTEN">`
+   \              ....        
+   \   00000008   ............       DC32 `?<Constant "SYN_SENT">`, `?<Constant "SYN_RCVD">`
+   \              ....        
+   \   00000010   ............       DC32 `?<Constant "ESTABLISHED">`, `?<Constant "FIN_WAIT_1">`
+   \              ....        
+   \   00000018   ............       DC32 `?<Constant "FIN_WAIT_2">`, `?<Constant "CLOSE_WAIT">`
+   \              ....        
+   \   00000020   ............       DC32 `?<Constant "CLOSING">`, `?<Constant "LAST_ACK">`
+   \              ....        
+   \   00000028   ........           DC32 `?<Constant "TIME_WAIT">`
+     75            "CLOSED",      
+     76            "LISTEN",      
+     77            "SYN_SENT",    
+     78            "SYN_RCVD",    
+     79            "ESTABLISHED", 
+     80            "FIN_WAIT_1",  
+     81            "FIN_WAIT_2",  
+     82            "CLOSE_WAIT",  
+     83            "CLOSING",     
+     84            "LAST_ACK",    
+     85            "TIME_WAIT"   
+     86          };
+     87          
+     88          /* last local TCP port */
+     89          static u16_t tcp_port = TCP_LOCAL_PORT_RANGE_START;
+     90          
+     91          /* Incremented every coarse grained timer shot (typically every 500 ms). */
+     92          u32_t tcp_ticks;
+
+   \                                 In segment DATA_C, align 4, align-sorted
+     93          const u8_t tcp_backoff[13] =
+   \                     tcp_backoff:
+   \   00000000   010203040506       DC8 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 0, 0, 0
+   \              070707070707
+   \              07000000    
+     94              { 1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7};
+     95           /* Times per slowtmr hits */
+     96          const u8_t tcp_persist_backoff[7] = { 3, 6, 12, 24, 48, 96, 120 };
+   \                     tcp_persist_backoff:
+   \   00000010   03060C183060       DC8 3, 6, 12, 24, 48, 96, 120, 0
+   \              7800        
+     97          
+     98          /* The TCP PCB lists. */
+     99          
+    100          /** List of all TCP PCBs bound but not yet (connected || listening) */
+    101          struct tcp_pcb *tcp_bound_pcbs;
+    102          /** List of all TCP PCBs in LISTEN state */
+    103          union tcp_listen_pcbs_t tcp_listen_pcbs;
+    104          /** List of all TCP PCBs that are in a state in which
+    105           * they accept or send data. */
+    106          struct tcp_pcb *tcp_active_pcbs;
+    107          /** List of all TCP PCBs in TIME-WAIT state */
+    108          struct tcp_pcb *tcp_tw_pcbs;
+    109          
+    110          #define NUM_TCP_PCB_LISTS               4
+    111          #define NUM_TCP_PCB_LISTS_NO_TIME_WAIT  3
+    112          /** An array with all (non-temporary) PCB lists, mainly used for smaller code size */
+
+   \                                 In segment DATA_C, align 4, align-sorted
+    113          struct tcp_pcb ** const tcp_pcb_lists[] = {&tcp_listen_pcbs.pcbs, &tcp_bound_pcbs,
+   \                     tcp_pcb_lists:
+   \   00000000   ............       DC32 tcp_listen_pcbs, tcp_bound_pcbs, tcp_active_pcbs, tcp_tw_pcbs
+   \              ............
+   \              ........    
+    114            &tcp_active_pcbs, &tcp_tw_pcbs};
+    115          
+    116          /** Only used for temporary storage. */
+    117          struct tcp_pcb *tcp_tmp_pcb;
+    118          
+    119          u8_t tcp_active_pcbs_changed;
+    120          
+    121          /** Timer counter to handle calling slow-timer from tcp_tmr() */ 
+
+   \                                 In segment DATA_Z, align 1, align-sorted
+    122          static u8_t tcp_timer;
+   \                     tcp_timer:
+   \   00000000                      DS8 1
+    123          static u8_t tcp_timer_ctr;
+    124          static u16_t tcp_new_port(void);
+    125          
+    126          /**
+    127           * Initialize this module.
+    128           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    129          void
+    130          tcp_init(void)
+    131          {
+    132          #if LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS && defined(LWIP_RAND)
+    133            tcp_port = TCP_ENSURE_LOCAL_PORT_RANGE(LWIP_RAND());
+    134          #endif /* LWIP_RANDOMIZE_INITIAL_LOCAL_PORTS && defined(LWIP_RAND) */
+    135          }
+   \                     tcp_init:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    136          
+    137          /**
+    138           * Called periodically to dispatch TCP timers.
+    139           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    140          void
+    141          tcp_tmr(void)
+    142          {
+   \                     tcp_tmr:
+   \   00000000   00402DE9           PUSH     {LR}
+    143            /* Call tcp_fasttmr() every 250 ms */
+    144            tcp_fasttmr();
+   \   00000004   ........           BL       tcp_fasttmr
+    145          
+    146            if (++tcp_timer & 1) {
+   \   00000008   1C009FE5           LDR      R0,??tcp_tmr_0   ;; tcp_timer
+   \   0000000C   0010D0E5           LDRB     R1,[R0, #+0]
+   \   00000010   011081E2           ADD      R1,R1,#+1
+   \   00000014   0010C0E5           STRB     R1,[R0, #+0]
+   \   00000018   010011E3           TST      R1,#0x1
+   \   0000001C   0000000A           BEQ      ??tcp_tmr_1
+    147              /* Call tcp_tmr() every 500 ms, i.e., every other timer
+    148                 tcp_tmr() is called. */
+    149              tcp_slowtmr();
+   \   00000020   ........           BL       tcp_slowtmr
+    150            }
+    151          }
+   \                     ??tcp_tmr_1:
+   \   00000024   0040BDE8           POP      {LR}
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_tmr_0:
+   \   0000002C   ........           DC32     tcp_timer
+    152          
+    153          /**
+    154           * Closes the TX side of a connection held by the PCB.
+    155           * For tcp_close(), a RST is sent if the application didn't receive all data
+    156           * (tcp_recved() not called for all data passed to recv callback).
+    157           *
+    158           * Listening pcbs are freed and may not be referenced any more.
+    159           * Connection pcbs are freed if not yet connected and may not be referenced
+    160           * any more. If a connection is established (at least SYN received or in
+    161           * a closing state), the connection is closed, and put in a closing state.
+    162           * The pcb is then automatically freed in tcp_slowtmr(). It is therefore
+    163           * unsafe to reference it.
+    164           *
+    165           * @param pcb the tcp_pcb to close
+    166           * @return ERR_OK if connection has been closed
+    167           *         another err_t if closing failed and pcb is not freed
+    168           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    169          static err_t
+    170          tcp_close_shutdown(struct tcp_pcb *pcb, u8_t rst_on_unacked_data)
+    171          {
+   \                     tcp_close_shutdown:
+   \   00000000   F0432DE9           PUSH     {R4-R9,LR}
+    172            err_t err;
+    173          
+    174            if (rst_on_unacked_data && ((pcb->state == ESTABLISHED) || (pcb->state == CLOSE_WAIT))) {
+   \   00000004   ........           LDR      R6,??DataTable8  ;; tcp_port
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   BA01D4E1           LDRH     R0,[R4, #+26]
+   \   00000010   1820D4E5           LDRB     R2,[R4, #+24]
+   \   00000014   0150A0E3           MOV      R5,#+1
+   \   00000018   0070A0E3           MOV      R7,#+0
+   \   0000001C   000051E3           CMP      R1,#+0
+   \   00000020   3200000A           BEQ      ??tcp_close_shutdown_1
+   \   00000024   040052E3           CMP      R2,#+4
+   \   00000028   07005213           CMPNE    R2,#+7
+   \   0000002C   2F00001A           BNE      ??tcp_close_shutdown_1
+    175              if ((pcb->refused_data != NULL) || (pcb->rcv_wnd != TCP_WND)) {
+   \   00000030   781094E5           LDR      R1,[R4, #+120]
+   \   00000034   000051E3           CMP      R1,#+0
+   \   00000038   BC12D401           LDRHEQ   R1,[R4, #+44]
+   \   0000003C   860E5103           CMPEQ    R1,#+2144
+   \   00000040   2A00000A           BEQ      ??tcp_close_shutdown_1
+    176                /* Not all data received by application, send RST to tell the remote
+    177                   side about this. */
+    178                LWIP_ASSERT("pcb->flags & TF_RXCLOSED", pcb->flags & TF_RXCLOSED);
+    179          
+    180                /* don't call tcp_abort here: we must not deallocate the pcb since
+    181                   that might not be expected when calling tcp_close */
+    182                tcp_rst(pcb->snd_nxt, pcb->rcv_nxt, &pcb->local_ip, &pcb->remote_ip,
+    183                  pcb->local_port, pcb->remote_port);
+   \   00000044   BC11D4E1           LDRH     R1,[R4, #+28]
+   \   00000048   043084E2           ADD      R3,R4,#+4
+   \   0000004C   0420A0E1           MOV      R2,R4
+   \   00000050   02002DE9           PUSH     {R1}
+   \   00000054   01002DE9           PUSH     {R0}
+   \   00000058   281094E5           LDR      R1,[R4, #+40]
+   \   0000005C   500094E5           LDR      R0,[R4, #+80]
+   \   00000060   ........           _BLF     tcp_rst,??tcp_rst??rA
+    184          
+    185                tcp_pcb_purge(pcb);
+   \   00000064   0400A0E1           MOV      R0,R4
+   \   00000068   ........           BL       tcp_pcb_purge
+    186                TCP_RMV_ACTIVE(pcb);
+   \   0000006C   100096E5           LDR      R0,[R6, #+16]
+   \   00000070   08D08DE2           ADD      SP,SP,#+8
+   \   00000074   040050E1           CMP      R0,R4
+   \   00000078   0C009005           LDREQ    R0,[R0, #+12]
+   \   0000007C   10008605           STREQ    R0,[R6, #+16]
+   \   00000080   0800000A           BEQ      ??tcp_close_shutdown_2
+   \                     ??tcp_close_shutdown_3:
+   \   00000084   180086E5           STR      R0,[R6, #+24]
+   \   00000088   181096E5           LDR      R1,[R6, #+24]
+   \   0000008C   000051E3           CMP      R1,#+0
+   \   00000090   0400000A           BEQ      ??tcp_close_shutdown_2
+   \   00000094   0C0091E5           LDR      R0,[R1, #+12]
+   \   00000098   040050E1           CMP      R0,R4
+   \   0000009C   F8FFFF1A           BNE      ??tcp_close_shutdown_3
+   \   000000A0   0C0094E5           LDR      R0,[R4, #+12]
+   \   000000A4   0C0081E5           STR      R0,[R1, #+12]
+   \                     ??tcp_close_shutdown_2:
+   \   000000A8   0C7084E5           STR      R7,[R4, #+12]
+   \   000000AC   2050C6E5           STRB     R5,[R6, #+32]
+    187                if (pcb->state == ESTABLISHED) {
+   \   000000B0   1800D4E5           LDRB     R0,[R4, #+24]
+   \   000000B4   040050E3           CMP      R0,#+4
+   \   000000B8   0600001A           BNE      ??tcp_close_shutdown_4
+    188                  /* move to TIME_WAIT since we close actively */
+    189                  pcb->state = TIME_WAIT;
+   \   000000BC   0A00A0E3           MOV      R0,#+10
+   \   000000C0   1800C4E5           STRB     R0,[R4, #+24]
+    190                  TCP_REG(&tcp_tw_pcbs, pcb);
+   \   000000C4   140096E5           LDR      R0,[R6, #+20]
+   \   000000C8   0C0084E5           STR      R0,[R4, #+12]
+   \   000000CC   144086E5           STR      R4,[R6, #+20]
+   \   000000D0   ........           _BLF     tcp_timer_needed,??tcp_timer_needed??rA
+   \   000000D4   020000EA           B        ??tcp_close_shutdown_5
+    191                } else {
+    192                  /* CLOSE_WAIT: deallocate the pcb since we already sent a RST for it */
+    193                  memp_free(MEMP_TCP_PCB, pcb);
+   \                     ??tcp_close_shutdown_4:
+   \   000000D8   0410A0E1           MOV      R1,R4
+   \   000000DC   0200A0E3           MOV      R0,#+2
+   \   000000E0   ........           _BLF     memp_free,??memp_free??rA
+    194                }
+    195                return ERR_OK;
+   \                     ??tcp_close_shutdown_5:
+   \   000000E4   F043BDE8           POP      {R4-R9,LR}
+   \   000000E8   0000A0E3           MOV      R0,#+0
+   \   000000EC   1EFF2FE1           BX       LR
+    196              }
+    197            }
+    198          
+    199            switch (pcb->state) {
+   \                     ??tcp_close_shutdown_1:
+   \   000000F0   0590A0E3           MOV      R9,#+5
+   \   000000F4   070052E3           CMP      R2,#+7
+   \   000000F8   3D00008A           BHI      ??tcp_close_shutdown_6
+   \   000000FC   011F8FE2           ADR      R1,??tcp_close_shutdown_0
+   \   00000100   0210D1E7           LDRB     R1,[R1, R2]
+   \   00000104   01F18FE0           ADD      PC,PC,R1, LSL #+2
+   \                     ??tcp_close_shutdown_0:
+   \   00000108   01161D28           DC8      +1,+22,+29,+40
+   \   0000010C   283A3A33           DC8      +40,+58,+58,+51
+    200            case CLOSED:
+    201              /* Closing a pcb in the CLOSED state might seem erroneous,
+    202               * however, it is in this state once allocated and as yet unused
+    203               * and the user needs some way to free it should the need arise.
+    204               * Calling tcp_close() with a pcb that has already been closed, (i.e. twice)
+    205               * or for a pcb that has been used and then entered the CLOSED state 
+    206               * is erroneous, but this should never happen as the pcb has in those cases
+    207               * been freed, and so any remaining handles are bogus. */
+    208              err = ERR_OK;
+   \                     ??tcp_close_shutdown_7:
+   \   00000110   0080A0E3           MOV      R8,#+0
+    209              if (pcb->local_port != 0) {
+   \   00000114   000050E3           CMP      R0,#+0
+   \   00000118   0E00000A           BEQ      ??tcp_close_shutdown_8
+    210                TCP_RMV(&tcp_bound_pcbs, pcb);
+   \   0000011C   080096E5           LDR      R0,[R6, #+8]
+   \   00000120   040050E1           CMP      R0,R4
+   \   00000124   0C009005           LDREQ    R0,[R0, #+12]
+   \   00000128   08008605           STREQ    R0,[R6, #+8]
+   \   0000012C   0800000A           BEQ      ??tcp_close_shutdown_9
+   \                     ??tcp_close_shutdown_10:
+   \   00000130   180086E5           STR      R0,[R6, #+24]
+   \   00000134   181096E5           LDR      R1,[R6, #+24]
+   \   00000138   000051E3           CMP      R1,#+0
+   \   0000013C   0400000A           BEQ      ??tcp_close_shutdown_9
+   \   00000140   0C0091E5           LDR      R0,[R1, #+12]
+   \   00000144   040050E1           CMP      R0,R4
+   \   00000148   F8FFFF1A           BNE      ??tcp_close_shutdown_10
+   \   0000014C   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000150   0C0081E5           STR      R0,[R1, #+12]
+   \                     ??tcp_close_shutdown_9:
+   \   00000154   0C7084E5           STR      R7,[R4, #+12]
+    211              }
+    212              memp_free(MEMP_TCP_PCB, pcb);
+   \                     ??tcp_close_shutdown_8:
+   \   00000158   0410A0E1           MOV      R1,R4
+   \   0000015C   0200A0E3           MOV      R0,#+2
+   \                     ??tcp_close_shutdown_11:
+   \   00000160   0D0000EA           B        ??tcp_close_shutdown_12
+    213              pcb = NULL;
+    214              break;
+    215            case LISTEN:
+    216              err = ERR_OK;
+   \                     ??tcp_close_shutdown_13:
+   \   00000164   0080A0E3           MOV      R8,#+0
+    217              tcp_pcb_remove(&tcp_listen_pcbs.pcbs, pcb);
+   \   00000168   0410A0E1           MOV      R1,R4
+   \   0000016C   0C0086E2           ADD      R0,R6,#+12
+   \   00000170   ........           BL       tcp_pcb_remove
+    218              memp_free(MEMP_TCP_PCB_LISTEN, pcb);
+   \   00000174   0410A0E1           MOV      R1,R4
+   \   00000178   0300A0E3           MOV      R0,#+3
+   \   0000017C   060000EA           B        ??tcp_close_shutdown_12
+    219              pcb = NULL;
+    220              break;
+    221            case SYN_SENT:
+    222              err = ERR_OK;
+   \                     ??tcp_close_shutdown_14:
+   \   00000180   0080A0E3           MOV      R8,#+0
+    223              TCP_PCB_REMOVE_ACTIVE(pcb);
+   \   00000184   0410A0E1           MOV      R1,R4
+   \   00000188   100086E2           ADD      R0,R6,#+16
+   \   0000018C   ........           BL       tcp_pcb_remove
+   \   00000190   2050C6E5           STRB     R5,[R6, #+32]
+    224              memp_free(MEMP_TCP_PCB, pcb);
+   \   00000194   0410A0E1           MOV      R1,R4
+   \   00000198   0200A0E3           MOV      R0,#+2
+   \                     ??tcp_close_shutdown_12:
+   \   0000019C   ........           _BLF     memp_free,??memp_free??rA
+    225              pcb = NULL;
+   \                     ??tcp_close_shutdown_15:
+   \   000001A0   0800A0E1           MOV      R0,R8
+   \   000001A4   F043BDE8           POP      {R4-R9,LR}
+   \   000001A8   1EFF2FE1           BX       LR
+    226              snmp_inc_tcpattemptfails();
+    227              break;
+    228            case SYN_RCVD:
+    229              err = tcp_send_fin(pcb);
+   \                     ??tcp_close_shutdown_16:
+   \   000001AC   0400A0E1           MOV      R0,R4
+   \   000001B0   ........           _BLF     tcp_send_fin,??tcp_send_fin??rA
+   \   000001B4   0080B0E1           MOVS     R8,R0
+    230              if (err == ERR_OK) {
+    231                snmp_inc_tcpattemptfails();
+    232                pcb->state = FIN_WAIT_1;
+   \   000001B8   1890C405           STRBEQ   R9,[R4, #+24]
+    233              }
+    234              break;
+    235            case ESTABLISHED:
+    236              err = tcp_send_fin(pcb);
+    237              if (err == ERR_OK) {
+    238                snmp_inc_tcpestabresets();
+    239                pcb->state = FIN_WAIT_1;
+    240              }
+    241              break;
+    242            case CLOSE_WAIT:
+    243              err = tcp_send_fin(pcb);
+    244              if (err == ERR_OK) {
+    245                snmp_inc_tcpestabresets();
+    246                pcb->state = LAST_ACK;
+    247              }
+    248              break;
+    249            default:
+    250              /* Has already been closed, do nothing. */
+    251              err = ERR_OK;
+    252              pcb = NULL;
+    253              break;
+    254            }
+    255          
+    256            if (pcb != NULL && err == ERR_OK) {
+   \                     ??tcp_close_shutdown_17:
+   \   000001BC   000054E3           CMP      R4,#+0
+   \   000001C0   F6FFFF0A           BEQ      ??tcp_close_shutdown_15
+   \   000001C4   000058E3           CMP      R8,#+0
+   \   000001C8   F4FFFF1A           BNE      ??tcp_close_shutdown_15
+    257              /* To ensure all data has been sent when tcp_close returns, we have
+    258                 to make sure tcp_output doesn't fail.
+    259                 Since we don't really have to ensure all data has been sent when tcp_close
+    260                 returns (unsent data is sent from tcp timer functions, also), we don't care
+    261                 for the return value of tcp_output for now. */
+    262              /* @todo: When implementing SO_LINGER, this must be changed somehow:
+    263                 If SOF_LINGER is set, the data should be sent and acked before close returns.
+    264                 This can only be valid for sequential APIs, not for the raw API. */
+    265              tcp_output(pcb);
+   \   000001CC   0400A0E1           MOV      R0,R4
+   \   000001D0   ........           _BLF     tcp_output,??tcp_output??rA
+    266            }
+    267            return err;
+   \                     ??tcp_close_shutdown_18:
+   \   000001D4   F1FFFFEA           B        ??tcp_close_shutdown_15
+   \                     ??tcp_close_shutdown_19:
+   \   000001D8   0400A0E1           MOV      R0,R4
+   \   000001DC   ........           _BLF     tcp_send_fin,??tcp_send_fin??rA
+   \   000001E0   0080B0E1           MOVS     R8,R0
+   \   000001E4   F4FFFF1A           BNE      ??tcp_close_shutdown_17
+   \   000001E8   0900A0E3           MOV      R0,#+9
+   \   000001EC   1800C4E5           STRB     R0,[R4, #+24]
+   \   000001F0   F1FFFFEA           B        ??tcp_close_shutdown_17
+   \                     ??tcp_close_shutdown_6:
+   \   000001F4   0080A0E3           MOV      R8,#+0
+   \   000001F8   E8FFFFEA           B        ??tcp_close_shutdown_15
+    268          }
+    269          
+    270          /**
+    271           * Closes the connection held by the PCB.
+    272           *
+    273           * Listening pcbs are freed and may not be referenced any more.
+    274           * Connection pcbs are freed if not yet connected and may not be referenced
+    275           * any more. If a connection is established (at least SYN received or in
+    276           * a closing state), the connection is closed, and put in a closing state.
+    277           * The pcb is then automatically freed in tcp_slowtmr(). It is therefore
+    278           * unsafe to reference it (unless an error is returned).
+    279           *
+    280           * @param pcb the tcp_pcb to close
+    281           * @return ERR_OK if connection has been closed
+    282           *         another err_t if closing failed and pcb is not freed
+    283           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    284          err_t
+    285          tcp_close(struct tcp_pcb *pcb)
+    286          {
+   \                     tcp_close:
+   \   00000000   00402DE9           PUSH     {LR}
+    287          #if TCP_DEBUG
+    288            LWIP_DEBUGF(TCP_DEBUG, ("tcp_close: closing in "));
+    289            tcp_debug_print_state(pcb->state);
+    290          #endif /* TCP_DEBUG */
+    291          
+    292            if (pcb->state != LISTEN) {
+   \   00000004   1810D0E5           LDRB     R1,[R0, #+24]
+   \   00000008   010051E3           CMP      R1,#+1
+   \   0000000C   0300000A           BEQ      ??tcp_close_0
+    293              /* Set a flag not to receive any more data... */
+    294              pcb->flags |= TF_RXCLOSED;
+   \   00000010   1E10D0E5           LDRB     R1,[R0, #+30]
+   \   00000014   101081E3           ORR      R1,R1,#0x10
+   \   00000018   1E10C0E5           STRB     R1,[R0, #+30]
+    295            }
+    296            /* ... and close */
+    297            return tcp_close_shutdown(pcb, 1);
+   \   0000001C   0110A0E3           MOV      R1,#+1
+   \                     ??tcp_close_0:
+   \   00000020   ........           BL       tcp_close_shutdown
+   \   00000024   0040BDE8           POP      {LR}
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+    298          }
+    299          
+    300          /**
+    301           * Causes all or part of a full-duplex connection of this PCB to be shut down.
+    302           * This doesn't deallocate the PCB unless shutting down both sides!
+    303           * Shutting down both sides is the same as calling tcp_close, so if it succeds,
+    304           * the PCB should not be referenced any more.
+    305           *
+    306           * @param pcb PCB to shutdown
+    307           * @param shut_rx shut down receive side if this is != 0
+    308           * @param shut_tx shut down send side if this is != 0
+    309           * @return ERR_OK if shutdown succeeded (or the PCB has already been shut down)
+    310           *         another err_t on error.
+    311           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    312          err_t
+    313          tcp_shutdown(struct tcp_pcb *pcb, int shut_rx, int shut_tx)
+    314          {
+   \                     tcp_shutdown:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    315            if (pcb->state == LISTEN) {
+   \   00000008   1800D4E5           LDRB     R0,[R4, #+24]
+   \   0000000C   010050E3           CMP      R0,#+1
+   \   00000010   0200001A           BNE      ??tcp_shutdown_0
+    316              return ERR_CONN;
+   \                     ??tcp_shutdown_1:
+   \   00000014   1040BDE8           POP      {R4,LR}
+   \   00000018   0C00E0E3           MVN      R0,#+12
+   \   0000001C   1EFF2FE1           BX       LR
+    317            }
+    318            if (shut_rx) {
+   \                     ??tcp_shutdown_0:
+   \   00000020   000051E3           CMP      R1,#+0
+   \   00000024   1100000A           BEQ      ??tcp_shutdown_2
+    319              /* shut down the receive side: set a flag not to receive any more data... */
+    320              pcb->flags |= TF_RXCLOSED;
+   \   00000028   1E00D4E5           LDRB     R0,[R4, #+30]
+    321              if (shut_tx) {
+   \   0000002C   000052E3           CMP      R2,#+0
+   \   00000030   100080E3           ORR      R0,R0,#0x10
+   \   00000034   1E00C4E5           STRB     R0,[R4, #+30]
+   \   00000038   0300000A           BEQ      ??tcp_shutdown_3
+    322                /* shutting down the tx AND rx side is the same as closing for the raw API */
+    323                return tcp_close_shutdown(pcb, 1);
+   \   0000003C   0110A0E3           MOV      R1,#+1
+   \                     ??tcp_shutdown_4:
+   \   00000040   0400A0E1           MOV      R0,R4
+   \   00000044   ........           BL       tcp_close_shutdown
+   \   00000048   060000EA           B        ??tcp_shutdown_5
+    324              }
+    325              /* ... and free buffered data */
+    326              if (pcb->refused_data != NULL) {
+   \                     ??tcp_shutdown_3:
+   \   0000004C   780094E5           LDR      R0,[R4, #+120]
+   \   00000050   000050E3           CMP      R0,#+0
+   \   00000054   0300000A           BEQ      ??tcp_shutdown_5
+    327                pbuf_free(pcb->refused_data);
+   \   00000058   ........           _BLF     pbuf_free,??pbuf_free??rA
+    328                pcb->refused_data = NULL;
+   \   0000005C   0000A0E3           MOV      R0,#+0
+   \   00000060   780084E5           STR      R0,[R4, #+120]
+    329              }
+    330            }
+    331            if (shut_tx) {
+    332              /* This can't happen twice since if it succeeds, the pcb's state is changed.
+    333                 Only close in these states as the others directly deallocate the PCB */
+    334              switch (pcb->state) {
+    335              case SYN_RCVD:
+    336              case ESTABLISHED:
+    337              case CLOSE_WAIT:
+    338                return tcp_close_shutdown(pcb, shut_rx);
+    339              default:
+    340                /* Not (yet?) connected, cannot shutdown the TX side as that would bring us
+    341                  into CLOSED state, where the PCB is deallocated. */
+    342                return ERR_CONN;
+    343              }
+    344            }
+    345            return ERR_OK;
+   \                     ??tcp_shutdown_6:
+   \   00000064   0000A0E3           MOV      R0,#+0
+   \                     ??tcp_shutdown_5:
+   \   00000068   1040BDE8           POP      {R4,LR}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_shutdown_2:
+   \   00000070   000052E3           CMP      R2,#+0
+   \   00000074   FAFFFF0A           BEQ      ??tcp_shutdown_6
+   \   00000078   030040E2           SUB      R0,R0,#+3
+   \   0000007C   010050E3           CMP      R0,#+1
+   \   00000080   EEFFFF9A           BLS      ??tcp_shutdown_4
+   \   00000084   040050E2           SUBS     R0,R0,#+4
+   \   00000088   E1FFFF1A           BNE      ??tcp_shutdown_1
+   \   0000008C   EBFFFFEA           B        ??tcp_shutdown_4
+    346          }
+    347          
+    348          /**
+    349           * Abandons a connection and optionally sends a RST to the remote
+    350           * host.  Deletes the local protocol control block. This is done when
+    351           * a connection is killed because of shortage of memory.
+    352           *
+    353           * @param pcb the tcp_pcb to abort
+    354           * @param reset boolean to indicate whether a reset should be sent
+    355           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    356          void
+    357          tcp_abandon(struct tcp_pcb *pcb, int reset)
+    358          {
+   \                     tcp_abandon:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+    359            u32_t seqno, ackno;
+    360          #if LWIP_CALLBACK_API  
+    361            tcp_err_fn errf;
+    362          #endif /* LWIP_CALLBACK_API */
+    363            void *errf_arg;
+    364          
+    365            /* pcb->state LISTEN not allowed here */
+    366            LWIP_ASSERT("don't call tcp_abort/tcp_abandon for listen-pcbs",
+    367              pcb->state != LISTEN);
+    368            /* Figure out on which TCP PCB list we are, and remove us. If we
+    369               are in an active state, call the receive function associated with
+    370               the PCB with a NULL argument, and send an RST to the remote end. */
+    371            if (pcb->state == TIME_WAIT) {
+   \   00000004   ........           LDR      R10,??DataTable8  ;; tcp_port
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   1800D4E5           LDRB     R0,[R4, #+24]
+   \   00000010   0150A0E1           MOV      R5,R1
+   \   00000014   0A0050E3           CMP      R0,#+10
+   \   00000018   0600001A           BNE      ??tcp_abandon_0
+    372              tcp_pcb_remove(&tcp_tw_pcbs, pcb);
+   \   0000001C   0410A0E1           MOV      R1,R4
+   \   00000020   14008AE2           ADD      R0,R10,#+20
+   \   00000024   ........           BL       tcp_pcb_remove
+    373              memp_free(MEMP_TCP_PCB, pcb);
+   \   00000028   0410A0E1           MOV      R1,R4
+   \   0000002C   0200A0E3           MOV      R0,#+2
+   \   00000030   ........           _BLF     memp_free,??memp_free??rA
+   \   00000034   290000EA           B        ??tcp_abandon_1
+    374            } else {
+    375              seqno = pcb->snd_nxt;
+   \                     ??tcp_abandon_0:
+   \   00000038   506094E5           LDR      R6,[R4, #+80]
+    376              ackno = pcb->rcv_nxt;
+   \   0000003C   287094E5           LDR      R7,[R4, #+40]
+    377          #if LWIP_CALLBACK_API
+    378              errf = pcb->errf;
+   \   00000040   8C8094E5           LDR      R8,[R4, #+140]
+    379          #endif /* LWIP_CALLBACK_API */
+    380              errf_arg = pcb->callback_arg;
+   \   00000044   109094E5           LDR      R9,[R4, #+16]
+    381              TCP_PCB_REMOVE_ACTIVE(pcb);
+   \   00000048   0410A0E1           MOV      R1,R4
+   \   0000004C   10008AE2           ADD      R0,R10,#+16
+   \   00000050   ........           BL       tcp_pcb_remove
+   \   00000054   0100A0E3           MOV      R0,#+1
+   \   00000058   2000CAE5           STRB     R0,[R10, #+32]
+    382              if (pcb->unacked != NULL) {
+   \   0000005C   700094E5           LDR      R0,[R4, #+112]
+   \   00000060   000050E3           CMP      R0,#+0
+   \   00000064   0000000A           BEQ      ??tcp_abandon_2
+    383                tcp_segs_free(pcb->unacked);
+   \   00000068   ........           BL       tcp_segs_free
+    384              }
+    385              if (pcb->unsent != NULL) {
+   \                     ??tcp_abandon_2:
+   \   0000006C   6C0094E5           LDR      R0,[R4, #+108]
+   \   00000070   000050E3           CMP      R0,#+0
+   \   00000074   0000000A           BEQ      ??tcp_abandon_3
+    386                tcp_segs_free(pcb->unsent);
+   \   00000078   ........           BL       tcp_segs_free
+    387              }
+    388          #if TCP_QUEUE_OOSEQ    
+    389              if (pcb->ooseq != NULL) {
+   \                     ??tcp_abandon_3:
+   \   0000007C   740094E5           LDR      R0,[R4, #+116]
+   \   00000080   000050E3           CMP      R0,#+0
+   \   00000084   0000000A           BEQ      ??tcp_abandon_4
+    390                tcp_segs_free(pcb->ooseq);
+   \   00000088   ........           BL       tcp_segs_free
+    391              }
+    392          #endif /* TCP_QUEUE_OOSEQ */
+    393              if (reset) {
+   \                     ??tcp_abandon_4:
+   \   0000008C   000055E3           CMP      R5,#+0
+   \   00000090   0900000A           BEQ      ??tcp_abandon_5
+    394                LWIP_DEBUGF(TCP_RST_DEBUG, ("tcp_abandon: sending RST\n"));
+    395                tcp_rst(seqno, ackno, &pcb->local_ip, &pcb->remote_ip, pcb->local_port, pcb->remote_port);
+   \   00000094   BC01D4E1           LDRH     R0,[R4, #+28]
+   \   00000098   043084E2           ADD      R3,R4,#+4
+   \   0000009C   0420A0E1           MOV      R2,R4
+   \   000000A0   01002DE9           PUSH     {R0}
+   \   000000A4   BA01D4E1           LDRH     R0,[R4, #+26]
+   \   000000A8   0710A0E1           MOV      R1,R7
+   \   000000AC   01002DE9           PUSH     {R0}
+   \   000000B0   0600A0E1           MOV      R0,R6
+   \   000000B4   ........           _BLF     tcp_rst,??tcp_rst??rA
+   \   000000B8   08D08DE2           ADD      SP,SP,#+8
+    396              }
+    397              memp_free(MEMP_TCP_PCB, pcb);
+   \                     ??tcp_abandon_5:
+   \   000000BC   0410A0E1           MOV      R1,R4
+   \   000000C0   0200A0E3           MOV      R0,#+2
+   \   000000C4   ........           _BLF     memp_free,??memp_free??rA
+    398              TCP_EVENT_ERR(errf, errf_arg, ERR_ABRT);
+   \   000000C8   000058E3           CMP      R8,#+0
+   \   000000CC   0300000A           BEQ      ??tcp_abandon_1
+   \   000000D0   0910E0E3           MVN      R1,#+9
+   \   000000D4   0900A0E1           MOV      R0,R9
+   \   000000D8   0FE0A0E1           MOV      LR,PC
+   \   000000DC   18FF2FE1           BX       R8
+    399            }
+    400          }
+   \                     ??tcp_abandon_1:
+   \   000000E0   F047BDE8           POP      {R4-R10,LR}
+   \   000000E4   1EFF2FE1           BX       LR               ;; return
+    401          
+    402          /**
+    403           * Aborts the connection by sending a RST (reset) segment to the remote
+    404           * host. The pcb is deallocated. This function never fails.
+    405           *
+    406           * ATTENTION: When calling this from one of the TCP callbacks, make
+    407           * sure you always return ERR_ABRT (and never return ERR_ABRT otherwise
+    408           * or you will risk accessing deallocated memory or memory leaks!
+    409           *
+    410           * @param pcb the tcp pcb to abort
+    411           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    412          void
+    413          tcp_abort(struct tcp_pcb *pcb)
+    414          {
+   \                     tcp_abort:
+   \   00000000   00402DE9           PUSH     {LR}
+    415            tcp_abandon(pcb, 1);
+   \   00000004   0110A0E3           MOV      R1,#+1
+   \   00000008   ........           BL       tcp_abandon
+    416          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    417          
+    418          /**
+    419           * Binds the connection to a local portnumber and IP address. If the
+    420           * IP address is not given (i.e., ipaddr == NULL), the IP address of
+    421           * the outgoing network interface is used instead.
+    422           *
+    423           * @param pcb the tcp_pcb to bind (no check is done whether this pcb is
+    424           *        already bound!)
+    425           * @param ipaddr the local ip address to bind to (use IP_ADDR_ANY to bind
+    426           *        to any local address
+    427           * @param port the local port to bind to
+    428           * @return ERR_USE if the port is already in use
+    429           *         ERR_VAL if bind failed because the PCB is not in a valid state
+    430           *         ERR_OK if bound
+    431           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    432          err_t
+    433          tcp_bind(struct tcp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
+    434          {
+    435            int i;
+    436            int max_pcb_list = NUM_TCP_PCB_LISTS;
+    437            struct tcp_pcb *cpcb;
+    438          
+    439            //LWIP_ERROR("tcp_bind: can only bind in state CLOSED", pcb->state == CLOSED, return ERR_VAL);
+    440          
+    441          #if SO_REUSE
+    442            /* Unless the REUSEADDR flag is set,
+    443               we have to check the pcbs in TIME-WAIT state, also.
+    444               We do not dump TIME_WAIT pcb's; they can still be matched by incoming
+    445               packets using both local and remote IP addresses and ports to distinguish.
+    446             */
+    447            if (ip_get_option(pcb, SOF_REUSEADDR)) {
+    448              max_pcb_list = NUM_TCP_PCB_LISTS_NO_TIME_WAIT;
+    449            }
+    450          #endif /* SO_REUSE */
+    451          
+    452            if (port == 0) {
+   \                     tcp_bind:
+   \   00000000   ........           LDR      R12,??DataTable5  ;; tcp_pcb_lists
+   \   00000004   F0472DE9           PUSH     {R4-R10,LR}
+   \   00000008   0840D0E5           LDRB     R4,[R0, #+8]
+   \   0000000C   0430A0E3           MOV      R3,#+4
+   \   00000010   040014E3           TST      R4,#0x4
+   \   00000014   ........           LDR      R4,??DataTable8  ;; tcp_port
+   \   00000018   0330A013           MOVNE    R3,#+3
+   \   0000001C   000052E3           CMP      R2,#+0
+   \   00000020   2200001A           BNE      ??tcp_bind_0
+    453              port = tcp_new_port();
+   \   00000024   0070A0E3           MOV      R7,#+0
+   \   00000028   FF60A0E3           MOV      R6,#+255
+   \   0000002C   FF6C86E3           ORR      R6,R6,#0xFF00
+   \   00000030   070000EA           B        ??tcp_bind_1
+   \                     ??tcp_bind_2:
+   \   00000034   BAA1D9E1           LDRH     R10,[R9, #+26]
+   \   00000038   02005AE1           CMP      R10,R2
+   \   0000003C   0E00001A           BNE      ??tcp_bind_3
+   \   00000040   017087E2           ADD      R7,R7,#+1
+   \   00000044   0778A0E1           MOV      R7,R7, LSL #+16
+   \   00000048   2778A0E1           MOV      R7,R7, LSR #+16
+   \   0000004C   400C57E3           CMP      R7,#+16384
+   \   00000050   1300002A           BCS      ??tcp_bind_4
+   \                     ??tcp_bind_1:
+   \   00000054   B020D4E1           LDRH     R2,[R4, #+0]
+   \   00000058   018082E2           ADD      R8,R2,#+1
+   \   0000005C   060052E1           CMP      R2,R6
+   \   00000060   C08CA003           MOVEQ    R8,#+49152
+   \   00000064   B080C4E1           STRH     R8,[R4, #+0]
+   \   00000068   0080A0E3           MOV      R8,#+0
+   \                     ??tcp_bind_5:
+   \   0000006C   0820A0E1           MOV      R2,R8
+   \   00000070   02219CE7           LDR      R2,[R12, +R2, LSL #+2]
+   \   00000074   009092E5           LDR      R9,[R2, #+0]
+   \   00000078   000000EA           B        ??tcp_bind_6
+   \                     ??tcp_bind_3:
+   \   0000007C   0C9099E5           LDR      R9,[R9, #+12]
+   \                     ??tcp_bind_6:
+   \   00000080   B020D4E1           LDRH     R2,[R4, #+0]
+   \   00000084   000059E3           CMP      R9,#+0
+   \   00000088   E9FFFF1A           BNE      ??tcp_bind_2
+   \   0000008C   018088E2           ADD      R8,R8,#+1
+   \   00000090   FF8008E2           AND      R8,R8,#0xFF
+   \   00000094   040058E3           CMP      R8,#+4
+   \   00000098   F3FFFF3A           BCC      ??tcp_bind_5
+    454              if (port == 0) {
+   \   0000009C   000052E3           CMP      R2,#+0
+   \   000000A0   0200001A           BNE      ??tcp_bind_0
+    455                return ERR_BUF;
+   \                     ??tcp_bind_4:
+   \   000000A4   F047BDE8           POP      {R4-R10,LR}
+   \   000000A8   0100E0E3           MVN      R0,#+1
+   \   000000AC   1EFF2FE1           BX       LR
+    456              }
+    457            }
+    458          
+    459            /* Check if the address already is in use (on all lists) */
+    460            for (i = 0; i < max_pcb_list; i++) {
+   \                     ??tcp_bind_0:
+   \   000000B0   0050A0E3           MOV      R5,#+0
+   \   000000B4   000000EA           B        ??tcp_bind_7
+   \                     ??tcp_bind_8:
+   \   000000B8   015085E2           ADD      R5,R5,#+1
+   \                     ??tcp_bind_7:
+   \   000000BC   030055E1           CMP      R5,R3
+   \   000000C0   180000AA           BGE      ??tcp_bind_9
+    461              for(cpcb = *tcp_pcb_lists[i]; cpcb != NULL; cpcb = cpcb->next) {
+   \   000000C4   05619CE7           LDR      R6,[R12, +R5, LSL #+2]
+   \   000000C8   006096E5           LDR      R6,[R6, #+0]
+   \   000000CC   000000EA           B        ??tcp_bind_10
+   \                     ??tcp_bind_11:
+   \   000000D0   0C6096E5           LDR      R6,[R6, #+12]
+   \                     ??tcp_bind_10:
+   \   000000D4   000056E3           CMP      R6,#+0
+   \   000000D8   F6FFFF0A           BEQ      ??tcp_bind_8
+    462                if (cpcb->local_port == port) {
+   \   000000DC   BA71D6E1           LDRH     R7,[R6, #+26]
+   \   000000E0   020057E1           CMP      R7,R2
+   \   000000E4   F9FFFF1A           BNE      ??tcp_bind_11
+    463          #if SO_REUSE
+    464                  /* Omit checking for the same port if both pcbs have REUSEADDR set.
+    465                     For SO_REUSEADDR, the duplicate-check for a 5-tuple is done in
+    466                     tcp_connect. */
+    467                  if (!ip_get_option(pcb, SOF_REUSEADDR) ||
+    468                      !ip_get_option(cpcb, SOF_REUSEADDR))
+   \   000000E8   0870D0E5           LDRB     R7,[R0, #+8]
+   \   000000EC   040017E3           TST      R7,#0x4
+   \   000000F0   0870D615           LDRBNE   R7,[R6, #+8]
+   \   000000F4   04001713           TSTNE    R7,#0x4
+   \   000000F8   F4FFFF1A           BNE      ??tcp_bind_11
+    469          #endif /* SO_REUSE */
+    470                  {
+    471                    if (ip_addr_isany(&(cpcb->local_ip)) ||
+    472                        ip_addr_isany(ipaddr) ||
+    473                        ip_addr_cmp(&(cpcb->local_ip), ipaddr)) {
+   \   000000FC   000056E3           CMP      R6,#+0
+   \   00000100   00709615           LDRNE    R7,[R6, #+0]
+   \   00000104   00005713           CMPNE    R7,#+0
+   \   00000108   00005113           CMPNE    R1,#+0
+   \   0000010C   00809115           LDRNE    R8,[R1, #+0]
+   \   00000110   00005813           CMPNE    R8,#+0
+   \   00000114   08005711           CMPNE    R7,R8
+   \   00000118   ECFFFF1A           BNE      ??tcp_bind_11
+    474                      return ERR_USE;
+   \   0000011C   F047BDE8           POP      {R4-R10,LR}
+   \   00000120   0700E0E3           MVN      R0,#+7
+   \   00000124   1EFF2FE1           BX       LR
+    475                    }
+    476                  }
+    477                }
+    478              }
+    479            }
+    480          
+    481            if (!ip_addr_isany(ipaddr)) {
+   \                     ??tcp_bind_9:
+   \   00000128   000051E3           CMP      R1,#+0
+   \   0000012C   00309115           LDRNE    R3,[R1, #+0]
+   \   00000130   00005313           CMPNE    R3,#+0
+    482              pcb->local_ip = *ipaddr;
+   \   00000134   0310A011           MOVNE    R1,R3
+   \   00000138   00108015           STRNE    R1,[R0, #+0]
+    483            }
+    484            pcb->local_port = port;
+   \   0000013C   BA21C0E1           STRH     R2,[R0, #+26]
+    485            TCP_REG(&tcp_bound_pcbs, pcb);
+   \   00000140   081094E5           LDR      R1,[R4, #+8]
+   \   00000144   0C1080E5           STR      R1,[R0, #+12]
+   \   00000148   080084E5           STR      R0,[R4, #+8]
+   \   0000014C   ........           _BLF     tcp_timer_needed,??tcp_timer_needed??rA
+    486            LWIP_DEBUGF(TCP_DEBUG, ("tcp_bind: bind to port %"U16_F"\n", port));
+    487            return ERR_OK;
+   \   00000150   F047BDE8           POP      {R4-R10,LR}
+   \   00000154   0000A0E3           MOV      R0,#+0
+   \   00000158   1EFF2FE1           BX       LR               ;; return
+    488          }
+    489          #if LWIP_CALLBACK_API
+    490          /**
+    491           * Default accept callback if no accept callback is specified by the user.
+    492           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    493          static err_t
+    494          tcp_accept_null(void *arg, struct tcp_pcb *pcb, err_t err)
+    495          {
+    496            LWIP_UNUSED_ARG(arg);
+    497            LWIP_UNUSED_ARG(pcb);
+    498            LWIP_UNUSED_ARG(err);
+    499          
+    500            return ERR_ABRT;
+   \                     tcp_accept_null:
+   \   00000000   0900E0E3           MVN      R0,#+9
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    501          }
+    502          #endif /* LWIP_CALLBACK_API */
+    503          
+    504          /**
+    505           * Set the state of the connection to be LISTEN, which means that it
+    506           * is able to accept incoming connections. The protocol control block
+    507           * is reallocated in order to consume less memory. Setting the
+    508           * connection to LISTEN is an irreversible process.
+    509           *
+    510           * @param pcb the original tcp_pcb
+    511           * @param backlog the incoming connections queue limit
+    512           * @return tcp_pcb used for listening, consumes less memory.
+    513           *
+    514           * @note The original tcp_pcb is freed. This function therefore has to be
+    515           *       called like this:
+    516           *             tpcb = tcp_listen(tpcb);
+    517           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    518          struct tcp_pcb *
+    519          tcp_listen_with_backlog(struct tcp_pcb *pcb, u8_t backlog)
+    520          {
+   \                     tcp_listen_with_backlog:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    521            struct tcp_pcb_listen *lpcb;
+    522          
+    523            LWIP_UNUSED_ARG(backlog);
+    524            //LWIP_ERROR("tcp_listen: pcb already connected", pcb->state == CLOSED, return NULL);
+    525          
+    526            /* already listening? */
+    527            if (pcb->state == LISTEN) {
+   \   00000008   1800D4E5           LDRB     R0,[R4, #+24]
+   \   0000000C   010050E3           CMP      R0,#+1
+    528              return pcb;
+   \   00000010   0400A001           MOVEQ    R0,R4
+   \   00000014   4500000A           BEQ      ??tcp_listen_with_backlog_0
+    529            }
+    530          #if SO_REUSE
+    531            if (ip_get_option(pcb, SOF_REUSEADDR)) {
+   \   00000018   0800D4E5           LDRB     R0,[R4, #+8]
+   \   0000001C   ........           LDR      R5,??DataTable8  ;; tcp_port
+   \   00000020   040010E3           TST      R0,#0x4
+   \   00000024   0F00000A           BEQ      ??tcp_listen_with_backlog_1
+    532              /* Since SOF_REUSEADDR allows reusing a local address before the pcb's usage
+    533                 is declared (listen-/connection-pcb), we have to make sure now that
+    534                 this port is only used once for every local IP. */
+    535              for(lpcb = tcp_listen_pcbs.listen_pcbs; lpcb != NULL; lpcb = lpcb->next) {
+   \   00000028   0C6095E5           LDR      R6,[R5, #+12]
+   \   0000002C   000000EA           B        ??tcp_listen_with_backlog_2
+   \                     ??tcp_listen_with_backlog_3:
+   \   00000030   0C6096E5           LDR      R6,[R6, #+12]
+   \                     ??tcp_listen_with_backlog_2:
+   \   00000034   000056E3           CMP      R6,#+0
+   \   00000038   0A00000A           BEQ      ??tcp_listen_with_backlog_1
+    536                if (lpcb->local_port == pcb->local_port) {
+   \   0000003C   BA01D6E1           LDRH     R0,[R6, #+26]
+   \   00000040   BA11D4E1           LDRH     R1,[R4, #+26]
+   \   00000044   010050E1           CMP      R0,R1
+   \   00000048   F8FFFF1A           BNE      ??tcp_listen_with_backlog_3
+    537                  if (ip_addr_cmp(&lpcb->local_ip, &pcb->local_ip)) {
+   \   0000004C   000096E5           LDR      R0,[R6, #+0]
+   \   00000050   001094E5           LDR      R1,[R4, #+0]
+   \   00000054   010050E1           CMP      R0,R1
+   \   00000058   F4FFFF1A           BNE      ??tcp_listen_with_backlog_3
+    538                    /* this address/port is already used */
+    539                    return NULL;
+   \                     ??tcp_listen_with_backlog_4:
+   \   0000005C   7040BDE8           POP      {R4-R6,LR}
+   \   00000060   0000A0E3           MOV      R0,#+0
+   \   00000064   1EFF2FE1           BX       LR
+    540                  }
+    541                }
+    542              }
+    543            }
+    544          #endif /* SO_REUSE */
+    545            lpcb = (struct tcp_pcb_listen *)memp_malloc(MEMP_TCP_PCB_LISTEN);
+   \                     ??tcp_listen_with_backlog_1:
+   \   00000068   0300A0E3           MOV      R0,#+3
+   \   0000006C   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000070   0060B0E1           MOVS     R6,R0
+    546            if (lpcb == NULL) {
+   \   00000074   F8FFFF0A           BEQ      ??tcp_listen_with_backlog_4
+    547              return NULL;
+    548            }
+    549            lpcb->callback_arg = pcb->callback_arg;
+   \   00000078   100094E5           LDR      R0,[R4, #+16]
+   \   0000007C   100086E5           STR      R0,[R6, #+16]
+    550            lpcb->local_port = pcb->local_port;
+   \   00000080   BA01D4E1           LDRH     R0,[R4, #+26]
+   \   00000084   BA01C6E1           STRH     R0,[R6, #+26]
+    551            lpcb->state = LISTEN;
+   \   00000088   0100A0E3           MOV      R0,#+1
+   \   0000008C   1800C6E5           STRB     R0,[R6, #+24]
+    552            lpcb->prio = pcb->prio;
+   \   00000090   1900D4E5           LDRB     R0,[R4, #+25]
+   \   00000094   1900C6E5           STRB     R0,[R6, #+25]
+    553            lpcb->so_options = pcb->so_options;
+    554            ip_set_option(lpcb, SOF_ACCEPTCONN);
+   \   00000098   0800D4E5           LDRB     R0,[R4, #+8]
+   \   0000009C   020080E3           ORR      R0,R0,#0x2
+   \   000000A0   0800C6E5           STRB     R0,[R6, #+8]
+    555            lpcb->ttl = pcb->ttl;
+   \   000000A4   0A00D4E5           LDRB     R0,[R4, #+10]
+   \   000000A8   0A00C6E5           STRB     R0,[R6, #+10]
+    556            lpcb->tos = pcb->tos;
+   \   000000AC   0900D4E5           LDRB     R0,[R4, #+9]
+   \   000000B0   0900C6E5           STRB     R0,[R6, #+9]
+    557            ip_addr_copy(lpcb->local_ip, pcb->local_ip);
+   \   000000B4   000094E5           LDR      R0,[R4, #+0]
+   \   000000B8   000086E5           STR      R0,[R6, #+0]
+    558            if (pcb->local_port != 0) {
+   \   000000BC   BA01D4E1           LDRH     R0,[R4, #+26]
+   \   000000C0   000050E3           CMP      R0,#+0
+   \   000000C4   0F00000A           BEQ      ??tcp_listen_with_backlog_5
+    559              TCP_RMV(&tcp_bound_pcbs, pcb);
+   \   000000C8   080095E5           LDR      R0,[R5, #+8]
+   \   000000CC   040050E1           CMP      R0,R4
+   \   000000D0   0C009005           LDREQ    R0,[R0, #+12]
+   \   000000D4   08008505           STREQ    R0,[R5, #+8]
+   \   000000D8   0800000A           BEQ      ??tcp_listen_with_backlog_6
+   \                     ??tcp_listen_with_backlog_7:
+   \   000000DC   180085E5           STR      R0,[R5, #+24]
+   \   000000E0   181095E5           LDR      R1,[R5, #+24]
+   \   000000E4   000051E3           CMP      R1,#+0
+   \   000000E8   0400000A           BEQ      ??tcp_listen_with_backlog_6
+   \   000000EC   0C0091E5           LDR      R0,[R1, #+12]
+   \   000000F0   040050E1           CMP      R0,R4
+   \   000000F4   F8FFFF1A           BNE      ??tcp_listen_with_backlog_7
+   \   000000F8   0C0094E5           LDR      R0,[R4, #+12]
+   \   000000FC   0C0081E5           STR      R0,[R1, #+12]
+   \                     ??tcp_listen_with_backlog_6:
+   \   00000100   0000A0E3           MOV      R0,#+0
+   \   00000104   0C0084E5           STR      R0,[R4, #+12]
+    560            }
+    561            memp_free(MEMP_TCP_PCB, pcb);
+   \                     ??tcp_listen_with_backlog_5:
+   \   00000108   0410A0E1           MOV      R1,R4
+   \   0000010C   0200A0E3           MOV      R0,#+2
+   \   00000110   ........           _BLF     memp_free,??memp_free??rA
+    562          #if LWIP_CALLBACK_API
+    563            lpcb->accept = tcp_accept_null;
+   \   00000114   1C009FE5           LDR      R0,??tcp_listen_with_backlog_8  ;; tcp_accept_null
+   \   00000118   140086E5           STR      R0,[R6, #+20]
+    564          #endif /* LWIP_CALLBACK_API */
+    565          #if TCP_LISTEN_BACKLOG
+    566            lpcb->accepts_pending = 0;
+    567            lpcb->backlog = (backlog ? backlog : 1);
+    568          #endif /* TCP_LISTEN_BACKLOG */
+    569            TCP_REG(&tcp_listen_pcbs.pcbs, (struct tcp_pcb *)lpcb);
+   \   0000011C   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000120   0C0086E5           STR      R0,[R6, #+12]
+   \   00000124   0C6085E5           STR      R6,[R5, #+12]
+   \   00000128   ........           _BLF     tcp_timer_needed,??tcp_timer_needed??rA
+    570            return (struct tcp_pcb *)lpcb;
+   \   0000012C   0600A0E1           MOV      R0,R6
+   \                     ??tcp_listen_with_backlog_0:
+   \   00000130   7040BDE8           POP      {R4-R6,LR}
+   \   00000134   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_listen_with_backlog_8:
+   \   00000138   ........           DC32     tcp_accept_null
+    571          }
+    572          
+    573          /** 
+    574           * Update the state that tracks the available window space to advertise.
+    575           *
+    576           * Returns how much extra window would be advertised if we sent an
+    577           * update now.
+    578           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    579          u32_t tcp_update_rcv_ann_wnd(struct tcp_pcb *pcb)
+    580          {
+   \                     tcp_update_rcv_ann_wnd:
+   \   00000000   10002DE9           PUSH     {R4}
+    581            u32_t new_right_edge = pcb->rcv_nxt + pcb->rcv_wnd;
+    582          
+    583            if (TCP_SEQ_GEQ(new_right_edge, pcb->rcv_ann_right_edge + LWIP_MIN((TCP_WND / 2), pcb->mss))) {
+   \   00000004   B6C3D0E1           LDRH     R12,[R0, #+54]
+   \   00000008   BC22D0E1           LDRH     R2,[R0, #+44]
+   \   0000000C   283090E5           LDR      R3,[R0, #+40]
+   \   00000010   3140A0E3           MOV      R4,#+49
+   \   00000014   404E84E3           ORR      R4,R4,#0x400
+   \   00000018   04005CE1           CMP      R12,R4
+   \   0000001C   304090E5           LDR      R4,[R0, #+48]
+   \   00000020   031082E0           ADD      R1,R2,R3
+   \   00000024   43CEA023           MOVCS    R12,#+1072
+   \   00000028   041041E0           SUB      R1,R1,R4
+   \   0000002C   0CC051E0           SUBS     R12,R1,R12
+    584              /* we can advertise more window */
+    585              pcb->rcv_ann_wnd = pcb->rcv_wnd;
+   \   00000030   BE22C051           STRHPL   R2,[R0, #+46]
+    586              return new_right_edge - pcb->rcv_ann_right_edge;
+   \   00000034   0100A051           MOVPL    R0,R1
+   \   00000038   0500005A           BPL      ??tcp_update_rcv_ann_wnd_0
+    587            } else {
+    588              if (TCP_SEQ_GT(pcb->rcv_nxt, pcb->rcv_ann_right_edge)) {
+   \   0000003C   041043E0           SUB      R1,R3,R4
+   \   00000040   010051E3           CMP      R1,#+1
+    589                /* Can happen due to other end sending out of advertised window,
+    590                 * but within actual available (but not yet advertised) window */
+    591                pcb->rcv_ann_wnd = 0;
+   \   00000044   0010A0A3           MOVGE    R1,#+0
+    592              } else {
+    593                /* keep the right edge of window constant */
+    594                u32_t new_rcv_ann_wnd = pcb->rcv_ann_right_edge - pcb->rcv_nxt;
+    595                LWIP_ASSERT("new_rcv_ann_wnd <= 0xffff", new_rcv_ann_wnd <= 0xffff);
+    596                pcb->rcv_ann_wnd = (u16_t)new_rcv_ann_wnd;
+   \   00000048   031044B0           SUBLT    R1,R4,R3
+   \   0000004C   BE12C0E1           STRH     R1,[R0, #+46]
+    597              }
+    598              return 0;
+   \   00000050   0000A0E3           MOV      R0,#+0
+   \                     ??tcp_update_rcv_ann_wnd_0:
+   \   00000054   1000BDE8           POP      {R4}
+   \   00000058   1EFF2FE1           BX       LR               ;; return
+    599            }
+    600          }
+    601          
+    602          /**
+    603           * This function should be called by the application when it has
+    604           * processed the data. The purpose is to advertise a larger window
+    605           * when the data has been processed.
+    606           *
+    607           * @param pcb the tcp_pcb for which data is read
+    608           * @param len the amount of bytes that have been read by the application
+    609           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    610          void
+    611          tcp_recved(struct tcp_pcb *pcb, u16_t len)
+    612          {
+   \                     tcp_recved:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    613            int wnd_inflation;
+    614          
+    615            /* pcb->state LISTEN not allowed here */
+    616            LWIP_ASSERT("don't call tcp_recved for listen-pcbs",
+    617              pcb->state != LISTEN);
+    618            LWIP_ASSERT("tcp_recved: len would wrap rcv_wnd\n",
+    619                        len <= 0xffff - pcb->rcv_wnd );
+    620          
+    621            pcb->rcv_wnd += len;
+   \   00000008   BC02D4E1           LDRH     R0,[R4, #+44]
+   \   0000000C   000081E0           ADD      R0,R1,R0
+    622            if (pcb->rcv_wnd > TCP_WND) {
+   \   00000010   6110A0E3           MOV      R1,#+97
+   \   00000014   801E81E3           ORR      R1,R1,#0x800
+   \   00000018   0008A0E1           MOV      R0,R0, LSL #+16
+   \   0000001C   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000020   010050E1           CMP      R0,R1
+    623              pcb->rcv_wnd = TCP_WND;
+   \   00000024   860EA023           MOVCS    R0,#+2144
+   \   00000028   BC02C4E1           STRH     R0,[R4, #+44]
+    624            }
+    625          
+    626            wnd_inflation = tcp_update_rcv_ann_wnd(pcb);
+   \   0000002C   0400A0E1           MOV      R0,R4
+   \   00000030   ........           BL       tcp_update_rcv_ann_wnd
+    627          
+    628            /* If the change in the right edge of window is significant (default
+    629             * watermark is TCP_WND/4), then send an explicit update now.
+    630             * Otherwise wait for a packet to be sent in the normal course of
+    631             * events (or more window to be available later) */
+    632            if (wnd_inflation >= TCP_WND_UPDATE_THRESHOLD) {
+   \   00000034   860F50E3           CMP      R0,#+536
+   \   00000038   040000BA           BLT      ??tcp_recved_0
+    633              tcp_ack_now(pcb);
+   \   0000003C   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   00000040   020080E3           ORR      R0,R0,#0x2
+   \   00000044   1E00C4E5           STRB     R0,[R4, #+30]
+    634              tcp_output(pcb);
+   \   00000048   0400A0E1           MOV      R0,R4
+   \   0000004C   ........           _BLF     tcp_output,??tcp_output??rA
+    635            }
+    636          
+    637            LWIP_DEBUGF(TCP_DEBUG, ("tcp_recved: recveived %"U16_F" bytes, wnd %"U16_F" (%"U16_F").\n",
+    638                   len, pcb->rcv_wnd, TCP_WND - pcb->rcv_wnd));
+    639          }
+   \                     ??tcp_recved_0:
+   \   00000050   1040BDE8           POP      {R4,LR}
+   \   00000054   1EFF2FE1           BX       LR               ;; return
+    640          
+    641          /**
+    642           * Allocate a new local TCP port.
+    643           *
+    644           * @return a new (free) local TCP port number
+    645           */
+    646          static u16_t
+    647          tcp_new_port(void)
+    648          {
+    649            u8_t i;
+    650            u16_t n = 0;
+    651            struct tcp_pcb *pcb;
+    652            
+    653          again:
+    654            if (tcp_port++ == TCP_LOCAL_PORT_RANGE_END) {
+    655              tcp_port = TCP_LOCAL_PORT_RANGE_START;
+    656            }
+    657            /* Check all PCB lists. */
+    658            for (i = 0; i < NUM_TCP_PCB_LISTS; i++) {
+    659              for(pcb = *tcp_pcb_lists[i]; pcb != NULL; pcb = pcb->next) {
+    660                if (pcb->local_port == tcp_port) {
+    661                  if (++n > (TCP_LOCAL_PORT_RANGE_END - TCP_LOCAL_PORT_RANGE_START)) {
+    662                    return 0;
+    663                  }
+    664                  goto again;
+    665                }
+    666              }
+    667            }
+    668            return tcp_port;
+    669          }
+    670          
+    671          /**
+    672           * Connects to another host. The function given as the "connected"
+    673           * argument will be called when the connection has been established.
+    674           *
+    675           * @param pcb the tcp_pcb used to establish the connection
+    676           * @param ipaddr the remote ip address to connect to
+    677           * @param port the remote tcp port to connect to
+    678           * @param connected callback function to call when connected (or on error)
+    679           * @return ERR_VAL if invalid arguments are given
+    680           *         ERR_OK if connect request has been sent
+    681           *         other err_t values if connect request couldn't be sent
+    682           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    683          err_t
+    684          tcp_connect(struct tcp_pcb *pcb, ip_addr_t *ipaddr, u16_t port,
+    685                tcp_connected_fn connected)
+    686          {
+   \                     tcp_connect:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+   \   0000000C   02A0A0E1           MOV      R10,R2
+   \   00000010   0360A0E1           MOV      R6,R3
+    687            err_t ret;
+    688            u32_t iss;
+    689            u16_t old_local_port;
+    690          
+    691            //LWIP_ERROR("tcp_connect: can only connect from state CLOSED", pcb->state == CLOSED, return ERR_ISCONN);
+    692          
+    693            LWIP_DEBUGF(TCP_DEBUG, ("tcp_connect to port %"U16_F"\n", port));
+    694            if (ipaddr != NULL) {
+   \   00000014   000055E3           CMP      R5,#+0
+   \   00000018   0D00000A           BEQ      ??tcp_connect_0
+    695              pcb->remote_ip = *ipaddr;
+   \   0000001C   000095E5           LDR      R0,[R5, #+0]
+    696            } else {
+    697              return ERR_VAL;
+    698            }
+    699            pcb->remote_port = port;
+    700          
+    701            /* check if we have a route to the remote host */
+    702            if (ip_addr_isany(&(pcb->local_ip))) {
+   \   00000020   000054E3           CMP      R4,#+0
+   \   00000024   040084E5           STR      R0,[R4, #+4]
+   \   00000028   BCA1C4E1           STRH     R10,[R4, #+28]
+   \   0000002C   00009415           LDRNE    R0,[R4, #+0]
+   \   00000030   00005013           CMPNE    R0,#+0
+   \   00000034   0B00001A           BNE      ??tcp_connect_1
+    703              /* no local IP address set, yet. */
+    704              struct netif *netif = ip_route(&(pcb->remote_ip));
+   \   00000038   040084E2           ADD      R0,R4,#+4
+   \   0000003C   ........           _BLF     ip_route,??ip_route??rA
+    705              if (netif == NULL) {
+   \   00000040   000050E3           CMP      R0,#+0
+   \   00000044   0500001A           BNE      ??tcp_connect_2
+    706                /* Don't even try to send a SYN packet if we have no route
+    707                   since that will fail. */
+    708                return ERR_RTE;
+   \   00000048   F04FBDE8           POP      {R4-R11,LR}
+   \   0000004C   0300E0E3           MVN      R0,#+3
+   \   00000050   1EFF2FE1           BX       LR
+    709              }
+   \                     ??tcp_connect_0:
+   \   00000054   F04FBDE8           POP      {R4-R11,LR}
+   \   00000058   0500E0E3           MVN      R0,#+5
+   \   0000005C   1EFF2FE1           BX       LR
+    710              /* Use the netif's IP address as local address. */
+    711              ip_addr_copy(pcb->local_ip, netif->ip_addr);
+   \                     ??tcp_connect_2:
+   \   00000060   040090E5           LDR      R0,[R0, #+4]
+   \   00000064   000084E5           STR      R0,[R4, #+0]
+    712            }
+    713          
+    714            old_local_port = pcb->local_port;
+   \                     ??tcp_connect_1:
+   \   00000068   BA71D4E1           LDRH     R7,[R4, #+26]
+    715            if (pcb->local_port == 0) {
+   \   0000006C   ........           LDR      R0,??DataTable5  ;; tcp_pcb_lists
+   \   00000070   ........           LDR      R8,??DataTable8  ;; tcp_port
+   \   00000074   000057E3           CMP      R7,#+0
+   \   00000078   0090A0E3           MOV      R9,#+0
+   \   0000007C   2300001A           BNE      ??tcp_connect_3
+    716              pcb->local_port = tcp_new_port();
+   \   00000080   0010A0E3           MOV      R1,#+0
+   \   00000084   FF20A0E3           MOV      R2,#+255
+   \   00000088   FF2C82E3           ORR      R2,R2,#0xFF00
+   \                     ??tcp_connect_4:
+   \   0000008C   B030D8E1           LDRH     R3,[R8, #+0]
+   \   00000090   01C083E2           ADD      R12,R3,#+1
+   \   00000094   020053E1           CMP      R3,R2
+   \   00000098   C0CCA003           MOVEQ    R12,#+49152
+   \   0000009C   B0C0C8E1           STRH     R12,[R8, #+0]
+   \   000000A0   0030A0E3           MOV      R3,#+0
+   \                     ??tcp_connect_5:
+   \   000000A4   03C0A0E1           MOV      R12,R3
+   \   000000A8   0CC190E7           LDR      R12,[R0, +R12, LSL #+2]
+   \   000000AC   00E09CE5           LDR      LR,[R12, #+0]
+   \   000000B0   000000EA           B        ??tcp_connect_6
+   \                     ??tcp_connect_7:
+   \   000000B4   0CE09EE5           LDR      LR,[LR, #+12]
+   \                     ??tcp_connect_6:
+   \   000000B8   B0C0D8E1           LDRH     R12,[R8, #+0]
+   \   000000BC   00005EE3           CMP      LR,#+0
+   \   000000C0   0900000A           BEQ      ??tcp_connect_8
+   \   000000C4   BAB1DEE1           LDRH     R11,[LR, #+26]
+   \   000000C8   0C005BE1           CMP      R11,R12
+   \   000000CC   F8FFFF1A           BNE      ??tcp_connect_7
+   \   000000D0   011081E2           ADD      R1,R1,#+1
+   \   000000D4   0118A0E1           MOV      R1,R1, LSL #+16
+   \   000000D8   2118A0E1           MOV      R1,R1, LSR #+16
+   \   000000DC   400C51E3           CMP      R1,#+16384
+   \   000000E0   E9FFFF3A           BCC      ??tcp_connect_4
+   \   000000E4   00C0A0E3           MOV      R12,#+0
+   \   000000E8   030000EA           B        ??tcp_connect_9
+   \                     ??tcp_connect_8:
+   \   000000EC   013083E2           ADD      R3,R3,#+1
+   \   000000F0   FF3003E2           AND      R3,R3,#0xFF
+   \   000000F4   040053E3           CMP      R3,#+4
+   \   000000F8   E9FFFF3A           BCC      ??tcp_connect_5
+   \                     ??tcp_connect_9:
+   \   000000FC   BAC1C4E1           STRH     R12,[R4, #+26]
+    717              if (pcb->local_port == 0) {
+   \   00000100   BA11D4E1           LDRH     R1,[R4, #+26]
+   \   00000104   000051E3           CMP      R1,#+0
+    718                return ERR_BUF;
+   \   00000108   0100E003           MVNEQ    R0,#+1
+   \   0000010C   5400000A           BEQ      ??tcp_connect_10
+    719              }
+    720            }
+    721          #if SO_REUSE
+    722            if (ip_get_option(pcb, SOF_REUSEADDR)) {
+   \                     ??tcp_connect_3:
+   \   00000110   0810D4E5           LDRB     R1,[R4, #+8]
+   \   00000114   040011E3           TST      R1,#0x4
+   \   00000118   1A00000A           BEQ      ??tcp_connect_11
+    723              /* Since SOF_REUSEADDR allows reusing a local address, we have to make sure
+    724                 now that the 5-tuple is unique. */
+    725              struct tcp_pcb *cpcb;
+    726              int i;
+    727              /* Don't check listen- and bound-PCBs, check active- and TIME-WAIT PCBs. */
+    728              for (i = 2; i < NUM_TCP_PCB_LISTS; i++) {
+   \   0000011C   0210A0E3           MOV      R1,#+2
+    729                for(cpcb = *tcp_pcb_lists[i]; cpcb != NULL; cpcb = cpcb->next) {
+   \                     ??tcp_connect_12:
+   \   00000120   012190E7           LDR      R2,[R0, +R1, LSL #+2]
+   \   00000124   002092E5           LDR      R2,[R2, #+0]
+   \   00000128   000000EA           B        ??tcp_connect_13
+   \                     ??tcp_connect_14:
+   \   0000012C   0C2092E5           LDR      R2,[R2, #+12]
+   \                     ??tcp_connect_13:
+   \   00000130   000052E3           CMP      R2,#+0
+   \   00000134   1000000A           BEQ      ??tcp_connect_15
+    730                  if ((cpcb->local_port == pcb->local_port) &&
+    731                      (cpcb->remote_port == port) &&
+    732                      ip_addr_cmp(&cpcb->local_ip, &pcb->local_ip) &&
+    733                      ip_addr_cmp(&cpcb->remote_ip, ipaddr)) {
+   \   00000138   BA31D2E1           LDRH     R3,[R2, #+26]
+   \   0000013C   BAB1D4E1           LDRH     R11,[R4, #+26]
+   \   00000140   0B0053E1           CMP      R3,R11
+   \   00000144   BC31D201           LDRHEQ   R3,[R2, #+28]
+   \   00000148   0A005301           CMPEQ    R3,R10
+   \   0000014C   F6FFFF1A           BNE      ??tcp_connect_14
+   \   00000150   003092E5           LDR      R3,[R2, #+0]
+   \   00000154   00B094E5           LDR      R11,[R4, #+0]
+   \   00000158   0B0053E1           CMP      R3,R11
+   \   0000015C   F2FFFF1A           BNE      ??tcp_connect_14
+   \   00000160   043092E5           LDR      R3,[R2, #+4]
+   \   00000164   00B095E5           LDR      R11,[R5, #+0]
+   \   00000168   0B0053E1           CMP      R3,R11
+   \   0000016C   EEFFFF1A           BNE      ??tcp_connect_14
+    734                    /* linux returns EISCONN here, but ERR_USE should be OK for us */
+    735                    return ERR_USE;
+   \   00000170   F04FBDE8           POP      {R4-R11,LR}
+   \   00000174   0700E0E3           MVN      R0,#+7
+   \   00000178   1EFF2FE1           BX       LR
+    736                  }
+    737                }
+    738              }
+   \                     ??tcp_connect_15:
+   \   0000017C   011081E2           ADD      R1,R1,#+1
+   \   00000180   040051E3           CMP      R1,#+4
+   \   00000184   E5FFFFBA           BLT      ??tcp_connect_12
+    739            }
+    740          #endif /* SO_REUSE */
+    741            iss = tcp_next_iss();
+   \                     ??tcp_connect_11:
+   \   00000188   ........           BL       tcp_next_iss
+    742            pcb->rcv_nxt = 0;
+   \   0000018C   289084E5           STR      R9,[R4, #+40]
+    743            pcb->snd_nxt = iss;
+   \   00000190   500084E5           STR      R0,[R4, #+80]
+    744            pcb->lastack = iss - 1;
+   \   00000194   010040E2           SUB      R0,R0,#+1
+   \   00000198   480084E5           STR      R0,[R4, #+72]
+    745            pcb->snd_lbb = iss - 1;
+   \   0000019C   5C0084E5           STR      R0,[R4, #+92]
+    746            pcb->rcv_wnd = TCP_WND;
+   \   000001A0   860EA0E3           MOV      R0,#+2144
+   \   000001A4   BC02C4E1           STRH     R0,[R4, #+44]
+    747            pcb->rcv_ann_wnd = TCP_WND;
+   \   000001A8   BE02C4E1           STRH     R0,[R4, #+46]
+    748            pcb->rcv_ann_right_edge = pcb->rcv_nxt;
+   \   000001AC   0010A0E3           MOV      R1,#+0
+   \   000001B0   301084E5           STR      R1,[R4, #+48]
+    749            pcb->snd_wnd = TCP_WND;
+   \   000001B4   B006C4E1           STRH     R0,[R4, #+96]
+    750            /* As initial send MSS, we use TCP_MSS but limit it to 536.
+    751               The send MSS is updated when an MSS option is received. */
+    752            pcb->mss = (TCP_MSS > 536) ? 536 : TCP_MSS;
+   \   000001B8   860FA0E3           MOV      R0,#+536
+   \   000001BC   B603C4E1           STRH     R0,[R4, #+54]
+    753          #if TCP_CALCULATE_EFF_SEND_MSS
+    754            pcb->mss = tcp_eff_send_mss(pcb->mss, ipaddr);
+   \   000001C0   0510A0E1           MOV      R1,R5
+   \   000001C4   ........           BL       tcp_eff_send_mss
+   \   000001C8   B603C4E1           STRH     R0,[R4, #+54]
+    755          #endif /* TCP_CALCULATE_EFF_SEND_MSS */
+    756            pcb->cwnd = 1;
+   \   000001CC   0150A0E3           MOV      R5,#+1
+   \   000001D0   BC54C4E1           STRH     R5,[R4, #+76]
+    757            pcb->ssthresh = pcb->mss * 10;
+   \   000001D4   0A10A0E3           MOV      R1,#+10
+   \   000001D8   910000E0           MUL      R0,R1,R0
+   \   000001DC   BE04C4E1           STRH     R0,[R4, #+78]
+    758          #if LWIP_CALLBACK_API
+    759            pcb->connected = connected;
+   \   000001E0   846084E5           STR      R6,[R4, #+132]
+    760          #else /* LWIP_CALLBACK_API */  
+    761            LWIP_UNUSED_ARG(connected);
+    762          #endif /* LWIP_CALLBACK_API */
+    763          
+    764            /* Send a SYN together with the MSS option. */
+    765            ret = tcp_enqueue_flags(pcb, TCP_SYN);
+   \   000001E4   0210A0E3           MOV      R1,#+2
+   \   000001E8   0400A0E1           MOV      R0,R4
+   \   000001EC   ........           _BLF     tcp_enqueue_flags,??tcp_enqueue_flags??rA
+   \   000001F0   0060B0E1           MOVS     R6,R0
+    766            if (ret == ERR_OK) {
+   \   000001F4   1900001A           BNE      ??tcp_connect_16
+    767              /* SYN segment was enqueued, changed the pcbs state now */
+    768              pcb->state = SYN_SENT;
+   \   000001F8   0200A0E3           MOV      R0,#+2
+   \   000001FC   1800C4E5           STRB     R0,[R4, #+24]
+    769              if (old_local_port != 0) {
+   \   00000200   000057E3           CMP      R7,#+0
+   \   00000204   0E00000A           BEQ      ??tcp_connect_17
+    770                TCP_RMV(&tcp_bound_pcbs, pcb);
+   \   00000208   080098E5           LDR      R0,[R8, #+8]
+   \   0000020C   040050E1           CMP      R0,R4
+   \   00000210   0C009005           LDREQ    R0,[R0, #+12]
+   \   00000214   08008805           STREQ    R0,[R8, #+8]
+   \   00000218   0800000A           BEQ      ??tcp_connect_18
+   \                     ??tcp_connect_19:
+   \   0000021C   180088E5           STR      R0,[R8, #+24]
+   \   00000220   181098E5           LDR      R1,[R8, #+24]
+   \   00000224   000051E3           CMP      R1,#+0
+   \   00000228   0400000A           BEQ      ??tcp_connect_18
+   \   0000022C   0C0091E5           LDR      R0,[R1, #+12]
+   \   00000230   040050E1           CMP      R0,R4
+   \   00000234   F8FFFF1A           BNE      ??tcp_connect_19
+   \   00000238   0C0094E5           LDR      R0,[R4, #+12]
+   \   0000023C   0C0081E5           STR      R0,[R1, #+12]
+   \                     ??tcp_connect_18:
+   \   00000240   0C9084E5           STR      R9,[R4, #+12]
+    771              }
+    772              TCP_REG_ACTIVE(pcb);
+   \                     ??tcp_connect_17:
+   \   00000244   100098E5           LDR      R0,[R8, #+16]
+   \   00000248   0C0084E5           STR      R0,[R4, #+12]
+   \   0000024C   104088E5           STR      R4,[R8, #+16]
+   \   00000250   ........           _BLF     tcp_timer_needed,??tcp_timer_needed??rA
+   \   00000254   2050C8E5           STRB     R5,[R8, #+32]
+    773              snmp_inc_tcpactiveopens();
+    774          
+    775              tcp_output(pcb);
+   \   00000258   0400A0E1           MOV      R0,R4
+   \   0000025C   ........           _BLF     tcp_output,??tcp_output??rA
+    776            }
+    777            return ret;
+   \                     ??tcp_connect_16:
+   \   00000260   0600A0E1           MOV      R0,R6
+   \                     ??tcp_connect_10:
+   \   00000264   F04FBDE8           POP      {R4-R11,LR}
+   \   00000268   1EFF2FE1           BX       LR               ;; return
+    778          }
+    779          
+    780          /**
+    781           * Called every 500 ms and implements the retransmission timer and the timer that
+    782           * removes PCBs that have been in TIME-WAIT for enough time. It also increments
+    783           * various timers such as the inactivity timer in each PCB.
+    784           *
+    785           * Automatically called from tcp_tmr().
+    786           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    787          void
+    788          tcp_slowtmr(void)
+    789          {
+   \                     tcp_slowtmr:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+    790            struct tcp_pcb *pcb, *prev;
+    791            u16_t eff_wnd;
+    792            u8_t pcb_remove;      /* flag if a PCB should be removed */
+    793            u8_t pcb_reset;       /* flag if a RST should be sent when removing */
+    794            err_t err;
+    795          
+    796            err = ERR_OK;
+    797          
+    798            ++tcp_ticks;
+   \   00000004   ........           LDR      R5,??DataTable8  ;; tcp_port
+    799            ++tcp_timer_ctr;
+   \   00000008   0040A0E3           MOV      R4,#+0
+   \   0000000C   040095E5           LDR      R0,[R5, #+4]
+   \   00000010   010080E2           ADD      R0,R0,#+1
+   \   00000014   040085E5           STR      R0,[R5, #+4]
+   \   00000018   2100D5E5           LDRB     R0,[R5, #+33]
+   \   0000001C   010080E2           ADD      R0,R0,#+1
+   \   00000020   2100C5E5           STRB     R0,[R5, #+33]
+   \   00000024   1B0000EA           B        ??tcp_slowtmr_0
+    800          
+    801          tcp_slowtmr_start:
+    802            /* Steps through all of the active PCBs. */
+    803            prev = NULL;
+    804            pcb = tcp_active_pcbs;
+    805            if (pcb == NULL) {
+    806              LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: no active pcbs\n"));
+    807            }
+    808            while (pcb != NULL) {
+    809              LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: processing active pcb\n"));
+    810              LWIP_ASSERT("tcp_slowtmr: active pcb->state != CLOSED\n", pcb->state != CLOSED);
+    811              LWIP_ASSERT("tcp_slowtmr: active pcb->state != LISTEN\n", pcb->state != LISTEN);
+    812              LWIP_ASSERT("tcp_slowtmr: active pcb->state != TIME-WAIT\n", pcb->state != TIME_WAIT);
+    813              if (pcb->last_timer == tcp_timer_ctr) {
+    814                /* skip this pcb, we have already processed it */
+    815                pcb = pcb->next;
+    816                continue;
+    817              }
+    818              pcb->last_timer = tcp_timer_ctr;
+    819          
+    820              pcb_remove = 0;
+    821              pcb_reset = 0;
+    822          
+    823              if (pcb->state == SYN_SENT && pcb->nrtx == TCP_SYNMAXRTX) {
+    824                ++pcb_remove;
+    825                LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: max SYN retries reached\n"));
+    826              }
+    827              else if (pcb->nrtx == TCP_MAXRTX) {
+    828                ++pcb_remove;
+    829                LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: max DATA retries reached\n"));
+    830              } else {
+    831                if (pcb->persist_backoff > 0) {
+    832                  /* If snd_wnd is zero, use persist timer to send 1 byte probes
+    833                   * instead of using the standard retransmission mechanism. */
+    834                  pcb->persist_cnt++;
+    835                  if (pcb->persist_cnt >= tcp_persist_backoff[pcb->persist_backoff-1]) {
+    836                    pcb->persist_cnt = 0;
+    837                    if (pcb->persist_backoff < sizeof(tcp_persist_backoff)) {
+    838                      pcb->persist_backoff++;
+    839                    }
+    840                    tcp_zero_window_probe(pcb);
+    841                  }
+    842                } else {
+    843                  /* Increase the retransmission timer if it is running */
+    844                  if(pcb->rtime >= 0) {
+    845                    ++pcb->rtime;
+    846                  }
+    847          
+    848                  if (pcb->unacked != NULL && pcb->rtime >= pcb->rto) {
+    849                    /* Time for a retransmission. */
+    850                    LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_slowtmr: rtime %"S16_F
+    851                                                " pcb->rto %"S16_F"\n",
+    852                                                pcb->rtime, pcb->rto));
+    853          
+    854                    /* Double retransmission time-out unless we are trying to
+    855                     * connect to somebody (i.e., we are in SYN_SENT). */
+    856                    if (pcb->state != SYN_SENT) {
+    857                      pcb->rto = ((pcb->sa >> 3) + pcb->sv) << tcp_backoff[pcb->nrtx];
+    858                    }
+    859          
+    860                    /* Reset the retransmission timer. */
+    861                    pcb->rtime = 0;
+    862          
+    863                    /* Reduce congestion window and ssthresh. */
+    864                    eff_wnd = LWIP_MIN(pcb->cwnd, pcb->snd_wnd);
+    865                    pcb->ssthresh = eff_wnd >> 1;
+    866                    if (pcb->ssthresh < (pcb->mss << 1)) {
+    867                      pcb->ssthresh = (pcb->mss << 1);
+    868                    }
+    869                    pcb->cwnd = pcb->mss;
+    870                    LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_slowtmr: cwnd %"U16_F
+    871                                                 " ssthresh %"U16_F"\n",
+    872                                                 pcb->cwnd, pcb->ssthresh));
+    873           
+    874                    /* The following needs to be called AFTER cwnd is set to one
+    875                       mss - STJ */
+    876                    tcp_rexmit_rto(pcb);
+    877                  }
+    878                }
+    879              }
+    880              /* Check if this PCB has stayed too long in FIN-WAIT-2 */
+    881              if (pcb->state == FIN_WAIT_2) {
+    882                /* If this PCB is in FIN_WAIT_2 because of SHUT_WR don't let it time out. */
+    883                if (pcb->flags & TF_RXCLOSED) {
+    884                  /* PCB was fully closed (either through close() or SHUT_RDWR):
+    885                     normal FIN-WAIT timeout handling. */
+    886                  if ((u32_t)(tcp_ticks - pcb->tmr) >
+    887                      TCP_FIN_WAIT_TIMEOUT / TCP_SLOW_INTERVAL) {
+    888                    ++pcb_remove;
+    889                    LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: removing pcb stuck in FIN-WAIT-2\n"));
+    890                  }
+    891                }
+    892              }
+    893          
+    894              /* Check if KEEPALIVE should be sent */
+    895              if(ip_get_option(pcb, SOF_KEEPALIVE) &&
+    896                 ((pcb->state == ESTABLISHED) ||
+    897                  (pcb->state == CLOSE_WAIT))) {
+    898                if((u32_t)(tcp_ticks - pcb->tmr) >
+    899                   (pcb->keep_idle + TCP_KEEP_DUR(pcb)) / TCP_SLOW_INTERVAL)
+    900                {
+    901                  LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: KEEPALIVE timeout. Aborting connection to %"U16_F".%"U16_F".%"U16_F".%"U16_F".\n",
+    902                                          ip4_addr1_16(&pcb->remote_ip), ip4_addr2_16(&pcb->remote_ip),
+    903                                          ip4_addr3_16(&pcb->remote_ip), ip4_addr4_16(&pcb->remote_ip)));
+    904                  
+    905                  ++pcb_remove;
+    906                  ++pcb_reset;
+    907                }
+    908                else if((u32_t)(tcp_ticks - pcb->tmr) > 
+    909                        (pcb->keep_idle + pcb->keep_cnt_sent * TCP_KEEP_INTVL(pcb))
+    910                        / TCP_SLOW_INTERVAL)
+    911                {
+    912                  tcp_keepalive(pcb);
+    913                  pcb->keep_cnt_sent++;
+    914                }
+    915              }
+    916          
+    917              /* If this PCB has queued out of sequence data, but has been
+    918                 inactive for too long, will drop the data (it will eventually
+    919                 be retransmitted). */
+    920          #if TCP_QUEUE_OOSEQ
+    921              if (pcb->ooseq != NULL &&
+    922                  (u32_t)tcp_ticks - pcb->tmr >= pcb->rto * TCP_OOSEQ_TIMEOUT) {
+    923                tcp_segs_free(pcb->ooseq);
+    924                pcb->ooseq = NULL;
+    925                LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_slowtmr: dropping OOSEQ queued data\n"));
+    926              }
+    927          #endif /* TCP_QUEUE_OOSEQ */
+    928          
+    929              /* Check if this PCB has stayed too long in SYN-RCVD */
+    930              if (pcb->state == SYN_RCVD) {
+    931                if ((u32_t)(tcp_ticks - pcb->tmr) >
+    932                    TCP_SYN_RCVD_TIMEOUT / TCP_SLOW_INTERVAL) {
+    933                  ++pcb_remove;
+    934                  LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: removing pcb stuck in SYN-RCVD\n"));
+    935                }
+    936              }
+    937          
+    938              /* Check if this PCB has stayed too long in LAST-ACK */
+    939              if (pcb->state == LAST_ACK) {
+    940                if ((u32_t)(tcp_ticks - pcb->tmr) > 2 * TCP_MSL / TCP_SLOW_INTERVAL) {
+    941                  ++pcb_remove;
+    942                  LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: removing pcb stuck in LAST-ACK\n"));
+    943                }
+    944              }
+    945          
+    946              /* If the PCB should be removed, do it. */
+    947              if (pcb_remove) {
+    948                struct tcp_pcb *pcb2;
+    949                tcp_err_fn err_fn;
+    950                void *err_arg;
+    951                tcp_pcb_purge(pcb);
+    952                /* Remove PCB from tcp_active_pcbs list. */
+    953                if (prev != NULL) {
+    954                  LWIP_ASSERT("tcp_slowtmr: middle tcp != tcp_active_pcbs", pcb != tcp_active_pcbs);
+    955                  prev->next = pcb->next;
+    956                } else {
+    957                  /* This PCB was the first. */
+    958                  LWIP_ASSERT("tcp_slowtmr: first pcb == tcp_active_pcbs", tcp_active_pcbs == pcb);
+    959                  tcp_active_pcbs = pcb->next;
+    960                }
+    961          
+    962                if (pcb_reset) {
+   \                     ??tcp_slowtmr_1:
+   \   00000028   000059E3           CMP      R9,#+0
+   \   0000002C   0900000A           BEQ      ??tcp_slowtmr_2
+    963                  tcp_rst(pcb->snd_nxt, pcb->rcv_nxt, &pcb->local_ip, &pcb->remote_ip,
+    964                    pcb->local_port, pcb->remote_port);
+   \   00000030   BC01D7E1           LDRH     R0,[R7, #+28]
+   \   00000034   043087E2           ADD      R3,R7,#+4
+   \   00000038   0720A0E1           MOV      R2,R7
+   \   0000003C   01002DE9           PUSH     {R0}
+   \   00000040   BA01D7E1           LDRH     R0,[R7, #+26]
+   \   00000044   01002DE9           PUSH     {R0}
+   \   00000048   281097E5           LDR      R1,[R7, #+40]
+   \   0000004C   500097E5           LDR      R0,[R7, #+80]
+   \   00000050   ........           _BLF     tcp_rst,??tcp_rst??rA
+   \   00000054   08D08DE2           ADD      SP,SP,#+8
+    965                }
+    966          
+    967                err_fn = pcb->errf;
+   \                     ??tcp_slowtmr_2:
+   \   00000058   8C8097E5           LDR      R8,[R7, #+140]
+    968                err_arg = pcb->callback_arg;
+   \   0000005C   109097E5           LDR      R9,[R7, #+16]
+    969                pcb2 = pcb;
+   \   00000060   0710A0E1           MOV      R1,R7
+    970                pcb = pcb->next;
+   \   00000064   0C7097E5           LDR      R7,[R7, #+12]
+    971                memp_free(MEMP_TCP_PCB, pcb2);
+   \   00000068   0200A0E3           MOV      R0,#+2
+   \   0000006C   ........           _BLF     memp_free,??memp_free??rA
+    972          
+    973                tcp_active_pcbs_changed = 0;
+   \   00000070   2040C5E5           STRB     R4,[R5, #+32]
+    974                TCP_EVENT_ERR(err_fn, err_arg, ERR_ABRT);
+   \   00000074   000058E3           CMP      R8,#+0
+   \   00000078   0A00000A           BEQ      ??tcp_slowtmr_3
+   \   0000007C   0910E0E3           MVN      R1,#+9
+   \   00000080   0900A0E1           MOV      R0,R9
+   \   00000084   0FE0A0E1           MOV      LR,PC
+   \   00000088   18FF2FE1           BX       R8
+    975                if (tcp_active_pcbs_changed) {
+   \   0000008C   2000D5E5           LDRB     R0,[R5, #+32]
+   \   00000090   000050E3           CMP      R0,#+0
+   \   00000094   0300000A           BEQ      ??tcp_slowtmr_3
+   \                     ??tcp_slowtmr_0:
+   \   00000098   107095E5           LDR      R7,[R5, #+16]
+   \   0000009C   0060A0E3           MOV      R6,#+0
+   \   000000A0   000000EA           B        ??tcp_slowtmr_3
+   \                     ??tcp_slowtmr_4:
+   \   000000A4   0C7097E5           LDR      R7,[R7, #+12]
+   \                     ??tcp_slowtmr_3:
+   \   000000A8   000057E3           CMP      R7,#+0
+   \   000000AC   AF00000A           BEQ      ??tcp_slowtmr_5
+   \   000000B0   2100D5E5           LDRB     R0,[R5, #+33]
+   \   000000B4   2110D7E5           LDRB     R1,[R7, #+33]
+   \   000000B8   000051E1           CMP      R1,R0
+   \   000000BC   F8FFFF0A           BEQ      ??tcp_slowtmr_4
+   \   000000C0   2100C7E5           STRB     R0,[R7, #+33]
+   \   000000C4   1820D7E5           LDRB     R2,[R7, #+24]
+   \   000000C8   0080A0E3           MOV      R8,#+0
+   \   000000CC   0490A0E1           MOV      R9,R4
+   \   000000D0   020052E3           CMP      R2,#+2
+   \   000000D4   4600D705           LDRBEQ   R0,[R7, #+70]
+   \   000000D8   04005003           CMPEQ    R0,#+4
+   \   000000DC   0100001A           BNE      ??tcp_slowtmr_6
+   \                     ??tcp_slowtmr_7:
+   \   000000E0   0180A0E3           MOV      R8,#+1
+   \   000000E4   380000EA           B        ??tcp_slowtmr_8
+   \                     ??tcp_slowtmr_6:
+   \   000000E8   4630D7E5           LDRB     R3,[R7, #+70]
+   \   000000EC   040053E3           CMP      R3,#+4
+   \   000000F0   FAFFFF0A           BEQ      ??tcp_slowtmr_7
+   \   000000F4   9D00D7E5           LDRB     R0,[R7, #+157]
+   \   000000F8   D4129FE5           LDR      R1,??tcp_slowtmr_9  ;; tcp_backoff
+   \   000000FC   000050E3           CMP      R0,#+0
+   \   00000100   0E00000A           BEQ      ??tcp_slowtmr_10
+   \   00000104   9C20D7E5           LDRB     R2,[R7, #+156]
+   \   00000108   011080E0           ADD      R1,R0,R1
+   \   0000010C   012082E2           ADD      R2,R2,#+1
+   \   00000110   9C20C7E5           STRB     R2,[R7, #+156]
+   \   00000114   0F10D1E5           LDRB     R1,[R1, #+15]
+   \   00000118   022CA0E1           MOV      R2,R2, LSL #+24
+   \   0000011C   220C51E1           CMP      R1,R2, LSR #+24
+   \   00000120   2900008A           BHI      ??tcp_slowtmr_8
+   \   00000124   9C40C7E5           STRB     R4,[R7, #+156]
+   \   00000128   070050E3           CMP      R0,#+7
+   \   0000012C   01008032           ADDCC    R0,R0,#+1
+   \   00000130   9D00C735           STRBCC   R0,[R7, #+157]
+   \   00000134   0700A0E1           MOV      R0,R7
+   \   00000138   ........           _BLF     tcp_zero_window_probe,??tcp_zero_window_probe??rA
+   \   0000013C   220000EA           B        ??tcp_slowtmr_8
+   \                     ??tcp_slowtmr_10:
+   \   00000140   F403D7E1           LDRSH    R0,[R7, #+52]
+   \   00000144   000050E3           CMP      R0,#+0
+   \   00000148   01008052           ADDPL    R0,R0,#+1
+   \   0000014C   B403C751           STRHPL   R0,[R7, #+52]
+   \   00000150   700097E5           LDR      R0,[R7, #+112]
+   \   00000154   000050E3           CMP      R0,#+0
+   \   00000158   1B00000A           BEQ      ??tcp_slowtmr_8
+   \   0000015C   F403D7E1           LDRSH    R0,[R7, #+52]
+   \   00000160   F4C4D7E1           LDRSH    R12,[R7, #+68]
+   \   00000164   0C0050E1           CMP      R0,R12
+   \   00000168   170000BA           BLT      ??tcp_slowtmr_8
+   \   0000016C   020052E3           CMP      R2,#+2
+   \   00000170   0500000A           BEQ      ??tcp_slowtmr_11
+   \   00000174   F004D7E1           LDRSH    R0,[R7, #+64]
+   \   00000178   F224D7E1           LDRSH    R2,[R7, #+66]
+   \   0000017C   D11093E1           LDRSB    R1,[R3, +R1]
+   \   00000180   C00182E0           ADD      R0,R2,R0, ASR #+3
+   \   00000184   1001A0E1           LSL      R0,R0,R1
+   \   00000188   B404C7E1           STRH     R0,[R7, #+68]
+   \                     ??tcp_slowtmr_11:
+   \   0000018C   B443C7E1           STRH     R4,[R7, #+52]
+   \   00000190   B006D7E1           LDRH     R0,[R7, #+96]
+   \   00000194   BC14D7E1           LDRH     R1,[R7, #+76]
+   \   00000198   000051E1           CMP      R1,R0
+   \   0000019C   0100A031           MOVCC    R0,R1
+   \   000001A0   B613D7E1           LDRH     R1,[R7, #+54]
+   \   000001A4   A000A0E1           LSR      R0,R0,#+1
+   \   000001A8   0028A0E1           MOV      R2,R0, LSL #+16
+   \   000001AC   2228A0E1           MOV      R2,R2, LSR #+16
+   \   000001B0   810052E1           CMP      R2,R1, LSL #+1
+   \   000001B4   8100A0B1           LSLLT    R0,R1,#+1
+   \   000001B8   BE04C7E1           STRH     R0,[R7, #+78]
+   \   000001BC   0100A0E1           MOV      R0,R1
+   \   000001C0   BC04C7E1           STRH     R0,[R7, #+76]
+   \   000001C4   0700A0E1           MOV      R0,R7
+   \   000001C8   ........           _BLF     tcp_rexmit_rto,??tcp_rexmit_rto??rA
+   \                     ??tcp_slowtmr_8:
+   \   000001CC   040095E5           LDR      R0,[R5, #+4]
+   \   000001D0   241097E5           LDR      R1,[R7, #+36]
+   \   000001D4   010040E0           SUB      R0,R0,R1
+   \   000001D8   1810D7E5           LDRB     R1,[R7, #+24]
+   \   000001DC   060051E3           CMP      R1,#+6
+   \   000001E0   0500001A           BNE      ??tcp_slowtmr_12
+   \   000001E4   1E20D7E5           LDRB     R2,[R7, #+30]
+   \   000001E8   100012E3           TST      R2,#0x10
+   \   000001EC   0200000A           BEQ      ??tcp_slowtmr_12
+   \   000001F0   290050E3           CMP      R0,#+41
+   \   000001F4   01808822           ADDCS    R8,R8,#+1
+   \   000001F8   FF800822           ANDCS    R8,R8,#0xFF
+   \                     ??tcp_slowtmr_12:
+   \   000001FC   0820D7E5           LDRB     R2,[R7, #+8]
+   \   00000200   080012E3           TST      R2,#0x8
+   \   00000204   1B00000A           BEQ      ??tcp_slowtmr_13
+   \   00000208   040051E3           CMP      R1,#+4
+   \   0000020C   07005113           CMPNE    R1,#+7
+   \   00000210   1800001A           BNE      ??tcp_slowtmr_13
+   \   00000214   941097E5           LDR      R1,[R7, #+148]
+   \   00000218   902097E5           LDR      R2,[R7, #+144]
+   \   0000021C   983097E5           LDR      R3,[R7, #+152]
+   \   00000220   B0C19FE5           LDR      R12,??tcp_slowtmr_9+0x4  ;; 0x10624dd3
+   \   00000224   912323E0           MLA      R3,R1,R3,R2
+   \   00000228   9CE38AE0           UMULL    LR,R10,R12,R3
+   \   0000022C   AAA2A0E1           LSR      R10,R10,#+5
+   \   00000230   00005AE1           CMP      R10,R0
+   \   00000234   0300002A           BCS      ??tcp_slowtmr_14
+   \   00000238   018088E2           ADD      R8,R8,#+1
+   \   0000023C   FF8008E2           AND      R8,R8,#0xFF
+   \   00000240   0190A0E3           MOV      R9,#+1
+   \   00000244   0B0000EA           B        ??tcp_slowtmr_13
+   \                     ??tcp_slowtmr_14:
+   \   00000248   9E30D7E5           LDRB     R3,[R7, #+158]
+   \   0000024C   912322E0           MLA      R2,R1,R3,R2
+   \   00000250   0C10A0E1           MOV      R1,R12
+   \   00000254   91328AE0           UMULL    R3,R10,R1,R2
+   \   00000258   AAA2A0E1           LSR      R10,R10,#+5
+   \   0000025C   00005AE1           CMP      R10,R0
+   \   00000260   0400002A           BCS      ??tcp_slowtmr_13
+   \   00000264   0700A0E1           MOV      R0,R7
+   \   00000268   ........           _BLF     tcp_keepalive,??tcp_keepalive??rA
+   \   0000026C   9E00D7E5           LDRB     R0,[R7, #+158]
+   \   00000270   010080E2           ADD      R0,R0,#+1
+   \   00000274   9E00C7E5           STRB     R0,[R7, #+158]
+   \                     ??tcp_slowtmr_13:
+   \   00000278   740097E5           LDR      R0,[R7, #+116]
+   \   0000027C   000050E3           CMP      R0,#+0
+   \   00000280   0900000A           BEQ      ??tcp_slowtmr_15
+   \   00000284   041095E5           LDR      R1,[R5, #+4]
+   \   00000288   242097E5           LDR      R2,[R7, #+36]
+   \   0000028C   0630A0E3           MOV      R3,#+6
+   \   00000290   021041E0           SUB      R1,R1,R2
+   \   00000294   F424D7E1           LDRSH    R2,[R7, #+68]
+   \   00000298   930202E0           MUL      R2,R3,R2
+   \   0000029C   020051E1           CMP      R1,R2
+   \   000002A0   0100003A           BCC      ??tcp_slowtmr_15
+   \   000002A4   ........           BL       tcp_segs_free
+   \   000002A8   744087E5           STR      R4,[R7, #+116]
+   \                     ??tcp_slowtmr_15:
+   \   000002AC   041095E5           LDR      R1,[R5, #+4]
+   \   000002B0   242097E5           LDR      R2,[R7, #+36]
+   \   000002B4   010088E2           ADD      R0,R8,#+1
+   \   000002B8   021041E0           SUB      R1,R1,R2
+   \   000002BC   1820D7E5           LDRB     R2,[R7, #+24]
+   \   000002C0   FF0000E2           AND      R0,R0,#0xFF
+   \   000002C4   030052E3           CMP      R2,#+3
+   \   000002C8   0100001A           BNE      ??tcp_slowtmr_16
+   \   000002CC   290051E3           CMP      R1,#+41
+   \   000002D0   020000EA           B        ??tcp_slowtmr_17
+   \                     ??tcp_slowtmr_16:
+   \   000002D4   090052E3           CMP      R2,#+9
+   \   000002D8   0100001A           BNE      ??tcp_slowtmr_18
+   \   000002DC   F10051E3           CMP      R1,#+241
+   \                     ??tcp_slowtmr_17:
+   \   000002E0   0080A021           MOVCS    R8,R0
+   \                     ??tcp_slowtmr_18:
+   \   000002E4   000058E3           CMP      R8,#+0
+   \   000002E8   0600000A           BEQ      ??tcp_slowtmr_19
+   \   000002EC   0700A0E1           MOV      R0,R7
+   \   000002F0   ........           BL       tcp_pcb_purge
+   \   000002F4   0C0097E5           LDR      R0,[R7, #+12]
+   \   000002F8   000056E3           CMP      R6,#+0
+   \   000002FC   10008505           STREQ    R0,[R5, #+16]
+   \   00000300   0C008615           STRNE    R0,[R6, #+12]
+   \   00000304   47FFFFEA           B        ??tcp_slowtmr_1
+    976                  goto tcp_slowtmr_start;
+    977                }
+    978              } else {
+    979                /* get the 'next' element now and work with 'prev' below (in case of abort) */
+    980                prev = pcb;
+   \                     ??tcp_slowtmr_19:
+   \   00000308   0760A0E1           MOV      R6,R7
+    981                pcb = pcb->next;
+    982          
+    983                /* We check if we should poll the connection. */
+    984                ++prev->polltmr;
+   \   0000030C   1F00D6E5           LDRB     R0,[R6, #+31]
+   \   00000310   0C7097E5           LDR      R7,[R7, #+12]
+   \   00000314   010080E2           ADD      R0,R0,#+1
+   \   00000318   1F00C6E5           STRB     R0,[R6, #+31]
+    985                if (prev->polltmr >= prev->pollinterval) {
+   \   0000031C   2010D6E5           LDRB     R1,[R6, #+32]
+   \   00000320   000CA0E1           MOV      R0,R0, LSL #+24
+   \   00000324   200C51E1           CMP      R1,R0, LSR #+24
+   \   00000328   5EFFFF8A           BHI      ??tcp_slowtmr_3
+    986                  prev->polltmr = 0;
+   \   0000032C   1F40C6E5           STRB     R4,[R6, #+31]
+    987                  LWIP_DEBUGF(TCP_DEBUG, ("tcp_slowtmr: polling application\n"));
+    988                  tcp_active_pcbs_changed = 0;
+   \   00000330   2040C5E5           STRB     R4,[R5, #+32]
+    989                  TCP_EVENT_POLL(prev, err);
+   \   00000334   882096E5           LDR      R2,[R6, #+136]
+   \   00000338   000052E3           CMP      R2,#+0
+   \   0000033C   0800000A           BEQ      ??tcp_slowtmr_20
+   \   00000340   100096E5           LDR      R0,[R6, #+16]
+   \   00000344   0610A0E1           MOV      R1,R6
+   \   00000348   0FE0A0E1           MOV      LR,PC
+   \   0000034C   12FF2FE1           BX       R2
+    990                  if (tcp_active_pcbs_changed) {
+   \   00000350   2010D5E5           LDRB     R1,[R5, #+32]
+   \   00000354   000051E3           CMP      R1,#+0
+   \   00000358   4EFFFF1A           BNE      ??tcp_slowtmr_0
+    991                    goto tcp_slowtmr_start;
+    992                  }
+    993                  /* if err == ERR_ABRT, 'prev' is already deallocated */
+    994                  if (err == ERR_OK) {
+   \   0000035C   000050E3           CMP      R0,#+0
+   \   00000360   50FFFF1A           BNE      ??tcp_slowtmr_3
+    995                    tcp_output(prev);
+   \                     ??tcp_slowtmr_20:
+   \   00000364   0600A0E1           MOV      R0,R6
+   \   00000368   ........           _BLF     tcp_output,??tcp_output??rA
+   \   0000036C   4DFFFFEA           B        ??tcp_slowtmr_3
+    996                  }
+    997                }
+    998              }
+    999            }
+   1000          
+   1001            
+   1002            /* Steps through all of the TIME-WAIT PCBs. */
+   1003            prev = NULL;
+   1004            pcb = tcp_tw_pcbs;
+   \                     ??tcp_slowtmr_5:
+   \   00000370   146095E5           LDR      R6,[R5, #+20]
+   \   00000374   000056E3           CMP      R6,#+0
+   \   00000378   1300000A           BEQ      ??tcp_slowtmr_21
+   1005            while (pcb != NULL) {
+   1006              LWIP_ASSERT("tcp_slowtmr: TIME-WAIT pcb->state == TIME-WAIT", pcb->state == TIME_WAIT);
+   1007              pcb_remove = 0;
+   1008          
+   1009              /* Check if this PCB has stayed long enough in TIME-WAIT */
+   1010              if ((u32_t)(tcp_ticks - pcb->tmr) > 2 * TCP_MSL / TCP_SLOW_INTERVAL) {
+   \                     ??tcp_slowtmr_22:
+   \   0000037C   040095E5           LDR      R0,[R5, #+4]
+   \   00000380   241096E5           LDR      R1,[R6, #+36]
+   \   00000384   010040E0           SUB      R0,R0,R1
+   \   00000388   F10050E3           CMP      R0,#+241
+   \   0000038C   0A00003A           BCC      ??tcp_slowtmr_23
+   1011                ++pcb_remove;
+   1012              }
+   1013              
+   1014          
+   1015          
+   1016              /* If the PCB should be removed, do it. */
+   1017              if (pcb_remove) {
+   1018                struct tcp_pcb *pcb2;
+   1019                tcp_pcb_purge(pcb);
+   \   00000390   0600A0E1           MOV      R0,R6
+   \   00000394   ........           BL       tcp_pcb_purge
+   1020                /* Remove PCB from tcp_tw_pcbs list. */
+   1021                if (prev != NULL) {
+   \   00000398   0C0096E5           LDR      R0,[R6, #+12]
+   \   0000039C   000054E3           CMP      R4,#+0
+   1022                  LWIP_ASSERT("tcp_slowtmr: middle tcp != tcp_tw_pcbs", pcb != tcp_tw_pcbs);
+   1023                  prev->next = pcb->next;
+   \   000003A0   0C008415           STRNE    R0,[R4, #+12]
+   1024                } else {
+   1025                  /* This PCB was the first. */
+   1026                  LWIP_ASSERT("tcp_slowtmr: first pcb == tcp_tw_pcbs", tcp_tw_pcbs == pcb);
+   1027                  tcp_tw_pcbs = pcb->next;
+   \   000003A4   14008505           STREQ    R0,[R5, #+20]
+   1028                }
+   1029                pcb2 = pcb;
+   \   000003A8   0610A0E1           MOV      R1,R6
+   1030                pcb = pcb->next;
+   \   000003AC   0C6096E5           LDR      R6,[R6, #+12]
+   1031                memp_free(MEMP_TCP_PCB, pcb2);
+   \   000003B0   0200A0E3           MOV      R0,#+2
+   \   000003B4   ........           _BLF     memp_free,??memp_free??rA
+   \   000003B8   010000EA           B        ??tcp_slowtmr_24
+   1032              } else {
+   1033                prev = pcb;
+   \                     ??tcp_slowtmr_23:
+   \   000003BC   0640A0E1           MOV      R4,R6
+   1034                pcb = pcb->next;
+   \   000003C0   0C6096E5           LDR      R6,[R6, #+12]
+   1035              }
+   1036            }
+   \                     ??tcp_slowtmr_24:
+   \   000003C4   000056E3           CMP      R6,#+0
+   \   000003C8   EBFFFF1A           BNE      ??tcp_slowtmr_22
+   1037          }
+   \                     ??tcp_slowtmr_21:
+   \   000003CC   F047BDE8           POP      {R4-R10,LR}
+   \   000003D0   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_slowtmr_9:
+   \   000003D4   ........           DC32     tcp_backoff
+   \   000003D8   D34D6210           DC32     0x10624dd3
+   1038          
+   1039          /**
+   1040           * Is called every TCP_FAST_INTERVAL (250 ms) and process data previously
+   1041           * "refused" by upper layer (application) and sends delayed ACKs.
+   1042           *
+   1043           * Automatically called from tcp_tmr().
+   1044           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1045          void
+   1046          tcp_fasttmr(void)
+   1047          {
+   \                     tcp_fasttmr:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   1048            struct tcp_pcb *pcb;
+   1049          
+   1050            ++tcp_timer_ctr;
+   \   00000004   ........           LDR      R4,??DataTable8  ;; tcp_port
+   \   00000008   2100D4E5           LDRB     R0,[R4, #+33]
+   \   0000000C   010080E2           ADD      R0,R0,#+1
+   \   00000010   2100C4E5           STRB     R0,[R4, #+33]
+   1051          
+   1052          tcp_fasttmr_start:
+   1053            pcb = tcp_active_pcbs;
+   \                     ??tcp_fasttmr_0:
+   \   00000014   105094E5           LDR      R5,[R4, #+16]
+   \   00000018   1A0000EA           B        ??tcp_fasttmr_1
+   1054          
+   1055            while(pcb != NULL) {
+   1056              if (pcb->last_timer != tcp_timer_ctr) {
+   \                     ??tcp_fasttmr_2:
+   \   0000001C   2100D4E5           LDRB     R0,[R4, #+33]
+   \   00000020   2110D5E5           LDRB     R1,[R5, #+33]
+   \   00000024   000051E1           CMP      R1,R0
+   \   00000028   FBFFFF0A           BEQ      ??tcp_fasttmr_2
+   1057                struct tcp_pcb *next;
+   1058                pcb->last_timer = tcp_timer_ctr;
+   \   0000002C   2100C5E5           STRB     R0,[R5, #+33]
+   1059                /* send delayed ACKs */
+   1060                if (pcb->flags & TF_ACK_DELAY) {
+   \   00000030   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   00000034   010010E3           TST      R0,#0x1
+   \   00000038   0600000A           BEQ      ??tcp_fasttmr_3
+   1061                  LWIP_DEBUGF(TCP_DEBUG, ("tcp_fasttmr: delayed ACK\n"));
+   1062                  tcp_ack_now(pcb);
+   \   0000003C   020080E3           ORR      R0,R0,#0x2
+   \   00000040   1E00C5E5           STRB     R0,[R5, #+30]
+   1063                  tcp_output(pcb);
+   \   00000044   0500A0E1           MOV      R0,R5
+   \   00000048   ........           _BLF     tcp_output,??tcp_output??rA
+   1064                  pcb->flags &= ~(TF_ACK_DELAY | TF_ACK_NOW);
+   \   0000004C   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   00000050   FC0000E2           AND      R0,R0,#0xFC
+   \   00000054   1E00C5E5           STRB     R0,[R5, #+30]
+   1065                }
+   1066          
+   1067                next = pcb->next;
+   1068          
+   1069                /* If there is data which was previously "refused" by upper layer */
+   1070                if (pcb->refused_data != NULL) {
+   \                     ??tcp_fasttmr_3:
+   \   00000058   780095E5           LDR      R0,[R5, #+120]
+   \   0000005C   0C6095E5           LDR      R6,[R5, #+12]
+   \   00000060   000050E3           CMP      R0,#+0
+   \   00000064   0600000A           BEQ      ??tcp_fasttmr_4
+   1071                  tcp_active_pcbs_changed = 0;
+   \   00000068   0000A0E3           MOV      R0,#+0
+   \   0000006C   2000C4E5           STRB     R0,[R4, #+32]
+   1072                  tcp_process_refused_data(pcb);
+   \   00000070   0500A0E1           MOV      R0,R5
+   \   00000074   ........           BL       tcp_process_refused_data
+   1073                  if (tcp_active_pcbs_changed) {
+   \   00000078   2000D4E5           LDRB     R0,[R4, #+32]
+   \   0000007C   000050E3           CMP      R0,#+0
+   \   00000080   E3FFFF1A           BNE      ??tcp_fasttmr_0
+   1074                    /* application callback has changed the pcb list: restart the loop */
+   1075                    goto tcp_fasttmr_start;
+   1076                  }
+   1077                }
+   1078                pcb = next;
+   \                     ??tcp_fasttmr_4:
+   \   00000084   0650A0E1           MOV      R5,R6
+   1079              }
+   1080            }
+   \                     ??tcp_fasttmr_1:
+   \   00000088   000055E3           CMP      R5,#+0
+   \   0000008C   E2FFFF1A           BNE      ??tcp_fasttmr_2
+   1081          }
+   \   00000090   7040BDE8           POP      {R4-R6,LR}
+   \   00000094   1EFF2FE1           BX       LR               ;; return
+   1082          
+   1083          /** Pass pcb->refused_data to the recv callback */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1084          err_t
+   1085          tcp_process_refused_data(struct tcp_pcb *pcb)
+   1086          {
+   \                     tcp_process_refused_data:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1087            err_t err;
+   1088            u8_t refused_flags = pcb->refused_data->flags;
+   \   00000008   785094E5           LDR      R5,[R4, #+120]
+   1089            /* set pcb->refused_data to NULL in case the callback frees it and then
+   1090               closes the pcb */
+   1091            struct pbuf *refused_data = pcb->refused_data;
+   1092            pcb->refused_data = NULL;
+   \   0000000C   0000A0E3           MOV      R0,#+0
+   \   00000010   0D60D5E5           LDRB     R6,[R5, #+13]
+   \   00000014   780084E5           STR      R0,[R4, #+120]
+   1093            /* Notify again application with data previously received. */
+   1094            LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_input: notify kept packet\n"));
+   1095            TCP_EVENT_RECV(pcb, refused_data, ERR_OK, err);
+   \   00000018   80C094E5           LDR      R12,[R4, #+128]
+   \   0000001C   0030A0E3           MOV      R3,#+0
+   \   00000020   00005CE3           CMP      R12,#+0
+   \   00000024   0520A0E1           MOV      R2,R5
+   \   00000028   0410A0E1           MOV      R1,R4
+   \   0000002C   0300000A           BEQ      ??tcp_process_refused_data_0
+   \   00000030   100094E5           LDR      R0,[R4, #+16]
+   \   00000034   0FE0A0E1           MOV      LR,PC
+   \   00000038   1CFF2FE1           BX       R12
+   \   0000003C   000000EA           B        ??tcp_process_refused_data_1
+   \                     ??tcp_process_refused_data_0:
+   \   00000040   ........           BL       tcp_recv_null
+   1096            if (err == ERR_OK) {
+   \                     ??tcp_process_refused_data_1:
+   \   00000044   0970E0E3           MVN      R7,#+9
+   \   00000048   000050E3           CMP      R0,#+0
+   \   0000004C   1300001A           BNE      ??tcp_process_refused_data_2
+   1097              /* did refused_data include a FIN? */
+   1098              if (refused_flags & PBUF_FLAG_TCP_FIN) {
+   \   00000050   200016E3           TST      R6,#0x20
+   \   00000054   1400000A           BEQ      ??tcp_process_refused_data_3
+   1099                /* correct rcv_wnd as the application won't call tcp_recved()
+   1100                   for the FIN's seqno */
+   1101                if (pcb->rcv_wnd != TCP_WND) {
+   \   00000058   BC02D4E1           LDRH     R0,[R4, #+44]
+   \   0000005C   860E50E3           CMP      R0,#+2144
+   1102                  pcb->rcv_wnd++;
+   \   00000060   01008012           ADDNE    R0,R0,#+1
+   \   00000064   BC02C411           STRHNE   R0,[R4, #+44]
+   1103                }
+   1104                TCP_EVENT_CLOSED(pcb, err);
+   \   00000068   805094E5           LDR      R5,[R4, #+128]
+   \   0000006C   000055E3           CMP      R5,#+0
+   \   00000070   0D00000A           BEQ      ??tcp_process_refused_data_3
+   1105                if (err == ERR_ABRT) {
+   \   00000074   100094E5           LDR      R0,[R4, #+16]
+   \   00000078   0030A0E3           MOV      R3,#+0
+   \   0000007C   0020A0E3           MOV      R2,#+0
+   \   00000080   0410A0E1           MOV      R1,R4
+   \   00000084   0FE0A0E1           MOV      LR,PC
+   \   00000088   15FF2FE1           BX       R5
+   \   0000008C   070050E1           CMP      R0,R7
+   \   00000090   0500001A           BNE      ??tcp_process_refused_data_3
+   1106                  return ERR_ABRT;
+   \                     ??tcp_process_refused_data_4:
+   \   00000094   0700A0E1           MOV      R0,R7
+   \   00000098   F040BDE8           POP      {R4-R7,LR}
+   \   0000009C   1EFF2FE1           BX       LR
+   1107                }
+   1108              }
+   1109            } else if (err == ERR_ABRT) {
+   \                     ??tcp_process_refused_data_2:
+   \   000000A0   070050E1           CMP      R0,R7
+   \   000000A4   FAFFFF0A           BEQ      ??tcp_process_refused_data_4
+   1110              /* if err == ERR_ABRT, 'pcb' is already deallocated */
+   1111              /* Drop incoming packets because pcb is "full" (only if the incoming
+   1112                 segment contains data). */
+   1113              LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_input: drop incoming packets, because pcb is \"full\"\n"));
+   1114              return ERR_ABRT;
+   1115            } else {
+   1116              /* data is still refused, pbuf is still valid (go on for ACK-only packets) */
+   1117              pcb->refused_data = refused_data;
+   \   000000A8   785084E5           STR      R5,[R4, #+120]
+   1118            }
+   1119            return ERR_OK;
+   \                     ??tcp_process_refused_data_3:
+   \   000000AC   F040BDE8           POP      {R4-R7,LR}
+   \   000000B0   0000A0E3           MOV      R0,#+0
+   \   000000B4   1EFF2FE1           BX       LR               ;; return
+   1120          }
+   1121          
+   1122          /**
+   1123           * Deallocates a list of TCP segments (tcp_seg structures).
+   1124           *
+   1125           * @param seg tcp_seg list of TCP segments to free
+   1126           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1127          void
+   1128          tcp_segs_free(struct tcp_seg *seg)
+   1129          {
+   \                     tcp_segs_free:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   000050E3           CMP      R0,#+0
+   \   00000008   0300000A           BEQ      ??tcp_segs_free_0
+   1130            while (seg != NULL) {
+   1131              struct tcp_seg *next = seg->next;
+   \                     ??tcp_segs_free_1:
+   \   0000000C   004090E5           LDR      R4,[R0, #+0]
+   1132              tcp_seg_free(seg);
+   \   00000010   ........           BL       tcp_seg_free
+   1133              seg = next;
+   \   00000014   0400B0E1           MOVS     R0,R4
+   1134            }
+   \   00000018   FBFFFF1A           BNE      ??tcp_segs_free_1
+   1135          }
+   \                     ??tcp_segs_free_0:
+   \   0000001C   1040BDE8           POP      {R4,LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+   1136          
+   1137          /**
+   1138           * Frees a TCP segment (tcp_seg structure).
+   1139           *
+   1140           * @param seg single tcp_seg to free
+   1141           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1142          void
+   1143          tcp_seg_free(struct tcp_seg *seg)
+   1144          {
+   \                     tcp_seg_free:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   1145            if (seg != NULL) {
+   \   00000008   0600000A           BEQ      ??tcp_seg_free_0
+   1146              if (seg->p != NULL) {
+   \   0000000C   040094E5           LDR      R0,[R4, #+4]
+   \   00000010   000050E3           CMP      R0,#+0
+   \   00000014   0000000A           BEQ      ??tcp_seg_free_1
+   1147                pbuf_free(seg->p);
+   \   00000018   ........           _BLF     pbuf_free,??pbuf_free??rA
+   1148          #if TCP_DEBUG
+   1149                seg->p = NULL;
+   1150          #endif /* TCP_DEBUG */
+   1151              }
+   1152              memp_free(MEMP_TCP_SEG, seg);
+   \                     ??tcp_seg_free_1:
+   \   0000001C   0410A0E1           MOV      R1,R4
+   \   00000020   0400A0E3           MOV      R0,#+4
+   \   00000024   ........           _BLF     memp_free,??memp_free??rA
+   1153            }
+   1154          }
+   \                     ??tcp_seg_free_0:
+   \   00000028   1040BDE8           POP      {R4,LR}
+   \   0000002C   1EFF2FE1           BX       LR               ;; return
+   1155          
+   1156          /**
+   1157           * Sets the priority of a connection.
+   1158           *
+   1159           * @param pcb the tcp_pcb to manipulate
+   1160           * @param prio new priority
+   1161           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1162          void
+   1163          tcp_setprio(struct tcp_pcb *pcb, u8_t prio)
+   1164          {
+   1165            pcb->prio = prio;
+   \                     tcp_setprio:
+   \   00000000   1910C0E5           STRB     R1,[R0, #+25]
+   1166          }
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   1167          
+   1168          #if TCP_QUEUE_OOSEQ
+   1169          /**
+   1170           * Returns a copy of the given TCP segment.
+   1171           * The pbuf and data are not copied, only the pointers
+   1172           *
+   1173           * @param seg the old tcp_seg
+   1174           * @return a copy of seg
+   1175           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1176          struct tcp_seg *
+   1177          tcp_seg_copy(struct tcp_seg *seg)
+   1178          {
+   \                     tcp_seg_copy:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1179            struct tcp_seg *cseg;
+   1180          
+   1181            cseg = (struct tcp_seg *)memp_malloc(MEMP_TCP_SEG);
+   \   00000008   0400A0E3           MOV      R0,#+4
+   \   0000000C   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000010   0050B0E1           MOVS     R5,R0
+   1182            if (cseg == NULL) {
+   1183              return NULL;
+   \   00000014   0000A003           MOVEQ    R0,#+0
+   \   00000018   0A00000A           BEQ      ??tcp_seg_copy_0
+   1184            }
+   1185            SMEMCPY((u8_t *)cseg, (const u8_t *)seg, sizeof(struct tcp_seg)); 
+   \   0000001C   001094E5           LDR      R1,[R4, #0]
+   \   00000020   001085E5           STR      R1,[R5, #+0]
+   \   00000024   041094E5           LDR      R1,[R4, #+4]
+   \   00000028   041085E5           STR      R1,[R5, #+4]
+   \   0000002C   081094E5           LDR      R1,[R4, #+8]
+   \   00000030   081085E5           STR      R1,[R5, #+8]
+   \   00000034   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000038   0C1085E5           STR      R1,[R5, #+12]
+   1186            pbuf_ref(cseg->p);
+   \   0000003C   040095E5           LDR      R0,[R5, #+4]
+   \   00000040   ........           _BLF     pbuf_ref,??pbuf_ref??rA
+   1187            return cseg;
+   \   00000044   0500A0E1           MOV      R0,R5
+   \                     ??tcp_seg_copy_0:
+   \   00000048   3040BDE8           POP      {R4,R5,LR}
+   \   0000004C   1EFF2FE1           BX       LR               ;; return
+   1188          }
+   1189          #endif /* TCP_QUEUE_OOSEQ */
+   1190          
+   1191          #if LWIP_CALLBACK_API
+   1192          /**
+   1193           * Default receive callback that is called if the user didn't register
+   1194           * a recv callback for the pcb.
+   1195           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1196          err_t
+   1197          tcp_recv_null(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+   1198          {
+   \                     tcp_recv_null:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0100A0E1           MOV      R0,R1
+   \   00000008   0240B0E1           MOVS     R4,R2
+   1199            LWIP_UNUSED_ARG(arg);
+   1200            if (p != NULL) {
+   \   0000000C   0600000A           BEQ      ??tcp_recv_null_0
+   1201              tcp_recved(pcb, p->tot_len);
+   \   00000010   B810D4E1           LDRH     R1,[R4, #+8]
+   \   00000014   ........           BL       tcp_recved
+   1202              pbuf_free(p);
+   \   00000018   0400A0E1           MOV      R0,R4
+   \   0000001C   ........           _BLF     pbuf_free,??pbuf_free??rA
+   1203            } else if (err == ERR_OK) {
+   1204              return tcp_close(pcb);
+   1205            }
+   1206            return ERR_OK;
+   \                     ??tcp_recv_null_1:
+   \   00000020   1040BDE8           POP      {R4,LR}
+   \   00000024   0000A0E3           MOV      R0,#+0
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_recv_null_0:
+   \   0000002C   000053E3           CMP      R3,#+0
+   \   00000030   FAFFFF1A           BNE      ??tcp_recv_null_1
+   \   00000034   ........           BL       tcp_close
+   \   00000038   1040BDE8           POP      {R4,LR}
+   \   0000003C   1EFF2FE1           BX       LR
+   1207          }
+   1208          #endif /* LWIP_CALLBACK_API */
+   1209          
+   1210          /**
+   1211           * Kills the oldest active connection that has the same or lower priority than
+   1212           * 'prio'.
+   1213           *
+   1214           * @param prio minimum priority
+   1215           */
+   1216          static void
+   1217          tcp_kill_prio(u8_t prio)
+   1218          {
+   1219            struct tcp_pcb *pcb, *inactive;
+   1220            u32_t inactivity;
+   1221            u8_t mprio;
+   1222          
+   1223          
+   1224            mprio = TCP_PRIO_MAX;
+   1225            
+   1226            /* We kill the oldest active connection that has lower priority than prio. */
+   1227            inactivity = 0;
+   1228            inactive = NULL;
+   1229            for(pcb = tcp_active_pcbs; pcb != NULL; pcb = pcb->next) {
+   1230              if (pcb->prio <= prio &&
+   1231                 pcb->prio <= mprio &&
+   1232                 (u32_t)(tcp_ticks - pcb->tmr) >= inactivity) {
+   1233                inactivity = tcp_ticks - pcb->tmr;
+   1234                inactive = pcb;
+   1235                mprio = pcb->prio;
+   1236              }
+   1237            }
+   1238            if (inactive != NULL) {
+   1239              LWIP_DEBUGF(TCP_DEBUG, ("tcp_kill_prio: killing oldest PCB %p (%"S32_F")\n",
+   1240                     (void *)inactive, inactivity));
+   1241              tcp_abort(inactive);
+   1242            }
+   1243          }
+   1244          
+   1245          /**
+   1246           * Kills the oldest connection that is in TIME_WAIT state.
+   1247           * Called from tcp_alloc() if no more connections are available.
+   1248           */
+   1249          static void
+   1250          tcp_kill_timewait(void)
+   1251          {
+   1252            struct tcp_pcb *pcb, *inactive;
+   1253            u32_t inactivity;
+   1254          
+   1255            inactivity = 0;
+   1256            inactive = NULL;
+   1257            /* Go through the list of TIME_WAIT pcbs and get the oldest pcb. */
+   1258            for(pcb = tcp_tw_pcbs; pcb != NULL; pcb = pcb->next) {
+   1259              if ((u32_t)(tcp_ticks - pcb->tmr) >= inactivity) {
+   1260                inactivity = tcp_ticks - pcb->tmr;
+   1261                inactive = pcb;
+   1262              }
+   1263            }
+   1264            if (inactive != NULL) {
+   1265              LWIP_DEBUGF(TCP_DEBUG, ("tcp_kill_timewait: killing oldest TIME-WAIT PCB %p (%"S32_F")\n",
+   1266                     (void *)inactive, inactivity));
+   1267              tcp_abort(inactive);
+   1268            }
+   1269          }
+   1270          
+   1271          /**
+   1272           * Allocate a new tcp_pcb structure.
+   1273           *
+   1274           * @param prio priority for the new pcb
+   1275           * @return a new tcp_pcb that initially is in state CLOSED
+   1276           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1277          struct tcp_pcb *
+   1278          tcp_alloc(u8_t prio)
+   1279          {
+   \                     tcp_alloc:
+   \   00000000   F0432DE9           PUSH     {R4-R9,LR}
+   1280            struct tcp_pcb *pcb;
+   1281            u32_t iss;
+   1282            
+   1283            pcb = (struct tcp_pcb *)memp_malloc(MEMP_TCP_PCB);
+   1284            if (pcb == NULL) {
+   \   00000004   ........           LDR      R4,??DataTable11  ;; tcp_port
+   \   00000008   0060A0E1           MOV      R6,R0
+   \   0000000C   0200A0E3           MOV      R0,#+2
+   \   00000010   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000014   0090B0E1           MOVS     R9,R0
+   \   00000018   0050A0E3           MOV      R5,#+0
+   \   0000001C   3E00001A           BNE      ??tcp_alloc_0
+   1285              /* Try killing oldest connection in TIME-WAIT. */
+   1286              LWIP_DEBUGF(TCP_DEBUG, ("tcp_alloc: killing off oldest TIME-WAIT connection\n"));
+   1287              tcp_kill_timewait();
+   \   00000020   142094E5           LDR      R2,[R4, #+20]
+   \   00000024   0010A0E3           MOV      R1,#+0
+   \   00000028   0100A0E1           MOV      R0,R1
+   \   0000002C   000052E3           CMP      R2,#+0
+   \   00000030   0C00000A           BEQ      ??tcp_alloc_1
+   \                     ??tcp_alloc_2:
+   \   00000034   043094E5           LDR      R3,[R4, #+4]
+   \   00000038   247092E5           LDR      R7,[R2, #+36]
+   \   0000003C   073043E0           SUB      R3,R3,R7
+   \   00000040   010053E1           CMP      R3,R1
+   \   00000044   0200A021           MOVCS    R0,R2
+   \   00000048   0C2092E5           LDR      R2,[R2, #+12]
+   \   0000004C   0310A021           MOVCS    R1,R3
+   \   00000050   000052E3           CMP      R2,#+0
+   \   00000054   F6FFFF1A           BNE      ??tcp_alloc_2
+   \   00000058   000050E3           CMP      R0,#+0
+   \   0000005C   0100000A           BEQ      ??tcp_alloc_1
+   \   00000060   0110A0E3           MOV      R1,#+1
+   \   00000064   ........           BL       tcp_abandon
+   1288              /* Try to allocate a tcp_pcb again. */
+   1289              pcb = (struct tcp_pcb *)memp_malloc(MEMP_TCP_PCB);
+   1290              if (pcb == NULL) {
+   \                     ??tcp_alloc_1:
+   \   00000068   70819FE5           LDR      R8,??tcp_alloc_3  ;; lwip_stats
+   \   0000006C   0200A0E3           MOV      R0,#+2
+   \   00000070   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000074   0090B0E1           MOVS     R9,R0
+   \   00000078   FF70A0E3           MOV      R7,#+255
+   \   0000007C   FF7C87E3           ORR      R7,R7,#0xFF00
+   \   00000080   1F00001A           BNE      ??tcp_alloc_4
+   1291                /* Try killing active connections with lower priority than the new one. */
+   1292                LWIP_DEBUGF(TCP_DEBUG, ("tcp_alloc: killing connection with prio lower than %d\n", prio));
+   1293                tcp_kill_prio(prio);
+   \   00000084   103094E5           LDR      R3,[R4, #+16]
+   \   00000088   7F10A0E3           MOV      R1,#+127
+   \   0000008C   0020A0E3           MOV      R2,#+0
+   \   00000090   0200A0E1           MOV      R0,R2
+   \   00000094   000053E3           CMP      R3,#+0
+   \   00000098   1100000A           BEQ      ??tcp_alloc_5
+   \                     ??tcp_alloc_6:
+   \   0000009C   1990D3E5           LDRB     R9,[R3, #+25]
+   \   000000A0   090056E1           CMP      R6,R9
+   \   000000A4   09005121           CMPCS    R1,R9
+   \   000000A8   0600003A           BCC      ??tcp_alloc_7
+   \   000000AC   04C094E5           LDR      R12,[R4, #+4]
+   \   000000B0   24E093E5           LDR      LR,[R3, #+36]
+   \   000000B4   0EC04CE0           SUB      R12,R12,LR
+   \   000000B8   02005CE1           CMP      R12,R2
+   \   000000BC   0C20A021           MOVCS    R2,R12
+   \   000000C0   0300A021           MOVCS    R0,R3
+   \   000000C4   0910A021           MOVCS    R1,R9
+   \                     ??tcp_alloc_7:
+   \   000000C8   0C3093E5           LDR      R3,[R3, #+12]
+   \   000000CC   000053E3           CMP      R3,#+0
+   \   000000D0   F1FFFF1A           BNE      ??tcp_alloc_6
+   \   000000D4   000050E3           CMP      R0,#+0
+   \   000000D8   0100000A           BEQ      ??tcp_alloc_5
+   \   000000DC   0110A0E3           MOV      R1,#+1
+   \   000000E0   ........           BL       tcp_abandon
+   1294                /* Try to allocate a tcp_pcb again. */
+   1295                pcb = (struct tcp_pcb *)memp_malloc(MEMP_TCP_PCB);
+   \                     ??tcp_alloc_5:
+   \   000000E4   0200A0E3           MOV      R0,#+2
+   \   000000E8   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   000000EC   0090B0E1           MOVS     R9,R0
+   1296                if (pcb != NULL) {
+   \   000000F0   0300000A           BEQ      ??tcp_alloc_4
+   1297                  /* adjust err stats: memp_malloc failed twice before */
+   1298                  MEMP_STATS_DEC(err, MEMP_TCP_PCB);
+   \   000000F4   B40ED8E1           LDRH     R0,[R8, #+228]
+   \   000000F8   000087E0           ADD      R0,R7,R0
+   \   000000FC   B40EC8E1           STRH     R0,[R8, #+228]
+   \   00000100   010000EA           B        ??tcp_alloc_8
+   1299                }
+   1300              }
+   1301              if (pcb != NULL) {
+   \                     ??tcp_alloc_4:
+   \   00000104   000059E3           CMP      R9,#+0
+   \   00000108   0300000A           BEQ      ??tcp_alloc_0
+   1302                /* adjust err stats: timewait PCB was freed above */
+   1303                MEMP_STATS_DEC(err, MEMP_TCP_PCB);
+   \                     ??tcp_alloc_8:
+   \   0000010C   B40ED8E1           LDRH     R0,[R8, #+228]
+   \   00000110   000087E0           ADD      R0,R7,R0
+   \   00000114   B40EC8E1           STRH     R0,[R8, #+228]
+   \   00000118   010000EA           B        ??tcp_alloc_9
+   1304              }
+   1305            }
+   1306            if (pcb != NULL) {
+   \                     ??tcp_alloc_0:
+   \   0000011C   000059E3           CMP      R9,#+0
+   \   00000120   2B00000A           BEQ      ??tcp_alloc_10
+   1307              memset(pcb, 0, sizeof(struct tcp_pcb));
+   \                     ??tcp_alloc_9:
+   \   00000124   A020A0E3           MOV      R2,#+160
+   \   00000128   0010A0E3           MOV      R1,#+0
+   \   0000012C   0900A0E1           MOV      R0,R9
+   \   00000130   ........           _BLF     memset,??memset??rA
+   1308              pcb->prio = prio;
+   \   00000134   1960C9E5           STRB     R6,[R9, #+25]
+   1309              pcb->snd_buf = TCP_SND_BUF;
+   \   00000138   860EA0E3           MOV      R0,#+2144
+   \   0000013C   B606C9E1           STRH     R0,[R9, #+102]
+   1310              pcb->snd_queuelen = 0;
+   \   00000140   B856C9E1           STRH     R5,[R9, #+104]
+   1311              pcb->rcv_wnd = TCP_WND;
+   \   00000144   BC02C9E1           STRH     R0,[R9, #+44]
+   1312              pcb->rcv_ann_wnd = TCP_WND;
+   \   00000148   BE02C9E1           STRH     R0,[R9, #+46]
+   1313              pcb->tos = 0;
+   \   0000014C   0950C9E5           STRB     R5,[R9, #+9]
+   1314              pcb->ttl = TCP_TTL;
+   \   00000150   FF00A0E3           MOV      R0,#+255
+   \   00000154   0A00C9E5           STRB     R0,[R9, #+10]
+   1315              /* As initial send MSS, we use TCP_MSS but limit it to 536.
+   1316                 The send MSS is updated when an MSS option is received. */
+   1317              pcb->mss = (TCP_MSS > 536) ? 536 : TCP_MSS;
+   \   00000158   860FA0E3           MOV      R0,#+536
+   \   0000015C   B603C9E1           STRH     R0,[R9, #+54]
+   1318              pcb->rto = 3000 / TCP_SLOW_INTERVAL;
+   \   00000160   0600A0E3           MOV      R0,#+6
+   \   00000164   B404C9E1           STRH     R0,[R9, #+68]
+   1319              pcb->sa = 0;
+   \   00000168   B054C9E1           STRH     R5,[R9, #+64]
+   1320              pcb->sv = 3000 / TCP_SLOW_INTERVAL;
+   \   0000016C   B204C9E1           STRH     R0,[R9, #+66]
+   1321              pcb->rtime = -1;
+   \   00000170   0500E0E1           MVN      R0,R5
+   \   00000174   B403C9E1           STRH     R0,[R9, #+52]
+   1322              pcb->cwnd = 1;
+   \   00000178   0100A0E3           MOV      R0,#+1
+   \   0000017C   BC04C9E1           STRH     R0,[R9, #+76]
+   1323              iss = tcp_next_iss();
+   \   00000180   ........           BL       tcp_next_iss
+   1324              pcb->snd_wl2 = iss;
+   \   00000184   580089E5           STR      R0,[R9, #+88]
+   1325              pcb->snd_nxt = iss;
+   \   00000188   500089E5           STR      R0,[R9, #+80]
+   1326              pcb->lastack = iss;
+   \   0000018C   480089E5           STR      R0,[R9, #+72]
+   1327              pcb->snd_lbb = iss;   
+   \   00000190   5C0089E5           STR      R0,[R9, #+92]
+   1328              pcb->tmr = tcp_ticks;
+   \   00000194   040094E5           LDR      R0,[R4, #+4]
+   \   00000198   240089E5           STR      R0,[R9, #+36]
+   1329              pcb->last_timer = tcp_timer_ctr;
+   \   0000019C   2100D4E5           LDRB     R0,[R4, #+33]
+   \   000001A0   2100C9E5           STRB     R0,[R9, #+33]
+   1330          
+   1331              pcb->polltmr = 0;
+   1332          
+   1333          #if LWIP_CALLBACK_API
+   1334              pcb->recv = tcp_recv_null;
+   \   000001A4   38009FE5           LDR      R0,??tcp_alloc_3+0x4  ;; tcp_recv_null
+   \   000001A8   1F50C9E5           STRB     R5,[R9, #+31]
+   \   000001AC   800089E5           STR      R0,[R9, #+128]
+   1335          #endif /* LWIP_CALLBACK_API */  
+   1336              
+   1337              /* Init KEEPALIVE timer */
+   1338              pcb->keep_idle  = TCP_KEEPIDLE_DEFAULT;
+   \   000001B0   6D08A0E3           MOV      R0,#+7143424
+   \   000001B4   DD0C80E3           ORR      R0,R0,#0xDD00
+   \   000001B8   900089E5           STR      R0,[R9, #+144]
+   1339              
+   1340          #if LWIP_TCP_KEEPALIVE
+   1341              pcb->keep_intvl = TCP_KEEPINTVL_DEFAULT;
+   \   000001BC   F800A0E3           MOV      R0,#+248
+   \   000001C0   490B80E3           ORR      R0,R0,#0x12400
+   \   000001C4   940089E5           STR      R0,[R9, #+148]
+   1342              pcb->keep_cnt   = TCP_KEEPCNT_DEFAULT;
+   \   000001C8   0900A0E3           MOV      R0,#+9
+   \   000001CC   980089E5           STR      R0,[R9, #+152]
+   1343          #endif /* LWIP_TCP_KEEPALIVE */
+   1344          
+   1345              pcb->keep_cnt_sent = 0;
+   \   000001D0   9E50C9E5           STRB     R5,[R9, #+158]
+   1346            }
+   1347            return pcb;
+   \                     ??tcp_alloc_10:
+   \   000001D4   0900A0E1           MOV      R0,R9
+   \   000001D8   F043BDE8           POP      {R4-R9,LR}
+   \   000001DC   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_alloc_3:
+   \   000001E0   ........           DC32     lwip_stats
+   \   000001E4   ........           DC32     tcp_recv_null
+   1348          }
+   1349          
+   1350          /**
+   1351           * Creates a new TCP protocol control block but doesn't place it on
+   1352           * any of the TCP PCB lists.
+   1353           * The pcb is not put on any list until binding using tcp_bind().
+   1354           *
+   1355           * @internal: Maybe there should be a idle TCP PCB list where these
+   1356           * PCBs are put on. Port reservation using tcp_bind() is implemented but
+   1357           * allocated pcbs that are not bound can't be killed automatically if wanting
+   1358           * to allocate a pcb with higher prio (@see tcp_kill_prio())
+   1359           *
+   1360           * @return a new tcp_pcb that initially is in state CLOSED
+   1361           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1362          struct tcp_pcb *
+   1363          tcp_new(void)
+   1364          {
+   \                     tcp_new:
+   \   00000000   00402DE9           PUSH     {LR}
+   1365            return tcp_alloc(TCP_PRIO_NORMAL);
+   \   00000004   4000A0E3           MOV      R0,#+64
+   \   00000008   ........           BL       tcp_alloc
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+   1366          }
+   1367          
+   1368          /**
+   1369           * Used to specify the argument that should be passed callback
+   1370           * functions.
+   1371           *
+   1372           * @param pcb tcp_pcb to set the callback argument
+   1373           * @param arg void pointer argument to pass to callback functions
+   1374           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1375          void
+   1376          tcp_arg(struct tcp_pcb *pcb, void *arg)
+   1377          {
+   1378            /* This function is allowed to be called for both listen pcbs and
+   1379               connection pcbs. */
+   1380            pcb->callback_arg = arg;
+   \                     tcp_arg:
+   \   00000000   101080E5           STR      R1,[R0, #+16]
+   1381          }
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   1382          #if LWIP_CALLBACK_API
+   1383          
+   1384          /**
+   1385           * Used to specify the function that should be called when a TCP
+   1386           * connection receives data.
+   1387           *
+   1388           * @param pcb tcp_pcb to set the recv callback
+   1389           * @param recv callback function to call for this pcb when data is received
+   1390           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1391          void
+   1392          tcp_recv(struct tcp_pcb *pcb, tcp_recv_fn recv)
+   1393          {
+   1394            LWIP_ASSERT("invalid socket state for recv callback", pcb->state != LISTEN);
+   1395            pcb->recv = recv;
+   \                     tcp_recv:
+   \   00000000   801080E5           STR      R1,[R0, #+128]
+   1396          }
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   1397          
+   1398          /**
+   1399           * Used to specify the function that should be called when TCP data
+   1400           * has been successfully delivered to the remote host.
+   1401           *
+   1402           * @param pcb tcp_pcb to set the sent callback
+   1403           * @param sent callback function to call for this pcb when data is successfully sent
+   1404           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1405          void
+   1406          tcp_sent(struct tcp_pcb *pcb, tcp_sent_fn sent)
+   1407          {
+   1408            LWIP_ASSERT("invalid socket state for sent callback", pcb->state != LISTEN);
+   1409            pcb->sent = sent;
+   \                     tcp_sent:
+   \   00000000   7C1080E5           STR      R1,[R0, #+124]
+   1410          }
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   1411          
+   1412          /**
+   1413           * Used to specify the function that should be called when a fatal error
+   1414           * has occured on the connection.
+   1415           *
+   1416           * @param pcb tcp_pcb to set the err callback
+   1417           * @param err callback function to call for this pcb when a fatal error
+   1418           *        has occured on the connection
+   1419           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1420          void
+   1421          tcp_err(struct tcp_pcb *pcb, tcp_err_fn err)
+   1422          {
+   1423            LWIP_ASSERT("invalid socket state for err callback", pcb->state != LISTEN);
+   1424            pcb->errf = err;
+   \                     tcp_err:
+   \   00000000   8C1080E5           STR      R1,[R0, #+140]
+   1425          }
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   1426          
+   1427          /**
+   1428           * Used for specifying the function that should be called when a
+   1429           * LISTENing connection has been connected to another host.
+   1430           *
+   1431           * @param pcb tcp_pcb to set the accept callback
+   1432           * @param accept callback function to call for this pcb when LISTENing
+   1433           *        connection has been connected to another host
+   1434           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1435          void
+   1436          tcp_accept(struct tcp_pcb *pcb, tcp_accept_fn accept)
+   1437          {
+   1438            /* This function is allowed to be called for both listen pcbs and
+   1439               connection pcbs. */
+   1440            pcb->accept = accept;
+   \                     tcp_accept:
+   \   00000000   141080E5           STR      R1,[R0, #+20]
+   1441          }
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   1442          #endif /* LWIP_CALLBACK_API */
+   1443          
+   1444          
+   1445          /**
+   1446           * Used to specify the function that should be called periodically
+   1447           * from TCP. The interval is specified in terms of the TCP coarse
+   1448           * timer interval, which is called twice a second.
+   1449           *
+   1450           */ 
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1451          void
+   1452          tcp_poll(struct tcp_pcb *pcb, tcp_poll_fn poll, u8_t interval)
+   1453          {
+   1454            LWIP_ASSERT("invalid socket state for poll", pcb->state != LISTEN);
+   1455          #if LWIP_CALLBACK_API
+   1456            pcb->poll = poll;
+   \                     tcp_poll:
+   \   00000000   881080E5           STR      R1,[R0, #+136]
+   1457          #else /* LWIP_CALLBACK_API */  
+   1458            LWIP_UNUSED_ARG(poll);
+   1459          #endif /* LWIP_CALLBACK_API */  
+   1460            pcb->pollinterval = interval;
+   \   00000004   2020C0E5           STRB     R2,[R0, #+32]
+   1461          }
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+   1462          
+   1463          /**
+   1464           * Purges a TCP PCB. Removes any buffered data and frees the buffer memory
+   1465           * (pcb->ooseq, pcb->unsent and pcb->unacked are freed).
+   1466           *
+   1467           * @param pcb tcp_pcb to purge. The pcb itself is not deallocated!
+   1468           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1469          void
+   1470          tcp_pcb_purge(struct tcp_pcb *pcb)
+   1471          {
+   \                     tcp_pcb_purge:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1472            if (pcb->state != CLOSED &&
+   1473               pcb->state != TIME_WAIT &&
+   1474               pcb->state != LISTEN) {
+   \   00000008   1800D4E5           LDRB     R0,[R4, #+24]
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0A005013           CMPNE    R0,#+10
+   \   00000014   01005013           CMPNE    R0,#+1
+   \   00000018   1100000A           BEQ      ??tcp_pcb_purge_0
+   1475          
+   1476              LWIP_DEBUGF(TCP_DEBUG, ("tcp_pcb_purge\n"));
+   1477          
+   1478          #if TCP_LISTEN_BACKLOG
+   1479              if (pcb->state == SYN_RCVD) {
+   1480                /* Need to find the corresponding listen_pcb and decrease its accepts_pending */
+   1481                struct tcp_pcb_listen *lpcb;
+   1482                LWIP_ASSERT("tcp_pcb_purge: pcb->state == SYN_RCVD but tcp_listen_pcbs is NULL",
+   1483                  tcp_listen_pcbs.listen_pcbs != NULL);
+   1484                for (lpcb = tcp_listen_pcbs.listen_pcbs; lpcb != NULL; lpcb = lpcb->next) {
+   1485                  if ((lpcb->local_port == pcb->local_port) &&
+   1486                      (ip_addr_isany(&lpcb->local_ip) ||
+   1487                       ip_addr_cmp(&pcb->local_ip, &lpcb->local_ip))) {
+   1488                      /* port and address of the listen pcb match the timed-out pcb */
+   1489                      LWIP_ASSERT("tcp_pcb_purge: listen pcb does not have accepts pending",
+   1490                        lpcb->accepts_pending > 0);
+   1491                      lpcb->accepts_pending--;
+   1492                      break;
+   1493                    }
+   1494                }
+   1495              }
+   1496          #endif /* TCP_LISTEN_BACKLOG */
+   1497          
+   1498          
+   1499              if (pcb->refused_data != NULL) {
+   \   0000001C   780094E5           LDR      R0,[R4, #+120]
+   \   00000020   0050A0E3           MOV      R5,#+0
+   \   00000024   000050E3           CMP      R0,#+0
+   \   00000028   0100000A           BEQ      ??tcp_pcb_purge_1
+   1500                LWIP_DEBUGF(TCP_DEBUG, ("tcp_pcb_purge: data left on ->refused_data\n"));
+   1501                pbuf_free(pcb->refused_data);
+   \   0000002C   ........           _BLF     pbuf_free,??pbuf_free??rA
+   1502                pcb->refused_data = NULL;
+   \   00000030   785084E5           STR      R5,[R4, #+120]
+   1503              }
+   1504              if (pcb->unsent != NULL) {
+   1505                LWIP_DEBUGF(TCP_DEBUG, ("tcp_pcb_purge: not all data sent\n"));
+   1506              }
+   1507              if (pcb->unacked != NULL) {
+   1508                LWIP_DEBUGF(TCP_DEBUG, ("tcp_pcb_purge: data left on ->unacked\n"));
+   1509              }
+   1510          #if TCP_QUEUE_OOSEQ
+   1511              if (pcb->ooseq != NULL) {
+   1512                LWIP_DEBUGF(TCP_DEBUG, ("tcp_pcb_purge: data left on ->ooseq\n"));
+   1513              }
+   1514              tcp_segs_free(pcb->ooseq);
+   \                     ??tcp_pcb_purge_1:
+   \   00000034   740094E5           LDR      R0,[R4, #+116]
+   \   00000038   ........           BL       tcp_segs_free
+   1515              pcb->ooseq = NULL;
+   \   0000003C   745084E5           STR      R5,[R4, #+116]
+   1516          #endif /* TCP_QUEUE_OOSEQ */
+   1517          
+   1518              /* Stop the retransmission timer as it will expect data on unacked
+   1519                 queue if it fires */
+   1520              pcb->rtime = -1;
+   \   00000040   0500E0E1           MVN      R0,R5
+   \   00000044   B403C4E1           STRH     R0,[R4, #+52]
+   1521          
+   1522              tcp_segs_free(pcb->unsent);
+   \   00000048   6C0094E5           LDR      R0,[R4, #+108]
+   \   0000004C   ........           BL       tcp_segs_free
+   1523              tcp_segs_free(pcb->unacked);
+   \   00000050   700094E5           LDR      R0,[R4, #+112]
+   \   00000054   ........           BL       tcp_segs_free
+   1524              pcb->unacked = pcb->unsent = NULL;
+   \   00000058   6C5084E5           STR      R5,[R4, #+108]
+   \   0000005C   705084E5           STR      R5,[R4, #+112]
+   1525          #if TCP_OVERSIZE
+   1526              pcb->unsent_oversize = 0;
+   \   00000060   BA56C4E1           STRH     R5,[R4, #+106]
+   1527          #endif /* TCP_OVERSIZE */
+   1528            }
+   1529          }
+   \                     ??tcp_pcb_purge_0:
+   \   00000064   3040BDE8           POP      {R4,R5,LR}
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+   1530          
+   1531          /**
+   1532           * Purges the PCB and removes it from a PCB list. Any delayed ACKs are sent first.
+   1533           *
+   1534           * @param pcblist PCB list to purge.
+   1535           * @param pcb tcp_pcb to purge. The pcb itself is NOT deallocated!
+   1536           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1537          void
+   1538          tcp_pcb_remove(struct tcp_pcb **pcblist, struct tcp_pcb *pcb)
+   1539          {
+   \                     tcp_pcb_remove:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0140A0E1           MOV      R4,R1
+   1540            TCP_RMV(pcblist, pcb);
+   \   00000008   001090E5           LDR      R1,[R0, #+0]
+   \   0000000C   040051E1           CMP      R1,R4
+   \   00000010   0C109105           LDREQ    R1,[R1, #+12]
+   \   00000014   00108005           STREQ    R1,[R0, #+0]
+   \   00000018   0900000A           BEQ      ??tcp_pcb_remove_0
+   \   0000001C   ........           LDR      R0,??DataTable11  ;; tcp_port
+   \                     ??tcp_pcb_remove_1:
+   \   00000020   181080E5           STR      R1,[R0, #+24]
+   \   00000024   182090E5           LDR      R2,[R0, #+24]
+   \   00000028   000052E3           CMP      R2,#+0
+   \   0000002C   0400000A           BEQ      ??tcp_pcb_remove_0
+   \   00000030   0C1092E5           LDR      R1,[R2, #+12]
+   \   00000034   040051E1           CMP      R1,R4
+   \   00000038   F8FFFF1A           BNE      ??tcp_pcb_remove_1
+   \   0000003C   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000040   0C0082E5           STR      R0,[R2, #+12]
+   \                     ??tcp_pcb_remove_0:
+   \   00000044   0050A0E3           MOV      R5,#+0
+   \   00000048   0C5084E5           STR      R5,[R4, #+12]
+   1541          
+   1542            tcp_pcb_purge(pcb);
+   \   0000004C   0400A0E1           MOV      R0,R4
+   \   00000050   ........           BL       tcp_pcb_purge
+   1543            
+   1544            /* if there is an outstanding delayed ACKs, send it */
+   1545            if (pcb->state != TIME_WAIT &&
+   1546               pcb->state != LISTEN &&
+   1547               pcb->flags & TF_ACK_DELAY) {
+   \   00000054   1800D4E5           LDRB     R0,[R4, #+24]
+   \   00000058   0A0050E3           CMP      R0,#+10
+   \   0000005C   01005013           CMPNE    R0,#+1
+   \   00000060   1E00D415           LDRBNE   R0,[R4, #+30]
+   \   00000064   01001013           TSTNE    R0,#0x1
+   \   00000068   0300000A           BEQ      ??tcp_pcb_remove_2
+   1548              pcb->flags |= TF_ACK_NOW;
+   \   0000006C   020080E3           ORR      R0,R0,#0x2
+   \   00000070   1E00C4E5           STRB     R0,[R4, #+30]
+   1549              tcp_output(pcb);
+   \   00000074   0400A0E1           MOV      R0,R4
+   \   00000078   ........           _BLF     tcp_output,??tcp_output??rA
+   1550            }
+   1551          
+   1552            if (pcb->state != LISTEN) {
+   1553              LWIP_ASSERT("unsent segments leaking", pcb->unsent == NULL);
+   1554              LWIP_ASSERT("unacked segments leaking", pcb->unacked == NULL);
+   1555          #if TCP_QUEUE_OOSEQ
+   1556              LWIP_ASSERT("ooseq segments leaking", pcb->ooseq == NULL);
+   1557          #endif /* TCP_QUEUE_OOSEQ */
+   1558            }
+   1559          
+   1560            pcb->state = CLOSED;
+   \                     ??tcp_pcb_remove_2:
+   \   0000007C   1850C4E5           STRB     R5,[R4, #+24]
+   1561          
+   1562            LWIP_ASSERT("tcp_pcb_remove: tcp_pcbs_sane()", tcp_pcbs_sane());
+   1563          }
+   \   00000080   3040BDE8           POP      {R4,R5,LR}
+   \   00000084   1EFF2FE1           BX       LR               ;; return
+   1564          
+   1565          /**
+   1566           * Calculates a new initial sequence number for new connections.
+   1567           *
+   1568           * @return u32_t pseudo random sequence number
+   1569           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1570          u32_t
+   1571          tcp_next_iss(void)
+   1572          {
+   1573            static u32_t iss = 6510;
+   1574            
+   1575            iss += tcp_ticks;       /* XXX */
+   \                     tcp_next_iss:
+   \   00000000   ........           LDR      R1,??DataTable11  ;; tcp_port
+   \   00000004   1C0091E5           LDR      R0,[R1, #+28]
+   \   00000008   042091E5           LDR      R2,[R1, #+4]
+   \   0000000C   000082E0           ADD      R0,R2,R0
+   \   00000010   1C0081E5           STR      R0,[R1, #+28]
+   1576            return iss;
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+   1577          }
+
+   \                                 In segment DATA_I, align 4, align-sorted
+   \                     tcp_port:
+   \   00000000                      DS8 2
+   \   00000002                      REQUIRE `?<Initializer for tcp_port>`
+   \   00000002                      DS8 2
+   \                     tcp_ticks:
+   \   00000004                      DS8 4
+   \   00000008                      REQUIRE `?<Initializer for tcp_ticks>`
+   \                     tcp_bound_pcbs:
+   \   00000008                      DS8 4
+   \   0000000C                      REQUIRE `?<Initializer for tcp_bound_pcbs>`
+   \                     tcp_listen_pcbs:
+   \   0000000C                      DS8 4
+   \   00000010                      REQUIRE `?<Initializer for tcp_listen_pcbs>`
+   \                     tcp_active_pcbs:
+   \   00000010                      DS8 4
+   \   00000014                      REQUIRE `?<Initializer for tcp_active_pcbs>`
+   \                     tcp_tw_pcbs:
+   \   00000014                      DS8 4
+   \   00000018                      REQUIRE `?<Initializer for tcp_tw_pcbs>`
+   \                     tcp_tmp_pcb:
+   \   00000018                      DS8 4
+   \   0000001C                      REQUIRE `?<Initializer for tcp_tmp_pcb>`
+   \   0000001C                      DS8 4
+   \   00000020                      REQUIRE `?<Initializer for iss>`
+   \                     tcp_active_pcbs_changed:
+   \   00000020                      DS8 1
+   \   00000021                      REQUIRE `?<Initializer for tcp_active_pcbs_changed>`
+   \   00000021                      DS8 1
+   \   00000022                      REQUIRE `?<Initializer for tcp_timer_ctr>`
+   1578          
+   1579          #if TCP_CALCULATE_EFF_SEND_MSS
+   1580          /**
+   1581           * Calcluates the effective send mss that can be used for a specific IP address
+   1582           * by using ip_route to determin the netif used to send to the address and
+   1583           * calculating the minimum of TCP_MSS and that netif's mtu (if set).
+   1584           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1585          u16_t
+   1586          tcp_eff_send_mss(u16_t sendmss, ip_addr_t *addr)
+   1587          {
+   \                     tcp_eff_send_mss:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0100A0E1           MOV      R0,R1
+   1588            u16_t mss_s;
+   1589            struct netif *outif;
+   1590          
+   1591            outif = ip_route(addr);
+   \   0000000C   ........           _BLF     ip_route,??ip_route??rA
+   1592            if ((outif != NULL) && (outif->mtu != 0)) {
+   \   00000010   000050E3           CMP      R0,#+0
+   \   00000014   B002D011           LDRHNE   R0,[R0, #+32]
+   \   00000018   00005013           CMPNE    R0,#+0
+   \   0000001C   0600000A           BEQ      ??tcp_eff_send_mss_0
+   1593              mss_s = outif->mtu - IP_HLEN - TCP_HLEN;
+   \   00000020   D810A0E3           MOV      R1,#+216
+   \   00000024   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   00000028   000081E0           ADD      R0,R1,R0
+   \   0000002C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000030   2008A0E1           MOV      R0,R0, LSR #+16
+   1594              /* RFC 1122, chap 4.2.2.6:
+   1595               * Eff.snd.MSS = min(SendMSS+20, MMS_S) - TCPhdrsize - IPoptionsize
+   1596               * We correct for TCP options in tcp_write(), and don't support IP options.
+   1597               */
+   1598              sendmss = LWIP_MIN(sendmss, mss_s);
+   \   00000034   000054E1           CMP      R4,R0
+   \   00000038   0040A021           MOVCS    R4,R0
+   1599            }
+   1600            return sendmss;
+   \                     ??tcp_eff_send_mss_0:
+   \   0000003C   0400A0E1           MOV      R0,R4
+   \   00000040   1040BDE8           POP      {R4,LR}
+   \   00000044   1EFF2FE1           BX       LR               ;; return
+   1601          }
+   1602          #endif /* TCP_CALCULATE_EFF_SEND_MSS */
+   1603          
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1604          const char*
+   1605          tcp_debug_state_str(enum tcp_state s)
+   1606          {
+   1607            return tcp_state_str[s];
+   \                     tcp_debug_state_str:
+   \   00000000   04109FE5           LDR      R1,??tcp_debug_state_str_0  ;; tcp_state_str
+   \   00000004   000191E7           LDR      R0,[R1, +R0, LSL #+2]
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_debug_state_str_0:
+   \   0000000C   ........           DC32     tcp_state_str
+   1608          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable5:
+   \   00000000   ........           DC32     tcp_pcb_lists
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable8:
+   \   00000000   ........           DC32     tcp_port
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable11:
+   \   00000000   ........           DC32     tcp_port
+
+   \                                 In segment DATA_ID, align 4, align-sorted
+   \                     `?<Initializer for tcp_port>`:
+   \   00000000   00C0               DC16 49152
+   \   00000002   0000               DC8 0, 0
+   \                     `?<Initializer for tcp_ticks>`:
+   \   00000004   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for tcp_bound_pcbs>`:
+   \   00000008   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for tcp_listen_pcbs>`:
+   \   0000000C   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for tcp_active_pcbs>`:
+   \   00000010   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for tcp_tw_pcbs>`:
+   \   00000014   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for tcp_tmp_pcb>`:
+   \   00000018   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for iss>`:
+   \   0000001C   6E190000           DC32 6510
+   \                     `?<Initializer for tcp_active_pcbs_changed>`:
+   \   00000020   00                 DC8 0
+   \                     `?<Initializer for tcp_timer_ctr>`:
+   \   00000021   00                 DC8 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "CLOSED">`:
+   \   00000000   434C4F534544       DC8 "CLOSED"
+   \              00          
+   \   00000007   00                 DC8 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "LISTEN">`:
+   \   00000000   4C495354454E       DC8 "LISTEN"
+   \              00          
+   \   00000007   00                 DC8 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "SYN_SENT">`:
+   \   00000000   53594E5F5345       DC8 "SYN_SENT"
+   \              4E5400      
+   \   00000009   000000             DC8 0, 0, 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "SYN_RCVD">`:
+   \   00000000   53594E5F5243       DC8 "SYN_RCVD"
+   \              564400      
+   \   00000009   000000             DC8 0, 0, 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "ESTABLISHED">`:
+   \   00000000   45535441424C       DC8 "ESTABLISHED"
+   \              495348454400
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "FIN_WAIT_1">`:
+   \   00000000   46494E5F5741       DC8 "FIN_WAIT_1"
+   \              49545F3100  
+   \   0000000B   00                 DC8 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "FIN_WAIT_2">`:
+   \   00000000   46494E5F5741       DC8 "FIN_WAIT_2"
+   \              49545F3200  
+   \   0000000B   00                 DC8 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "CLOSE_WAIT">`:
+   \   00000000   434C4F53455F       DC8 "CLOSE_WAIT"
+   \              5741495400  
+   \   0000000B   00                 DC8 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "CLOSING">`:
+   \   00000000   434C4F53494E       DC8 "CLOSING"
+   \              4700        
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "LAST_ACK">`:
+   \   00000000   4C4153545F41       DC8 "LAST_ACK"
+   \              434B00      
+   \   00000009   000000             DC8 0, 0, 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "TIME_WAIT">`:
+   \   00000000   54494D455F57       DC8 "TIME_WAIT"
+   \              41495400    
+   \   0000000A   0000               DC8 0, 0
+   1609          
+   1610          #if TCP_DEBUG || TCP_INPUT_DEBUG || TCP_OUTPUT_DEBUG
+   1611          /**
+   1612           * Print a tcp header for debugging purposes.
+   1613           *
+   1614           * @param tcphdr pointer to a struct tcp_hdr
+   1615           */
+   1616          void
+   1617          tcp_debug_print(struct tcp_hdr *tcphdr)
+   1618          {
+   1619            LWIP_DEBUGF(TCP_DEBUG, ("TCP header:\n"));
+   1620            LWIP_DEBUGF(TCP_DEBUG, ("+-------------------------------+\n"));
+   1621            LWIP_DEBUGF(TCP_DEBUG, ("|    %5"U16_F"      |    %5"U16_F"      | (src port, dest port)\n",
+   1622                   ntohs(tcphdr->src), ntohs(tcphdr->dest)));
+   1623            LWIP_DEBUGF(TCP_DEBUG, ("+-------------------------------+\n"));
+   1624            LWIP_DEBUGF(TCP_DEBUG, ("|           %010"U32_F"          | (seq no)\n",
+   1625                    ntohl(tcphdr->seqno)));
+   1626            LWIP_DEBUGF(TCP_DEBUG, ("+-------------------------------+\n"));
+   1627            LWIP_DEBUGF(TCP_DEBUG, ("|           %010"U32_F"          | (ack no)\n",
+   1628                   ntohl(tcphdr->ackno)));
+   1629            LWIP_DEBUGF(TCP_DEBUG, ("+-------------------------------+\n"));
+   1630            LWIP_DEBUGF(TCP_DEBUG, ("| %2"U16_F" |   |%"U16_F"%"U16_F"%"U16_F"%"U16_F"%"U16_F"%"U16_F"|     %5"U16_F"     | (hdrlen, flags (",
+   1631                 TCPH_HDRLEN(tcphdr),
+   1632                   TCPH_FLAGS(tcphdr) >> 5 & 1,
+   1633                   TCPH_FLAGS(tcphdr) >> 4 & 1,
+   1634                   TCPH_FLAGS(tcphdr) >> 3 & 1,
+   1635                   TCPH_FLAGS(tcphdr) >> 2 & 1,
+   1636                   TCPH_FLAGS(tcphdr) >> 1 & 1,
+   1637                   TCPH_FLAGS(tcphdr) & 1,
+   1638                   ntohs(tcphdr->wnd)));
+   1639            tcp_debug_print_flags(TCPH_FLAGS(tcphdr));
+   1640            LWIP_DEBUGF(TCP_DEBUG, ("), win)\n"));
+   1641            LWIP_DEBUGF(TCP_DEBUG, ("+-------------------------------+\n"));
+   1642            LWIP_DEBUGF(TCP_DEBUG, ("|    0x%04"X16_F"     |     %5"U16_F"     | (chksum, urgp)\n",
+   1643                   ntohs(tcphdr->chksum), ntohs(tcphdr->urgp)));
+   1644            LWIP_DEBUGF(TCP_DEBUG, ("+-------------------------------+\n"));
+   1645          }
+   1646          
+   1647          /**
+   1648           * Print a tcp state for debugging purposes.
+   1649           *
+   1650           * @param s enum tcp_state to print
+   1651           */
+   1652          void
+   1653          tcp_debug_print_state(enum tcp_state s)
+   1654          {
+   1655            LWIP_DEBUGF(TCP_DEBUG, ("State: %s\n", tcp_state_str[s]));
+   1656          }
+   1657          
+   1658          /**
+   1659           * Print tcp flags for debugging purposes.
+   1660           *
+   1661           * @param flags tcp flags, all active flags are printed
+   1662           */
+   1663          void
+   1664          tcp_debug_print_flags(u8_t flags)
+   1665          {
+   1666            if (flags & TCP_FIN) {
+   1667              LWIP_DEBUGF(TCP_DEBUG, ("FIN "));
+   1668            }
+   1669            if (flags & TCP_SYN) {
+   1670              LWIP_DEBUGF(TCP_DEBUG, ("SYN "));
+   1671            }
+   1672            if (flags & TCP_RST) {
+   1673              LWIP_DEBUGF(TCP_DEBUG, ("RST "));
+   1674            }
+   1675            if (flags & TCP_PSH) {
+   1676              LWIP_DEBUGF(TCP_DEBUG, ("PSH "));
+   1677            }
+   1678            if (flags & TCP_ACK) {
+   1679              LWIP_DEBUGF(TCP_DEBUG, ("ACK "));
+   1680            }
+   1681            if (flags & TCP_URG) {
+   1682              LWIP_DEBUGF(TCP_DEBUG, ("URG "));
+   1683            }
+   1684            if (flags & TCP_ECE) {
+   1685              LWIP_DEBUGF(TCP_DEBUG, ("ECE "));
+   1686            }
+   1687            if (flags & TCP_CWR) {
+   1688              LWIP_DEBUGF(TCP_DEBUG, ("CWR "));
+   1689            }
+   1690            LWIP_DEBUGF(TCP_DEBUG, ("\n"));
+   1691          }
+   1692          
+   1693          /**
+   1694           * Print all tcp_pcbs in every list for debugging purposes.
+   1695           */
+   1696          void
+   1697          tcp_debug_print_pcbs(void)
+   1698          {
+   1699            struct tcp_pcb *pcb;
+   1700            LWIP_DEBUGF(TCP_DEBUG, ("Active PCB states:\n"));
+   1701            for(pcb = tcp_active_pcbs; pcb != NULL; pcb = pcb->next) {
+   1702              LWIP_DEBUGF(TCP_DEBUG, ("Local port %"U16_F", foreign port %"U16_F" snd_nxt %"U32_F" rcv_nxt %"U32_F" ",
+   1703                                 pcb->local_port, pcb->remote_port,
+   1704                                 pcb->snd_nxt, pcb->rcv_nxt));
+   1705              tcp_debug_print_state(pcb->state);
+   1706            }    
+   1707            LWIP_DEBUGF(TCP_DEBUG, ("Listen PCB states:\n"));
+   1708            for(pcb = (struct tcp_pcb *)tcp_listen_pcbs.pcbs; pcb != NULL; pcb = pcb->next) {
+   1709              LWIP_DEBUGF(TCP_DEBUG, ("Local port %"U16_F", foreign port %"U16_F" snd_nxt %"U32_F" rcv_nxt %"U32_F" ",
+   1710                                 pcb->local_port, pcb->remote_port,
+   1711                                 pcb->snd_nxt, pcb->rcv_nxt));
+   1712              tcp_debug_print_state(pcb->state);
+   1713            }    
+   1714            LWIP_DEBUGF(TCP_DEBUG, ("TIME-WAIT PCB states:\n"));
+   1715            for(pcb = tcp_tw_pcbs; pcb != NULL; pcb = pcb->next) {
+   1716              LWIP_DEBUGF(TCP_DEBUG, ("Local port %"U16_F", foreign port %"U16_F" snd_nxt %"U32_F" rcv_nxt %"U32_F" ",
+   1717                                 pcb->local_port, pcb->remote_port,
+   1718                                 pcb->snd_nxt, pcb->rcv_nxt));
+   1719              tcp_debug_print_state(pcb->state);
+   1720            }    
+   1721          }
+   1722          
+   1723          /**
+   1724           * Check state consistency of the tcp_pcb lists.
+   1725           */
+   1726          s16_t
+   1727          tcp_pcbs_sane(void)
+   1728          {
+   1729            struct tcp_pcb *pcb;
+   1730            for(pcb = tcp_active_pcbs; pcb != NULL; pcb = pcb->next) {
+   1731              LWIP_ASSERT("tcp_pcbs_sane: active pcb->state != CLOSED", pcb->state != CLOSED);
+   1732              LWIP_ASSERT("tcp_pcbs_sane: active pcb->state != LISTEN", pcb->state != LISTEN);
+   1733              LWIP_ASSERT("tcp_pcbs_sane: active pcb->state != TIME-WAIT", pcb->state != TIME_WAIT);
+   1734            }
+   1735            for(pcb = tcp_tw_pcbs; pcb != NULL; pcb = pcb->next) {
+   1736              LWIP_ASSERT("tcp_pcbs_sane: tw pcb->state == TIME-WAIT", pcb->state == TIME_WAIT);
+   1737            }
+   1738            return 1;
+   1739          }
+   1740          #endif /* TCP_DEBUG */
+   1741          
+   1742          #endif /* LWIP_TCP */
+   1743          
+
+   Maximum stack usage in bytes:
+
+     Function                 CSTACK
+     --------                 ------
+     tcp_abandon                 40
+     tcp_abort                    4
+     tcp_accept                   0
+     tcp_accept_null              0
+     tcp_alloc                   28
+     tcp_arg                      0
+     tcp_bind                    32
+     tcp_close                    4
+     tcp_close_shutdown          36
+     tcp_connect                 36
+     tcp_debug_state_str          0
+     tcp_eff_send_mss             8
+     tcp_err                      0
+     tcp_fasttmr                 16
+     tcp_init                     0
+     tcp_listen_with_backlog     16
+     tcp_new                      4
+     tcp_next_iss                 0
+     tcp_pcb_purge               12
+     tcp_pcb_remove              12
+     tcp_poll                     0
+     tcp_process_refused_data    20
+     tcp_recv                     0
+     tcp_recv_null                8
+     tcp_recved                   8
+     tcp_seg_copy                12
+     tcp_seg_free                 8
+     tcp_segs_free                8
+     tcp_sent                     0
+     tcp_setprio                  0
+     tcp_shutdown                 8
+     tcp_slowtmr                 40
+     tcp_tmr                      4
+     tcp_update_rcv_ann_wnd       4
+
+
+   Segment part sizes:
+
+     Function/Label              Bytes
+     --------------              -----
+     tcp_state_str                 44
+     tcp_backoff                   24
+     tcp_pcb_lists                 16
+     tcp_timer                      1
+     tcp_init                       4
+     tcp_tmr                       48
+     tcp_close_shutdown           508
+     tcp_close                     44
+     tcp_shutdown                 144
+     tcp_abandon                  232
+     tcp_abort                     20
+     tcp_bind                     348
+     tcp_accept_null                8
+     tcp_listen_with_backlog      316
+     tcp_update_rcv_ann_wnd        92
+     tcp_recved                    88
+     tcp_connect                  620
+     tcp_slowtmr                  988
+     tcp_fasttmr                  152
+     tcp_process_refused_data     184
+     tcp_segs_free                 36
+     tcp_seg_free                  48
+     tcp_setprio                    8
+     tcp_seg_copy                  80
+     tcp_recv_null                 64
+     tcp_alloc                    488
+     tcp_new                       20
+     tcp_arg                        8
+     tcp_recv                       8
+     tcp_sent                       8
+     tcp_err                        8
+     tcp_accept                     8
+     tcp_poll                      12
+     tcp_pcb_purge                108
+     tcp_pcb_remove               136
+     tcp_next_iss                  24
+     tcp_port                      34
+     tcp_eff_send_mss              72
+     tcp_debug_state_str           16
+     ??DataTable5                   4
+     ??DataTable8                   4
+     ??DataTable11                  4
+     ?<Initializer for tcp_port>   34
+     ?<Constant "CLOSED">           8
+     ?<Constant "LISTEN">           8
+     ?<Constant "SYN_SENT">        12
+     ?<Constant "SYN_RCVD">        12
+     ?<Constant "ESTABLISHED">     12
+     ?<Constant "FIN_WAIT_1">      12
+     ?<Constant "FIN_WAIT_2">      12
+     ?<Constant "CLOSE_WAIT">      12
+     ?<Constant "CLOSING">          8
+     ?<Constant "LAST_ACK">        12
+     ?<Constant "TIME_WAIT">       12
+      Others                      328
+
+ 
+ 5 264 bytes in segment CODE
+   204 bytes in segment DATA_C
+    34 bytes in segment DATA_I
+    34 bytes in segment DATA_ID
+     1 byte  in segment DATA_Z
+    24 bytes in segment INITTAB
+ 
+ 4 960 bytes of CODE  memory (+ 328 bytes shared)
+   238 bytes of CONST memory
+    35 bytes of DATA  memory
+
+Errors: none
+Warnings: none

@@ -1,0 +1,114 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               13/Sep/2016  09:48:28 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  E:\VMShare\working\trunk\TXU\src\BootWindowSystem.cp #
+#                       p                                                    #
+#    Command line    =  E:\VMShare\working\trunk\TXU\src\BootWindowSystem.cp #
+#                       p --fpu None -D OS_LIBMODE_DT -D CPU_S3C2410 -D      #
+#                       OS_UART=-1 -D OS_SEGGER -D S2TXUBOOTLOADER -lCN      #
+#                       E:\VMShare\working\trunk\TXU\Debug\List\ -o          #
+#                       E:\VMShare\working\trunk\TXU\Debug\Obj\ -s2          #
+#                       --no_cse --no_unroll --no_inline --no_code_motion    #
+#                       --no_tbaa --no_clustering --no_scheduling --debug    #
+#                       --cpu_mode arm --endian little --cpu ARM920T         #
+#                       --stack_align 4 --interwork -e --eec++               #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       E:\VMShare\working\trunk\TXU\INC\ -I                 #
+#                       E:\VMShare\working\trunk\TXU\..\Shared\INC\ -I       #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\SRC\ -I       #
+#                       E:\VMShare\working\trunk\TXU\GUI\CORE\ -I            #
+#                       E:\VMShare\working\trunk\TXU\GUI\WM\ -I              #
+#                       E:\VMShare\working\trunk\TXU\GUI\WIDGET\ -I          #
+#                       E:\VMShare\working\trunk\TXU\CONFIG\ -I "C:\Program  #
+#                       Files (x86)\IAR Systems\Embedded Workbench           #
+#                       4.0\arm\INC\"                                        #
+#    List file       =  E:\VMShare\working\trunk\TXU\Debug\List\BootWindowSy #
+#                       stem.lst                                             #
+#    Object file     =  E:\VMShare\working\trunk\TXU\Debug\Obj\BootWindowSys #
+#                       tem.r79                                              #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+E:\VMShare\working\trunk\TXU\src\BootWindowSystem.cpp
+      1          #include <stdio.h>
+      2          #include "RTOS.h"               /* embOS include */
+      3          #include "GUI.h"
+      4          #include "GUI_X.h"
+      5          #include "WM.h"
+      6          #include "ANPro10Inc.h"
+      7          #include "2410addr.h"
+      8          #include "TSNVersion.h"
+      9          
+     10          OS_TASK GUITaskHandle;													 /* Task control blocks */
+     11          char GUITaskStack[4*4096];
+     12          extern short GlobalDeviceHWId;
+     13          
+     14          char RevisionName[4][10]={
+     15          	"TCU_R1",
+     16          	"TCU_R2",
+     17          	"TDU_R1",
+     18          	"TDU_R2",
+     19          };
+     20          
+     21          #ifdef ANBOOTLOADER
+     22          extern "C" {
+     23          		// Bitmap Files
+     24          	extern const GUI_BITMAP bmAriston_logo2;
+     25          }
+     26          #endif
+     27          /*******************************************************************
+     28          *       _GUI_Task
+     29          *  This task does the background processing.
+     30          *  The MainTask job is to update invalid windows, but other things such as
+     31          *  evaluating mouse or touch input may also be done.
+     32          */
+     33          void GUI_Task(void)
+     34          {
+     35          	while ( 1 ) {
+     36          		GUI_Exec();											/* Do the background work ... Update windows etc.) */
+     37          //		GUI_TOUCH_Exec();
+     38          		GUI_X_ExecIdle();						/* Nothing left to do for the moment ... Idle processing */
+     39          	}
+     40          
+     41          }
+     42          
+     43          
+     44          int LCDXSize;
+     45          int LCDYSize;
+     46          
+     47          void InitTDUGUI(void)
+     48          {
+     49          	GUI_Init();
+     50          	WM_SetCreateFlags(WM_CF_MEMDEV);   /* Use memory devices on all windows to avoid flicker */
+     51          
+     52          	LCDXSize = LCD_GET_XSIZE();
+     53          	LCDYSize = LCD_GET_YSIZE();
+     54          //Set Welcome picture:
+     55          	GUI_SetBkColor(GUI_LIGHTGRAY);
+     56          	GUI_Clear();
+     57          	GUI_SetColor(GUI_BLACK);
+     58          	GUI_DrawBitmap(&bmAriston_logo2,20,1);
+     59          	GUI_SetTextMode(GUI_TM_TRANS);
+     60          	GUI_SetFont(&GUI_Font24B_ASCII);
+     61          	GUI_DispStringHCenterAt("Boot loader",LCDXSize/2,120);
+     62          	GUI_SetFont(&GUI_Font16B_ASCII);
+     63          	char Buf[80];
+     64          	sprintf(Buf,"Revision:  %s.",RevisionName[GlobalDeviceHWId]);
+     65          	GUI_DispStringAt(Buf,1,200);
+     66          	sprintf(Buf,"Version:%i.%i.%i.%i",VERSION_PROD_NO,VERSION_PACKET,VERSION_BOOT_NEW_FUNC,VERSION_BOOT_BUG_FIX);
+     67          	GUI_DispStringAt(Buf,1,220);
+     68            //OS_Delay(1000);
+     69          	OS_CREATETASK(&GUITaskHandle, "GUI_TASK", GUI_Task,          10, GUITaskStack);		//Background window update
+     70          }
+     71          
+
+Errors: 2
+Warnings: none

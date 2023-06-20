@@ -1,0 +1,35 @@
+#Generating source browse information for project TPC_Bootloader
+
+
+#Abbreviations
+cc = C$:\Program$ Files$ (x86)\IAR$ Systems\Embedded$ Workbench$ 8.4\common\bin\SourceIndexer.exe
+ll = C$:\Program$ Files$ (x86)\IAR$ Systems\Embedded$ Workbench$ 8.4\common\bin\PbdLink.exe
+bd = C$:\Program$ Files$ (x86)\IAR$ Systems\Embedded$ Workbench$ 8.4\common\bin\makeBrowseData.exe
+
+
+
+#Rules
+rule index
+  depfile = $out.dep
+  command = $cc -out=$out -f $in
+rule link
+  command = $ll -M $out $in
+rule browsedata
+  command = $bd $in -output  $out
+
+
+
+#Build steps
+build eeprom.pbi : index eeprom.xcl
+build init.pbi : index init.xcl
+build main.pbi : index main.xcl
+build Misc.pbi : index Misc.xcl
+build serial.pbi : index serial.xcl
+build Usart.pbi : index Usart.xcl
+build TPC_Bootloader_part0.pbi : link eeprom.pbi init.pbi
+build TPC_Bootloader_part1.pbi : link main.pbi Misc.pbi
+build TPC_Bootloader_part2.pbi : link serial.pbi Usart.pbi
+build TPC_Bootloader.pbd : link TPC_Bootloader_part0.pbi TPC_Bootloader_part1.pbi TPC_Bootloader_part2.pbi
+build TPC_Bootloader.pbw : browsedata TPC_Bootloader.pbd
+
+

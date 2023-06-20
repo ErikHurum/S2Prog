@@ -1,0 +1,1786 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       29/Dec/2022  11:09:59
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\hart active\Src\hart_msg.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW90F7.tmp ("D:\S2Prog\IO\hart
+#        active\Src\hart_msg.c" --cpu=m1280 -ms -o "D:\S2Prog\IO\hart
+#        active\Release_debug\Obj" -D OS_LIBMODE_S -D OS_UART=-1 -lCN
+#        "D:\S2Prog\IO\hart active\Release_debug\List" -y
+#        --initializers_in_flash -DENABLE_BIT_DEFINITIONS -e -I
+#        "D:\S2Prog\IO\hart active\INC\\" -I "D:\S2Prog\IO\hart
+#        active\..\..\SHARED\INC\\" --eeprom_size 4096 --dlib --dlib_config
+#        "C:\Program Files (x86)\IAR Systems\Embedded Workbench
+#        8.4\avr\LIB\DLIB\dlAVR-3s-ec_mul-n.h" -Ohs)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\hart active\Release_debug\List\hart_msg.lst
+#    Object file  =  D:\S2Prog\IO\hart active\Release_debug\Obj\hart_msg.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\hart active\Src\hart_msg.c
+      1          #include <stdio.h>
+      2          #include "hart_common.h"
+      3          #include "hart_msg.h"
+      4          #include "externals.h"
+      5          
+      6          ////////////////////////////////////////////////////////////////////////////////
+      7          //
+      8          // internal defines
+      9          //
+     10          ////////////////////////////////////////////////////////////////////////////////
+     11          #define HART_PARSER_ERR(__parser__, __err_msg__)                      \
+     12            __parser__->err_msg   = __err_msg__;                                \
+     13            hart_msg_parser_move_state(__parser__, hart_msg_state_blackhole);   \
+     14            return HartMessageParsing_Error;
+     15          
+     16          #define HART_PUT_RX_DATA(__parser__, __rxb__)                           \
+     17            if(hart_msg_put_rx_data(__parser__, __rxb__) == 0)                    \
+     18            {                                                                     \
+     19              hart_msg_parser_move_state(__parser__, hart_msg_state_blackhole);   \
+     20              return HartMessageParsing_Error;                                    \
+     21            }
+     22          
+     23          #define HART_ENCODER_PUT(__encoder__, __d__)                  \
+     24            if(hart_msg_encoder_put_data(__encoder__, __d__) != 1)     \
+     25            {                                                           \
+     26              return 0;                                                 \
+     27            }
+     28          
+     29          #define HART_MARK_DPTR(parser, ptr)\
+     30            ptr = &(parser->rx_buf_ptr[parser->rx_ndx]);
+     31          
+     32          
+     33          
+     34          ////////////////////////////////////////////////////////////////////////////////
+     35          //
+     36          // private prototypes
+     37          //
+     38          ////////////////////////////////////////////////////////////////////////////////
+     39          static inline HartMessageParsingStatus hart_msg_parser_move_state(HartMessageParser *parser, hart_message_state state);
+     40          
+     41          static HartMessageParsingStatus hart_msg_state_begin(HartMessageParser *parser, hart_data_t rxb);
+     42          static HartMessageParsingStatus hart_msg_state_preamble(HartMessageParser *parser, hart_data_t rxb);
+     43          static HartMessageParsingStatus hart_msg_state_start_char(HartMessageParser *parser, hart_data_t rxb);
+     44          static HartMessageParsingStatus hart_msg_state_address(HartMessageParser *parser, hart_data_t rxb);
+     45          static HartMessageParsingStatus hart_msg_state_expansion(HartMessageParser *parser, hart_data_t rxb);
+     46          static HartMessageParsingStatus hart_msg_state_command(HartMessageParser *parser, hart_data_t rxb);
+     47          static HartMessageParsingStatus hart_msg_state_bytecount(HartMessageParser *parser, hart_data_t rxb);
+     48          static HartMessageParsingStatus hart_msg_state_status(HartMessageParser *parser, hart_data_t rxb);
+     49          static HartMessageParsingStatus hart_msg_state_data(HartMessageParser *parser, hart_data_t rxb);
+     50          static HartMessageParsingStatus hart_msg_state_checksum(HartMessageParser *parser, hart_data_t rxb);
+     51          
+     52          static HartMessageParsingStatus hart_msg_state_blackhole(HartMessageParser *parser, hart_data_t rxb);
+     53          
+     54          ////////////////////////////////////////////////////////////////////////////////
+     55          //
+     56          // utilities
+     57          //
+     58          ////////////////////////////////////////////////////////////////////////////////
+     59          static inline HartMessageParsingStatus
+     60          hart_msg_parser_move_state(HartMessageParser *parser, hart_message_state state) {
+     61          	parser->parsing_state = state;
+     62          
+     63          	return HartMessageParsing_Pass;
+     64          }
+     65          
+     66          static inline HartMessageParsingStatus
+     67          hart_msg_move_and_invoke_state(HartMessageParser *parser, hart_message_state state, hart_data_t rxb) {
+     68          	hart_msg_parser_move_state(parser, state);
+     69          
+     70          	return state(parser, rxb);
+     71          }
+     72          
+     73          
+     74          /*
+     75           *
+     76           * returns
+     77           * 1 ok
+     78           * 0 when buffer overflow
+     79           *
+     80           */
+     81          static inline int
+     82          hart_msg_put_rx_data(HartMessageParser *parser, hart_data_t rxb) {
+     83          	uint16_t      r_ndx     = parser->rx_ndx;
+     84          	uint16_t      buf_size  = parser->rx_buf_size;
+     85          	volatile hart_data_t *buf       = parser->rx_buf_ptr;
+     86          
+     87          	if (r_ndx < buf_size) {
+     88          		buf[r_ndx] = rxb;
+     89          		r_ndx++;
+     90          		parser->rx_ndx = r_ndx;
+     91          		return 1;
+     92          	}
+     93          
+     94          	parser->err_msg = HartMessageErrorCode_OutOfBound;
+     95          	return 0;
+     96          }
+     97          
+     98          
+     99          ////////////////////////////////////////////////////////////////////////////////
+    100          //
+    101          // private parsing state machine
+    102          //
+    103          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    104          static HartMessageParsingStatus
+    105          hart_msg_state_begin(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_begin:
+    106          	if (rxb != 0xff) {
+   \   00000000   3F2F               CPI     R18, 255
+   \   00000002   01F8               MOVW    R31:R30, R17:R16
+   \   00000004   F041               BREQ    ??hart_msg_state_begin_0
+    107          		HART_PARSER_ERR(parser, HartMessageErrorCode_InvalidPreambleInBegin);
+   \   00000006   E023               LDI     R18, 3
+   \   00000008   AB24               STD     Z+52, R18
+   \   0000000A   ....               LDI     R18, LOW(hart_msg_state_blackhole/2)
+   \   0000000C   ....               LDI     R19, (hart_msg_state_blackhole/2) >> 8
+   \   0000000E   8320               ST      Z, R18
+   \   00000010   8331               STD     Z+1, R19
+   \   00000012   E001               LDI     R16, 1
+   \   00000014   9508               RET
+    108          	}
+    109          
+    110          	parser->state_dependent_cnt   = 1;
+   \                     ??hart_msg_state_begin_0:
+   \   00000016   E021               LDI     R18, 1
+   \   00000018   8720               STD     Z+8, R18
+   \   0000001A   E020               LDI     R18, 0
+   \   0000001C   8721               STD     Z+9, R18
+    111          
+    112          	return hart_msg_parser_move_state(parser, hart_msg_state_preamble);
+   \   0000001E   ....               LDI     R18, LOW(hart_msg_state_preamble/2)
+   \   00000020   ....               LDI     R19, (hart_msg_state_preamble/2) >> 8
+   \   00000022   8320               ST      Z, R18
+   \   00000024   8331               STD     Z+1, R19
+   \   00000026   E000               LDI     R16, 0
+   \   00000028   9508               RET
+    113          }
+    114          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    115          static HartMessageParsingStatus
+    116          hart_msg_state_preamble(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_preamble:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+    117          	if (rxb != 0xff) {
+   \   00000004   3F2F               CPI     R18, 255
+   \   00000006   01F8               MOVW    R31:R30, R17:R16
+   \   00000008   F061               BREQ    ??hart_msg_state_preamble_0
+    118          		if (parser->state_dependent_cnt >= HART_PREAMBLE_MIN_LENGTH) {
+   \   0000000A   8580               LDD     R24, Z+8
+   \   0000000C   8591               LDD     R25, Z+9
+   \   0000000E   9705               SBIW    R25:R24, 5
+   \   00000010   F030               BRCS    ??hart_msg_state_preamble_1
+    119          			// ok. we can accept it as start byte
+    120          			return hart_msg_move_and_invoke_state(parser, hart_msg_state_start_char, rxb);
+   \   00000012   ....               LDI     R20, LOW(hart_msg_state_start_char/2)
+   \   00000014   ....               LDI     R21, (hart_msg_state_start_char/2) >> 8
+   \   00000016   8340               ST      Z, R20
+   \   00000018   8351               STD     Z+1, R21
+   \   0000001A   ....               RCALL   hart_msg_state_start_char
+   \   0000001C   C014               RJMP    ??hart_msg_state_preamble_2
+    121          		}
+    122          
+    123          		HART_PARSER_ERR(parser, HartMessageErrorCode_NotEnoughPreamble);
+   \                     ??hart_msg_state_preamble_1:
+   \   0000001E   E024               LDI     R18, 4
+   \   00000020   C00A               RJMP    ??hart_msg_state_preamble_3
+    124          	}
+    125          
+    126          	parser->state_dependent_cnt++;
+   \                     ??hart_msg_state_preamble_0:
+   \   00000022   8520               LDD     R18, Z+8
+   \   00000024   8531               LDD     R19, Z+9
+   \   00000026   5F2F               SUBI    R18, 255
+   \   00000028   4F3F               SBCI    R19, 255
+   \   0000002A   8720               STD     Z+8, R18
+   \   0000002C   8731               STD     Z+9, R19
+    127          
+    128          	if (parser->state_dependent_cnt > HART_PREAMBLE_MAX_LENGTH) {
+   \   0000002E   01C9               MOVW    R25:R24, R19:R18
+   \   00000030   9745               SBIW    R25:R24, 21
+   \   00000032   F040               BRCS    ??hart_msg_state_preamble_4
+    129          		// excessive preamble
+    130          		HART_PARSER_ERR(parser, HartMessageErrorCode_ExcessivePreamble);
+   \   00000034   E025               LDI     R18, 5
+   \                     ??hart_msg_state_preamble_3:
+   \   00000036   AB24               STD     Z+52, R18
+   \   00000038   ....               LDI     R18, LOW(hart_msg_state_blackhole/2)
+   \   0000003A   ....               LDI     R19, (hart_msg_state_blackhole/2) >> 8
+   \   0000003C   8320               ST      Z, R18
+   \   0000003E   8331               STD     Z+1, R19
+   \   00000040   E001               LDI     R16, 1
+   \   00000042   C001               RJMP    ??hart_msg_state_preamble_2
+    131          	}
+    132          	return HartMessageParsing_Pass;
+   \                     ??hart_msg_state_preamble_4:
+   \   00000044   E000               LDI     R16, 0
+   \                     ??hart_msg_state_preamble_2:
+   \   00000046   9189               LD      R24, Y+
+   \   00000048   9199               LD      R25, Y+
+   \   0000004A   9508               RET
+    133          }
+    134          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    135          static HartMessageParsingStatus
+    136          hart_msg_state_start_char(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_start_char:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   939A               ST      -Y, R25
+   \   00000006   2F78               MOV     R23, R24
+   \   00000008   9724               SBIW    R29:R28, 4
+   \   0000000A   01D8               MOVW    R27:R26, R17:R16
+    137          	HART_MARK_DPTR(parser, parser->start_ptr);
+   \   0000000C   9616               ADIW    R27:R26, 6
+   \   0000000E   91ED               LD      R30, X+
+   \   00000010   91FC               LD      R31, X
+   \   00000012   9715               SBIW    R27:R26, 5
+   \   00000014   910D               LD      R16, X+
+   \   00000016   911C               LD      R17, X
+   \   00000018   961D               ADIW    R27:R26, 13
+   \   0000001A   01AF               MOVW    R21:R20, R31:R30
+   \   0000001C   0F40               ADD     R20, R16
+   \   0000001E   1F51               ADC     R21, R17
+   \   00000020   934D               ST      X+, R20
+   \   00000022   935C               ST      X, R21
+   \   00000024   971F               SBIW    R27:R26, 15
+    138          
+    139          	HART_PUT_RX_DATA(parser, rxb);
+   \   00000026   918D               LD      R24, X+
+   \   00000028   919D               LD      R25, X+
+   \   0000002A   910D               LD      R16, X+
+   \   0000002C   911C               LD      R17, X
+   \   0000002E   9715               SBIW    R27:R26, 5
+   \   00000030   1780               CP      R24, R16
+   \   00000032   0791               CPC     R25, R17
+   \   00000034   F4E8               BRCC    ??hart_msg_state_start_char_0
+   \   00000036   0FE8               ADD     R30, R24
+   \   00000038   1FF9               ADC     R31, R25
+   \   0000003A   8320               ST      Z, R18
+   \   0000003C   9601               ADIW    R25:R24, 1
+   \   0000003E   01FD               MOVW    R31:R30, R27:R26
+   \   00000040   8382               STD     Z+2, R24
+   \   00000042   8393               STD     Z+3, R25
+    140          
+    141          	//
+    142          	// a) extract out type of message
+    143          	//      master -> slave
+    144          	//      slave -> master
+    145          	//      burst from slave
+    146          	// b) extract out address format
+    147          	//      short frame
+    148          	//      long frame
+    149          	// c) extract out expansion count
+    150          	//
+    151          	if (rxb == HART_MSG_START_FROM_MASTER_TO_SLAVE) {
+   \   00000044   3822               CPI     R18, 130
+   \   00000046   F4E9               BRNE    ??hart_msg_state_start_char_1
+    152          		// mater to slave delimiter
+    153          		parser->msg_type              = HartMessageType_MasterToSlave;
+   \   00000048   E000               LDI     R16, 0
+   \   0000004A   8707               STD     Z+15, R16
+    154          		parser->address_fmt           = HartMessageAddressFormat_Long;
+   \   0000004C   E001               LDI     R16, 1
+   \                     ??hart_msg_state_start_char_2:
+   \   0000004E   8706               STD     Z+14, R16
+    155          	} else if (rxb == HART_MSG_START_FROM_SLAVE_TO_MASTER) {
+    156          		// slave to master delimiter
+    157          		parser->msg_type              = HartMessageType_SlaveToMaster;
+    158          		parser->address_fmt           = HartMessageAddressFormat_Short;
+    159          	} else if (rxb == HART_MSG_START_FROM_SLAVE_TO_MASTER_LONG) {
+    160          		// slave to master delimiter
+    161          		parser->msg_type              = HartMessageType_SlaveToMaster;
+    162          		parser->address_fmt           = HartMessageAddressFormat_Long;
+    163          		{
+    164          			char FloatBuf[4] = { parser->rx_buf_ptr[13], parser->rx_buf_ptr[12], parser->rx_buf_ptr[11], parser->rx_buf_ptr[10] };
+    165          			parser->Current             = *((float *)FloatBuf);
+    166          		}
+    167          		for (int i = 0; i < 4; i++) {
+    168          			int Offset = i * 5;
+    169          			char FloatBuf[4] = { parser->rx_buf_ptr[18 + Offset], parser->rx_buf_ptr[17 + Offset], parser->rx_buf_ptr[16 + Offset], parser->rx_buf_ptr[15 + Offset] };
+    170          			float *ProsVal              = (float *)FloatBuf;
+    171          			parser->UnitId[i] = parser->rx_buf_ptr[14 + Offset];
+    172          			parser->ProsData[i] = *ProsVal;
+    173          		}
+    174          	} else {
+    175          		HART_PARSER_ERR(parser, HartMessageErrorCode_UnknownStartDelimeter);
+    176          	}
+    177          
+    178          	parser->state_dependent_cnt   = 0;
+   \                     ??hart_msg_state_start_char_3:
+   \   00000050   01FD               MOVW    R31:R30, R27:R26
+   \   00000052   E000               LDI     R16, 0
+   \   00000054   8700               STD     Z+8, R16
+   \   00000056   8701               STD     Z+9, R16
+    179          
+    180          	//
+    181          	// XXX FIXME burst from slave is not yet implemented
+    182          	//
+    183          
+    184          	//
+    185          	// XXX FIXME EXP is not yet implemented
+    186          	//
+    187          	parser->exp_cnt               = 0;
+   \   00000058   8702               STD     Z+10, R16
+    188          
+    189          	return hart_msg_parser_move_state(parser, hart_msg_state_address);
+   \   0000005A   ....               LDI     R16, LOW(hart_msg_state_address/2)
+   \   0000005C   ....               LDI     R17, (hart_msg_state_address/2) >> 8
+   \   0000005E   930D               ST      X+, R16
+   \   00000060   931C               ST      X, R17
+   \   00000062   E000               LDI     R16, 0
+   \                     ??hart_msg_state_start_char_4:
+   \   00000064   9624               ADIW    R29:R28, 4
+   \   00000066   2F87               MOV     R24, R23
+   \   00000068   9199               LD      R25, Y+
+   \   0000006A   91A9               LD      R26, Y+
+   \   0000006C   91B9               LD      R27, Y+
+   \   0000006E   9508               RET
+   \                     ??hart_msg_state_start_char_0:
+   \   00000070   01FD               MOVW    R31:R30, R27:R26
+   \   00000072   E001               LDI     R16, 1
+   \                     ??hart_msg_state_start_char_5:
+   \   00000074   AB04               STD     Z+52, R16
+   \   00000076   ....               LDI     R16, LOW(hart_msg_state_blackhole/2)
+   \   00000078   ....               LDI     R17, (hart_msg_state_blackhole/2) >> 8
+   \   0000007A   930D               ST      X+, R16
+   \   0000007C   931C               ST      X, R17
+   \   0000007E   E001               LDI     R16, 1
+   \   00000080   CFF1               RJMP    ??hart_msg_state_start_char_4
+   \                     ??hart_msg_state_start_char_1:
+   \   00000082   3026               CPI     R18, 6
+   \   00000084   F421               BRNE    ??hart_msg_state_start_char_6
+   \   00000086   E001               LDI     R16, 1
+   \   00000088   8707               STD     Z+15, R16
+   \   0000008A   E000               LDI     R16, 0
+   \   0000008C   CFE0               RJMP    ??hart_msg_state_start_char_2
+   \                     ??hart_msg_state_start_char_6:
+   \   0000008E   3826               CPI     R18, 134
+   \   00000090   F009               BREQ    $+2+2
+   \   00000092   C048               RJMP    ??hart_msg_state_start_char_7
+   \   00000094   E001               LDI     R16, 1
+   \   00000096   8707               STD     Z+15, R16
+   \   00000098   8706               STD     Z+14, R16
+   \   0000009A   9616               ADIW    R27:R26, 6
+   \   0000009C   91ED               LD      R30, X+
+   \   0000009E   91FC               LD      R31, X
+   \   000000A0   9717               SBIW    R27:R26, 7
+   \   000000A2   8525               LDD     R18, Z+13
+   \   000000A4   8328               ST      Y, R18
+   \   000000A6   8524               LDD     R18, Z+12
+   \   000000A8   8329               STD     Y+1, R18
+   \   000000AA   8523               LDD     R18, Z+11
+   \   000000AC   832A               STD     Y+2, R18
+   \   000000AE   8502               LDD     R16, Z+10
+   \   000000B0   830B               STD     Y+3, R16
+   \   000000B2   8108               LD      R16, Y
+   \   000000B4   8119               LDD     R17, Y+1
+   \   000000B6   812A               LDD     R18, Y+2
+   \   000000B8   813B               LDD     R19, Y+3
+   \   000000BA   01FD               MOVW    R31:R30, R27:R26
+   \   000000BC   8F04               STD     Z+28, R16
+   \   000000BE   8F15               STD     Z+29, R17
+   \   000000C0   8F26               STD     Z+30, R18
+   \   000000C2   8F37               STD     Z+31, R19
+   \   000000C4   E080               LDI     R24, 0
+   \   000000C6   E090               LDI     R25, 0
+   \   000000C8   018D               MOVW    R17:R16, R27:R26
+   \   000000CA   5E00               SUBI    R16, 224
+   \   000000CC   4F1F               SBCI    R17, 255
+   \   000000CE   019D               MOVW    R19:R18, R27:R26
+   \   000000D0   5D2C               SUBI    R18, 220
+   \   000000D2   4F3F               SBCI    R19, 255
+   \   000000D4   E044               LDI     R20, 4
+   \   000000D6   E065               LDI     R22, 5
+   \                     ??hart_msg_state_start_char_8:
+   \   000000D8   011C               MOVW    R3:R2, R25:R24
+   \   000000DA   9E36               MUL     R3, R22
+   \   000000DC   2C30               MOV     R3, R0
+   \   000000DE   9E26               MUL     R2, R22
+   \   000000E0   0C31               ADD     R3, R1
+   \   000000E2   9616               ADIW    R27:R26, 6
+   \   000000E4   91ED               LD      R30, X+
+   \   000000E6   91FC               LD      R31, X
+   \   000000E8   9717               SBIW    R27:R26, 7
+   \   000000EA   0DE0               ADD     R30, R0
+   \   000000EC   1DF3               ADC     R31, R3
+   \   000000EE   8952               LDD     R21, Z+18
+   \   000000F0   8358               ST      Y, R21
+   \   000000F2   8951               LDD     R21, Z+17
+   \   000000F4   8359               STD     Y+1, R21
+   \   000000F6   8950               LDD     R21, Z+16
+   \   000000F8   835A               STD     Y+2, R21
+   \   000000FA   8557               LDD     R21, Z+15
+   \   000000FC   835B               STD     Y+3, R21
+   \   000000FE   8556               LDD     R21, Z+14
+   \   00000100   01F8               MOVW    R31:R30, R17:R16
+   \   00000102   9351               ST      Z+, R21
+   \   00000104   018F               MOVW    R17:R16, R31:R30
+   \   00000106   8008               LD      R0, Y
+   \   00000108   8019               LDD     R1, Y+1
+   \   0000010A   802A               LDD     R2, Y+2
+   \   0000010C   803B               LDD     R3, Y+3
+   \   0000010E   01F9               MOVW    R31:R30, R19:R18
+   \   00000110   9201               ST      Z+, R0
+   \   00000112   9211               ST      Z+, R1
+   \   00000114   9221               ST      Z+, R2
+   \   00000116   9231               ST      Z+, R3
+   \   00000118   019F               MOVW    R19:R18, R31:R30
+   \   0000011A   9601               ADIW    R25:R24, 1
+   \   0000011C   954A               DEC     R20
+   \   0000011E   F409               BRNE    $+2+2
+   \   00000120   CF97               RJMP    ??hart_msg_state_start_char_3
+   \   00000122   CFDA               RJMP    ??hart_msg_state_start_char_8
+   \                     ??hart_msg_state_start_char_7:
+   \   00000124   E006               LDI     R16, 6
+   \   00000126   CFA6               RJMP    ??hart_msg_state_start_char_5
+    190          }
+    191          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    192          static HartMessageParsingStatus
+    193          hart_msg_state_address(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_address:
+   \   00000000   2F7B               MOV     R23, R27
+   \   00000002   2E0A               MOV     R0, R26
+   \   00000004   2F39               MOV     R19, R25
+   \   00000006   2F68               MOV     R22, R24
+   \   00000008   01F8               MOVW    R31:R30, R17:R16
+    194          	if (parser->state_dependent_cnt == 0) {
+   \   0000000A   8500               LDD     R16, Z+8
+   \   0000000C   8511               LDD     R17, Z+9
+   \   0000000E   2B01               OR      R16, R17
+   \   00000010   F441               BRNE    ??hart_msg_state_address_0
+    195          		HART_MARK_DPTR(parser, parser->addr_ptr);
+   \   00000012   8106               LDD     R16, Z+6
+   \   00000014   8117               LDD     R17, Z+7
+   \   00000016   8142               LDD     R20, Z+2
+   \   00000018   8153               LDD     R21, Z+3
+   \   0000001A   0F04               ADD     R16, R20
+   \   0000001C   1F15               ADC     R17, R21
+   \   0000001E   8B02               STD     Z+18, R16
+   \   00000020   8B13               STD     Z+19, R17
+    196          	}
+    197          
+    198          	HART_PUT_RX_DATA(parser, rxb);
+   \                     ??hart_msg_state_address_0:
+   \   00000022   8182               LDD     R24, Z+2
+   \   00000024   8193               LDD     R25, Z+3
+   \   00000026   8104               LDD     R16, Z+4
+   \   00000028   8115               LDD     R17, Z+5
+   \   0000002A   1780               CP      R24, R16
+   \   0000002C   0791               CPC     R25, R17
+   \   0000002E   F4A8               BRCC    ??hart_msg_state_address_1
+   \   00000030   81A6               LDD     R26, Z+6
+   \   00000032   81B7               LDD     R27, Z+7
+   \   00000034   0FA8               ADD     R26, R24
+   \   00000036   1FB9               ADC     R27, R25
+   \   00000038   932C               ST      X, R18
+   \   0000003A   9601               ADIW    R25:R24, 1
+   \   0000003C   8382               STD     Z+2, R24
+   \   0000003E   8393               STD     Z+3, R25
+    199          
+    200          	parser->state_dependent_cnt++;
+   \   00000040   8500               LDD     R16, Z+8
+   \   00000042   8511               LDD     R17, Z+9
+   \   00000044   5F0F               SUBI    R16, 255
+   \   00000046   4F1F               SBCI    R17, 255
+   \   00000048   8700               STD     Z+8, R16
+   \   0000004A   8711               STD     Z+9, R17
+    201          
+    202          	switch (parser->address_fmt) {
+   \   0000004C   8506               LDD     R16, Z+14
+   \   0000004E   2300               TST     R16
+   \   00000050   F081               BREQ    ??hart_msg_state_address_2
+   \   00000052   950A               DEC     R16
+   \   00000054   F051               BREQ    ??hart_msg_state_address_3
+    203          	case HartMessageAddressFormat_Long:
+    204          		if (parser->state_dependent_cnt != 5) {
+    205          			return HartMessageParsing_Pass;
+    206          		}
+    207          
+    208          		//
+    209          		// fall through
+    210          		//
+    211          	case HartMessageAddressFormat_Short:
+    212          		if (parser->exp_cnt == 0) {
+    213          			parser->state_dependent_cnt = 0;
+    214          			return hart_msg_parser_move_state(parser, hart_msg_state_command);
+    215          		} else {
+    216          			parser->state_dependent_cnt = 0;
+    217          			return hart_msg_parser_move_state(parser, hart_msg_state_expansion);
+    218          		}
+    219          		break;
+    220          	}
+    221          
+    222          	return HartMessageParsing_Pass;
+   \                     ??hart_msg_state_address_4:
+   \   00000056   E000               LDI     R16, 0
+   \                     ??hart_msg_state_address_5:
+   \   00000058   ....               RJMP    ?Subroutine1
+   \                     ??hart_msg_state_address_1:
+   \   0000005A   E001               LDI     R16, 1
+   \   0000005C   AB04               STD     Z+52, R16
+   \   0000005E   ....               LDI     R16, LOW(hart_msg_state_blackhole/2)
+   \   00000060   ....               LDI     R17, (hart_msg_state_blackhole/2) >> 8
+   \   00000062   8300               ST      Z, R16
+   \   00000064   8311               STD     Z+1, R17
+   \   00000066   E001               LDI     R16, 1
+   \   00000068   CFF7               RJMP    ??hart_msg_state_address_5
+   \                     ??hart_msg_state_address_3:
+   \   0000006A   8580               LDD     R24, Z+8
+   \   0000006C   2F91               MOV     R25, R17
+   \   0000006E   9705               SBIW    R25:R24, 5
+   \   00000070   F791               BRNE    ??hart_msg_state_address_4
+   \                     ??hart_msg_state_address_2:
+   \   00000072   8502               LDD     R16, Z+10
+   \   00000074   2300               TST     R16
+   \   00000076   E000               LDI     R16, 0
+   \   00000078   8700               STD     Z+8, R16
+   \   0000007A   8701               STD     Z+9, R16
+   \   0000007C   F429               BRNE    ??hart_msg_state_address_6
+   \   0000007E   ....               LDI     R16, LOW(hart_msg_state_command/2)
+   \   00000080   ....               LDI     R17, (hart_msg_state_command/2) >> 8
+   \                     ??hart_msg_state_address_7:
+   \   00000082   8300               ST      Z, R16
+   \   00000084   8311               STD     Z+1, R17
+   \   00000086   CFE7               RJMP    ??hart_msg_state_address_4
+   \                     ??hart_msg_state_address_6:
+   \   00000088   ....               LDI     R16, LOW(hart_msg_state_expansion/2)
+   \   0000008A   ....               LDI     R17, (hart_msg_state_expansion/2) >> 8
+   \   0000008C   CFFA               RJMP    ??hart_msg_state_address_7
+    223          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine1:
+   \   00000000   2F86               MOV     R24, R22
+   \   00000002   2F93               MOV     R25, R19
+   \   00000004   2DA0               MOV     R26, R0
+   \   00000006   2FB7               MOV     R27, R23
+   \   00000008   9508               RET
+    224          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    225          static HartMessageParsingStatus
+    226          hart_msg_state_expansion(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_expansion:
+   \   00000000   010D               MOVW    R1:R0, R27:R26
+   \   00000002   01BC               MOVW    R23:R22, R25:R24
+   \   00000004   01F8               MOVW    R31:R30, R17:R16
+    227          	if (parser->state_dependent_cnt == 0) {
+   \   00000006   8500               LDD     R16, Z+8
+   \   00000008   8511               LDD     R17, Z+9
+   \   0000000A   2B01               OR      R16, R17
+   \   0000000C   F441               BRNE    ??hart_msg_state_expansion_0
+    228          		HART_MARK_DPTR(parser, parser->exp_ptr);
+   \   0000000E   8106               LDD     R16, Z+6
+   \   00000010   8117               LDD     R17, Z+7
+   \   00000012   8142               LDD     R20, Z+2
+   \   00000014   8153               LDD     R21, Z+3
+   \   00000016   0F04               ADD     R16, R20
+   \   00000018   1F15               ADC     R17, R21
+   \   0000001A   8B04               STD     Z+20, R16
+   \   0000001C   8B15               STD     Z+21, R17
+    229          	}
+    230          
+    231          	HART_PUT_RX_DATA(parser, rxb);
+   \                     ??hart_msg_state_expansion_0:
+   \   0000001E   8182               LDD     R24, Z+2
+   \   00000020   8193               LDD     R25, Z+3
+   \   00000022   8104               LDD     R16, Z+4
+   \   00000024   8115               LDD     R17, Z+5
+   \   00000026   1780               CP      R24, R16
+   \   00000028   0791               CPC     R25, R17
+   \   0000002A   F4C0               BRCC    ??hart_msg_state_expansion_1
+   \   0000002C   81A6               LDD     R26, Z+6
+   \   0000002E   81B7               LDD     R27, Z+7
+   \   00000030   0FA8               ADD     R26, R24
+   \   00000032   1FB9               ADC     R27, R25
+   \   00000034   932C               ST      X, R18
+   \   00000036   9601               ADIW    R25:R24, 1
+   \   00000038   8382               STD     Z+2, R24
+   \   0000003A   8393               STD     Z+3, R25
+    232          
+    233          	parser->state_dependent_cnt++;
+   \   0000003C   8500               LDD     R16, Z+8
+   \   0000003E   8511               LDD     R17, Z+9
+   \   00000040   5F0F               SUBI    R16, 255
+   \   00000042   4F1F               SBCI    R17, 255
+   \   00000044   8700               STD     Z+8, R16
+   \   00000046   8711               STD     Z+9, R17
+    234          
+    235          	if (parser->state_dependent_cnt == parser->exp_cnt) {
+   \   00000048   0198               MOVW    R19:R18, R17:R16
+   \   0000004A   8502               LDD     R16, Z+10
+   \   0000004C   1720               CP      R18, R16
+   \   0000004E   4030               SBCI    R19, 0
+   \   00000050   F469               BRNE    ??hart_msg_state_expansion_2
+    236          		return hart_msg_parser_move_state(parser, hart_msg_state_command);
+   \   00000052   ....               LDI     R16, LOW(hart_msg_state_command/2)
+   \   00000054   ....               LDI     R17, (hart_msg_state_command/2) >> 8
+   \   00000056   8300               ST      Z, R16
+   \   00000058   8311               STD     Z+1, R17
+    237          	}
+   \   0000005A   C008               RJMP    ??hart_msg_state_expansion_2
+   \                     ??hart_msg_state_expansion_1:
+   \   0000005C   E001               LDI     R16, 1
+   \   0000005E   AB04               STD     Z+52, R16
+   \   00000060   ....               LDI     R16, LOW(hart_msg_state_blackhole/2)
+   \   00000062   ....               LDI     R17, (hart_msg_state_blackhole/2) >> 8
+   \   00000064   8300               ST      Z, R16
+   \   00000066   8311               STD     Z+1, R17
+   \   00000068   E001               LDI     R16, 1
+   \   0000006A   C001               RJMP    ??hart_msg_state_expansion_3
+    238          
+    239          	return HartMessageParsing_Pass;
+   \                     ??hart_msg_state_expansion_2:
+   \   0000006C   E000               LDI     R16, 0
+   \                     ??hart_msg_state_expansion_3:
+   \   0000006E   01CB               MOVW    R25:R24, R23:R22
+   \   00000070   01D0               MOVW    R27:R26, R1:R0
+   \   00000072   9508               RET
+    240          }
+    241          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    242          static HartMessageParsingStatus
+    243          hart_msg_state_command(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_command:
+   \   00000000   011D               MOVW    R3:R2, R27:R26
+   \   00000002   010C               MOVW    R1:R0, R25:R24
+    244          	HART_MARK_DPTR(parser, parser->cmd_ptr);
+   \   00000004   01D8               MOVW    R27:R26, R17:R16
+   \   00000006   9616               ADIW    R27:R26, 6
+   \   00000008   91ED               LD      R30, X+
+   \   0000000A   91FC               LD      R31, X
+   \   0000000C   01D8               MOVW    R27:R26, R17:R16
+   \   0000000E   9612               ADIW    R27:R26, 2
+   \   00000010   914D               LD      R20, X+
+   \   00000012   915C               LD      R21, X
+   \   00000014   01BF               MOVW    R23:R22, R31:R30
+   \   00000016   0F64               ADD     R22, R20
+   \   00000018   1F75               ADC     R23, R21
+   \   0000001A   01D8               MOVW    R27:R26, R17:R16
+   \   0000001C   9656               ADIW    R27:R26, 22
+   \   0000001E   936D               ST      X+, R22
+   \   00000020   937C               ST      X, R23
+    245          
+    246          	HART_PUT_RX_DATA(parser, rxb);
+   \   00000022   01D8               MOVW    R27:R26, R17:R16
+   \   00000024   9612               ADIW    R27:R26, 2
+   \   00000026   918D               LD      R24, X+
+   \   00000028   919C               LD      R25, X
+   \   0000002A   01D8               MOVW    R27:R26, R17:R16
+   \   0000002C   9614               ADIW    R27:R26, 4
+   \   0000002E   914D               LD      R20, X+
+   \   00000030   915C               LD      R21, X
+   \   00000032   1784               CP      R24, R20
+   \   00000034   0795               CPC     R25, R21
+   \   00000036   F468               BRCC    ??hart_msg_state_command_0
+   \   00000038   0FE8               ADD     R30, R24
+   \   0000003A   1FF9               ADC     R31, R25
+   \   0000003C   8320               ST      Z, R18
+   \   0000003E   9601               ADIW    R25:R24, 1
+   \   00000040   01F8               MOVW    R31:R30, R17:R16
+   \   00000042   8382               STD     Z+2, R24
+   \   00000044   8393               STD     Z+3, R25
+    247          
+    248          	return hart_msg_parser_move_state(parser, hart_msg_state_bytecount);
+   \   00000046   ....               LDI     R18, LOW(hart_msg_state_bytecount/2)
+   \   00000048   ....               LDI     R19, (hart_msg_state_bytecount/2) >> 8
+   \   0000004A   8320               ST      Z, R18
+   \   0000004C   8331               STD     Z+1, R19
+   \   0000004E   E000               LDI     R16, 0
+   \   00000050   C008               RJMP    ??hart_msg_state_command_1
+   \                     ??hart_msg_state_command_0:
+   \   00000052   01F8               MOVW    R31:R30, R17:R16
+   \   00000054   E021               LDI     R18, 1
+   \   00000056   AB24               STD     Z+52, R18
+   \   00000058   ....               LDI     R18, LOW(hart_msg_state_blackhole/2)
+   \   0000005A   ....               LDI     R19, (hart_msg_state_blackhole/2) >> 8
+   \   0000005C   8320               ST      Z, R18
+   \   0000005E   8331               STD     Z+1, R19
+   \   00000060   E001               LDI     R16, 1
+   \                     ??hart_msg_state_command_1:
+   \   00000062   01C0               MOVW    R25:R24, R1:R0
+   \   00000064   01D1               MOVW    R27:R26, R3:R2
+   \   00000066   9508               RET
+    249          }
+    250          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    251          static HartMessageParsingStatus
+    252          hart_msg_state_bytecount(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_bytecount:
+   \   00000000   010D               MOVW    R1:R0, R27:R26
+   \   00000002   01BC               MOVW    R23:R22, R25:R24
+    253          	if (parser->msg_type == HartMessageType_SlaveToMaster && rxb < 2) {
+   \   00000004   01F8               MOVW    R31:R30, R17:R16
+   \   00000006   8537               LDD     R19, Z+15
+   \   00000008   3031               CPI     R19, 1
+   \   0000000A   F421               BRNE    ??hart_msg_state_bytecount_0
+   \   0000000C   3022               CPI     R18, 2
+   \   0000000E   F410               BRCC    ??hart_msg_state_bytecount_0
+    254          		HART_PARSER_ERR(parser, HartMessageErrorCode_ByteCountInSlaveResponse);
+   \   00000010   E022               LDI     R18, 2
+   \   00000012   C01A               RJMP    ??hart_msg_state_bytecount_1
+    255          	}
+    256          
+    257          	parser->byte_cnt = rxb;
+   \                     ??hart_msg_state_bytecount_0:
+   \   00000014   8723               STD     Z+11, R18
+    258          
+    259          	HART_PUT_RX_DATA(parser, rxb);
+   \   00000016   8182               LDD     R24, Z+2
+   \   00000018   8193               LDD     R25, Z+3
+   \   0000001A   8144               LDD     R20, Z+4
+   \   0000001C   8155               LDD     R21, Z+5
+   \   0000001E   1784               CP      R24, R20
+   \   00000020   0795               CPC     R25, R21
+   \   00000022   F488               BRCC    ??hart_msg_state_bytecount_2
+   \   00000024   81A6               LDD     R26, Z+6
+   \   00000026   81B7               LDD     R27, Z+7
+   \   00000028   0FA8               ADD     R26, R24
+   \   0000002A   1FB9               ADC     R27, R25
+   \   0000002C   932C               ST      X, R18
+   \   0000002E   9601               ADIW    R25:R24, 1
+   \   00000030   8382               STD     Z+2, R24
+   \   00000032   8393               STD     Z+3, R25
+    260          
+    261          	//
+    262          	// response from slave
+    263          	// has status word
+    264          	//
+    265          	if (parser->msg_type == HartMessageType_SlaveToMaster) {
+   \   00000034   8527               LDD     R18, Z+15
+   \   00000036   3021               CPI     R18, 1
+   \   00000038   E020               LDI     R18, 0
+   \   0000003A   F469               BRNE    ??hart_msg_state_bytecount_3
+    266          		parser->state_dependent_cnt = 0;
+   \   0000003C   8720               STD     Z+8, R18
+   \   0000003E   8721               STD     Z+9, R18
+    267          		return hart_msg_parser_move_state(parser, hart_msg_state_status);
+   \   00000040   ....               LDI     R18, LOW(hart_msg_state_status/2)
+   \   00000042   ....               LDI     R19, (hart_msg_state_status/2) >> 8
+   \   00000044   C01B               RJMP    ??hart_msg_state_bytecount_4
+    268          	}
+   \                     ??hart_msg_state_bytecount_2:
+   \   00000046   E021               LDI     R18, 1
+   \                     ??hart_msg_state_bytecount_1:
+   \   00000048   AB24               STD     Z+52, R18
+   \   0000004A   ....               LDI     R18, LOW(hart_msg_state_blackhole/2)
+   \   0000004C   ....               LDI     R19, (hart_msg_state_blackhole/2) >> 8
+   \   0000004E   8320               ST      Z, R18
+   \   00000050   8331               STD     Z+1, R19
+   \   00000052   E001               LDI     R16, 1
+   \   00000054   C016               RJMP    ??hart_msg_state_bytecount_5
+    269          
+    270          	//
+    271          	// either from master or burst from slave
+    272          	// no status word
+    273          	//
+    274          	parser->status_ptr  = NULL;
+   \                     ??hart_msg_state_bytecount_3:
+   \   00000056   8F20               STD     Z+24, R18
+   \   00000058   8F21               STD     Z+25, R18
+    275          	if (parser->byte_cnt == 0) {
+   \   0000005A   8523               LDD     R18, Z+11
+   \   0000005C   2322               TST     R18
+   \   0000005E   F439               BRNE    ??hart_msg_state_bytecount_6
+    276          		// no data
+    277          		parser->data_cnt    = 0;
+   \   00000060   E020               LDI     R18, 0
+   \   00000062   8724               STD     Z+12, R18
+    278          		parser->data_ptr    = NULL;
+   \   00000064   8F22               STD     Z+26, R18
+   \   00000066   8F23               STD     Z+27, R18
+    279          		return hart_msg_parser_move_state(parser, hart_msg_state_checksum);
+   \   00000068   ....               LDI     R18, LOW(hart_msg_state_checksum/2)
+   \   0000006A   ....               LDI     R19, (hart_msg_state_checksum/2) >> 8
+   \   0000006C   C007               RJMP    ??hart_msg_state_bytecount_4
+    280          	}
+    281          
+    282          	// some data
+    283          	parser->data_cnt = parser->byte_cnt;
+   \                     ??hart_msg_state_bytecount_6:
+   \   0000006E   8523               LDD     R18, Z+11
+   \   00000070   8724               STD     Z+12, R18
+    284          	parser->state_dependent_cnt = 0;
+   \   00000072   E020               LDI     R18, 0
+   \   00000074   8720               STD     Z+8, R18
+   \   00000076   8721               STD     Z+9, R18
+    285          	return hart_msg_parser_move_state(parser, hart_msg_state_data);
+   \   00000078   ....               LDI     R18, LOW(hart_msg_state_data/2)
+   \   0000007A   ....               LDI     R19, (hart_msg_state_data/2) >> 8
+   \                     ??hart_msg_state_bytecount_4:
+   \   0000007C   8320               ST      Z, R18
+   \   0000007E   8331               STD     Z+1, R19
+   \   00000080   E000               LDI     R16, 0
+   \                     ??hart_msg_state_bytecount_5:
+   \   00000082   01CB               MOVW    R25:R24, R23:R22
+   \   00000084   01D0               MOVW    R27:R26, R1:R0
+   \   00000086   9508               RET
+    286          }
+    287          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    288          static HartMessageParsingStatus
+    289          hart_msg_state_status(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_status:
+   \   00000000   2F7B               MOV     R23, R27
+   \   00000002   2E0A               MOV     R0, R26
+   \   00000004   2F39               MOV     R19, R25
+   \   00000006   2F68               MOV     R22, R24
+   \   00000008   01F8               MOVW    R31:R30, R17:R16
+    290          	if (parser->state_dependent_cnt == 0) {
+   \   0000000A   8500               LDD     R16, Z+8
+   \   0000000C   8511               LDD     R17, Z+9
+   \   0000000E   2B01               OR      R16, R17
+   \   00000010   F441               BRNE    ??hart_msg_state_status_0
+    291          		HART_MARK_DPTR(parser, parser->status_ptr);
+   \   00000012   8106               LDD     R16, Z+6
+   \   00000014   8117               LDD     R17, Z+7
+   \   00000016   8142               LDD     R20, Z+2
+   \   00000018   8153               LDD     R21, Z+3
+   \   0000001A   0F04               ADD     R16, R20
+   \   0000001C   1F15               ADC     R17, R21
+   \   0000001E   8F00               STD     Z+24, R16
+   \   00000020   8F11               STD     Z+25, R17
+    292          	}
+    293          
+    294          	HART_PUT_RX_DATA(parser, rxb);
+   \                     ??hart_msg_state_status_0:
+   \   00000022   8182               LDD     R24, Z+2
+   \   00000024   8193               LDD     R25, Z+3
+   \   00000026   8104               LDD     R16, Z+4
+   \   00000028   8115               LDD     R17, Z+5
+   \   0000002A   1780               CP      R24, R16
+   \   0000002C   0791               CPC     R25, R17
+   \   0000002E   F4D8               BRCC    ??hart_msg_state_status_1
+   \   00000030   81A6               LDD     R26, Z+6
+   \   00000032   81B7               LDD     R27, Z+7
+   \   00000034   0FA8               ADD     R26, R24
+   \   00000036   1FB9               ADC     R27, R25
+   \   00000038   932C               ST      X, R18
+   \   0000003A   9601               ADIW    R25:R24, 1
+   \   0000003C   8382               STD     Z+2, R24
+   \   0000003E   8393               STD     Z+3, R25
+    295          
+    296          	parser->state_dependent_cnt++;
+   \   00000040   8500               LDD     R16, Z+8
+   \   00000042   8511               LDD     R17, Z+9
+   \   00000044   5F0F               SUBI    R16, 255
+   \   00000046   4F1F               SBCI    R17, 255
+   \   00000048   8700               STD     Z+8, R16
+   \   0000004A   8711               STD     Z+9, R17
+    297          
+    298          	if (parser->state_dependent_cnt == 2) {
+   \   0000004C   01C8               MOVW    R25:R24, R17:R16
+   \   0000004E   9702               SBIW    R25:R24, 2
+   \   00000050   F4E1               BRNE    ??hart_msg_state_status_2
+    299          		// no data
+    300          		if (parser->byte_cnt == 2) {
+   \   00000052   8503               LDD     R16, Z+11
+   \   00000054   3002               CPI     R16, 2
+   \   00000056   F479               BRNE    ??hart_msg_state_status_3
+    301          			parser->data_cnt    = 0;
+   \   00000058   E000               LDI     R16, 0
+   \   0000005A   8704               STD     Z+12, R16
+    302          			parser->data_ptr    = NULL;
+   \   0000005C   8F02               STD     Z+26, R16
+   \   0000005E   8F03               STD     Z+27, R16
+    303          			return hart_msg_parser_move_state(parser, hart_msg_state_checksum);
+   \   00000060   ....               LDI     R16, LOW(hart_msg_state_checksum/2)
+   \   00000062   ....               LDI     R17, (hart_msg_state_checksum/2) >> 8
+   \   00000064   C010               RJMP    ??hart_msg_state_status_4
+    304          		}
+   \                     ??hart_msg_state_status_1:
+   \   00000066   E001               LDI     R16, 1
+   \   00000068   AB04               STD     Z+52, R16
+   \   0000006A   ....               LDI     R16, LOW(hart_msg_state_blackhole/2)
+   \   0000006C   ....               LDI     R17, (hart_msg_state_blackhole/2) >> 8
+   \   0000006E   8300               ST      Z, R16
+   \   00000070   8311               STD     Z+1, R17
+   \   00000072   E001               LDI     R16, 1
+   \   00000074   C00B               RJMP    ??hart_msg_state_status_5
+    305          
+    306          		// some data
+    307          		parser->data_cnt = parser->byte_cnt - 2;
+   \                     ??hart_msg_state_status_3:
+   \   00000076   8503               LDD     R16, Z+11
+   \   00000078   5002               SUBI    R16, 2
+   \   0000007A   8704               STD     Z+12, R16
+    308          		parser->state_dependent_cnt = 0;
+   \   0000007C   E000               LDI     R16, 0
+   \   0000007E   8700               STD     Z+8, R16
+   \   00000080   8701               STD     Z+9, R16
+    309          		return hart_msg_parser_move_state(parser, hart_msg_state_data);
+   \   00000082   ....               LDI     R16, LOW(hart_msg_state_data/2)
+   \   00000084   ....               LDI     R17, (hart_msg_state_data/2) >> 8
+   \                     ??hart_msg_state_status_4:
+   \   00000086   8300               ST      Z, R16
+   \   00000088   8311               STD     Z+1, R17
+    310          	}
+    311          	return HartMessageParsing_Pass;
+   \                     ??hart_msg_state_status_2:
+   \   0000008A   E000               LDI     R16, 0
+   \                     ??hart_msg_state_status_5:
+   \   0000008C                      REQUIRE ?Subroutine1
+   \   0000008C                      ;               // Fall through to label ?Subroutine1
+    312          }
+    313          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    314          static HartMessageParsingStatus
+    315          hart_msg_state_data(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_data:
+   \   00000000   010D               MOVW    R1:R0, R27:R26
+   \   00000002   01BC               MOVW    R23:R22, R25:R24
+   \   00000004   01F8               MOVW    R31:R30, R17:R16
+    316          	if (parser->state_dependent_cnt == 0) {
+   \   00000006   8500               LDD     R16, Z+8
+   \   00000008   8511               LDD     R17, Z+9
+   \   0000000A   2B01               OR      R16, R17
+   \   0000000C   F441               BRNE    ??hart_msg_state_data_0
+    317          		HART_MARK_DPTR(parser, parser->data_ptr);
+   \   0000000E   8106               LDD     R16, Z+6
+   \   00000010   8117               LDD     R17, Z+7
+   \   00000012   8142               LDD     R20, Z+2
+   \   00000014   8153               LDD     R21, Z+3
+   \   00000016   0F04               ADD     R16, R20
+   \   00000018   1F15               ADC     R17, R21
+   \   0000001A   8F02               STD     Z+26, R16
+   \   0000001C   8F13               STD     Z+27, R17
+    318          	}
+    319          
+    320          	HART_PUT_RX_DATA(parser, rxb);
+   \                     ??hart_msg_state_data_0:
+   \   0000001E   8182               LDD     R24, Z+2
+   \   00000020   8193               LDD     R25, Z+3
+   \   00000022   8104               LDD     R16, Z+4
+   \   00000024   8115               LDD     R17, Z+5
+   \   00000026   1780               CP      R24, R16
+   \   00000028   0791               CPC     R25, R17
+   \   0000002A   F4C0               BRCC    ??hart_msg_state_data_1
+   \   0000002C   81A6               LDD     R26, Z+6
+   \   0000002E   81B7               LDD     R27, Z+7
+   \   00000030   0FA8               ADD     R26, R24
+   \   00000032   1FB9               ADC     R27, R25
+   \   00000034   932C               ST      X, R18
+   \   00000036   9601               ADIW    R25:R24, 1
+   \   00000038   8382               STD     Z+2, R24
+   \   0000003A   8393               STD     Z+3, R25
+    321          
+    322          	parser->state_dependent_cnt++;
+   \   0000003C   8500               LDD     R16, Z+8
+   \   0000003E   8511               LDD     R17, Z+9
+   \   00000040   5F0F               SUBI    R16, 255
+   \   00000042   4F1F               SBCI    R17, 255
+   \   00000044   8700               STD     Z+8, R16
+   \   00000046   8711               STD     Z+9, R17
+    323          	if (parser->state_dependent_cnt == parser->data_cnt) {
+   \   00000048   0198               MOVW    R19:R18, R17:R16
+   \   0000004A   8504               LDD     R16, Z+12
+   \   0000004C   1720               CP      R18, R16
+   \   0000004E   4030               SBCI    R19, 0
+   \   00000050   F469               BRNE    ??hart_msg_state_data_2
+    324          		return hart_msg_parser_move_state(parser, hart_msg_state_checksum);
+   \   00000052   ....               LDI     R16, LOW(hart_msg_state_checksum/2)
+   \   00000054   ....               LDI     R17, (hart_msg_state_checksum/2) >> 8
+   \   00000056   8300               ST      Z, R16
+   \   00000058   8311               STD     Z+1, R17
+    325          	}
+   \   0000005A   C008               RJMP    ??hart_msg_state_data_2
+   \                     ??hart_msg_state_data_1:
+   \   0000005C   E001               LDI     R16, 1
+   \   0000005E   AB04               STD     Z+52, R16
+   \   00000060   ....               LDI     R16, LOW(hart_msg_state_blackhole/2)
+   \   00000062   ....               LDI     R17, (hart_msg_state_blackhole/2) >> 8
+   \   00000064   8300               ST      Z, R16
+   \   00000066   8311               STD     Z+1, R17
+   \   00000068   E001               LDI     R16, 1
+   \   0000006A   C001               RJMP    ??hart_msg_state_data_3
+    326          
+    327          	return HartMessageParsing_Pass;
+   \                     ??hart_msg_state_data_2:
+   \   0000006C   E000               LDI     R16, 0
+   \                     ??hart_msg_state_data_3:
+   \   0000006E   01CB               MOVW    R25:R24, R23:R22
+   \   00000070   01D0               MOVW    R27:R26, R1:R0
+   \   00000072   9508               RET
+    328          }
+    329          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    330          static HartMessageParsingStatus
+    331          hart_msg_state_checksum(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_checksum:
+    332          	parser->csum = rxb;
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+   \   00000002   8725               STD     Z+13, R18
+    333          	return HartMessageParsing_Complete;
+   \   00000004   E002               LDI     R16, 2
+   \   00000006   9508               RET
+    334          }
+    335          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    336          static HartMessageParsingStatus
+    337          hart_msg_state_blackhole(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_state_blackhole:
+    338          	return HartMessageParsing_Pass;
+   \   00000000   E000               LDI     R16, 0
+   \   00000002   9508               RET
+    339          }
+    340          
+    341          ////////////////////////////////////////////////////////////////////////////////
+    342          //
+    343          // parser public interfaces
+    344          //
+    345          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    346          void
+    347          hart_msg_parser_init(HartMessageParser *parser, volatile hart_data_t *rx_buf, uint16_t rx_buf_size) {
+   \                     hart_msg_parser_init:
+    348          	parser->rx_buf_ptr    = rx_buf;
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+   \   00000002   8326               STD     Z+6, R18
+   \   00000004   8337               STD     Z+7, R19
+    349          	parser->rx_buf_size   = rx_buf_size;
+   \   00000006   8344               STD     Z+4, R20
+   \   00000008   8355               STD     Z+5, R21
+    350          
+    351          	hart_msg_parser_reset(parser);
+   \   0000000A                      REQUIRE ?Subroutine0
+   \   0000000A                      ;               // Fall through to label ?Subroutine0
+    352          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine0:
+   \   00000000   E020               LDI     R18, 0
+   \   00000002   8B20               STD     Z+16, R18
+   \   00000004   8B21               STD     Z+17, R18
+   \   00000006   8B22               STD     Z+18, R18
+   \   00000008   8B23               STD     Z+19, R18
+   \   0000000A   8B24               STD     Z+20, R18
+   \   0000000C   8B25               STD     Z+21, R18
+   \   0000000E   8B26               STD     Z+22, R18
+   \   00000010   8B27               STD     Z+23, R18
+   \   00000012   8F20               STD     Z+24, R18
+   \   00000014   8F21               STD     Z+25, R18
+   \   00000016   8F22               STD     Z+26, R18
+   \   00000018   8F23               STD     Z+27, R18
+   \   0000001A   8720               STD     Z+8, R18
+   \   0000001C   8721               STD     Z+9, R18
+   \   0000001E   8722               STD     Z+10, R18
+   \   00000020   8723               STD     Z+11, R18
+   \   00000022   8724               STD     Z+12, R18
+   \   00000024   8725               STD     Z+13, R18
+   \   00000026   8726               STD     Z+14, R18
+   \   00000028   E021               LDI     R18, 1
+   \   0000002A   8727               STD     Z+15, R18
+   \   0000002C   E020               LDI     R18, 0
+   \   0000002E   8322               STD     Z+2, R18
+   \   00000030   8323               STD     Z+3, R18
+   \   00000032   AB24               STD     Z+52, R18
+   \   00000034   ....               LDI     R18, LOW(hart_msg_state_begin/2)
+   \   00000036   ....               LDI     R19, (hart_msg_state_begin/2) >> 8
+   \   00000038   8320               ST      Z, R18
+   \   0000003A   8331               STD     Z+1, R19
+   \   0000003C   9508               RET
+    353          
+    354          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    355          HartMessageParsingStatus
+    356          hart_msg_parser_handle_byte(HartMessageParser *parser, hart_data_t rxb) {
+   \                     hart_msg_parser_handle_byte:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   01D8               MOVW    R27:R26, R17:R16
+    357          	return parser->parsing_state(parser, rxb);
+   \   00000006   91ED               LD      R30, X+
+   \   00000008   91FC               LD      R31, X
+   \   0000000A   9509               ICALL
+   \   0000000C   91A9               LD      R26, Y+
+   \   0000000E   91B9               LD      R27, Y+
+   \   00000010   9508               RET
+    358          }
+    359          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    360          void
+    361          hart_msg_parser_reset(HartMessageParser *parser) {
+   \                     hart_msg_parser_reset:
+    362          	parser->start_ptr             = NULL;
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+   \   00000002   ....               RJMP    ?Subroutine0
+    363          	parser->addr_ptr              = NULL;
+    364          	parser->exp_ptr               = NULL;
+    365          	parser->cmd_ptr               = NULL;
+    366          	parser->status_ptr            = NULL;
+    367          	parser->data_ptr              = NULL;
+    368          
+    369          	parser->state_dependent_cnt   = 0;
+    370          	parser->exp_cnt               = 0;
+    371          	parser->byte_cnt              = 0;
+    372          	parser->data_cnt              = 0;
+    373          	parser->csum                  = 0;
+    374          	parser->address_fmt           = HartMessageAddressFormat_Short;
+    375          	parser->msg_type              = HartMessageType_SlaveToMaster;
+    376          
+    377          	parser->rx_ndx                = 0;
+    378          
+    379          	parser->err_msg               = HartMessageErrorCode_OK;
+    380          
+    381          	hart_msg_parser_move_state(parser, hart_msg_state_begin);
+    382          }
+    383          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    384          uint8_t hart_msg_calc_csum(const uint8_t *buf, uint16_t len) {
+   \                     hart_msg_calc_csum:
+    385          	uint8_t     csum = 0;
+   \   00000000   E040               LDI     R20, 0
+    386          	for (uint16_t i = 0; i < len; i++) {
+   \   00000002   2F52               MOV     R21, R18
+   \   00000004   2B53               OR      R21, R19
+   \   00000006   F039               BREQ    ??hart_msg_calc_csum_0
+    387          		csum = csum ^ buf[i];
+   \                     ??hart_msg_calc_csum_1:
+   \   00000008   01F8               MOVW    R31:R30, R17:R16
+   \   0000000A   9151               LD      R21, Z+
+   \   0000000C   018F               MOVW    R17:R16, R31:R30
+   \   0000000E   2745               EOR     R20, R21
+    388          	}
+   \   00000010   5021               SUBI    R18, 1
+   \   00000012   4030               SBCI    R19, 0
+   \   00000014   F7C9               BRNE    ??hart_msg_calc_csum_1
+    389          	return csum;
+   \                     ??hart_msg_calc_csum_0:
+   \   00000016   2F04               MOV     R16, R20
+   \   00000018   9508               RET
+    390          }
+    391          
+    392          ////////////////////////////////////////////////////////////////////////////////
+    393          //
+    394          // encoder utilities
+    395          //
+    396          ////////////////////////////////////////////////////////////////////////////////
+    397          /*
+    398           * returns
+    399           *
+    400           * 1 on ok
+    401           * 0 on buffer overflow
+    402           *
+    403           */
+    404          static inline uint8_t
+    405          hart_msg_encoder_put_data(HartMessageEncoder *encoder, hart_data_t d) {
+    406          	if (encoder->tx_ndx >= encoder->tx_buf_size) {
+    407          		return 0;
+    408          	}
+    409          	encoder->tx_buf[encoder->tx_ndx] = d;
+    410          	encoder->tx_ndx++;
+    411          
+    412          	return 1;
+    413          }
+    414          
+    415          
+    416          ////////////////////////////////////////////////////////////////////////////////
+    417          //
+    418          // encoder public interfaces
+    419          //
+    420          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    421          void
+    422          hart_msg_encoder_init(HartMessageEncoder *encoder, volatile uint8_t *tx_buf,  uint16_t tx_buf_size) {
+   \                     hart_msg_encoder_init:
+    423          	encoder->tx_buf         = tx_buf;
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+   \   00000002   8320               ST      Z, R18
+   \   00000004   8331               STD     Z+1, R19
+    424          	encoder->tx_buf_size    = tx_buf_size;
+   \   00000006   8342               STD     Z+2, R20
+   \   00000008   8353               STD     Z+3, R21
+    425          
+    426          	hart_msg_encoder_reset(encoder);
+   \   0000000A                      REQUIRE ?Subroutine2
+   \   0000000A                      ;               // Fall through to label ?Subroutine2
+    427          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine2:
+   \   00000000   E020               LDI     R18, 0
+   \   00000002   8324               STD     Z+4, R18
+   \   00000004   8325               STD     Z+5, R18
+   \   00000006   8326               STD     Z+6, R18
+   \   00000008   9508               RET
+    428          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    429          void
+    430          hart_msg_encoder_reset(HartMessageEncoder *encoder) {
+   \                     hart_msg_encoder_reset:
+    431          	encoder->tx_ndx         = 0;
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+   \   00000002   ....               RJMP    ?Subroutine2
+    432          	encoder->preamble_len   = 0;
+    433          }
+    434          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    435          uint8_t
+    436          hart_msg_encoder_preamble(HartMessageEncoder *encoder, uint8_t num_preamble) {
+   \                     hart_msg_encoder_preamble:
+    437          	uint8_t     i;
+    438          
+    439          	encoder->preamble_len   = num_preamble;
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+   \   00000002   8326               STD     Z+6, R18
+    440          
+    441          	for (i = 0; i < num_preamble; i++) {
+   \   00000004   2322               TST     R18
+   \   00000006   F0C9               BREQ    ??hart_msg_encoder_preamble_0
+   \   00000008   EF3F               LDI     R19, 255
+    442          		HART_ENCODER_PUT(encoder, 0xff);
+   \                     ??hart_msg_encoder_preamble_1:
+   \   0000000A   8164               LDD     R22, Z+4
+   \   0000000C   8175               LDD     R23, Z+5
+   \   0000000E   8142               LDD     R20, Z+2
+   \   00000010   8153               LDD     R21, Z+3
+   \   00000012   1764               CP      R22, R20
+   \   00000014   0775               CPC     R23, R21
+   \   00000016   F010               BRCS    ??hart_msg_encoder_preamble_2
+   \   00000018   E000               LDI     R16, 0
+   \   0000001A   9508               RET
+    443          	}
+   \                     ??hart_msg_encoder_preamble_2:
+   \   0000001C   8140               LD      R20, Z
+   \   0000001E   8151               LDD     R21, Z+1
+   \   00000020   0F46               ADD     R20, R22
+   \   00000022   1F57               ADC     R21, R23
+   \   00000024   01FA               MOVW    R31:R30, R21:R20
+   \   00000026   8330               ST      Z, R19
+   \   00000028   01F8               MOVW    R31:R30, R17:R16
+   \   0000002A   8144               LDD     R20, Z+4
+   \   0000002C   8155               LDD     R21, Z+5
+   \   0000002E   5F4F               SUBI    R20, 255
+   \   00000030   4F5F               SBCI    R21, 255
+   \   00000032   8344               STD     Z+4, R20
+   \   00000034   8355               STD     Z+5, R21
+   \   00000036   952A               DEC     R18
+   \   00000038   F741               BRNE    ??hart_msg_encoder_preamble_1
+    444          	return 1;
+   \                     ??hart_msg_encoder_preamble_0:
+   \   0000003A   E001               LDI     R16, 1
+   \   0000003C   9508               RET
+    445          }
+    446          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    447          uint8_t
+    448          hart_msg_encoder_short_start(HartMessageEncoder *encoder, uint8_t start, uint8_t addr, uint8_t cmd) {
+   \                     hart_msg_encoder_short_start:
+   \   00000000   2F5B               MOV     R21, R27
+   \   00000002   2E0A               MOV     R0, R26
+   \   00000004   01F8               MOVW    R31:R30, R17:R16
+    449          	HART_ENCODER_PUT(encoder, start);
+   \   00000006   8104               LDD     R16, Z+4
+   \   00000008   8115               LDD     R17, Z+5
+   \   0000000A   8162               LDD     R22, Z+2
+   \   0000000C   8173               LDD     R23, Z+3
+   \   0000000E   1706               CP      R16, R22
+   \   00000010   0717               CPC     R17, R23
+   \   00000012   F568               BRCC    ??hart_msg_encoder_short_start_0
+   \   00000014   81A0               LD      R26, Z
+   \   00000016   81B1               LDD     R27, Z+1
+   \   00000018   0FA0               ADD     R26, R16
+   \   0000001A   1FB1               ADC     R27, R17
+   \   0000001C   932C               ST      X, R18
+   \   0000001E   8104               LDD     R16, Z+4
+   \   00000020   8115               LDD     R17, Z+5
+   \   00000022   5F0F               SUBI    R16, 255
+   \   00000024   4F1F               SBCI    R17, 255
+   \   00000026   8304               STD     Z+4, R16
+   \   00000028   8315               STD     Z+5, R17
+    450          	HART_ENCODER_PUT(encoder, addr);
+   \   0000002A   8162               LDD     R22, Z+2
+   \   0000002C   8173               LDD     R23, Z+3
+   \   0000002E   1706               CP      R16, R22
+   \   00000030   0717               CPC     R17, R23
+   \   00000032   F4E8               BRCC    ??hart_msg_encoder_short_start_0
+   \   00000034   81A0               LD      R26, Z
+   \   00000036   81B1               LDD     R27, Z+1
+   \   00000038   0FA0               ADD     R26, R16
+   \   0000003A   1FB1               ADC     R27, R17
+   \   0000003C   933C               ST      X, R19
+   \   0000003E   8104               LDD     R16, Z+4
+   \   00000040   8115               LDD     R17, Z+5
+   \   00000042   5F0F               SUBI    R16, 255
+   \   00000044   4F1F               SBCI    R17, 255
+   \   00000046   8304               STD     Z+4, R16
+   \   00000048   8315               STD     Z+5, R17
+    451          	HART_ENCODER_PUT(encoder, cmd);
+   \   0000004A   8122               LDD     R18, Z+2
+   \   0000004C   8133               LDD     R19, Z+3
+   \   0000004E   1702               CP      R16, R18
+   \   00000050   0713               CPC     R17, R19
+   \   00000052   F468               BRCC    ??hart_msg_encoder_short_start_0
+   \   00000054   81A0               LD      R26, Z
+   \   00000056   81B1               LDD     R27, Z+1
+   \   00000058   0FA0               ADD     R26, R16
+   \   0000005A   1FB1               ADC     R27, R17
+   \   0000005C   934C               ST      X, R20
+   \   0000005E   8104               LDD     R16, Z+4
+   \   00000060   8115               LDD     R17, Z+5
+   \   00000062   5F0F               SUBI    R16, 255
+   \   00000064   4F1F               SBCI    R17, 255
+   \   00000066   8304               STD     Z+4, R16
+   \   00000068   8315               STD     Z+5, R17
+    452          
+    453          	return 1;
+   \   0000006A   E001               LDI     R16, 1
+   \   0000006C   C001               RJMP    ??hart_msg_encoder_short_start_1
+   \                     ??hart_msg_encoder_short_start_0:
+   \   0000006E   E000               LDI     R16, 0
+   \                     ??hart_msg_encoder_short_start_1:
+   \   00000070   2DA0               MOV     R26, R0
+   \   00000072   2FB5               MOV     R27, R21
+   \   00000074   9508               RET
+    454          }
+    455          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    456          uint8_t
+    457          hart_msg_encoder_long_start(HartMessageEncoder *encoder, uint8_t start, uint8_t *addr, uint8_t cmd) {
+   \                     hart_msg_encoder_long_start:
+   \   00000000   010D               MOVW    R1:R0, R27:R26
+   \   00000002   01F8               MOVW    R31:R30, R17:R16
+    458          	uint8_t   i;
+    459          
+    460          	HART_ENCODER_PUT(encoder, start);
+   \   00000004   8104               LDD     R16, Z+4
+   \   00000006   8115               LDD     R17, Z+5
+   \   00000008   8162               LDD     R22, Z+2
+   \   0000000A   8173               LDD     R23, Z+3
+   \   0000000C   1706               CP      R16, R22
+   \   0000000E   0717               CPC     R17, R23
+   \   00000010   F5B0               BRCC    ??hart_msg_encoder_long_start_0
+   \   00000012   81A0               LD      R26, Z
+   \   00000014   81B1               LDD     R27, Z+1
+   \   00000016   0FA0               ADD     R26, R16
+   \   00000018   1FB1               ADC     R27, R17
+   \   0000001A   932C               ST      X, R18
+   \   0000001C   8104               LDD     R16, Z+4
+   \   0000001E   8115               LDD     R17, Z+5
+   \   00000020   5F0F               SUBI    R16, 255
+   \   00000022   4F1F               SBCI    R17, 255
+   \   00000024   8304               STD     Z+4, R16
+   \   00000026   8315               STD     Z+5, R17
+    461          
+    462          	for (i = 0; i < 5; i++) {
+   \   00000028   E025               LDI     R18, 5
+    463          		HART_ENCODER_PUT(encoder, addr[i]);
+   \                     ??hart_msg_encoder_long_start_1:
+   \   0000002A   8104               LDD     R16, Z+4
+   \   0000002C   8115               LDD     R17, Z+5
+   \   0000002E   8162               LDD     R22, Z+2
+   \   00000030   8173               LDD     R23, Z+3
+   \   00000032   1706               CP      R16, R22
+   \   00000034   0717               CPC     R17, R23
+   \   00000036   F518               BRCC    ??hart_msg_encoder_long_start_0
+   \   00000038   01DA               MOVW    R27:R26, R21:R20
+   \   0000003A   916D               LD      R22, X+
+   \   0000003C   01AD               MOVW    R21:R20, R27:R26
+   \   0000003E   81A0               LD      R26, Z
+   \   00000040   81B1               LDD     R27, Z+1
+   \   00000042   0FA0               ADD     R26, R16
+   \   00000044   1FB1               ADC     R27, R17
+   \   00000046   936C               ST      X, R22
+   \   00000048   8104               LDD     R16, Z+4
+   \   0000004A   8115               LDD     R17, Z+5
+   \   0000004C   5F0F               SUBI    R16, 255
+   \   0000004E   4F1F               SBCI    R17, 255
+   \   00000050   8304               STD     Z+4, R16
+   \   00000052   8315               STD     Z+5, R17
+    464          	}
+   \   00000054   952A               DEC     R18
+   \   00000056   F749               BRNE    ??hart_msg_encoder_long_start_1
+    465          
+    466          	HART_ENCODER_PUT(encoder, cmd);
+   \   00000058   8104               LDD     R16, Z+4
+   \   0000005A   8142               LDD     R20, Z+2
+   \   0000005C   8153               LDD     R21, Z+3
+   \   0000005E   1704               CP      R16, R20
+   \   00000060   0715               CPC     R17, R21
+   \   00000062   F468               BRCC    ??hart_msg_encoder_long_start_0
+   \   00000064   81A0               LD      R26, Z
+   \   00000066   81B1               LDD     R27, Z+1
+   \   00000068   0FA0               ADD     R26, R16
+   \   0000006A   1FB1               ADC     R27, R17
+   \   0000006C   933C               ST      X, R19
+   \   0000006E   8104               LDD     R16, Z+4
+   \   00000070   8115               LDD     R17, Z+5
+   \   00000072   5F0F               SUBI    R16, 255
+   \   00000074   4F1F               SBCI    R17, 255
+   \   00000076   8304               STD     Z+4, R16
+   \   00000078   8315               STD     Z+5, R17
+    467          
+    468          	return 1;
+   \   0000007A   E001               LDI     R16, 1
+   \   0000007C   C001               RJMP    ??hart_msg_encoder_long_start_2
+   \                     ??hart_msg_encoder_long_start_0:
+   \   0000007E   E000               LDI     R16, 0
+   \                     ??hart_msg_encoder_long_start_2:
+   \   00000080   01D0               MOVW    R27:R26, R1:R0
+   \   00000082   9508               RET
+    469          }
+    470          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    471          uint8_t
+    472          hart_msg_encoder_status_data(HartMessageEncoder *encoder, uint8_t *status, uint8_t *data, uint8_t data_len) {
+   \                     hart_msg_encoder_status_data:
+   \   00000000   011D               MOVW    R3:R2, R27:R26
+   \   00000002   01D9               MOVW    R27:R26, R19:R18
+    473          	uint8_t   bcnt,
+    474          		i;
+    475          
+    476          	bcnt = 2 + data_len;
+    477          
+    478          	HART_ENCODER_PUT(encoder, bcnt);
+   \   00000004   01F8               MOVW    R31:R30, R17:R16
+   \   00000006   8004               LDD     R0, Z+4
+   \   00000008   8015               LDD     R1, Z+5
+   \   0000000A   8122               LDD     R18, Z+2
+   \   0000000C   8133               LDD     R19, Z+3
+   \   0000000E   1602               CP      R0, R18
+   \   00000010   0613               CPC     R1, R19
+   \   00000012   F008               BRCS    $+2+2
+   \   00000014   C057               RJMP    ??hart_msg_encoder_status_data_0
+   \   00000016   2F76               MOV     R23, R22
+   \   00000018   5F7E               SUBI    R23, 254
+   \   0000001A   8120               LD      R18, Z
+   \   0000001C   8131               LDD     R19, Z+1
+   \   0000001E   0D20               ADD     R18, R0
+   \   00000020   1D31               ADC     R19, R1
+   \   00000022   01F9               MOVW    R31:R30, R19:R18
+   \   00000024   8370               ST      Z, R23
+   \   00000026   01F8               MOVW    R31:R30, R17:R16
+   \   00000028   8124               LDD     R18, Z+4
+   \   0000002A   8135               LDD     R19, Z+5
+   \   0000002C   5F2F               SUBI    R18, 255
+   \   0000002E   4F3F               SBCI    R19, 255
+   \   00000030   8324               STD     Z+4, R18
+   \   00000032   8335               STD     Z+5, R19
+    479          
+    480          	HART_ENCODER_PUT(encoder, status[0]);
+   \   00000034   0109               MOVW    R1:R0, R19:R18
+   \   00000036   8122               LDD     R18, Z+2
+   \   00000038   8133               LDD     R19, Z+3
+   \   0000003A   1602               CP      R0, R18
+   \   0000003C   0613               CPC     R1, R19
+   \   0000003E   F008               BRCS    $+2+2
+   \   00000040   C041               RJMP    ??hart_msg_encoder_status_data_0
+   \   00000042   917C               LD      R23, X
+   \   00000044   8120               LD      R18, Z
+   \   00000046   8131               LDD     R19, Z+1
+   \   00000048   0D20               ADD     R18, R0
+   \   0000004A   1D31               ADC     R19, R1
+   \   0000004C   01F9               MOVW    R31:R30, R19:R18
+   \   0000004E   8370               ST      Z, R23
+   \   00000050   01F8               MOVW    R31:R30, R17:R16
+   \   00000052   8124               LDD     R18, Z+4
+   \   00000054   8135               LDD     R19, Z+5
+   \   00000056   5F2F               SUBI    R18, 255
+   \   00000058   4F3F               SBCI    R19, 255
+   \   0000005A   8324               STD     Z+4, R18
+   \   0000005C   8335               STD     Z+5, R19
+    481          	HART_ENCODER_PUT(encoder, status[1]);
+   \   0000005E   0109               MOVW    R1:R0, R19:R18
+   \   00000060   8122               LDD     R18, Z+2
+   \   00000062   8133               LDD     R19, Z+3
+   \   00000064   1602               CP      R0, R18
+   \   00000066   0613               CPC     R1, R19
+   \   00000068   F568               BRCC    ??hart_msg_encoder_status_data_0
+   \   0000006A   01FD               MOVW    R31:R30, R27:R26
+   \   0000006C   8171               LDD     R23, Z+1
+   \   0000006E   01F8               MOVW    R31:R30, R17:R16
+   \   00000070   8120               LD      R18, Z
+   \   00000072   8131               LDD     R19, Z+1
+   \   00000074   0D20               ADD     R18, R0
+   \   00000076   1D31               ADC     R19, R1
+   \   00000078   01F9               MOVW    R31:R30, R19:R18
+   \   0000007A   8370               ST      Z, R23
+   \   0000007C   01F8               MOVW    R31:R30, R17:R16
+   \   0000007E   8124               LDD     R18, Z+4
+   \   00000080   8135               LDD     R19, Z+5
+   \   00000082   5F2F               SUBI    R18, 255
+   \   00000084   4F3F               SBCI    R19, 255
+   \   00000086   8324               STD     Z+4, R18
+   \   00000088   8335               STD     Z+5, R19
+    482          
+    483          	for (i = 0; i < data_len; i++) {
+   \   0000008A   2366               TST     R22
+   \   0000008C   F0C1               BREQ    ??hart_msg_encoder_status_data_1
+   \   0000008E   01DA               MOVW    R27:R26, R21:R20
+    484          		HART_ENCODER_PUT(encoder, data[i]);
+   \                     ??hart_msg_encoder_status_data_2:
+   \   00000090   8144               LDD     R20, Z+4
+   \   00000092   8155               LDD     R21, Z+5
+   \   00000094   8122               LDD     R18, Z+2
+   \   00000096   8133               LDD     R19, Z+3
+   \   00000098   1742               CP      R20, R18
+   \   0000009A   0753               CPC     R21, R19
+   \   0000009C   F498               BRCC    ??hart_msg_encoder_status_data_0
+   \   0000009E   917D               LD      R23, X+
+   \   000000A0   8120               LD      R18, Z
+   \   000000A2   8131               LDD     R19, Z+1
+   \   000000A4   0F24               ADD     R18, R20
+   \   000000A6   1F35               ADC     R19, R21
+   \   000000A8   01F9               MOVW    R31:R30, R19:R18
+   \   000000AA   8370               ST      Z, R23
+   \   000000AC   01F8               MOVW    R31:R30, R17:R16
+   \   000000AE   8124               LDD     R18, Z+4
+   \   000000B0   8135               LDD     R19, Z+5
+   \   000000B2   5F2F               SUBI    R18, 255
+   \   000000B4   4F3F               SBCI    R19, 255
+   \   000000B6   8324               STD     Z+4, R18
+   \   000000B8   8335               STD     Z+5, R19
+   \   000000BA   956A               DEC     R22
+   \   000000BC   F749               BRNE    ??hart_msg_encoder_status_data_2
+    485          	}
+    486          
+    487          	return 1;
+   \                     ??hart_msg_encoder_status_data_1:
+   \   000000BE   E001               LDI     R16, 1
+   \                     ??hart_msg_encoder_status_data_3:
+   \   000000C0   01D1               MOVW    R27:R26, R3:R2
+   \   000000C2   9508               RET
+   \                     ??hart_msg_encoder_status_data_0:
+   \   000000C4   E000               LDI     R16, 0
+   \   000000C6   CFFC               RJMP    ??hart_msg_encoder_status_data_3
+    488          }
+    489          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    490          uint8_t
+    491          hart_msg_encoder_data(HartMessageEncoder *encoder, uint8_t *data, uint8_t data_len) {
+   \                     hart_msg_encoder_data:
+   \   00000000   010D               MOVW    R1:R0, R27:R26
+   \   00000002   01F8               MOVW    R31:R30, R17:R16
+    492          	uint8_t   bcnt,
+    493          		i;
+    494          
+    495          	bcnt = data_len;
+    496          
+    497          	HART_ENCODER_PUT(encoder, bcnt);
+   \   00000004   8104               LDD     R16, Z+4
+   \   00000006   8115               LDD     R17, Z+5
+   \   00000008   8162               LDD     R22, Z+2
+   \   0000000A   8173               LDD     R23, Z+3
+   \   0000000C   1706               CP      R16, R22
+   \   0000000E   0717               CPC     R17, R23
+   \   00000010   F538               BRCC    ??hart_msg_encoder_data_0
+   \   00000012   81A0               LD      R26, Z
+   \   00000014   81B1               LDD     R27, Z+1
+   \   00000016   0FA0               ADD     R26, R16
+   \   00000018   1FB1               ADC     R27, R17
+   \   0000001A   934C               ST      X, R20
+   \   0000001C   8104               LDD     R16, Z+4
+   \   0000001E   8115               LDD     R17, Z+5
+   \   00000020   5F0F               SUBI    R16, 255
+   \   00000022   4F1F               SBCI    R17, 255
+   \   00000024   8304               STD     Z+4, R16
+   \   00000026   8315               STD     Z+5, R17
+    498          
+    499          	for (i = 0; i < data_len; i++) {
+   \   00000028   2344               TST     R20
+   \   0000002A   F0B9               BREQ    ??hart_msg_encoder_data_1
+    500          		HART_ENCODER_PUT(encoder, data[i]);
+   \                     ??hart_msg_encoder_data_2:
+   \   0000002C   8104               LDD     R16, Z+4
+   \   0000002E   8115               LDD     R17, Z+5
+   \   00000030   8162               LDD     R22, Z+2
+   \   00000032   8173               LDD     R23, Z+3
+   \   00000034   1706               CP      R16, R22
+   \   00000036   0717               CPC     R17, R23
+   \   00000038   F498               BRCC    ??hart_msg_encoder_data_0
+   \   0000003A   01D9               MOVW    R27:R26, R19:R18
+   \   0000003C   915D               LD      R21, X+
+   \   0000003E   019D               MOVW    R19:R18, R27:R26
+   \   00000040   81A0               LD      R26, Z
+   \   00000042   81B1               LDD     R27, Z+1
+   \   00000044   0FA0               ADD     R26, R16
+   \   00000046   1FB1               ADC     R27, R17
+   \   00000048   935C               ST      X, R21
+   \   0000004A   8104               LDD     R16, Z+4
+   \   0000004C   8115               LDD     R17, Z+5
+   \   0000004E   5F0F               SUBI    R16, 255
+   \   00000050   4F1F               SBCI    R17, 255
+   \   00000052   8304               STD     Z+4, R16
+   \   00000054   8315               STD     Z+5, R17
+   \   00000056   954A               DEC     R20
+   \   00000058   F749               BRNE    ??hart_msg_encoder_data_2
+    501          	}
+    502          
+    503          	return 1;
+   \                     ??hart_msg_encoder_data_1:
+   \   0000005A   E001               LDI     R16, 1
+   \                     ??hart_msg_encoder_data_3:
+   \   0000005C   01D0               MOVW    R27:R26, R1:R0
+   \   0000005E   9508               RET
+   \                     ??hart_msg_encoder_data_0:
+   \   00000060   E000               LDI     R16, 0
+   \   00000062   CFFC               RJMP    ??hart_msg_encoder_data_3
+    504          }
+    505          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    506          uint8_t
+    507          hart_msg_encoder_calc_csum(HartMessageEncoder *encoder) {
+   \                     hart_msg_encoder_calc_csum:
+   \   00000000   2F7B               MOV     R23, R27
+   \   00000002   2E0A               MOV     R0, R26
+   \   00000004   2F59               MOV     R21, R25
+   \   00000006   2F68               MOV     R22, R24
+   \   00000008   01D8               MOVW    R27:R26, R17:R16
+    508          	uint8_t   csum;
+    509          
+    510          	csum = hart_msg_calc_csum((const uint8_t *)&encoder->tx_buf[encoder->preamble_len], encoder->tx_ndx - encoder->preamble_len);
+   \   0000000A   01F8               MOVW    R31:R30, R17:R16
+   \   0000000C   8106               LDD     R16, Z+6
+   \   0000000E   8124               LDD     R18, Z+4
+   \   00000010   8135               LDD     R19, Z+5
+   \   00000012   01C9               MOVW    R25:R24, R19:R18
+   \   00000014   1B80               SUB     R24, R16
+   \   00000016   4090               SBCI    R25, 0
+   \   00000018   E040               LDI     R20, 0
+   \   0000001A   2F18               MOV     R17, R24
+   \   0000001C   2B19               OR      R17, R25
+   \   0000001E   F049               BREQ    ??hart_msg_encoder_calc_csum_0
+   \   00000020   91ED               LD      R30, X+
+   \   00000022   91FC               LD      R31, X
+   \   00000024   9711               SBIW    R27:R26, 1
+   \   00000026   0FE0               ADD     R30, R16
+   \   00000028   1FF4               ADC     R31, R20
+   \                     ??hart_msg_encoder_calc_csum_1:
+   \   0000002A   9101               LD      R16, Z+
+   \   0000002C   2740               EOR     R20, R16
+   \   0000002E   9701               SBIW    R25:R24, 1
+   \   00000030   F7E1               BRNE    ??hart_msg_encoder_calc_csum_1
+    511          
+    512          	HART_ENCODER_PUT(encoder, csum);
+   \                     ??hart_msg_encoder_calc_csum_0:
+   \   00000032   01FD               MOVW    R31:R30, R27:R26
+   \   00000034   8102               LDD     R16, Z+2
+   \   00000036   8113               LDD     R17, Z+3
+   \   00000038   1720               CP      R18, R16
+   \   0000003A   0731               CPC     R19, R17
+   \   0000003C   F010               BRCS    ??hart_msg_encoder_calc_csum_2
+   \   0000003E   E000               LDI     R16, 0
+   \   00000040   C00E               RJMP    ??hart_msg_encoder_calc_csum_3
+   \                     ??hart_msg_encoder_calc_csum_2:
+   \   00000042   91ED               LD      R30, X+
+   \   00000044   91FC               LD      R31, X
+   \   00000046   9711               SBIW    R27:R26, 1
+   \   00000048   0FE2               ADD     R30, R18
+   \   0000004A   1FF3               ADC     R31, R19
+   \   0000004C   8340               ST      Z, R20
+   \   0000004E   01FD               MOVW    R31:R30, R27:R26
+   \   00000050   8104               LDD     R16, Z+4
+   \   00000052   8115               LDD     R17, Z+5
+   \   00000054   5F0F               SUBI    R16, 255
+   \   00000056   4F1F               SBCI    R17, 255
+   \   00000058   8304               STD     Z+4, R16
+   \   0000005A   8315               STD     Z+5, R17
+    513          
+    514          	return 1;
+   \   0000005C   E001               LDI     R16, 1
+   \                     ??hart_msg_encoder_calc_csum_3:
+   \   0000005E   2F86               MOV     R24, R22
+   \   00000060   2F95               MOV     R25, R21
+   \   00000062   2DA0               MOV     R26, R0
+   \   00000064   2FB7               MOV     R27, R23
+   \   00000066   9508               RET
+    515          }
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      0      2   hart_msg_calc_csum
+      0      2   hart_msg_encoder_calc_csum
+      0      2   hart_msg_encoder_data
+      0      2   hart_msg_encoder_init
+      0      2   hart_msg_encoder_long_start
+      0      2   hart_msg_encoder_preamble
+      0      2   hart_msg_encoder_reset
+      0      2   hart_msg_encoder_short_start
+      0      2   hart_msg_encoder_status_data
+      2      2   hart_msg_parser_handle_byte
+        2      2   -- Indirect call
+      0      2   hart_msg_parser_init
+      0      2   hart_msg_parser_reset
+      0      2   hart_msg_state_address
+      0      2   hart_msg_state_begin
+      0      2   hart_msg_state_blackhole
+      0      2   hart_msg_state_bytecount
+      0      2   hart_msg_state_checksum
+      0      2   hart_msg_state_command
+      0      2   hart_msg_state_data
+      0      2   hart_msg_state_expansion
+      2      2   hart_msg_state_preamble
+        2      2   -> hart_msg_state_start_char
+      7      2   hart_msg_state_start_char
+      0      2   hart_msg_state_status
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      62  ?Subroutine0
+      10  ?Subroutine1
+      10  ?Subroutine2
+      26  hart_msg_calc_csum
+     104  hart_msg_encoder_calc_csum
+     100  hart_msg_encoder_data
+      10  hart_msg_encoder_init
+     132  hart_msg_encoder_long_start
+      62  hart_msg_encoder_preamble
+       4  hart_msg_encoder_reset
+     118  hart_msg_encoder_short_start
+     200  hart_msg_encoder_status_data
+      18  hart_msg_parser_handle_byte
+      10  hart_msg_parser_init
+       4  hart_msg_parser_reset
+     142  hart_msg_state_address
+      42  hart_msg_state_begin
+       4  hart_msg_state_blackhole
+     136  hart_msg_state_bytecount
+       8  hart_msg_state_checksum
+     104  hart_msg_state_command
+     116  hart_msg_state_data
+     116  hart_msg_state_expansion
+      76  hart_msg_state_preamble
+     296  hart_msg_state_start_char
+     140  hart_msg_state_status
+
+ 
+ 2 050 bytes in segment CODE
+ 
+ 2 050 bytes of CODE memory
+
+Errors: none
+Warnings: none

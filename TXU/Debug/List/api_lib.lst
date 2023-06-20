@@ -1,0 +1,1443 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:12 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\api\api_lib.c           #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\api\api_lib.c --fpu     #
+#                       None -D OS_LIBMODE_SP -D CPU_S3C2410 -D              #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\api_lib.lst                 #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\api_lib.r79                  #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\api\api_lib.c
+      1          /**
+      2           * @file
+      3           * Sequential API External module
+      4           *
+      5           */
+      6           
+      7          /*
+      8           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+      9           * All rights reserved. 
+     10           * 
+     11           * Redistribution and use in source and binary forms, with or without modification, 
+     12           * are permitted provided that the following conditions are met:
+     13           *
+     14           * 1. Redistributions of source code must retain the above copyright notice,
+     15           *    this list of conditions and the following disclaimer.
+     16           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     17           *    this list of conditions and the following disclaimer in the documentation
+     18           *    and/or other materials provided with the distribution.
+     19           * 3. The name of the author may not be used to endorse or promote products
+     20           *    derived from this software without specific prior written permission. 
+     21           *
+     22           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED 
+     23           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+     24           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+     25           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+     26           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+     27           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+     28           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+     29           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
+     30           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+     31           * OF SUCH DAMAGE.
+     32           *
+     33           * This file is part of the lwIP TCP/IP stack.
+     34           * 
+     35           * Author: Adam Dunkels <adam@sics.se>
+     36           *
+     37           */
+     38          
+     39          /* This is the part of the API that is linked with
+     40             the application */
+     41          
+     42          #include "lwip/opt.h"
+     43          
+     44          #if LWIP_NETCONN /* don't build if not configured for use in lwipopts.h */
+     45          
+     46          #include "lwip/api.h"
+     47          #include "lwip/tcpip.h"
+     48          #include "lwip/memp.h"
+     49          
+     50          #include "lwip/ip.h"
+     51          #include "lwip/raw.h"
+     52          #include "lwip/udp.h"
+     53          #include "lwip/tcp.h"
+     54          
+     55          #include <string.h>
+     56          
+     57          /**
+     58           * Create a new netconn (of a specific type) that has a callback function.
+     59           * The corresponding pcb is also created.
+     60           *
+     61           * @param t the type of 'connection' to create (@see enum netconn_type)
+     62           * @param proto the IP protocol for RAW IP pcbs
+     63           * @param callback a function to call on status changes (RX available, TX'ed)
+     64           * @return a newly allocated struct netconn or
+     65           *         NULL on memory error
+     66           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     67          struct netconn*
+     68          netconn_new_with_proto_and_callback(enum netconn_type t, u8_t proto, netconn_callback callback)
+     69          {
+   \                     netconn_new_with_proto_and_callback:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   18D04DE2           SUB      SP,SP,#+24
+   \   00000008   0140A0E1           MOV      R4,R1
+   \   0000000C   0210A0E1           MOV      R1,R2
+     70            struct netconn *conn;
+     71            struct api_msg msg;
+     72          
+     73            conn = netconn_alloc(t, callback);
+   \   00000010   ........           _BLF     netconn_alloc,??netconn_alloc??rA
+   \   00000014   0050B0E1           MOVS     R5,R0
+     74            if (conn != NULL) {
+   \   00000018   1200000A           BEQ      ??netconn_new_with_proto_and_callback_0
+     75              msg.function = do_newconn;
+   \   0000001C   54109FE5           LDR      R1,??netconn_new_with_proto_and_callback_1  ;; do_newconn
+     76              msg.msg.msg.n.proto = proto;
+     77              msg.msg.conn = conn;
+     78              if (TCPIP_APIMSG(&msg) != ERR_OK) {
+   \   00000020   0D00A0E1           MOV      R0,SP
+   \   00000024   00108DE5           STR      R1,[SP, #+0]
+   \   00000028   0C40CDE5           STRB     R4,[SP, #+12]
+   \   0000002C   04508DE5           STR      R5,[SP, #+4]
+   \   00000030   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000034   000050E3           CMP      R0,#+0
+   \   00000038   0A00000A           BEQ      ??netconn_new_with_proto_and_callback_0
+     79                LWIP_ASSERT("freeing conn without freeing pcb", conn->pcb.tcp == NULL);
+     80                LWIP_ASSERT("conn has no op_completed", sys_sem_valid(&conn->op_completed));
+     81                LWIP_ASSERT("conn has no recvmbox", sys_mbox_valid(&conn->recvmbox));
+     82          #if LWIP_TCP
+     83                LWIP_ASSERT("conn->acceptmbox shouldn't exist", !sys_mbox_valid(&conn->acceptmbox));
+     84          #endif /* LWIP_TCP */
+     85                sys_sem_free(&conn->op_completed);
+   \   0000003C   0C0085E2           ADD      R0,R5,#+12
+   \   00000040   ........           _BLF     sys_sem_free,??sys_sem_free??rA
+     86                sys_mbox_free(&conn->recvmbox);
+   \   00000044   140085E2           ADD      R0,R5,#+20
+   \   00000048   ........           _BLF     sys_mbox_free,??sys_mbox_free??rA
+     87                memp_free(MEMP_NETCONN, conn);
+   \   0000004C   0510A0E1           MOV      R1,R5
+   \   00000050   0800A0E3           MOV      R0,#+8
+   \   00000054   ........           _BLF     memp_free,??memp_free??rA
+     88                return NULL;
+   \   00000058   18D08DE2           ADD      SP,SP,#+24
+   \   0000005C   3040BDE8           POP      {R4,R5,LR}
+   \   00000060   0000A0E3           MOV      R0,#+0
+   \   00000064   1EFF2FE1           BX       LR
+     89              }
+     90            }
+     91            return conn;
+   \                     ??netconn_new_with_proto_and_callback_0:
+   \   00000068   0500A0E1           MOV      R0,R5
+   \   0000006C   18D08DE2           ADD      SP,SP,#+24
+   \   00000070   3040BDE8           POP      {R4,R5,LR}
+   \   00000074   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_new_with_proto_and_callback_1:
+   \   00000078   ........           DC32     do_newconn
+     92          }
+     93          
+     94          /**
+     95           * Close a netconn 'connection' and free its resources.
+     96           * UDP and RAW connection are completely closed, TCP pcbs might still be in a waitstate
+     97           * after this returns.
+     98           *
+     99           * @param conn the netconn to delete
+    100           * @return ERR_OK if the connection was deleted
+    101           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    102          err_t
+    103          netconn_delete(struct netconn *conn)
+    104          {
+   \                     netconn_delete:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   18D04DE2           SUB      SP,SP,#+24
+   \   00000008   0040B0E1           MOVS     R4,R0
+    105            struct api_msg msg;
+    106          
+    107            /* No ASSERT here because possible to get a (conn == NULL) if we got an accept error */
+    108            if (conn == NULL) {
+   \   0000000C   0600000A           BEQ      ??netconn_delete_0
+    109              return ERR_OK;
+    110            }
+    111          
+    112            msg.function = do_delconn;
+   \   00000010   24109FE5           LDR      R1,??netconn_delete_1  ;; do_delconn
+    113            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+   \   00000018   00108DE5           STR      R1,[SP, #+0]
+    114            tcpip_apimsg(&msg);
+   \   0000001C   0D00A0E1           MOV      R0,SP
+   \   00000020   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+    115          
+    116            netconn_free(conn);
+   \   00000024   0400A0E1           MOV      R0,R4
+   \   00000028   ........           _BLF     netconn_free,??netconn_free??rA
+    117          
+    118            /* don't care for return value of do_delconn since it only calls void functions */
+    119          
+    120            return ERR_OK;
+   \                     ??netconn_delete_0:
+   \   0000002C   18D08DE2           ADD      SP,SP,#+24
+   \   00000030   1040BDE8           POP      {R4,LR}
+   \   00000034   0000A0E3           MOV      R0,#+0
+   \   00000038   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_delete_1:
+   \   0000003C   ........           DC32     do_delconn
+    121          }
+    122          
+    123          /**
+    124           * Get the local or remote IP address and port of a netconn.
+    125           * For RAW netconns, this returns the protocol instead of a port!
+    126           *
+    127           * @param conn the netconn to query
+    128           * @param addr a pointer to which to save the IP address
+    129           * @param port a pointer to which to save the port (or protocol for RAW)
+    130           * @param local 1 to get the local IP address, 0 to get the remote one
+    131           * @return ERR_CONN for invalid connections
+    132           *         ERR_OK if the information was retrieved
+    133           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    134          err_t
+    135          netconn_getaddr(struct netconn *conn, ip_addr_t *addr, u16_t *port, u8_t local)
+    136          {
+   \                     netconn_getaddr:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+    137            struct api_msg msg;
+    138            err_t err;
+    139          /*
+    140            LWIP_ERROR("netconn_getaddr: invalid conn", (conn != NULL), return ERR_ARG;);
+    141            LWIP_ERROR("netconn_getaddr: invalid addr", (addr != NULL), return ERR_ARG;);
+    142            LWIP_ERROR("netconn_getaddr: invalid port", (port != NULL), return ERR_ARG;);
+    143          */
+    144            msg.function = do_getaddr;
+   \   00000004   4C509FE5           LDR      R5,??netconn_getaddr_0  ;; do_getaddr
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00508DE5           STR      R5,[SP, #+0]
+    145            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+    146            msg.msg.msg.ad.ipaddr = addr;
+   \   00000018   0C108DE5           STR      R1,[SP, #+12]
+    147            msg.msg.msg.ad.port = port;
+   \   0000001C   10208DE5           STR      R2,[SP, #+16]
+    148            msg.msg.msg.ad.local = local;
+   \   00000020   1430CDE5           STRB     R3,[SP, #+20]
+    149            err = TCPIP_APIMSG(&msg);
+   \   00000024   0D00A0E1           MOV      R0,SP
+   \   00000028   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   0000002C   0050A0E1           MOV      R5,R0
+    150          
+    151            NETCONN_SET_SAFE_ERR(conn, err);
+   \   00000030   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000034   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000038   0820E0E3           MVN      R2,#+8
+   \   0000003C   020051E1           CMP      R1,R2
+   \   00000040   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000044   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    152            return err;
+   \   00000048   0500A0E1           MOV      R0,R5
+   \   0000004C   18D08DE2           ADD      SP,SP,#+24
+   \   00000050   3040BDE8           POP      {R4,R5,LR}
+   \   00000054   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_getaddr_0:
+   \   00000058   ........           DC32     do_getaddr
+    153          }
+    154          
+    155          /**
+    156           * Bind a netconn to a specific local IP address and port.
+    157           * Binding one netconn twice might not always be checked correctly!
+    158           *
+    159           * @param conn the netconn to bind
+    160           * @param addr the local IP address to bind the netconn to (use IP_ADDR_ANY
+    161           *             to bind to all addresses)
+    162           * @param port the local port to bind the netconn to (not used for RAW)
+    163           * @return ERR_OK if bound, any other err_t on failure
+    164           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    165          err_t
+    166          netconn_bind(struct netconn *conn, ip_addr_t *addr, u16_t port)
+    167          {
+    168            struct api_msg msg;
+    169            err_t err;
+    170          
+    171            //LWIP_ERROR("netconn_bind: invalid conn", (conn != NULL), return ERR_ARG;);
+    172          
+    173            msg.function = do_bind;
+   \                     netconn_bind:
+   \   00000000   4C309FE5           LDR      R3,??netconn_bind_0  ;; do_bind
+   \   00000004   30402DE9           PUSH     {R4,R5,LR}
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00308DE5           STR      R3,[SP, #+0]
+    174            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+    175            msg.msg.msg.bc.ipaddr = addr;
+   \   00000018   0C108DE5           STR      R1,[SP, #+12]
+    176            msg.msg.msg.bc.port = port;
+   \   0000001C   B021CDE1           STRH     R2,[SP, #+16]
+    177            err = TCPIP_APIMSG(&msg);
+   \   00000020   0D00A0E1           MOV      R0,SP
+   \   00000024   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000028   0050A0E1           MOV      R5,R0
+    178          
+    179            NETCONN_SET_SAFE_ERR(conn, err);
+   \   0000002C   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000030   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000034   0820E0E3           MVN      R2,#+8
+   \   00000038   020051E1           CMP      R1,R2
+   \   0000003C   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000040   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    180            return err;
+   \   00000044   0500A0E1           MOV      R0,R5
+   \   00000048   18D08DE2           ADD      SP,SP,#+24
+   \   0000004C   3040BDE8           POP      {R4,R5,LR}
+   \   00000050   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_bind_0:
+   \   00000054   ........           DC32     do_bind
+    181          }
+    182          
+    183          /**
+    184           * Connect a netconn to a specific remote IP address and port.
+    185           *
+    186           * @param conn the netconn to connect
+    187           * @param addr the remote IP address to connect to
+    188           * @param port the remote port to connect to (no used for RAW)
+    189           * @return ERR_OK if connected, return value of tcp_/udp_/raw_connect otherwise
+    190           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    191          err_t
+    192          netconn_connect(struct netconn *conn, ip_addr_t *addr, u16_t port)
+    193          {
+    194            struct api_msg msg;
+    195            err_t err;
+    196          
+    197            //LWIP_ERROR("netconn_connect: invalid conn", (conn != NULL), return ERR_ARG;);
+    198          
+    199            msg.function = do_connect;
+   \                     netconn_connect:
+   \   00000000   4C309FE5           LDR      R3,??netconn_connect_0  ;; do_connect
+   \   00000004   30402DE9           PUSH     {R4,R5,LR}
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00308DE5           STR      R3,[SP, #+0]
+    200            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+    201            msg.msg.msg.bc.ipaddr = addr;
+   \   00000018   0C108DE5           STR      R1,[SP, #+12]
+    202            msg.msg.msg.bc.port = port;
+   \   0000001C   B021CDE1           STRH     R2,[SP, #+16]
+    203            /* This is the only function which need to not block tcpip_thread */
+    204            err = tcpip_apimsg(&msg);
+   \   00000020   0D00A0E1           MOV      R0,SP
+   \   00000024   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000028   0050A0E1           MOV      R5,R0
+    205          
+    206            NETCONN_SET_SAFE_ERR(conn, err);
+   \   0000002C   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000030   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000034   0820E0E3           MVN      R2,#+8
+   \   00000038   020051E1           CMP      R1,R2
+   \   0000003C   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000040   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    207            return err;
+   \   00000044   0500A0E1           MOV      R0,R5
+   \   00000048   18D08DE2           ADD      SP,SP,#+24
+   \   0000004C   3040BDE8           POP      {R4,R5,LR}
+   \   00000050   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_connect_0:
+   \   00000054   ........           DC32     do_connect
+    208          }
+    209          
+    210          /**
+    211           * Disconnect a netconn from its current peer (only valid for UDP netconns).
+    212           *
+    213           * @param conn the netconn to disconnect
+    214           * @return TODO: return value is not set here...
+    215           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    216          err_t
+    217          netconn_disconnect(struct netconn *conn)
+    218          {
+    219            struct api_msg msg;
+    220            err_t err;
+    221          
+    222            //LWIP_ERROR("netconn_disconnect: invalid conn", (conn != NULL), return ERR_ARG;);
+    223          
+    224            msg.function = do_disconnect;
+   \                     netconn_disconnect:
+   \   00000000   44109FE5           LDR      R1,??netconn_disconnect_0  ;; do_disconnect
+   \   00000004   30402DE9           PUSH     {R4,R5,LR}
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00108DE5           STR      R1,[SP, #+0]
+    225            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+    226            err = TCPIP_APIMSG(&msg);
+   \   00000018   0D00A0E1           MOV      R0,SP
+   \   0000001C   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000020   0050A0E1           MOV      R5,R0
+    227          
+    228            NETCONN_SET_SAFE_ERR(conn, err);
+   \   00000024   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000028   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   0000002C   0820E0E3           MVN      R2,#+8
+   \   00000030   020051E1           CMP      R1,R2
+   \   00000034   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000038   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    229            return err;
+   \   0000003C   0500A0E1           MOV      R0,R5
+   \   00000040   18D08DE2           ADD      SP,SP,#+24
+   \   00000044   3040BDE8           POP      {R4,R5,LR}
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_disconnect_0:
+   \   0000004C   ........           DC32     do_disconnect
+    230          }
+    231          
+    232          /**
+    233           * Set a TCP netconn into listen mode
+    234           *
+    235           * @param conn the tcp netconn to set to listen mode
+    236           * @param backlog the listen backlog, only used if TCP_LISTEN_BACKLOG==1
+    237           * @return ERR_OK if the netconn was set to listen (UDP and RAW netconns
+    238           *         don't return any error (yet?))
+    239           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    240          err_t
+    241          netconn_listen_with_backlog(struct netconn *conn, u8_t backlog)
+    242          {
+    243          #if LWIP_TCP
+    244            struct api_msg msg;
+    245            err_t err;
+    246          
+    247            /* This does no harm. If TCP_LISTEN_BACKLOG is off, backlog is unused. */
+    248            LWIP_UNUSED_ARG(backlog);
+    249          
+    250            //LWIP_ERROR("netconn_listen: invalid conn", (conn != NULL), return ERR_ARG;);
+    251          
+    252            msg.function = do_listen;
+   \                     netconn_listen_with_backlog:
+   \   00000000   44109FE5           LDR      R1,??netconn_listen_with_backlog_0  ;; do_listen
+   \   00000004   30402DE9           PUSH     {R4,R5,LR}
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00108DE5           STR      R1,[SP, #+0]
+    253            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+    254          #if TCP_LISTEN_BACKLOG
+    255            msg.msg.msg.lb.backlog = backlog;
+    256          #endif /* TCP_LISTEN_BACKLOG */
+    257            err = TCPIP_APIMSG(&msg);
+   \   00000018   0D00A0E1           MOV      R0,SP
+   \   0000001C   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000020   0050A0E1           MOV      R5,R0
+    258          
+    259            NETCONN_SET_SAFE_ERR(conn, err);
+   \   00000024   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000028   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   0000002C   0820E0E3           MVN      R2,#+8
+   \   00000030   020051E1           CMP      R1,R2
+   \   00000034   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000038   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    260            return err;
+   \   0000003C   0500A0E1           MOV      R0,R5
+   \   00000040   18D08DE2           ADD      SP,SP,#+24
+   \   00000044   3040BDE8           POP      {R4,R5,LR}
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_listen_with_backlog_0:
+   \   0000004C   ........           DC32     do_listen
+    261          #else /* LWIP_TCP */
+    262            LWIP_UNUSED_ARG(conn);
+    263            LWIP_UNUSED_ARG(backlog);
+    264            return ERR_ARG;
+    265          #endif /* LWIP_TCP */
+    266          }
+    267          
+    268          /**
+    269           * Accept a new connection on a TCP listening netconn.
+    270           *
+    271           * @param conn the TCP listen netconn
+    272           * @param new_conn pointer where the new connection is stored
+    273           * @return ERR_OK if a new connection has been received or an error
+    274           *                code otherwise
+    275           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    276          err_t
+    277          netconn_accept(struct netconn *conn, struct netconn **new_conn)
+    278          {
+   \                     netconn_accept:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   04D04DE2           SUB      SP,SP,#+4
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0160A0E1           MOV      R6,R1
+    279          #if LWIP_TCP
+    280            struct netconn *newconn;
+    281            err_t err;
+    282          #if TCP_LISTEN_BACKLOG
+    283            struct api_msg msg;
+    284          #endif /* TCP_LISTEN_BACKLOG */
+    285          
+    286            //LWIP_ERROR("netconn_accept: invalid pointer",    (new_conn != NULL),                  return ERR_ARG;);
+    287            *new_conn = NULL;
+   \   00000010   0000A0E3           MOV      R0,#+0
+   \   00000014   000086E5           STR      R0,[R6, #+0]
+    288           // LWIP_ERROR("netconn_accept: invalid conn",       (conn != NULL),                      return ERR_ARG;);
+    289           // LWIP_ERROR("netconn_accept: invalid acceptmbox", sys_mbox_valid(&conn->acceptmbox),   return ERR_ARG;);
+    290          
+    291            err = conn->last_err;
+   \   00000018   D800D4E1           LDRSB    R0,[R4, #+8]
+    292            if (ERR_IS_FATAL(err)) {
+   \   0000001C   090070E3           CMN      R0,#+9
+   \   00000020   200000BA           BLT      ??netconn_accept_0
+    293              /* don't recv on fatal errors: this might block the application task
+    294                 waiting on acceptmbox forever! */
+    295              return err;
+    296            }
+    297          
+    298          #if LWIP_SO_RCVTIMEO
+    299            if (sys_arch_mbox_fetch(&conn->acceptmbox, (void **)&newconn, conn->recv_timeout) == SYS_ARCH_TIMEOUT) {
+   \   00000024   482094E5           LDR      R2,[R4, #+72]
+   \   00000028   0850E0E3           MVN      R5,#+8
+   \   0000002C   0D10A0E1           MOV      R1,SP
+   \   00000030   2C0084E2           ADD      R0,R4,#+44
+   \   00000034   ........           _BLF     sys_arch_mbox_fetch,??sys_arch_mbox_fetch??rA
+   \   00000038   010070E3           CMN      R0,#+1
+   \   0000003C   0700001A           BNE      ??netconn_accept_1
+    300              NETCONN_SET_SAFE_ERR(conn, ERR_TIMEOUT);
+   \   00000040   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000044   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000048   050051E1           CMP      R1,R5
+   \   0000004C   061085A2           ADDGE    R1,R5,#+6
+   \   00000050   0810C4A5           STRBGE   R1,[R4, #+8]
+   \   00000054   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    301              return ERR_TIMEOUT;
+   \   00000058   060085E2           ADD      R0,R5,#+6
+   \   0000005C   110000EA           B        ??netconn_accept_0
+    302            }
+    303          #else
+    304            sys_arch_mbox_fetch(&conn->acceptmbox, (void **)&newconn, 0);
+    305          #endif /* LWIP_SO_RCVTIMEO*/
+    306            /* Register event with callback */
+    307            API_EVENT(conn, NETCONN_EVT_RCVMINUS, 0);
+   \                     ??netconn_accept_1:
+   \   00000060   583094E5           LDR      R3,[R4, #+88]
+   \   00000064   000053E3           CMP      R3,#+0
+   \   00000068   0400000A           BEQ      ??netconn_accept_2
+   \   0000006C   0020A0E3           MOV      R2,#+0
+   \   00000070   0110A0E3           MOV      R1,#+1
+   \   00000074   0400A0E1           MOV      R0,R4
+   \   00000078   0FE0A0E1           MOV      LR,PC
+   \   0000007C   13FF2FE1           BX       R3
+    308          
+    309            if (newconn == NULL) {
+   \                     ??netconn_accept_2:
+   \   00000080   00009DE5           LDR      R0,[SP, #+0]
+   \   00000084   000050E3           CMP      R0,#+0
+   \   00000088   0800001A           BNE      ??netconn_accept_3
+    310              /* connection has been aborted */
+    311              NETCONN_SET_SAFE_ERR(conn, ERR_ABRT);
+   \   0000008C   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000090   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000094   050051E1           CMP      R1,R5
+   \   00000098   0110C5A3           BICGE    R1,R5,#0x1
+   \   0000009C   0810C4A5           STRBGE   R1,[R4, #+8]
+   \   000000A0   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    312              return ERR_ABRT;
+   \   000000A4   0100C5E3           BIC      R0,R5,#0x1
+   \                     ??netconn_accept_0:
+   \   000000A8   7240BDE8           POP      {R1,R4-R6,LR}
+   \   000000AC   1EFF2FE1           BX       LR
+    313            }
+    314          #if TCP_LISTEN_BACKLOG
+    315            /* Let the stack know that we have accepted the connection. */
+    316            msg.function = do_recv;
+    317            msg.msg.conn = conn;
+    318            /* don't care for the return value of do_recv */
+    319            TCPIP_APIMSG(&msg);
+    320          #endif /* TCP_LISTEN_BACKLOG */
+    321          
+    322            *new_conn = newconn;
+   \                     ??netconn_accept_3:
+   \   000000B0   000086E5           STR      R0,[R6, #+0]
+    323            /* don't set conn->last_err: it's only ERR_OK, anyway */
+    324            return ERR_OK;
+   \   000000B4   0000A0E3           MOV      R0,#+0
+   \                     ??netconn_accept_4:
+   \   000000B8   FAFFFFEA           B        ??netconn_accept_0
+    325          #else /* LWIP_TCP */
+    326            LWIP_UNUSED_ARG(conn);
+    327            LWIP_UNUSED_ARG(new_conn);
+    328            return ERR_ARG;
+    329          #endif /* LWIP_TCP */
+    330          }
+    331          
+    332          /**
+    333           * Receive data: actual implementation that doesn't care whether pbuf or netbuf
+    334           * is received
+    335           *
+    336           * @param conn the netconn from which to receive data
+    337           * @param new_buf pointer where a new pbuf/netbuf is stored when received data
+    338           * @return ERR_OK if data has been received, an error code otherwise (timeout,
+    339           *                memory error or another error)
+    340           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    341          static err_t
+    342          netconn_recv_data(struct netconn *conn, void **new_buf)
+    343          {
+   \                     netconn_recv_data:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   1CD04DE2           SUB      SP,SP,#+28
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+    344            void *buf = NULL;
+   \   00000010   0010A0E3           MOV      R1,#+0
+   \   00000014   00108DE5           STR      R1,[SP, #+0]
+    345            u16_t len;
+    346            err_t err;
+    347          #if LWIP_TCP
+    348            struct api_msg msg;
+    349          #endif /* LWIP_TCP */
+    350          
+    351            //LWIP_ERROR("netconn_recv: invalid pointer", (new_buf != NULL), return ERR_ARG;);
+    352            *new_buf = NULL;
+   \   00000018   0000A0E3           MOV      R0,#+0
+   \   0000001C   000085E5           STR      R0,[R5, #+0]
+    353            //LWIP_ERROR("netconn_recv: invalid conn",    (conn != NULL),    return ERR_ARG;);
+    354            //LWIP_ERROR("netconn_accept: invalid recvmbox", sys_mbox_valid(&conn->recvmbox), return ERR_CONN;);
+    355          
+    356            err = conn->last_err;
+   \   00000020   D800D4E1           LDRSB    R0,[R4, #+8]
+    357            if (ERR_IS_FATAL(err)) {
+   \   00000024   090070E3           CMN      R0,#+9
+   \   00000028   320000BA           BLT      ??netconn_recv_data_0
+    358              /* don't recv on fatal errors: this might block the application task
+    359                 waiting on recvmbox forever! */
+    360              /* @todo: this does not allow us to fetch data that has been put into recvmbox
+    361                 before the fatal error occurred - is that a problem? */
+    362              return err;
+    363            }
+    364          
+    365          #if LWIP_SO_RCVTIMEO
+    366            if (sys_arch_mbox_fetch(&conn->recvmbox, &buf, conn->recv_timeout) == SYS_ARCH_TIMEOUT) {
+   \   0000002C   482094E5           LDR      R2,[R4, #+72]
+   \   00000030   0860E0E3           MVN      R6,#+8
+   \   00000034   0D10A0E1           MOV      R1,SP
+   \   00000038   140084E2           ADD      R0,R4,#+20
+   \   0000003C   ........           _BLF     sys_arch_mbox_fetch,??sys_arch_mbox_fetch??rA
+   \   00000040   010070E3           CMN      R0,#+1
+   \   00000044   0700001A           BNE      ??netconn_recv_data_1
+    367              NETCONN_SET_SAFE_ERR(conn, ERR_TIMEOUT);
+   \   00000048   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   0000004C   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000050   060051E1           CMP      R1,R6
+   \   00000054   061086A2           ADDGE    R1,R6,#+6
+   \   00000058   0810C4A5           STRBGE   R1,[R4, #+8]
+   \   0000005C   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    368              return ERR_TIMEOUT;
+   \   00000060   060086E2           ADD      R0,R6,#+6
+   \   00000064   230000EA           B        ??netconn_recv_data_0
+    369            }
+    370          #else
+    371            sys_arch_mbox_fetch(&conn->recvmbox, &buf, 0);
+    372          #endif /* LWIP_SO_RCVTIMEO*/
+    373          
+    374          #if LWIP_TCP
+    375          #if (LWIP_UDP || LWIP_RAW)
+    376            if (conn->type == NETCONN_TCP)
+   \                     ??netconn_recv_data_1:
+   \   00000068   0000D4E5           LDRB     R0,[R4, #+0]
+   \   0000006C   100050E3           CMP      R0,#+16
+   \   00000070   2300001A           BNE      ??netconn_recv_data_2
+    377          #endif /* (LWIP_UDP || LWIP_RAW) */
+    378            {
+    379              if (!netconn_get_noautorecved(conn) || (buf == NULL)) {
+   \   00000074   4C00D4E5           LDRB     R0,[R4, #+76]
+   \   00000078   080010E3           TST      R0,#0x8
+   \   0000007C   00009D15           LDRNE    R0,[SP, #+0]
+   \   00000080   00005013           CMPNE    R0,#+0
+   \   00000084   0900001A           BNE      ??netconn_recv_data_3
+    380                /* Let the stack know that we have taken the data. */
+    381                /* TODO: Speedup: Don't block and wait for the answer here
+    382                   (to prevent multiple thread-switches). */
+    383                msg.function = do_recv;
+   \   00000088   ........           LDR      R1,??DataTable1  ;; do_recv
+   \   0000008C   04108DE5           STR      R1,[SP, #+4]
+    384                msg.msg.conn = conn;
+   \   00000090   08408DE5           STR      R4,[SP, #+8]
+    385                if (buf != NULL) {
+   \   00000094   00009DE5           LDR      R0,[SP, #+0]
+   \   00000098   000050E3           CMP      R0,#+0
+    386                  msg.msg.msg.r.len = ((struct pbuf *)buf)->tot_len;
+   \   0000009C   B810D011           LDRHNE   R1,[R0, #+8]
+    387                } else {
+    388                  msg.msg.msg.r.len = 1;
+    389                }
+    390                /* don't care for the return value of do_recv */
+    391                TCPIP_APIMSG(&msg);
+   \   000000A0   04008DE2           ADD      R0,SP,#+4
+   \   000000A4   0110A003           MOVEQ    R1,#+1
+   \   000000A8   10108DE5           STR      R1,[SP, #+16]
+   \   000000AC   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+    392              }
+    393          
+    394              /* If we are closed, we indicate that we no longer wish to use the socket */
+    395              if (buf == NULL) {
+   \                     ??netconn_recv_data_3:
+   \   000000B0   00009DE5           LDR      R0,[SP, #+0]
+   \   000000B4   000050E3           CMP      R0,#+0
+   \   000000B8   1300001A           BNE      ??netconn_recv_data_4
+    396                API_EVENT(conn, NETCONN_EVT_RCVMINUS, 0);
+   \   000000BC   583094E5           LDR      R3,[R4, #+88]
+   \   000000C0   000053E3           CMP      R3,#+0
+   \   000000C4   0400000A           BEQ      ??netconn_recv_data_5
+   \   000000C8   0020A0E3           MOV      R2,#+0
+   \   000000CC   0110A0E3           MOV      R1,#+1
+   \   000000D0   0400A0E1           MOV      R0,R4
+   \   000000D4   0FE0A0E1           MOV      LR,PC
+   \   000000D8   13FF2FE1           BX       R3
+    397                /* Avoid to lose any previous error code */
+    398                NETCONN_SET_SAFE_ERR(conn, ERR_CLSD);
+   \                     ??netconn_recv_data_5:
+   \   000000DC   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   000000E0   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   000000E4   060051E1           CMP      R1,R6
+   \   000000E8   0310C6A3           BICGE    R1,R6,#0x3
+   \   000000EC   0810C4A5           STRBGE   R1,[R4, #+8]
+   \   000000F0   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    399                return ERR_CLSD;
+   \   000000F4   0300C6E3           BIC      R0,R6,#0x3
+   \                     ??netconn_recv_data_0:
+   \   000000F8   1CD08DE2           ADD      SP,SP,#+28
+   \   000000FC   7040BDE8           POP      {R4-R6,LR}
+   \   00000100   1EFF2FE1           BX       LR
+    400              }
+    401              len = ((struct pbuf *)buf)->tot_len;
+    402            }
+    403          #endif /* LWIP_TCP */
+    404          #if LWIP_TCP && (LWIP_UDP || LWIP_RAW)
+    405            else
+    406          #endif /* LWIP_TCP && (LWIP_UDP || LWIP_RAW) */
+    407          #if (LWIP_UDP || LWIP_RAW)
+    408            {
+    409              LWIP_ASSERT("buf != NULL", buf != NULL);
+    410              len = netbuf_len((struct netbuf *)buf);
+   \                     ??netconn_recv_data_2:
+   \   00000104   00009DE5           LDR      R0,[SP, #+0]
+   \   00000108   000090E5           LDR      R0,[R0, #+0]
+    411            }
+    412          #endif /* (LWIP_UDP || LWIP_RAW) */
+    413          
+    414          #if LWIP_SO_RCVBUF
+    415            SYS_ARCH_DEC(conn->recv_avail, len);
+    416          #endif /* LWIP_SO_RCVBUF */
+    417            /* Register event with callback */
+    418            API_EVENT(conn, NETCONN_EVT_RCVMINUS, len);
+   \                     ??netconn_recv_data_4:
+   \   0000010C   583094E5           LDR      R3,[R4, #+88]
+   \   00000110   B820D0E1           LDRH     R2,[R0, #+8]
+   \   00000114   000053E3           CMP      R3,#+0
+   \   00000118   0300000A           BEQ      ??netconn_recv_data_6
+   \   0000011C   0110A0E3           MOV      R1,#+1
+   \   00000120   0400A0E1           MOV      R0,R4
+   \   00000124   0FE0A0E1           MOV      LR,PC
+   \   00000128   13FF2FE1           BX       R3
+    419          
+    420            LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_recv_data: received %p, len=%"U16_F"\n", buf, len));
+    421          
+    422            *new_buf = buf;
+   \                     ??netconn_recv_data_6:
+   \   0000012C   00009DE5           LDR      R0,[SP, #+0]
+   \   00000130   000085E5           STR      R0,[R5, #+0]
+    423            /* don't set conn->last_err: it's only ERR_OK, anyway */
+    424            return ERR_OK;
+   \   00000134   0000A0E3           MOV      R0,#+0
+   \                     ??netconn_recv_data_7:
+   \   00000138   EEFFFFEA           B        ??netconn_recv_data_0
+    425          }
+    426          
+    427          /**
+    428           * Receive data (in form of a pbuf) from a TCP netconn
+    429           *
+    430           * @param conn the netconn from which to receive data
+    431           * @param new_buf pointer where a new pbuf is stored when received data
+    432           * @return ERR_OK if data has been received, an error code otherwise (timeout,
+    433           *                memory error or another error)
+    434           *         ERR_ARG if conn is not a TCP netconn
+    435           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    436          err_t
+    437          netconn_recv_tcp_pbuf(struct netconn *conn, struct pbuf **new_buf)
+    438          {
+   \                     netconn_recv_tcp_pbuf:
+   \   00000000   00402DE9           PUSH     {LR}
+    439            //LWIP_ERROR("netconn_recv: invalid conn", (conn != NULL) && netconn_type(conn) == NETCONN_TCP, return ERR_ARG;);
+    440          
+    441            return netconn_recv_data(conn, (void **)new_buf);
+   \   00000004   ........           BL       netconn_recv_data
+   \   00000008   0040BDE8           POP      {LR}
+   \   0000000C   1EFF2FE1           BX       LR               ;; return
+    442          }
+    443          
+    444          /**
+    445           * Receive data (in form of a netbuf containing a packet buffer) from a netconn
+    446           *
+    447           * @param conn the netconn from which to receive data
+    448           * @param new_buf pointer where a new netbuf is stored when received data
+    449           * @return ERR_OK if data has been received, an error code otherwise (timeout,
+    450           *                memory error or another error)
+    451           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    452          err_t
+    453          netconn_recv(struct netconn *conn, struct netbuf **new_buf)
+    454          {
+   \                     netconn_recv:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   04D04DE2           SUB      SP,SP,#+4
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+    455          #if LWIP_TCP
+    456            struct netbuf *buf = NULL;
+    457            err_t err;
+    458          #endif /* LWIP_TCP */
+    459          
+    460            //LWIP_ERROR("netconn_recv: invalid pointer", (new_buf != NULL), return ERR_ARG;);
+    461            *new_buf = NULL;
+   \   00000010   0060A0E3           MOV      R6,#+0
+   \   00000014   006085E5           STR      R6,[R5, #+0]
+    462            //LWIP_ERROR("netconn_recv: invalid conn",    (conn != NULL),    return ERR_ARG;);
+    463            //LWIP_ERROR("netconn_accept: invalid recvmbox", sys_mbox_valid(&conn->recvmbox), return ERR_CONN;);
+    464          
+    465          #if LWIP_TCP
+    466          #if (LWIP_UDP || LWIP_RAW)
+    467            if (conn->type == NETCONN_TCP)
+   \   00000018   0000D4E5           LDRB     R0,[R4, #+0]
+   \   0000001C   100050E3           CMP      R0,#+16
+   \   00000020   2200001A           BNE      ??netconn_recv_0
+    468          #endif /* (LWIP_UDP || LWIP_RAW) */
+    469            {
+    470              struct pbuf *p = NULL;
+   \   00000024   00608DE5           STR      R6,[SP, #+0]
+    471              /* This is not a listening netconn, since recvmbox is set */
+    472          
+    473              buf = (struct netbuf *)memp_malloc(MEMP_NETBUF);
+   \   00000028   0700A0E3           MOV      R0,#+7
+   \   0000002C   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000030   0070B0E1           MOVS     R7,R0
+    474              if (buf == NULL) {
+   \   00000034   0800001A           BNE      ??netconn_recv_1
+    475                NETCONN_SET_SAFE_ERR(conn, ERR_MEM);
+   \   00000038   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   0000003C   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000040   0820E0E3           MVN      R2,#+8
+   \   00000044   020051E1           CMP      R1,R2
+   \   00000048   081082A3           ORRGE    R1,R2,#0x8
+   \   0000004C   0810C4A5           STRBGE   R1,[R4, #+8]
+   \   00000050   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    476                return ERR_MEM;
+   \   00000054   0600E0E1           MVN      R0,R6
+   \   00000058   080000EA           B        ??netconn_recv_2
+    477              }
+    478          
+    479              err = netconn_recv_data(conn, (void **)&p);
+   \                     ??netconn_recv_1:
+   \   0000005C   0D10A0E1           MOV      R1,SP
+   \   00000060   0400A0E1           MOV      R0,R4
+   \   00000064   ........           BL       netconn_recv_data
+   \   00000068   0040B0E1           MOVS     R4,R0
+    480              if (err != ERR_OK) {
+   \   0000006C   0500000A           BEQ      ??netconn_recv_3
+    481                memp_free(MEMP_NETBUF, buf);
+   \   00000070   0710A0E1           MOV      R1,R7
+   \   00000074   0700A0E3           MOV      R0,#+7
+   \   00000078   ........           _BLF     memp_free,??memp_free??rA
+    482                return err;
+   \   0000007C   0400A0E1           MOV      R0,R4
+   \                     ??netconn_recv_2:
+   \   00000080   F240BDE8           POP      {R1,R4-R7,LR}
+   \   00000084   1EFF2FE1           BX       LR
+    483              }
+    484              LWIP_ASSERT("p != NULL", p != NULL);
+    485          
+    486              buf->p = p;
+   \                     ??netconn_recv_3:
+   \   00000088   00009DE5           LDR      R0,[SP, #+0]
+   \   0000008C   000087E5           STR      R0,[R7, #+0]
+    487              buf->ptr = p;
+   \   00000090   00009DE5           LDR      R0,[SP, #+0]
+   \   00000094   040087E5           STR      R0,[R7, #+4]
+    488              buf->port = 0;
+   \   00000098   BC60C7E1           STRH     R6,[R7, #+12]
+    489              ip_addr_set_any(&buf->addr);
+   \   0000009C   086087E5           STR      R6,[R7, #+8]
+    490              *new_buf = buf;
+   \   000000A0   007085E5           STR      R7,[R5, #+0]
+    491              /* don't set conn->last_err: it's only ERR_OK, anyway */
+    492              return ERR_OK;
+   \   000000A4   F240BDE8           POP      {R1,R4-R7,LR}
+   \   000000A8   0000A0E3           MOV      R0,#+0
+   \   000000AC   1EFF2FE1           BX       LR
+    493            }
+    494          #endif /* LWIP_TCP */
+    495          #if LWIP_TCP && (LWIP_UDP || LWIP_RAW)
+    496            else
+    497          #endif /* LWIP_TCP && (LWIP_UDP || LWIP_RAW) */
+    498            {
+    499          #if (LWIP_UDP || LWIP_RAW)
+    500              return netconn_recv_data(conn, (void **)new_buf);
+   \                     ??netconn_recv_0:
+   \   000000B0   0400A0E1           MOV      R0,R4
+   \   000000B4   ........           BL       netconn_recv_data
+   \   000000B8   F0FFFFEA           B        ??netconn_recv_2
+    501          #endif /* (LWIP_UDP || LWIP_RAW) */
+    502            }
+    503          }
+    504          
+    505          /**
+    506           * TCP: update the receive window: by calling this, the application
+    507           * tells the stack that it has processed data and is able to accept
+    508           * new data.
+    509           * ATTENTION: use with care, this is mainly used for sockets!
+    510           * Can only be used when calling netconn_set_noautorecved(conn, 1) before.
+    511           *
+    512           * @param conn the netconn for which to update the receive window
+    513           * @param length amount of data processed (ATTENTION: this must be accurate!)
+    514           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    515          void
+    516          netconn_recved(struct netconn *conn, u32_t length)
+    517          {
+   \                     netconn_recved:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   18D04DE2           SUB      SP,SP,#+24
+    518          #if LWIP_TCP
+    519            if ((conn != NULL) && (conn->type == NETCONN_TCP) &&
+    520                (netconn_get_noautorecved(conn))) {
+   \   00000008   000050E3           CMP      R0,#+0
+   \   0000000C   0B00000A           BEQ      ??netconn_recved_0
+   \   00000010   0020D0E5           LDRB     R2,[R0, #+0]
+   \   00000014   100052E3           CMP      R2,#+16
+   \   00000018   0800001A           BNE      ??netconn_recved_0
+   \   0000001C   4C20D0E5           LDRB     R2,[R0, #+76]
+   \   00000020   080012E3           TST      R2,#0x8
+   \   00000024   0500000A           BEQ      ??netconn_recved_0
+    521              struct api_msg msg;
+    522              /* Let the stack know that we have taken the data. */
+    523              /* TODO: Speedup: Don't block and wait for the answer here
+    524                 (to prevent multiple thread-switches). */
+    525              msg.function = do_recv;
+   \   00000028   ........           LDR      R3,??DataTable1  ;; do_recv
+    526              msg.msg.conn = conn;
+   \   0000002C   04008DE5           STR      R0,[SP, #+4]
+   \   00000030   00308DE5           STR      R3,[SP, #+0]
+    527              msg.msg.msg.r.len = length;
+   \   00000034   0C108DE5           STR      R1,[SP, #+12]
+    528              /* don't care for the return value of do_recv */
+    529              TCPIP_APIMSG(&msg);
+   \   00000038   0D00A0E1           MOV      R0,SP
+   \   0000003C   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+    530            }
+    531          #else /* LWIP_TCP */
+    532            LWIP_UNUSED_ARG(conn);
+    533            LWIP_UNUSED_ARG(length);
+    534          #endif /* LWIP_TCP */
+    535          }
+   \                     ??netconn_recved_0:
+   \   00000040   18D08DE2           ADD      SP,SP,#+24
+   \   00000044   0040BDE8           POP      {LR}
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+    536          
+    537          /**
+    538           * Send data (in form of a netbuf) to a specific remote IP address and port.
+    539           * Only to be used for UDP and RAW netconns (not TCP).
+    540           *
+    541           * @param conn the netconn over which to send data
+    542           * @param buf a netbuf containing the data to send
+    543           * @param addr the remote IP address to which to send the data
+    544           * @param port the remote port to which to send the data
+    545           * @return ERR_OK if data was sent, any other err_t on error
+    546           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    547          err_t
+    548          netconn_sendto(struct netconn *conn, struct netbuf *buf, ip_addr_t *addr, u16_t port)
+    549          {
+   \                     netconn_sendto:
+   \   00000000   00402DE9           PUSH     {LR}
+    550            if (buf != NULL) {
+   \   00000004   000051E3           CMP      R1,#+0
+   \   00000008   0600000A           BEQ      ??netconn_sendto_0
+    551              ip_addr_set(&buf->addr, addr);
+   \   0000000C   000052E3           CMP      R2,#+0
+   \   00000010   00209215           LDRNE    R2,[R2, #+0]
+   \   00000014   082081E5           STR      R2,[R1, #+8]
+    552              buf->port = port;
+   \   00000018   BC30C1E1           STRH     R3,[R1, #+12]
+    553              return netconn_send(conn, buf);
+   \   0000001C   ........           BL       netconn_send
+   \   00000020   0040BDE8           POP      {LR}
+   \   00000024   1EFF2FE1           BX       LR
+    554            }
+    555            return ERR_VAL;
+   \                     ??netconn_sendto_0:
+   \   00000028   0040BDE8           POP      {LR}
+   \   0000002C   0500E0E3           MVN      R0,#+5
+   \   00000030   1EFF2FE1           BX       LR               ;; return
+    556          }
+    557          
+    558          /**
+    559           * Send data over a UDP or RAW netconn (that is already connected).
+    560           *
+    561           * @param conn the UDP or RAW netconn over which to send data
+    562           * @param buf a netbuf containing the data to send
+    563           * @return ERR_OK if data was sent, any other err_t on error
+    564           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    565          err_t
+    566          netconn_send(struct netconn *conn, struct netbuf *buf)
+    567          {
+    568            struct api_msg msg;
+    569            err_t err;
+    570          
+    571            //LWIP_ERROR("netconn_send: invalid conn",  (conn != NULL), return ERR_ARG;);
+    572          
+    573            LWIP_DEBUGF(API_LIB_DEBUG, ("netconn_send: sending %"U16_F" bytes\n", buf->p->tot_len));
+    574            msg.function = do_send;
+   \                     netconn_send:
+   \   00000000   48209FE5           LDR      R2,??netconn_send_0  ;; do_send
+   \   00000004   30402DE9           PUSH     {R4,R5,LR}
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00208DE5           STR      R2,[SP, #+0]
+    575            msg.msg.conn = conn;
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+    576            msg.msg.msg.b = buf;
+   \   00000018   0C108DE5           STR      R1,[SP, #+12]
+    577            err = TCPIP_APIMSG(&msg);
+   \   0000001C   0D00A0E1           MOV      R0,SP
+   \   00000020   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000024   0050A0E1           MOV      R5,R0
+    578          
+    579            NETCONN_SET_SAFE_ERR(conn, err);
+   \   00000028   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   0000002C   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000030   0820E0E3           MVN      R2,#+8
+   \   00000034   020051E1           CMP      R1,R2
+   \   00000038   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   0000003C   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    580            return err;
+   \   00000040   0500A0E1           MOV      R0,R5
+   \   00000044   18D08DE2           ADD      SP,SP,#+24
+   \   00000048   3040BDE8           POP      {R4,R5,LR}
+   \   0000004C   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_send_0:
+   \   00000050   ........           DC32     do_send
+    581          }
+    582          
+    583          /**
+    584           * Send data over a TCP netconn.
+    585           *
+    586           * @param conn the TCP netconn over which to send data
+    587           * @param dataptr pointer to the application buffer that contains the data to send
+    588           * @param size size of the application data to send
+    589           * @param apiflags combination of following flags :
+    590           * - NETCONN_COPY: data will be copied into memory belonging to the stack
+    591           * - NETCONN_MORE: for TCP connection, PSH flag will be set on last segment sent
+    592           * - NETCONN_DONTBLOCK: only write the data if all dat can be written at once
+    593           * @param bytes_written pointer to a location that receives the number of written bytes
+    594           * @return ERR_OK if data was sent, any other err_t on error
+    595           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    596          err_t
+    597          netconn_write_partly(struct netconn *conn, const void *dataptr, size_t size,
+    598                               u8_t apiflags, size_t *bytes_written)
+    599          {
+   \                     netconn_write_partly:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   18D04DE2           SUB      SP,SP,#+24
+   \   00000008   30609DE5           LDR      R6,[SP, #+48]
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   0250B0E1           MOVS     R5,R2
+    600            struct api_msg msg;
+    601            err_t err;
+    602            u8_t dontblock;
+    603          
+    604            //LWIP_ERROR("netconn_write: invalid conn",  (conn != NULL), return ERR_ARG;);
+    605            //LWIP_ERROR("netconn_write: invalid conn->type",  (conn->type == NETCONN_TCP), return ERR_VAL;);
+    606            if (size == 0) {
+    607              return ERR_OK;
+   \   00000014   0000A003           MOVEQ    R0,#+0
+   \   00000018   2000000A           BEQ      ??netconn_write_partly_0
+    608            }
+    609            dontblock = netconn_is_nonblocking(conn) || (apiflags & NETCONN_DONTBLOCK);
+   \   0000001C   4C00D4E5           LDRB     R0,[R4, #+76]
+   \   00000020   020010E3           TST      R0,#0x2
+   \   00000024   04001303           TSTEQ    R3,#0x4
+   \   00000028   0170A013           MOVNE    R7,#+1
+   \   0000002C   0070A003           MOVEQ    R7,#+0
+    610            if (dontblock && !bytes_written) {
+   \   00000030   0700B0E1           MOVS     R0,R7
+   \   00000034   0200000A           BEQ      ??netconn_write_partly_1
+   \   00000038   000056E3           CMP      R6,#+0
+    611              /* This implies netconn_write() cannot be used for non-blocking send, since
+    612                 it has no way to return the number of bytes written. */
+    613              return ERR_VAL;
+   \   0000003C   0500E003           MVNEQ    R0,#+5
+   \   00000040   1600000A           BEQ      ??netconn_write_partly_0
+    614            }
+    615          
+    616            /* non-blocking write sends as much  */
+    617            msg.function = do_write;
+   \                     ??netconn_write_partly_1:
+   \   00000044   60209FE5           LDR      R2,??netconn_write_partly_2  ;; do_write
+    618            msg.msg.conn = conn;
+   \   00000048   04408DE5           STR      R4,[SP, #+4]
+   \   0000004C   00208DE5           STR      R2,[SP, #+0]
+    619            msg.msg.msg.w.dataptr = dataptr;
+   \   00000050   0C108DE5           STR      R1,[SP, #+12]
+    620            msg.msg.msg.w.apiflags = apiflags;
+   \   00000054   1430CDE5           STRB     R3,[SP, #+20]
+    621            msg.msg.msg.w.len = size;
+   \   00000058   10508DE5           STR      R5,[SP, #+16]
+    622          #if LWIP_SO_SNDTIMEO
+    623            if (conn->send_timeout != 0) {
+    624              /* get the time we started, which is later compared to
+    625                  sys_now() + conn->send_timeout */
+    626              msg.msg.msg.w.time_started = sys_now();
+    627            } else {
+    628              msg.msg.msg.w.time_started = 0;
+    629            }
+    630          #endif /* LWIP_SO_SNDTIMEO */
+    631          
+    632            /* For locking the core: this _can_ be delayed on low memory/low send buffer,
+    633               but if it is, this is done inside api_msg.c:do_write(), so we can use the
+    634               non-blocking version here. */
+    635            err = TCPIP_APIMSG(&msg);
+   \   0000005C   0D00A0E1           MOV      R0,SP
+   \   00000060   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000064   0080B0E1           MOVS     R8,R0
+    636            if ((err == ERR_OK) && (bytes_written != NULL)) {
+   \   00000068   0500001A           BNE      ??netconn_write_partly_3
+   \   0000006C   000056E3           CMP      R6,#+0
+   \   00000070   0300000A           BEQ      ??netconn_write_partly_3
+    637              if (dontblock
+    638          #if LWIP_SO_SNDTIMEO
+    639                  || (conn->send_timeout != 0)
+    640          #endif /* LWIP_SO_SNDTIMEO */
+    641                 ) {
+   \   00000074   000057E3           CMP      R7,#+0
+    642                /* nonblocking write: maybe the data has been sent partly */
+    643                *bytes_written = msg.msg.msg.w.len;
+   \   00000078   10009D15           LDRNE    R0,[SP, #+16]
+    644              } else {
+    645                /* blocking call succeeded: all data has been sent if it */
+    646                *bytes_written = size;
+   \   0000007C   00508605           STREQ    R5,[R6, #+0]
+   \   00000080   00008615           STRNE    R0,[R6, #+0]
+    647              }
+    648            }
+    649          
+    650            NETCONN_SET_SAFE_ERR(conn, err);
+   \                     ??netconn_write_partly_3:
+   \   00000084   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000088   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   0000008C   0820E0E3           MVN      R2,#+8
+   \   00000090   020051E1           CMP      R1,R2
+   \   00000094   0880C4A5           STRBGE   R8,[R4, #+8]
+   \   00000098   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+    651            return err;
+   \   0000009C   0800A0E1           MOV      R0,R8
+   \                     ??netconn_write_partly_0:
+   \   000000A0   18D08DE2           ADD      SP,SP,#+24
+   \   000000A4   F041BDE8           POP      {R4-R8,LR}
+   \   000000A8   1EFF2FE1           BX       LR               ;; return
+   \                     ??netconn_write_partly_2:
+   \   000000AC   ........           DC32     do_write
+    652          }
+    653          
+    654          /**
+    655           * Close ot shutdown a TCP netconn (doesn't delete it).
+    656           *
+    657           * @param conn the TCP netconn to close or shutdown
+    658           * @param how fully close or only shutdown one side?
+    659           * @return ERR_OK if the netconn was closed, any other err_t on error
+    660           */
+    661          static err_t
+    662          netconn_close_shutdown(struct netconn *conn, u8_t how)
+    663          {
+    664            struct api_msg msg;
+    665            err_t err;
+    666          
+    667            //LWIP_ERROR("netconn_close: invalid conn",  (conn != NULL), return ERR_ARG;);
+    668          
+    669            msg.function = do_close;
+    670            msg.msg.conn = conn;
+    671            /* shutting down both ends is the same as closing */
+    672            msg.msg.msg.sd.shut = how;
+    673            /* because of the LWIP_TCPIP_CORE_LOCKING implementation of do_close,
+    674               don't use TCPIP_APIMSG here */
+    675            err = tcpip_apimsg(&msg);
+    676          
+    677            NETCONN_SET_SAFE_ERR(conn, err);
+    678            return err;
+    679          }
+    680          
+    681          /**
+    682           * Close a TCP netconn (doesn't delete it).
+    683           *
+    684           * @param conn the TCP netconn to close
+    685           * @return ERR_OK if the netconn was closed, any other err_t on error
+    686           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    687          err_t
+    688          netconn_close(struct netconn *conn)
+    689          {
+    690            /* shutting down both ends is the same as closing */
+    691            return netconn_close_shutdown(conn, NETCONN_SHUT_RDWR);
+   \                     netconn_close:
+   \   00000000   ........           LDR      R1,??DataTable3  ;; do_close
+   \   00000004   30402DE9           PUSH     {R4,R5,LR}
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   00108DE5           STR      R1,[SP, #+0]
+   \   00000014   04408DE5           STR      R4,[SP, #+4]
+   \   00000018   0310A0E3           MOV      R1,#+3
+   \   0000001C   0C10CDE5           STRB     R1,[SP, #+12]
+   \   00000020   0D00A0E1           MOV      R0,SP
+   \   00000024   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000028   0050A0E1           MOV      R5,R0
+   \   0000002C   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000030   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   00000034   0820E0E3           MVN      R2,#+8
+   \   00000038   020051E1           CMP      R1,R2
+   \   0000003C   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000040   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+   \   00000044   0500A0E1           MOV      R0,R5
+   \   00000048   18D08DE2           ADD      SP,SP,#+24
+   \   0000004C   3040BDE8           POP      {R4,R5,LR}
+   \   00000050   1EFF2FE1           BX       LR               ;; return
+    692          }
+    693          
+    694          /**
+    695           * Shut down one or both sides of a TCP netconn (doesn't delete it).
+    696           *
+    697           * @param conn the TCP netconn to shut down
+    698           * @return ERR_OK if the netconn was closed, any other err_t on error
+    699           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    700          err_t
+    701          netconn_shutdown(struct netconn *conn, u8_t shut_rx, u8_t shut_tx)
+    702          {
+   \                     netconn_shutdown:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    703            return netconn_close_shutdown(conn, (shut_rx ? NETCONN_SHUT_RD : 0) | (shut_tx ? NETCONN_SHUT_WR : 0));
+   \   00000008   000051E3           CMP      R1,#+0
+   \   0000000C   0100A013           MOVNE    R0,#+1
+   \   00000010   0000A003           MOVEQ    R0,#+0
+   \   00000014   000052E3           CMP      R2,#+0
+   \   00000018   ........           LDR      R2,??DataTable3  ;; do_close
+   \   0000001C   18D04DE2           SUB      SP,SP,#+24
+   \   00000020   0210A013           MOVNE    R1,#+2
+   \   00000024   0010A003           MOVEQ    R1,#+0
+   \   00000028   000081E1           ORR      R0,R1,R0
+   \   0000002C   00208DE5           STR      R2,[SP, #+0]
+   \   00000030   04408DE5           STR      R4,[SP, #+4]
+   \   00000034   0C00CDE5           STRB     R0,[SP, #+12]
+   \   00000038   0D00A0E1           MOV      R0,SP
+   \   0000003C   ........           _BLF     tcpip_apimsg,??tcpip_apimsg??rA
+   \   00000040   0050A0E1           MOV      R5,R0
+   \   00000044   ........           _BLF     sys_arch_protect,??sys_arch_protect??rA
+   \   00000048   D810D4E1           LDRSB    R1,[R4, #+8]
+   \   0000004C   0820E0E3           MVN      R2,#+8
+   \   00000050   020051E1           CMP      R1,R2
+   \   00000054   0850C4A5           STRBGE   R5,[R4, #+8]
+   \   00000058   ........           _BLF     sys_arch_unprotect,??sys_arch_unprotect??rA
+   \   0000005C   0500A0E1           MOV      R0,R5
+   \   00000060   18D08DE2           ADD      SP,SP,#+24
+   \   00000064   3040BDE8           POP      {R4,R5,LR}
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+    704          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable1:
+   \   00000000   ........           DC32     do_recv
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable3:
+   \   00000000   ........           DC32     do_close
+    705          
+    706          #if LWIP_IGMP
+    707          /**
+    708           * Join multicast groups for UDP netconns.
+    709           *
+    710           * @param conn the UDP netconn for which to change multicast addresses
+    711           * @param multiaddr IP address of the multicast group to join or leave
+    712           * @param netif_addr the IP address of the network interface on which to send
+    713           *                  the igmp message
+    714           * @param join_or_leave flag whether to send a join- or leave-message
+    715           * @return ERR_OK if the action was taken, any err_t on error
+    716           */
+    717          err_t
+    718          netconn_join_leave_group(struct netconn *conn,
+    719                                   ip_addr_t *multiaddr,
+    720                                   ip_addr_t *netif_addr,
+    721                                   enum netconn_igmp join_or_leave)
+    722          {
+    723            struct api_msg msg;
+    724            err_t err;
+    725          
+    726            LWIP_ERROR("netconn_join_leave_group: invalid conn",  (conn != NULL), return ERR_ARG;);
+    727          
+    728            msg.function = do_join_leave_group;
+    729            msg.msg.conn = conn;
+    730            msg.msg.msg.jl.multiaddr = multiaddr;
+    731            msg.msg.msg.jl.netif_addr = netif_addr;
+    732            msg.msg.msg.jl.join_or_leave = join_or_leave;
+    733            err = TCPIP_APIMSG(&msg);
+    734          
+    735            NETCONN_SET_SAFE_ERR(conn, err);
+    736            return err;
+    737          }
+    738          #endif /* LWIP_IGMP */
+    739          
+    740          #if LWIP_DNS
+    741          /**
+    742           * Execute a DNS query, only one IP address is returned
+    743           *
+    744           * @param name a string representation of the DNS host name to query
+    745           * @param addr a preallocated ip_addr_t where to store the resolved IP address
+    746           * @return ERR_OK: resolving succeeded
+    747           *         ERR_MEM: memory error, try again later
+    748           *         ERR_ARG: dns client not initialized or invalid hostname
+    749           *         ERR_VAL: dns server response was invalid
+    750           */
+    751          err_t
+    752          netconn_gethostbyname(const char *name, ip_addr_t *addr)
+    753          {
+    754            struct dns_api_msg msg;
+    755            err_t err;
+    756            sys_sem_t sem;
+    757          
+    758            LWIP_ERROR("netconn_gethostbyname: invalid name", (name != NULL), return ERR_ARG;);
+    759            LWIP_ERROR("netconn_gethostbyname: invalid addr", (addr != NULL), return ERR_ARG;);
+    760          
+    761            err = sys_sem_new(&sem, 0);
+    762            if (err != ERR_OK) {
+    763              return err;
+    764            }
+    765          
+    766            msg.name = name;
+    767            msg.addr = addr;
+    768            msg.err = &err;
+    769            msg.sem = &sem;
+    770          
+    771            tcpip_callback(do_gethostbyname, &msg);
+    772            sys_sem_wait(&sem);
+    773            sys_sem_free(&sem);
+    774          
+    775            return err;
+    776          }
+    777          #endif /* LWIP_DNS*/
+    778          
+    779          #endif /* LWIP_NETCONN */
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     netconn_accept                    20
+     netconn_bind                      36
+     netconn_close                     36
+     netconn_connect                   36
+     netconn_delete                    32
+     netconn_disconnect                36
+     netconn_getaddr                   36
+     netconn_listen_with_backlog       36
+     netconn_new_with_proto_and_callback
+                                       36
+     netconn_recv                      24
+     netconn_recv_data                 44
+     netconn_recv_tcp_pbuf              4
+     netconn_recved                    28
+     netconn_send                      36
+     netconn_sendto                     4
+     netconn_shutdown                  36
+     netconn_write_partly              48
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     netconn_new_with_proto_and_callback
+                                     124
+     netconn_delete                   64
+     netconn_getaddr                  92
+     netconn_bind                     88
+     netconn_connect                  88
+     netconn_disconnect               80
+     netconn_listen_with_backlog      80
+     netconn_accept                  188
+     netconn_recv_data               316
+     netconn_recv_tcp_pbuf            16
+     netconn_recv                    188
+     netconn_recved                   76
+     netconn_sendto                   52
+     netconn_send                     84
+     netconn_write_partly            176
+     netconn_close                    84
+     netconn_shutdown                108
+     ??DataTable1                      4
+     ??DataTable3                      4
+      Others                         188
+
+ 
+ 2 100 bytes in segment CODE
+ 
+ 1 912 bytes of CODE memory (+ 188 bytes shared)
+
+Errors: none
+Warnings: none

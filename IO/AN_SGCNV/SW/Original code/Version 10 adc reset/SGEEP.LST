@@ -1,0 +1,1358 @@
+####################################################################################################
+#                                                                                                  #
+#     Micro Series H8/300 C-Compiler V2.20C/DXT                            06/Feb/117  11:39:43     #
+#                                                                                                  #
+#           Memory model  =  large                                                                 #
+#           Source file   =  sgeep.c                                                               #
+#           List file     =  sgeep.lst                                                             #
+#           Object file   =  sgeep.r20                                                             #
+#           Command line  =  -C -IC:\h8\ -e -q -L -P -ml -s -K sgeep                               #
+#                                                                                                  #
+#                                                     (c) Copyright IAR Systems, Hitachi Ltd. 1992 #
+####################################################################################################
+
+
+; Function name: Eeprom
+; Used stack   : 12
+
+; Function name: SendEepromCommand
+; Used stack   : 8
+
+; Function name: ReadEepromData
+; Used stack   : 8
+
+; Function name: WriteEepromData
+; Used stack   : 8
+
+; Function name: ReadEepromByte
+; Used stack   : 8
+
+; Function name: WriteEepromByte
+; Used stack   : 12
+
+; Function name: ResetEeprom
+; Used stack   : 10
+
+; Function name: CheckEepChannel
+; Used stack   : 8
+
+; Function name: CheckADData
+; Used stack   : 8
+
+; Function name: CheckEepData
+; Used stack   : 8
+
+; Function name: MakeEepChksum
+; Used stack   : 8
+
+   \   0000                    NAME    sgeep(16)
+   \   0000                    RSEG    CODE(1)
+   \   0000                    PUBLIC  CheckADData
+   \   0000                    PUBLIC  CheckEepChannel
+   \   0000                    PUBLIC  CheckEepData
+   \   0000                    PUBLIC  Eeprom
+   \   0000                    EXTERN  KickDog
+   \   0000                    EXTERN  Led
+   \   0000                    PUBLIC  MakeEepChksum
+   \   0000                    EXTERN  OneMsecDelay
+   \   0000                    PUBLIC  ReadEepromByte
+   \   0000                    PUBLIC  ReadEepromData
+   \   0000                    PUBLIC  ResetEeprom
+   \   0000                    PUBLIC  SendEepromCommand
+   \   0000                    EXTERN  SetCalResistance
+   \   0000                    EXTERN  SetEepromChannel
+   \   0000                    EXTERN  SetMuxChannel
+   \   0000                    EXTERN  SetSupplyChannel
+   \   0000                    EXTERN  SetSupplyCurrent
+   \   0000                    PUBLIC  WriteEepromByte
+   \   0000                    PUBLIC  WriteEepromData
+   \   0000                    EXTERN  ch_stat
+   \   0000                    EXTERN  crc
+   \   0000                    EXTERN  eep_status
+   \   0000                    EXTERN  eep_type
+   \   0000                    EXTERN  packed_data
+   \   0000                    EXTERN  tx_buff
+   \   0000                    EXTERN  tx_indx
+   \   0000                    EXTERN  ?SS_MUL_L02
+   \   0000                    EXTERN  ?CLH83L_2_20_L00
+   \   0000                    RSEG    CODE
+      1          /***** SGEEP.C *************************************************************
+      2          *
+      3          *     Program for signal convertion card, AN-SGCNV
+      4          *
+      5          *     Company: ARISTON Norway as
+      6          *
+      7          *     Author: Asle Straume
+      8          *
+      9          *     Date: 1-aug-96.
+     10          *
+     11          *************************************************************************/
+     12          
+     13          #include "math.h"
+     14          #include "float.h"
+     15          #include "stdio.h"
+     16          #include "ioh8325.h"
+     17          #include "inth8325.h"
+     18          
+     19          #include "sg.h"
+     20          #include "sgext.h"
+     21          
+     22          /*************************************************************************
+     23          *
+     24          *  Operate eeprom DS2430
+     25          *
+     26          *                       channel: 0 - 6 on sensors, 7 on PCB
+     27          *                       type     : IP_REG or EEPROM
+     28          *
+     29          *************************************************************************/
+     30          short Eeprom(unsigned char channel, unsigned char command)
+     31          {
+   \   0000            Eeprom:
+   \   0000  6DF4              PUSH    R4
+   \   0002  6DF5              PUSH    R5
+   \   0004  6DF6              PUSH    R6
+   \   0006  6E7C0009          MOV.B   @(9,SP),R4L
+   \   000A  0C95              MOV.B   R1L,R5H
+     32          
+     33          char                            ret_val = FALSE;
+   \   000C  FD00              MOV.B   #0,R5L
+     34          unsigned char   *data ;
+     35          
+     36                  SetCalResistance(OHM_1R) ;                                              /* use 1 ohm res. on return. */
+   \   000E  F940              MOV.B   #64,R1L
+   \   0010  5E000000          JSR     @SetCalResistance:16
+     37                  SetEepromChannel(channel) ;                                     /* connect to the right eeprom */
+   \   0014  0C59              MOV.B   R5H,R1L
+   \   0016  5E000000          JSR     @SetEepromChannel:16
+     38                  SetMuxChannel(MUXCHOFF) ;                                               /* mux channel off */
+   \   001A  F910              MOV.B   #16,R1L
+   \   001C  5E000000          JSR     @SetMuxChannel:16
+     39                  SetSupplyChannel(SUPPCHOFF) ;                                   /* set channel off */
+   \   0020  F910              MOV.B   #16,R1L
+   \   0022  5E000000          JSR     @SetSupplyChannel:16
+     40                  SetSupplyCurrent(1);                                                            /* set 1mA supply */
+   \   0026  F901              MOV.B   #1,R1L
+   \   0028  5E000000          JSR     @SetSupplyCurrent:16
+     41                  OneMsecDelay(5) ;                                               /* supply the unit before read */
+   \   002C  79010005          MOV.W   #5,R1
+   \   0030  1900              SUB.W   R0,R0
+   \   0032  5E000000          JSR     @OneMsecDelay:16
+     42                  set_interrupt_mask(1);                                                  /* Disable interrupt */
+   \   0036  0480              ORC     #128,CCR
+     43                  KickDog() ;                                                                             /* kick dog due to long read time*/
+   \   0038  5E000000          JSR     @KickDog:16
+     44          
+     45                  switch (command) {                      /* find command */
+   \   003C  ACAA              CMP.B   #170,R4L
+   \   003E  4634              BNE     ?0004
+   \   0040            ?0001:
+     46                  case READ_SP :                  /* read scratchpad */
+     47                          if (SendEepromCommand(command, 0, 1)) { /* Start at adderss 0 */
+   \   0040  79010001          MOV.W   #1,R1
+   \   0044  6DF1              MOV.W   R1,@-SP
+   \   0046  1911              SUB.W   R1,R1
+   \   0048  6DF1              MOV.W   R1,@-SP
+   \   004A  0CC9              MOV.B   R4L,R1L
+   \   004C  5E000220          JSR     @SendEepromCommand:16
+   \   0050  0B87              ADDS.W  #2,SP
+   \   0052  0B87              ADDS.W  #2,SP
+   \   0054  0D11              MOV.W   R1,R1
+   \   0056  4718              BEQ     ?0003
+   \   0058            ?0002:
+     48                                  data = &packed_data[channel][8] ;       /* nvram block */
+   \   0058  F928              MOV.B   #40,R1L
+   \   005A  5051              MULXU   R5H,R1
+   \   005C  8908              ADD.B   #LOW(packed_data+8),R1L
+   \   005E  9100              ADDX.B  #HIGH(packed_data+8),R1H
+   \   0060  0D16              MOV.W   R1,R6
+     49                                  ReadEepromData(data, 32)        ;                       /* Read 32 bytes */
+   \   0062  F920              MOV.B   #32,R1L
+   \   0064  6DF1              MOV.W   R1,@-SP
+   \   0066  0D61              MOV.W   R6,R1
+   \   0068  5E00026A          JSR     @ReadEepromData:16
+   \   006C  0B87              ADDS.W  #2,SP
+     50                                  ret_val = TRUE ;
+   \   006E  FD01              MOV.B   #1,R5L
+   \   0070            ?0003:
+     51                          }
+     52                          break ;
+   \   0070  5A0001F6          JMP     @?0000:16
+   \   0074            ?0004:
+   \   0074  AC0F              CMP.B   #15,R4L
+   \   0076  4634              BNE     ?0007
+     53                  case WRITE_SP :                 /* write scratchpad */
+     54                          if (SendEepromCommand(command, 0, 1)){ /* Start at adderss 0 */
+   \   0078  79010001          MOV.W   #1,R1
+   \   007C  6DF1              MOV.W   R1,@-SP
+   \   007E  1911              SUB.W   R1,R1
+   \   0080  6DF1              MOV.W   R1,@-SP
+   \   0082  0CC9              MOV.B   R4L,R1L
+   \   0084  5E000220          JSR     @SendEepromCommand:16
+   \   0088  0B87              ADDS.W  #2,SP
+   \   008A  0B87              ADDS.W  #2,SP
+   \   008C  0D11              MOV.W   R1,R1
+   \   008E  4718              BEQ     ?0006
+   \   0090            ?0005:
+     55                                  data = &packed_data[channel][8] ;       /* nvram block */
+   \   0090  F928              MOV.B   #40,R1L
+   \   0092  5051              MULXU   R5H,R1
+   \   0094  8908              ADD.B   #LOW(packed_data+8),R1L
+   \   0096  9100              ADDX.B  #HIGH(packed_data+8),R1H
+   \   0098  0D16              MOV.W   R1,R6
+     56                                  WriteEepromData(data, 32)       ;                       /* Write 32 bytes */
+   \   009A  F920              MOV.B   #32,R1L
+   \   009C  6DF1              MOV.W   R1,@-SP
+   \   009E  0D61              MOV.W   R6,R1
+   \   00A0  5E000294          JSR     @WriteEepromData:16
+   \   00A4  0B87              ADDS.W  #2,SP
+     57                                  ret_val = TRUE ;
+   \   00A6  FD01              MOV.B   #1,R5L
+   \   00A8            ?0006:
+     58                          }
+     59                          break ;
+   \   00A8  5A0001F6          JMP     @?0000:16
+   \   00AC            ?0007:
+   \   00AC  AC66              CMP.B   #102,R4L
+   \   00AE  462E              BNE     ?0010
+     60                  case READ_STATUS :                      /* Read status register */
+     61                          if (SendEepromCommand(command, 0, 1)){  /* Command 0 */
+   \   00B0  79010001          MOV.W   #1,R1
+   \   00B4  6DF1              MOV.W   R1,@-SP
+   \   00B6  1911              SUB.W   R1,R1
+   \   00B8  6DF1              MOV.W   R1,@-SP
+   \   00BA  0CC9              MOV.B   R4L,R1L
+   \   00BC  5E000220          JSR     @SendEepromCommand:16
+   \   00C0  0B87              ADDS.W  #2,SP
+   \   00C2  0B87              ADDS.W  #2,SP
+   \   00C4  0D11              MOV.W   R1,R1
+   \   00C6  4712              BEQ     ?0009
+   \   00C8            ?0008:
+     62                                  data = &eep_status ;                                            /* status */
+   \   00C8  79060000          MOV.W   #eep_status,R6
+     63                                  ReadEepromData(data, 1) ;                               /* Read 1 bytes */
+   \   00CC  F901              MOV.B   #1,R1L
+   \   00CE  6DF1              MOV.W   R1,@-SP
+   \   00D0  0D61              MOV.W   R6,R1
+   \   00D2  5E00026A          JSR     @ReadEepromData:16
+   \   00D6  0B87              ADDS.W  #2,SP
+     64                                  ret_val = TRUE ;
+   \   00D8  FD01              MOV.B   #1,R5L
+   \   00DA            ?0009:
+     65                          }
+     66                          break ;
+   \   00DA  5A0001F6          JMP     @?0000:16
+   \   00DE            ?0010:
+   \   00DE  AC55              CMP.B   #85,R4L
+   \   00E0  462C              BNE     ?0013
+     67                  case COPY_SP_NV :                                                                       /* Copy scrpad to eeprom */
+     68                          if (SendEepromCommand(command, 0xa5, 1)) {
+   \   00E2  79010001          MOV.W   #1,R1
+   \   00E6  6DF1              MOV.W   R1,@-SP
+   \   00E8  790100A5          MOV.W   #165,R1
+   \   00EC  6DF1              MOV.W   R1,@-SP
+   \   00EE  0CC9              MOV.B   R4L,R1L
+   \   00F0  5E000220          JSR     @SendEepromCommand:16
+   \   00F4  0B87              ADDS.W  #2,SP
+   \   00F6  0B87              ADDS.W  #2,SP
+   \   00F8  0D11              MOV.W   R1,R1
+   \   00FA  470E              BEQ     ?0012
+   \   00FC            ?0011:
+     69                                  set_interrupt_mask(0);                                  /* Enable interrupt due to*/
+   \   00FC  067F              ANDC    #127,CCR
+     70                                  OneMsecDelay(100) ;                                     /* the 100 ms delay */
+   \   00FE  79010064          MOV.W   #100,R1
+   \   0102  1900              SUB.W   R0,R0
+   \   0104  5E000000          JSR     @OneMsecDelay:16
+     71                                  ret_val = TRUE ;
+   \   0108  FD01              MOV.B   #1,R5L
+   \   010A            ?0012:
+     72                          }
+     73                          break ;
+   \   010A  5A0001F6          JMP     @?0000:16
+   \   010E            ?0013:
+   \   010E  ACF0              CMP.B   #240,R4L
+   \   0110  461E              BNE     ?0016
+     74                  case COPY_NV_SP :                                                                       /* Copy eeprom to scrpad */
+     75                          if (SendEepromCommand(command, 0, 1)) {
+   \   0112  79010001          MOV.W   #1,R1
+   \   0116  6DF1              MOV.W   R1,@-SP
+   \   0118  1911              SUB.W   R1,R1
+   \   011A  6DF1              MOV.W   R1,@-SP
+   \   011C  0CC9              MOV.B   R4L,R1L
+   \   011E  5E000220          JSR     @SendEepromCommand:16
+   \   0122  0B87              ADDS.W  #2,SP
+   \   0124  0B87              ADDS.W  #2,SP
+   \   0126  0D11              MOV.W   R1,R1
+   \   0128  4702              BEQ     ?0015
+   \   012A            ?0014:
+     76                                  ret_val = TRUE ;
+   \   012A  FD01              MOV.B   #1,R5L
+   \   012C            ?0015:
+     77                          }
+     78                          break ;
+   \   012C  5A0001F6          JMP     @?0000:16
+   \   0130            ?0016:
+   \   0130  ACC3              CMP.B   #195,R4L
+   \   0132  4634              BNE     ?0019
+     79                  case READ_APPREG :                                                      /* Read APP-REG */
+     80                          if (SendEepromCommand(command, 0, 1)) {         /* Start at addrss 0 */
+   \   0134  79010001          MOV.W   #1,R1
+   \   0138  6DF1              MOV.W   R1,@-SP
+   \   013A  1911              SUB.W   R1,R1
+   \   013C  6DF1              MOV.W   R1,@-SP
+   \   013E  0CC9              MOV.B   R4L,R1L
+   \   0140  5E000220          JSR     @SendEepromCommand:16
+   \   0144  0B87              ADDS.W  #2,SP
+   \   0146  0B87              ADDS.W  #2,SP
+   \   0148  0D11              MOV.W   R1,R1
+   \   014A  4718              BEQ     ?0018
+   \   014C            ?0017:
+     81                                  data = &packed_data[channel][0] ;       /* ID-REG block */
+   \   014C  F928              MOV.B   #40,R1L
+   \   014E  5051              MULXU   R5H,R1
+   \   0150  8900              ADD.B   #LOW(packed_data),R1L
+   \   0152  9100              ADDX.B  #HIGH(packed_data),R1H
+   \   0154  0D16              MOV.W   R1,R6
+     82                                  ReadEepromData(data, 8) ;                               /* Read 8 bytes */
+   \   0156  F908              MOV.B   #8,R1L
+   \   0158  6DF1              MOV.W   R1,@-SP
+   \   015A  0D61              MOV.W   R6,R1
+   \   015C  5E00026A          JSR     @ReadEepromData:16
+   \   0160  0B87              ADDS.W  #2,SP
+     83                                  ret_val = TRUE ;
+   \   0162  FD01              MOV.B   #1,R5L
+   \   0164            ?0018:
+     84                          }
+     85                          break ;
+   \   0164  5A0001F6          JMP     @?0000:16
+   \   0168            ?0019:
+   \   0168  AC99              CMP.B   #153,R4L
+   \   016A  4632              BNE     ?0022
+     86                  case WRITE_APPREG :                      /* Write ID-REG */
+     87                          if (SendEepromCommand(command, 0, 1)) {  /* Start at addrss 0 */
+   \   016C  79010001          MOV.W   #1,R1
+   \   0170  6DF1              MOV.W   R1,@-SP
+   \   0172  1911              SUB.W   R1,R1
+   \   0174  6DF1              MOV.W   R1,@-SP
+   \   0176  0CC9              MOV.B   R4L,R1L
+   \   0178  5E000220          JSR     @SendEepromCommand:16
+   \   017C  0B87              ADDS.W  #2,SP
+   \   017E  0B87              ADDS.W  #2,SP
+   \   0180  0D11              MOV.W   R1,R1
+   \   0182  4718              BEQ     ?0021
+   \   0184            ?0020:
+     88                                  data = &packed_data[channel][0] ;        /* ID-REG block */
+   \   0184  F928              MOV.B   #40,R1L
+   \   0186  5051              MULXU   R5H,R1
+   \   0188  8900              ADD.B   #LOW(packed_data),R1L
+   \   018A  9100              ADDX.B  #HIGH(packed_data),R1H
+   \   018C  0D16              MOV.W   R1,R6
+     89                                  WriteEepromData(data, 8)        ;                        /* Write 8 bytes */
+   \   018E  F908              MOV.B   #8,R1L
+   \   0190  6DF1              MOV.W   R1,@-SP
+   \   0192  0D61              MOV.W   R6,R1
+   \   0194  5E000294          JSR     @WriteEepromData:16
+   \   0198  0B87              ADDS.W  #2,SP
+     90                                  ret_val = TRUE ;
+   \   019A  FD01              MOV.B   #1,R5L
+   \   019C            ?0021:
+     91                          }
+     92                          break ;
+   \   019C  4058              BRA     ?0000
+   \   019E            ?0022:
+   \   019E  AC5A              CMP.B   #90,R4L
+   \   01A0  461E              BNE     ?0025
+     93                  case LOCK_APP :                          /* Lock data in ID-Reg */
+     94                          if (SendEepromCommand(command, 0xa5, 1)) { /* Command importent */
+   \   01A2  79010001          MOV.W   #1,R1
+   \   01A6  6DF1              MOV.W   R1,@-SP
+   \   01A8  790100A5          MOV.W   #165,R1
+   \   01AC  6DF1              MOV.W   R1,@-SP
+   \   01AE  0CC9              MOV.B   R4L,R1L
+   \   01B0  5E000220          JSR     @SendEepromCommand:16
+   \   01B4  0B87              ADDS.W  #2,SP
+   \   01B6  0B87              ADDS.W  #2,SP
+   \   01B8  0D11              MOV.W   R1,R1
+   \   01BA  4702              BEQ     ?0024
+   \   01BC            ?0023:
+     95                                  ret_val = TRUE ;
+   \   01BC  FD01              MOV.B   #1,R5L
+   \   01BE            ?0024:
+     96                          }
+     97                          break ;
+   \   01BE  4036              BRA     ?0000
+   \   01C0            ?0025:
+   \   01C0  AC33              CMP.B   #51,R4L
+   \   01C2  4632              BNE     ?0028
+     98                  case READ_ROM :                  /* Read id from eeprom */
+     99                          if (SendEepromCommand(command, 0, -1)) {         /* No skip rom command!! */
+   \   01C4  7901FFFF          MOV.W   #-1,R1
+   \   01C8  6DF1              MOV.W   R1,@-SP
+   \   01CA  1911              SUB.W   R1,R1
+   \   01CC  6DF1              MOV.W   R1,@-SP
+   \   01CE  0CC9              MOV.B   R4L,R1L
+   \   01D0  554E              BSR     SendEepromCommand
+   \   01D2  0B87              ADDS.W  #2,SP
+   \   01D4  0B87              ADDS.W  #2,SP
+   \   01D6  0D11              MOV.W   R1,R1
+   \   01D8  471A              BEQ     ?0027
+   \   01DA            ?0026:
+    100                                  data = &tx_buff[tx_indx] ;                                      /* Tx buffer */
+   \   01DA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   01DE  F100              MOV.B   #0,R1H
+   \   01E0  8900              ADD.B   #LOW(tx_buff),R1L
+   \   01E2  9100              ADDX.B  #HIGH(tx_buff),R1H
+   \   01E4  0D16              MOV.W   R1,R6
+    101                                  ReadEepromData(data, 8) ;                        /* Read 8 bytes */
+   \   01E6  F908              MOV.B   #8,R1L
+   \   01E8  6DF1              MOV.W   R1,@-SP
+   \   01EA  0D61              MOV.W   R6,R1
+   \   01EC  5E00026A          JSR     @ReadEepromData:16
+   \   01F0  0B87              ADDS.W  #2,SP
+    102                                  ret_val = TRUE ;
+   \   01F2  FD01              MOV.B   #1,R5L
+   \   01F4            ?0027:
+    103                          }
+    104                          break ;
+   \   01F4  4000              BRA     ?0000
+   \   01F6            ?0028:
+    105                  default :
+    106                          break ;
+   \   01F6            ?0000:
+    107                  }
+    108                  set_interrupt_mask(0);                                                  /* Enable interrupt */
+   \   01F6  067F              ANDC    #127,CCR
+    109                  SetSupplyCurrent(1);                                                            /* set 1mA supply */
+   \   01F8  F901              MOV.B   #1,R1L
+   \   01FA  5E000000          JSR     @SetSupplyCurrent:16
+    110                  SetEepromChannel(EEPCHOFF) ;                                    /* 9 = off */
+   \   01FE  F909              MOV.B   #9,R1L
+   \   0200  5E000000          JSR     @SetEepromChannel:16
+    111                  SetSupplyChannel(SUPPCHOFF) ;                                   /* 16 = off */
+   \   0204  F910              MOV.B   #16,R1L
+   \   0206  5E000000          JSR     @SetSupplyChannel:16
+    112                  SetCalResistance(OFF) ;                                                 /* Switch off cal. res. */
+   \   020A  F900              MOV.B   #0,R1L
+   \   020C  5E000000          JSR     @SetCalResistance:16
+    113                  KickDog() ;                                                                                     /* kick dog due to long read time*/
+   \   0210  5E000000          JSR     @KickDog:16
+    114          
+    115                  return ret_val ;
+   \   0214  0CD9              MOV.B   R5L,R1L
+   \   0216  F100              MOV.B   #0,R1H
+    116          }
+   \   0218  6D76              POP     R6
+   \   021A  6D75              POP     R5
+   \   021C  6D74              POP     R4
+   \   021E  5470              RTS
+    117          
+    118          /*************************************************************************
+    119          *
+    120          *  Send a command to eeprom DS2430
+    121          *
+    122          *************************************************************************/
+    123          short SendEepromCommand(unsigned char command, short cmd_byte, short number)
+    124          {
+   \   0220            SendEepromCommand:
+   \   0220  6DF4              PUSH    R4
+   \   0222  6DF5              PUSH    R5
+   \   0224  6DF6              PUSH    R6
+   \   0226  6F76000A          MOV.W   @(10,SP),R6
+   \   022A  6F750008          MOV.W   @(8,SP),R5
+   \   022E  0C9C              MOV.B   R1L,R4L
+    125          
+    126          
+    127                  if (ResetEeprom()) {                            /* Reset the chip */
+   \   0230  5E0003CE          JSR     @ResetEeprom:16
+   \   0234  0D11              MOV.W   R1,R1
+   \   0236  4728              BEQ     ?0030
+   \   0238            ?0029:
+    128                          if (number != -1){
+   \   0238  7901FFFF          MOV.W   #-1,R1
+   \   023C  1D16              CMP.W   R1,R6
+   \   023E  4706              BEQ     ?0032
+   \   0240            ?0031:
+    129                                  WriteEepromByte(SKIP_ROM) ;           /* skip rom */
+   \   0240  F9CC              MOV.B   #204,R1L
+   \   0242  5E00035E          JSR     @WriteEepromByte:16
+   \   0246            ?0032:
+    130                          }
+    131                          WriteEepromByte(command) ;                                      /* Write command */
+   \   0246  0CC9              MOV.B   R4L,R1L
+   \   0248  5E00035E          JSR     @WriteEepromByte:16
+    132                          if (number == 1) {                                                      /* one cmd */
+   \   024C  79010001          MOV.W   #1,R1
+   \   0250  1D16              CMP.W   R1,R6
+   \   0252  4606              BNE     ?0034
+   \   0254            ?0033:
+    133                                  WriteEepromByte(cmd_byte) ;                     /* Write 2. command */
+   \   0254  0CD9              MOV.B   R5L,R1L
+   \   0256  5E00035E          JSR     @WriteEepromByte:16
+   \   025A            ?0034:
+    134                          }
+    135                          return TRUE ;
+   \   025A  79010001          MOV.W   #1,R1
+    136                  } else {
+   \   025E  4002              BRA     ?0035
+   \   0260            ?0030:
+    137                    return FALSE ;
+   \   0260  1911              SUB.W   R1,R1
+    138                  }
+   \   0262            ?0035:
+   \   0262  6D76              POP     R6
+   \   0264  6D75              POP     R5
+   \   0266  6D74              POP     R4
+   \   0268  5470              RTS
+    139          }
+    140          
+    141          
+    142          /*************************************************************************
+    143          *
+    144          *  Read data from eeprom DS2430
+    145          *
+    146          *************************************************************************/
+    147          void ReadEepromData(unsigned char *data, char NofBytes)
+    148          {
+   \   026A            ReadEepromData:
+   \   026A  6DF4              PUSH    R4
+   \   026C  6DF5              PUSH    R5
+   \   026E  6DF6              PUSH    R6
+   \   0270  0D15              MOV.W   R1,R5
+   \   0272  6E7C0009          MOV.B   @(9,SP),R4L
+    149                  short           i;
+    150          
+    151                  for (i = 0; i < NofBytes; i++) {
+   \   0276  1966              SUB.W   R6,R6
+   \   0278            ?0037:
+   \   0278  0CC9              MOV.B   R4L,R1L
+   \   027A  F100              MOV.B   #0,R1H
+   \   027C  1D61              CMP.W   R6,R1
+   \   027E  4F0C              BLE     ?0036
+   \   0280            ?0038:
+    152                          *data++ = ReadEepromByte() ;
+   \   0280  553E              BSR     ReadEepromByte
+   \   0282  0D53              MOV.W   R5,R3
+   \   0284  0B05              ADDS.W  #1,R5
+   \   0286  68B9              MOV.B   R1L,@R3
+   \   0288  0B06              ADDS.W  #1,R6
+    153                  }
+    154          }
+   \   028A  40EC              BRA     ?0037
+   \   028C            ?0036:
+   \   028C  6D76              POP     R6
+   \   028E  6D75              POP     R5
+   \   0290  6D74              POP     R4
+   \   0292  5470              RTS
+    155          
+    156          /*************************************************************************
+    157          *
+    158          *  Write data to eeprom DS2430
+    159          *
+    160          *************************************************************************/
+    161          void WriteEepromData(unsigned char* data, char NofBytes)
+    162          {
+   \   0294            WriteEepromData:
+   \   0294  6DF4              PUSH    R4
+   \   0296  6DF5              PUSH    R5
+   \   0298  6DF6              PUSH    R6
+   \   029A  0D15              MOV.W   R1,R5
+   \   029C  6E7C0009          MOV.B   @(9,SP),R4L
+    163                  short           i;
+    164          
+    165          
+    166                  for (i = 0; i < NofBytes; i++) {
+   \   02A0  1966              SUB.W   R6,R6
+   \   02A2            ?0041:
+   \   02A2  0CC9              MOV.B   R4L,R1L
+   \   02A4  F100              MOV.B   #0,R1H
+   \   02A6  1D61              CMP.W   R6,R1
+   \   02A8  4F0E              BLE     ?0040
+   \   02AA            ?0042:
+    167                          WriteEepromByte(*data++) ;
+   \   02AA  0D51              MOV.W   R5,R1
+   \   02AC  0B05              ADDS.W  #1,R5
+   \   02AE  6819              MOV.B   @R1,R1L
+   \   02B0  5E00035E          JSR     @WriteEepromByte:16
+   \   02B4  0B06              ADDS.W  #1,R6
+    168                  }
+    169          
+    170          }
+   \   02B6  40EA              BRA     ?0041
+   \   02B8            ?0040:
+   \   02B8  6D76              POP     R6
+   \   02BA  6D75              POP     R5
+   \   02BC  6D74              POP     R4
+   \   02BE  5470              RTS
+    171          
+    172          /*************************************************************************
+    173          *
+    174          *  Read one byte from eeprom DS2430
+    175          *
+    176          *************************************************************************/
+    177          unsigned char ReadEepromByte(void)
+    178          {
+   \   02C0            ReadEepromByte:
+   \   02C0  6DF4              PUSH    R4
+   \   02C2  6DF5              PUSH    R5
+   \   02C4  6DF6              PUSH    R6
+    179          
+    180                  unsigned char read_byte ;
+    181                  short i, j ;
+    182          
+    183          
+    184                  read_byte = 0 ;
+   \   02C6  FD00              MOV.B   #0,R5L
+    185                  P4DR &= (~EEPIN  & 0xf0);                                                       /*      set data line low */
+   \   02C8  29B7              MOV.B   @183:8,R1L
+   \   02CA  E9D0              AND.B   #208,R1L
+   \   02CC  39B7              MOV.B   R1L,@183:8
+    186                  if ((MDCR & 0x03) == 3){                                                                /* mode 3, single chip  */
+   \   02CE  29C5              MOV.B   @197:8,R1L
+   \   02D0  E903              AND.B   #3,R1L
+   \   02D2  A903              CMP.B   #3,R1L
+   \   02D4  4648              BNE     ?0045
+   \   02D6            ?0044:
+    187                          for (i = 0; i < 8; i++) {
+   \   02D6  1944              SUB.W   R4,R4
+   \   02D8            ?0047:
+   \   02D8  79010008          MOV.W   #8,R1
+   \   02DC  1D14              CMP.W   R1,R4
+   \   02DE  4C3C              BGE     ?0046
+   \   02E0            ?0048:
+    188                                  read_byte >>= 1 ;                                                               /* shift bits  */
+   \   02E0  110D              SHLR.B  R5L
+    189          /*                      P6DR &= ~LED1;     */              /*AStmark set led on */
+    190                                  P4DDR = EPORTO ;                                                                /* Port 4, 5 out (low)*/
+   \   02E2  F9F0              MOV.B   #240,R1L
+   \   02E4  39B5              MOV.B   R1L,@181:8
+    191                                  P4DDR = EPORTI ;                                                                /* Port 4, 5 in  (tri-state)*/
+   \   02E6  F9D0              MOV.B   #208,R1L
+   \   02E8  39B5              MOV.B   R1L,@181:8
+    192                                  P4DDR = EPORTI ;                                                                /* Repeat           */
+   \   02EA  F9D0              MOV.B   #208,R1L
+   \   02EC  39B5              MOV.B   R1L,@181:8
+    193                                  P4DDR = EPORTI ;                                                                /* this instruction */
+   \   02EE  F9D0              MOV.B   #208,R1L
+   \   02F0  39B5              MOV.B   R1L,@181:8
+    194                                  P4DDR = EPORTI ;                                                                /* 6 times to delay */
+   \   02F2  F9D0              MOV.B   #208,R1L
+   \   02F4  39B5              MOV.B   R1L,@181:8
+    195                                  P4DDR = EPORTI ;                                                                /* data reading     */
+   \   02F6  F9D0              MOV.B   #208,R1L
+   \   02F8  39B5              MOV.B   R1L,@181:8
+    196                                  P4DDR = EPORTI ;                                                                /* about 14.6 us    */
+   \   02FA  F9D0              MOV.B   #208,R1L
+   \   02FC  39B5              MOV.B   R1L,@181:8
+    197          
+    198          /*                      P6DR |= LED1;      */              /*AStmark set led off */
+    199                                  if (P4DR & EEPIN) {
+   \   02FE  29B7              MOV.B   @183:8,R1L
+   \   0300  E920              AND.B   #32,R1L
+   \   0302  4704              BEQ     ?0051
+   \   0304            ?0050:
+    200                                          read_byte |= 0x80 ;                                             /* set lsb */
+   \   0304  707D              BSET    #7,R5L
+    201                                  } else {
+   \   0306  4002              BRA     ?0052
+   \   0308            ?0051:
+    202                                          read_byte &= ~0x80 ;                                            /* reset lsb */
+   \   0308  727D              BCLR    #7,R5L
+   \   030A            ?0052:
+    203                                  }
+    204                                  for (j = 0; j < 15; j++ ){                              /*Wait app. 50 us*/
+   \   030A  1966              SUB.W   R6,R6
+   \   030C            ?0054:
+   \   030C  7901000F          MOV.W   #15,R1
+   \   0310  1D16              CMP.W   R1,R6
+   \   0312  4C04              BGE     ?0053
+   \   0314            ?0055:
+   \   0314  0B06              ADDS.W  #1,R6
+    205                                  }
+    206                          }
+   \   0316  40F4              BRA     ?0054
+   \   0318            ?0053:
+   \   0318  0B04              ADDS.W  #1,R4
+    207                  } else {                                        /* mode 1, prom */
+   \   031A  40BC              BRA     ?0047
+   \   031C            ?0046:
+   \   031C  4036              BRA     ?0057
+   \   031E            ?0045:
+    208                          for (i = 0; i < 8; i++) {
+   \   031E  1944              SUB.W   R4,R4
+   \   0320            ?0059:
+   \   0320  79010008          MOV.W   #8,R1
+   \   0324  1D14              CMP.W   R1,R4
+   \   0326  4C2C              BGE     ?0058
+   \   0328            ?0060:
+    209                                  read_byte >>= 1 ;                                                               /* shift bits  */
+   \   0328  110D              SHLR.B  R5L
+    210          /*                      P6DR &= ~LED1;           */      /*AStmark set led on */
+    211                                  P4DDR = EPORTO ;                                                                /* Port 4, 5 out (low)*/
+   \   032A  F9F0              MOV.B   #240,R1L
+   \   032C  39B5              MOV.B   R1L,@181:8
+    212                                  P4DDR = EPORTI ;                                                                /* Port 4, 5 in  (tri-state)*/
+   \   032E  F9D0              MOV.B   #208,R1L
+   \   0330  39B5              MOV.B   R1L,@181:8
+    213                                  P4DDR = EPORTI ;                                                        /* delay data    */
+   \   0332  F9D0              MOV.B   #208,R1L
+   \   0334  39B5              MOV.B   R1L,@181:8
+    214          
+    215          /*                      P6DR |= LED1;             */     /*AStmark set led off */
+    216                                  if (P4DR & EEPIN) {
+   \   0336  29B7              MOV.B   @183:8,R1L
+   \   0338  E920              AND.B   #32,R1L
+   \   033A  4704              BEQ     ?0063
+   \   033C            ?0062:
+    217                                          read_byte |= 0x80 ;                                             /* set lsb */
+   \   033C  707D              BSET    #7,R5L
+    218                                  } else {
+   \   033E  4002              BRA     ?0064
+   \   0340            ?0063:
+    219                                          read_byte &= ~0x80 ;                                            /* reset lsb */
+   \   0340  727D              BCLR    #7,R5L
+   \   0342            ?0064:
+    220                                  }
+    221                                  for (j = 0; j < 5; j++ ){                               /*Wait 50 us*/
+   \   0342  1966              SUB.W   R6,R6
+   \   0344            ?0066:
+   \   0344  79010005          MOV.W   #5,R1
+   \   0348  1D16              CMP.W   R1,R6
+   \   034A  4C04              BGE     ?0065
+   \   034C            ?0067:
+   \   034C  0B06              ADDS.W  #1,R6
+    222                                  }
+    223                  }
+   \   034E  40F4              BRA     ?0066
+   \   0350            ?0065:
+   \   0350  0B04              ADDS.W  #1,R4
+    224                  }
+   \   0352  40CC              BRA     ?0059
+   \   0354            ?0058:
+   \   0354            ?0057:
+    225                  return read_byte ;
+   \   0354  0CD9              MOV.B   R5L,R1L
+    226          }
+   \   0356  6D76              POP     R6
+   \   0358  6D75              POP     R5
+   \   035A  6D74              POP     R4
+   \   035C  5470              RTS
+    227          
+    228          
+    229          /*************************************************************************
+    230          *
+    231          *  Write one byte to eeprom DS2430
+    232          *
+    233          *************************************************************************/
+    234          void WriteEepromByte(unsigned char data)
+    235          {
+   \   035E            WriteEepromByte:
+   \   035E  6DF4              PUSH    R4
+   \   0360  6DF5              PUSH    R5
+   \   0362  6DF6              PUSH    R6
+   \   0364  6DF1              PUSH    R1
+    236          
+    237                  short i, j, delay ;
+    238          
+    239          
+    240                  if ((MDCR & 0x03) == 3){                                                        /* mode 3 */
+   \   0366  29C5              MOV.B   @197:8,R1L
+   \   0368  E903              AND.B   #3,R1L
+   \   036A  A903              CMP.B   #3,R1L
+   \   036C  4606              BNE     ?0070
+   \   036E            ?0069:
+    241                          delay = 12 ;
+   \   036E  7905000C          MOV.W   #12,R5
+    242                  } else {
+   \   0372  4004              BRA     ?0071
+   \   0374            ?0070:
+    243                          delay = 4 ;
+   \   0374  79050004          MOV.W   #4,R5
+   \   0378            ?0071:
+    244                  }
+    245          
+    246                  P4DR &= (~EEPIN & 0xf0);                                                                        /*      set data line low */
+   \   0378  29B7              MOV.B   @183:8,R1L
+   \   037A  E9D0              AND.B   #208,R1L
+   \   037C  39B7              MOV.B   R1L,@183:8
+    247                  for (i = 0; i < 8; i++) {
+   \   037E  1944              SUB.W   R4,R4
+   \   0380            ?0073:
+   \   0380  79010008          MOV.W   #8,R1
+   \   0384  1D14              CMP.W   R1,R4
+   \   0386  4C3C              BGE     ?0072
+   \   0388            ?0074:
+    248                          if (data & 0x01) {                                                      /* lsb = "1" ? */
+   \   0388  6E790001          MOV.B   @(1,SP),R1L
+   \   038C  E901              AND.B   #1,R1L
+   \   038E  470A              BEQ     ?0077
+   \   0390            ?0076:
+    249                                  P4DDR = EPORTO ;                                                                /* Port 4, 5 out, Due to timing */
+   \   0390  F9F0              MOV.B   #240,R1L
+   \   0392  39B5              MOV.B   R1L,@181:8
+    250                                  P4DDR = EPORTI ;                                                        /* Port 4, 5 in */
+   \   0394  F9D0              MOV.B   #208,R1L
+   \   0396  39B5              MOV.B   R1L,@181:8
+    251                          } else {
+   \   0398  4004              BRA     ?0078
+   \   039A            ?0077:
+    252                                  P4DDR = EPORTO ;                                                        /* Port 4, 5 out,Due to timing */
+   \   039A  F9F0              MOV.B   #240,R1L
+   \   039C  39B5              MOV.B   R1L,@181:8
+   \   039E            ?0078:
+    253                          }
+    254                          for (j = 0; j < delay; j++ ){       /*Wait 60 us*/
+   \   039E  1966              SUB.W   R6,R6
+   \   03A0            ?0080:
+   \   03A0  1D56              CMP.W   R5,R6
+   \   03A2  4C04              BGE     ?0079
+   \   03A4            ?0081:
+   \   03A4  0B06              ADDS.W  #1,R6
+    255                          }
+    256                          P4DDR = EPORTI ;                                                                /* Port 4, 5 in */
+   \   03A6  40F8              BRA     ?0080
+   \   03A8            ?0079:
+   \   03A8  F9D0              MOV.B   #208,R1L
+   \   03AA  39B5              MOV.B   R1L,@181:8
+    257                          data >>= 1 ;                                                                            /* shift in next bit */
+   \   03AC  6E790001          MOV.B   @(1,SP),R1L
+   \   03B0  1109              SHLR.B  R1L
+   \   03B2  6EF90001          MOV.B   R1L,@(1,SP)
+    258                          for (j = 0; j < delay; j++ ){       /*Wait 60 us*/
+   \   03B6  1966              SUB.W   R6,R6
+   \   03B8            ?0084:
+   \   03B8  1D56              CMP.W   R5,R6
+   \   03BA  4C04              BGE     ?0083
+   \   03BC            ?0085:
+   \   03BC  0B06              ADDS.W  #1,R6
+    259                          }
+    260                  }
+   \   03BE  40F8              BRA     ?0084
+   \   03C0            ?0083:
+   \   03C0  0B04              ADDS.W  #1,R4
+    261          }
+   \   03C2  40BC              BRA     ?0073
+   \   03C4            ?0072:
+   \   03C4  0B87              ADDS.W  #2,SP
+   \   03C6  6D76              POP     R6
+   \   03C8  6D75              POP     R5
+   \   03CA  6D74              POP     R4
+   \   03CC  5470              RTS
+    262          
+    263          /*************************************************************************
+    264          *
+    265          *  Reset the eeprom DS2430
+    266          *
+    267          *************************************************************************/
+    268          short ResetEeprom(void)
+    269          {
+   \   03CE            ResetEeprom:
+   \   03CE  6DF4              PUSH    R4
+   \   03D0  6DF5              PUSH    R5
+   \   03D2  6DF6              PUSH    R6
+    270          
+    271                  short i, delay ;
+    272                  unsigned char ret_val;
+    273          
+    274                  Led(2, ON) ;                                                            /* Led 2 on */
+   \   03D4  79010001          MOV.W   #1,R1
+   \   03D8  6DF1              MOV.W   R1,@-SP
+   \   03DA  79010002          MOV.W   #2,R1
+   \   03DE  5E000000          JSR     @Led:16
+   \   03E2  0B87              ADDS.W  #2,SP
+    275          
+    276                  if ((MDCR & 0x03) == 3){                                                        /* mode 3 */
+   \   03E4  29C5              MOV.B   @197:8,R1L
+   \   03E6  E903              AND.B   #3,R1L
+   \   03E8  A903              CMP.B   #3,R1L
+   \   03EA  4606              BNE     ?0088
+   \   03EC            ?0087:
+    277                          delay = 100 ;
+   \   03EC  79050064          MOV.W   #100,R5
+    278                  } else {
+   \   03F0  4004              BRA     ?0089
+   \   03F2            ?0088:
+    279                          delay = 33 ;
+   \   03F2  79050021          MOV.W   #33,R5
+   \   03F6            ?0089:
+    280                  }
+    281          
+    282                  ret_val = FALSE ;
+   \   03F6  FC00              MOV.B   #0,R4L
+    283                  P4DR &= (~EEPIN & 0xf0) ;                                                       /*      set data line low */
+   \   03F8  29B7              MOV.B   @183:8,R1L
+   \   03FA  E9D0              AND.B   #208,R1L
+   \   03FC  39B7              MOV.B   R1L,@183:8
+    284                  P4DDR = EPORTO ;                                                /* Port 4, 5 out */
+   \   03FE  F9F0              MOV.B   #240,R1L
+   \   0400  39B5              MOV.B   R1L,@181:8
+    285                  for (i = 0; i < delay; i++ ){       /*Wait 600 us */
+   \   0402  1966              SUB.W   R6,R6
+   \   0404            ?0091:
+   \   0404  1D56              CMP.W   R5,R6
+   \   0406  4C04              BGE     ?0090
+   \   0408            ?0092:
+   \   0408  0B06              ADDS.W  #1,R6
+    286                  }
+    287                  P4DDR = EPORTI ;                                                        /* Port 4, 5 in */
+   \   040A  40F8              BRA     ?0091
+   \   040C            ?0090:
+   \   040C  F9D0              MOV.B   #208,R1L
+   \   040E  39B5              MOV.B   R1L,@181:8
+    288                  for (i = 0; i < 20; i++ ){
+   \   0410  1966              SUB.W   R6,R6
+   \   0412            ?0095:
+   \   0412  79010014          MOV.W   #20,R1
+   \   0416  1D16              CMP.W   R1,R6
+   \   0418  4C1C              BGE     ?0094
+   \   041A            ?0096:
+    289                          if (~P4DR & EEPIN){
+   \   041A  29B7              MOV.B   @183:8,R1L
+   \   041C  1709              NOT.B   R1L
+   \   041E  E920              AND.B   #32,R1L
+   \   0420  4710              BEQ     ?0099
+   \   0422            ?0098:
+    290                                   ret_val = TRUE ;                                       /* set true if confirmed reset */
+   \   0422  FC01              MOV.B   #1,R4L
+    291                          Led(2, OFF) ;                                              /* Led 2 off */
+   \   0424  1911              SUB.W   R1,R1
+   \   0426  6DF1              MOV.W   R1,@-SP
+   \   0428  79010002          MOV.W   #2,R1
+   \   042C  5E000000          JSR     @Led:16
+   \   0430  0B87              ADDS.W  #2,SP
+   \   0432            ?0099:
+   \   0432  0B06              ADDS.W  #1,R6
+    292                          }
+    293                  }
+    294                  for (i = 0; i < delay; i++ ){       /*Wait 600 us */
+   \   0434  40DC              BRA     ?0095
+   \   0436            ?0094:
+   \   0436  1966              SUB.W   R6,R6
+   \   0438            ?0101:
+   \   0438  1D56              CMP.W   R5,R6
+   \   043A  4C04              BGE     ?0100
+   \   043C            ?0102:
+   \   043C  0B06              ADDS.W  #1,R6
+    295                  }
+    296                  return ret_val ;
+   \   043E  40F8              BRA     ?0101
+   \   0440            ?0100:
+   \   0440  0CC9              MOV.B   R4L,R1L
+   \   0442  F100              MOV.B   #0,R1H
+    297          }
+   \   0444  6D76              POP     R6
+   \   0446  6D75              POP     R5
+   \   0448  6D74              POP     R4
+   \   044A  5470              RTS
+    298          
+    299          
+    300          
+    301          /*************************************************************************
+    302          *
+    303          *  Chech the eeprom data for all channels
+    304          *
+    305          *************************************************************************/
+    306          short CheckEepChannel(void)
+    307          {
+   \   044C            CheckEepChannel:
+   \   044C  6DF5              PUSH    R5
+   \   044E  6DF6              PUSH    R6
+    308          
+    309                  short ch, i  ;
+    310          
+    311                                                                          /* read the on board eeprom */
+    312                  if (!(eep_type[7] & 0x10 ) && !(eep_type[7] & 0x09)){   /* ok sens || ok pc*/
+   \   0450  6A090007          MOV.B   @eep_type+7:16,R1L
+   \   0454  E910              AND.B   #16,R1L
+   \   0456  4704              BEQ     $+6
+   \   0458  5A0004E6          JMP     @?0105:16
+   \   045C  6A090007          MOV.B   @eep_type+7:16,R1L
+   \   0460  E909              AND.B   #9,R1L
+   \   0462  4704              BEQ     $+6
+   \   0464  5A0004E6          JMP     @?0105:16
+   \   0468            ?0107:
+   \   0468            ?0106:
+   \   0468            ?0104:
+    313                          eep_type[7] |= 0x20 ;                           /* Error before OK proved */
+   \   0468  79010007          MOV.W   #eep_type+7,R1
+   \   046C  7D107050          BSET    #5,@R1
+    314                          eep_type[7] &= ~0x10 ;
+   \   0470  79010007          MOV.W   #eep_type+7,R1
+   \   0474  7D107240          BCLR    #4,@R1
+    315                          if (Eeprom(7, COPY_NV_SP)) {
+   \   0478  F9F0              MOV.B   #240,R1L
+   \   047A  6DF1              MOV.W   R1,@-SP
+   \   047C  F907              MOV.B   #7,R1L
+   \   047E  5E000000          JSR     @Eeprom:16
+   \   0482  0B87              ADDS.W  #2,SP
+   \   0484  0D11              MOV.W   R1,R1
+   \   0486  475E              BEQ     ?0109
+   \   0488            ?0108:
+    316                                  if (Eeprom(7, READ_SP)) {
+   \   0488  F9AA              MOV.B   #170,R1L
+   \   048A  6DF1              MOV.W   R1,@-SP
+   \   048C  F907              MOV.B   #7,R1L
+   \   048E  5E000000          JSR     @Eeprom:16
+   \   0492  0B87              ADDS.W  #2,SP
+   \   0494  0D11              MOV.W   R1,R1
+   \   0496  474E              BEQ     ?0111
+   \   0498            ?0110:
+    317                                          if (Eeprom(7, READ_APPREG)) {
+   \   0498  F9C3              MOV.B   #195,R1L
+   \   049A  6DF1              MOV.W   R1,@-SP
+   \   049C  F907              MOV.B   #7,R1L
+   \   049E  5E000000          JSR     @Eeprom:16
+   \   04A2  0B87              ADDS.W  #2,SP
+   \   04A4  0D11              MOV.W   R1,R1
+   \   04A6  473E              BEQ     ?0113
+   \   04A8            ?0112:
+    318                                                  if (CheckADData(&packed_data[7][0]) &&
+    319                                                  CheckEepData(&packed_data[7][8])){                      /*check checksum */
+   \   04A8  79010118          MOV.W   #packed_data+280,R1
+   \   04AC  5E0005C8          JSR     @CheckADData:16
+   \   04B0  0C99              MOV.B   R1L,R1L
+   \   04B2  4732              BEQ     ?0115
+   \   04B4  79010120          MOV.W   #packed_data+288,R1
+   \   04B8  5E000610          JSR     @CheckEepData:16
+   \   04BC  0C99              MOV.B   R1L,R1L
+   \   04BE  4726              BEQ     ?0115
+   \   04C0            ?0117:
+   \   04C0            ?0116:
+   \   04C0            ?0114:
+    320                                                          eep_type[7] &= ~0x20 ;
+   \   04C0  79010007          MOV.W   #eep_type+7,R1
+   \   04C4  7D107250          BCLR    #5,@R1
+    321                                                          eep_type[7] |= 0x10 ;                   /* OK from eeprom */
+   \   04C8  79010007          MOV.W   #eep_type+7,R1
+   \   04CC  7D107040          BSET    #4,@R1
+    322                                                          for (i=0; i < NOIOCH; i++) {
+   \   04D0  1955              SUB.W   R5,R5
+   \   04D2            ?0119:
+   \   04D2  7901000E          MOV.W   #14,R1
+   \   04D6  1D15              CMP.W   R1,R5
+   \   04D8  4C0C              BGE     ?0118
+   \   04DA            ?0120:
+    323                                                                  ch_stat[i] = packed_data[7][i+8] ;    /* copy setup */
+   \   04DA  6E590120          MOV.B   @(packed_data+288,R5),R1L
+   \   04DE  6ED90000          MOV.B   R1L,@(ch_stat,R5)
+   \   04E2  0B05              ADDS.W  #1,R5
+    324                                                          }
+    325                                                  }
+   \   04E4  40EC              BRA     ?0119
+   \   04E6            ?0118:
+   \   04E6            ?0115:
+   \   04E6            ?0113:
+   \   04E6            ?0111:
+   \   04E6            ?0109:
+   \   04E6            ?0105:
+    326                                           }
+    327                                   }
+    328                          }
+    329                  }
+    330                  for (ch=0; ch < NOPSD-1; ch++) {
+   \   04E6  1966              SUB.W   R6,R6
+   \   04E8            ?0123:
+   \   04E8  79010007          MOV.W   #7,R1
+   \   04EC  1D16              CMP.W   R1,R6
+   \   04EE  4D04              BLT     $+6
+   \   04F0  5A0005C2          JMP     @?0122:16
+   \   04F4            ?0124:
+    331                          if (!(eep_type[ch] & 0x10 ) && !(eep_type[ch]& 0x09) &&    /* ok sens || ok pc*/
+    332                                          ((ch_stat[ch<<1] & 0x1c) || (ch_stat[ch<<1] & 0x60))){ /* && pressure */
+   \   04F4  6E690000          MOV.B   @(eep_type,R6),R1L
+   \   04F8  E910              AND.B   #16,R1L
+   \   04FA  4704              BEQ     $+6
+   \   04FC  5A0005BC          JMP     @?0127:16
+   \   0500  6E690000          MOV.B   @(eep_type,R6),R1L
+   \   0504  E909              AND.B   #9,R1L
+   \   0506  4704              BEQ     $+6
+   \   0508  5A0005BC          JMP     @?0127:16
+   \   050C  0D61              MOV.W   R6,R1
+   \   050E  0911              ADD.W   R1,R1
+   \   0510  6E1B0000          MOV.B   @(ch_stat,R1),R3L
+   \   0514  EB1C              AND.B   #28,R3L
+   \   0516  4610              BNE     ?0126
+   \   0518  0D61              MOV.W   R6,R1
+   \   051A  0911              ADD.W   R1,R1
+   \   051C  6E1B0000          MOV.B   @(ch_stat,R1),R3L
+   \   0520  EB60              AND.B   #96,R3L
+   \   0522  4604              BNE     $+6
+   \   0524  5A0005BC          JMP     @?0127:16
+   \   0528            ?0130:
+   \   0528            ?0131:
+   \   0528            ?0129:
+   \   0528            ?0128:
+   \   0528            ?0126:
+    333                                  eep_type[ch] |= 0x20 ;                          /* Error before OK proved */
+   \   0528  6E690000          MOV.B   @(eep_type,R6),R1L
+   \   052C  C920              OR.B    #32,R1L
+   \   052E  6EE90000          MOV.B   R1L,@(eep_type,R6)
+    334                                  eep_type[ch] &= ~0x10 ;
+   \   0532  6E690000          MOV.B   @(eep_type,R6),R1L
+   \   0536  E9EF              AND.B   #239,R1L
+   \   0538  6EE90000          MOV.B   R1L,@(eep_type,R6)
+    335                                  if (Eeprom(ch, COPY_NV_SP)) {
+   \   053C  F9F0              MOV.B   #240,R1L
+   \   053E  6DF1              MOV.W   R1,@-SP
+   \   0540  0CE9              MOV.B   R6L,R1L
+   \   0542  5E000000          JSR     @Eeprom:16
+   \   0546  0B87              ADDS.W  #2,SP
+   \   0548  0D11              MOV.W   R1,R1
+   \   054A  4604              BNE     $+6
+   \   054C  5A0005BC          JMP     @?0133:16
+   \   0550            ?0132:
+    336                                          if (Eeprom(ch, READ_SP)) {
+   \   0550  F9AA              MOV.B   #170,R1L
+   \   0552  6DF1              MOV.W   R1,@-SP
+   \   0554  0CE9              MOV.B   R6L,R1L
+   \   0556  5E000000          JSR     @Eeprom:16
+   \   055A  0B87              ADDS.W  #2,SP
+   \   055C  0D11              MOV.W   R1,R1
+   \   055E  475C              BEQ     ?0135
+   \   0560            ?0134:
+    337                                                  if (Eeprom(ch, READ_APPREG)) {
+   \   0560  F9C3              MOV.B   #195,R1L
+   \   0562  6DF1              MOV.W   R1,@-SP
+   \   0564  0CE9              MOV.B   R6L,R1L
+   \   0566  5E000000          JSR     @Eeprom:16
+   \   056A  0B87              ADDS.W  #2,SP
+   \   056C  0D11              MOV.W   R1,R1
+   \   056E  474C              BEQ     ?0137
+   \   0570            ?0136:
+    338                                                          if (CheckADData(&packed_data[ch][0]) &&
+    339                                                                   CheckEepData(&packed_data[ch][8])){ /*check checksum */
+   \   0570  0D61              MOV.W   R6,R1
+   \   0572  79030028          MOV.W   #40,R3
+   \   0576  5E000000          JSR     @?SS_MUL_L02
+   \   057A  8900              ADD.B   #LOW(packed_data),R1L
+   \   057C  9100              ADDX.B  #HIGH(packed_data),R1H
+   \   057E  5548              BSR     CheckADData
+   \   0580  0C99              MOV.B   R1L,R1L
+   \   0582  4738              BEQ     ?0139
+   \   0584  0D61              MOV.W   R6,R1
+   \   0586  79030028          MOV.W   #40,R3
+   \   058A  5E000000          JSR     @?SS_MUL_L02
+   \   058E  8908              ADD.B   #LOW(packed_data+8),R1L
+   \   0590  9100              ADDX.B  #HIGH(packed_data+8),R1H
+   \   0592  5E000610          JSR     @CheckEepData:16
+   \   0596  0C99              MOV.B   R1L,R1L
+   \   0598  4722              BEQ     ?0139
+   \   059A            ?0141:
+   \   059A            ?0140:
+   \   059A            ?0138:
+    340                                                                  eep_type[ch] &= ~0x20 ;
+   \   059A  6E690000          MOV.B   @(eep_type,R6),R1L
+   \   059E  E9DF              AND.B   #223,R1L
+   \   05A0  6EE90000          MOV.B   R1L,@(eep_type,R6)
+    341                                                                  eep_type[ch] |= 0x10 ;               /* OK from eeprom */
+   \   05A4  6E690000          MOV.B   @(eep_type,R6),R1L
+   \   05A8  C910              OR.B    #16,R1L
+   \   05AA  6EE90000          MOV.B   R1L,@(eep_type,R6)
+    342                                                             ch_stat[ch << 1] |= 0x80 ;                    /* New sensor flagged */
+   \   05AE  0D61              MOV.W   R6,R1
+   \   05B0  0911              ADD.W   R1,R1
+   \   05B2  6E1B0000          MOV.B   @(ch_stat,R1),R3L
+   \   05B6  CB80              OR.B    #128,R3L
+   \   05B8  6E9B0000          MOV.B   R3L,@(ch_stat,R1)
+   \   05BC            ?0139:
+   \   05BC            ?0137:
+   \   05BC            ?0135:
+   \   05BC            ?0133:
+   \   05BC            ?0127:
+   \   05BC  0B06              ADDS.W  #1,R6
+    343                                                           }
+    344                                                  }
+    345                                          }
+    346                                  }
+    347                          }
+    348                  }
+    349          }
+   \   05BE  5A0004E8          JMP     @?0123:16
+   \   05C2            ?0122:
+   \   05C2  6D76              POP     R6
+   \   05C4  6D75              POP     R5
+   \   05C6  5470              RTS
+    350          
+    351          /*************************************************************************
+    352          *
+    353          * Check AppData checksum
+    354          *
+    355          *************************************************************************/
+    356          unsigned char CheckADData(unsigned char *data)
+    357          {
+   \   05C8            CheckADData:
+   \   05C8  6DF4              PUSH    R4
+   \   05CA  6DF5              PUSH    R5
+   \   05CC  6DF6              PUSH    R6
+   \   05CE  0D14              MOV.W   R1,R4
+    358          
+    359                  int                             cnt ;
+    360                  unsigned char   csum, ok ;
+    361          
+    362                  ok = FALSE ;
+   \   05D0  F500              MOV.B   #0,R5H
+    363                  csum = 0 ;
+   \   05D2  FD00              MOV.B   #0,R5L
+    364                  for (cnt = 0 ; cnt < 7 ; cnt++) {
+   \   05D4  1966              SUB.W   R6,R6
+   \   05D6            ?0143:
+   \   05D6  79010007          MOV.W   #7,R1
+   \   05DA  1D16              CMP.W   R1,R6
+   \   05DC  4C1A              BGE     ?0142
+   \   05DE            ?0144:
+    365                          if (*data != 0x00) {
+   \   05DE  6849              MOV.B   @R4,R1L
+   \   05E0  4702              BEQ     ?0147
+   \   05E2            ?0146:
+    366                                  ok = TRUE ;
+   \   05E2  F501              MOV.B   #1,R5H
+   \   05E4            ?0147:
+    367                          }
+    368                          csum = crc[csum ^ *data++] ;
+   \   05E4  0D41              MOV.W   R4,R1
+   \   05E6  0B04              ADDS.W  #1,R4
+   \   05E8  681B              MOV.B   @R1,R3L
+   \   05EA  15DB              XOR.B   R5L,R3L
+   \   05EC  F300              MOV.B   #0,R3H
+   \   05EE  0933              ADD.W   R3,R3
+   \   05F0  6E3D0001          MOV.B   @(crc+1,R3),R5L
+   \   05F4  0B06              ADDS.W  #1,R6
+    369                  }
+    370                  if ((csum == *data) && (ok == TRUE)) {
+   \   05F6  40DE              BRA     ?0143
+   \   05F8            ?0142:
+   \   05F8  6849              MOV.B   @R4,R1L
+   \   05FA  1CD9              CMP.B   R5L,R1L
+   \   05FC  4608              BNE     ?0149
+   \   05FE  A501              CMP.B   #1,R5H
+   \   0600  4604              BNE     ?0149
+   \   0602            ?0151:
+   \   0602            ?0150:
+   \   0602            ?0148:
+    371                          return TRUE ;
+   \   0602  F901              MOV.B   #1,R1L
+    372                  } else {
+   \   0604  4002              BRA     ?0152
+   \   0606            ?0149:
+    373                          return FALSE ;
+   \   0606  F900              MOV.B   #0,R1L
+    374          
+    375                  }
+   \   0608            ?0152:
+   \   0608  6D76              POP     R6
+   \   060A  6D75              POP     R5
+   \   060C  6D74              POP     R4
+   \   060E  5470              RTS
+    376          }
+    377          
+    378          
+    379          /*************************************************************************
+    380          *
+    381          * Check Eepdata checksum
+    382          *
+    383          *************************************************************************/
+    384          unsigned char CheckEepData(unsigned char *data)
+    385          {
+   \   0610            CheckEepData:
+   \   0610  6DF4              PUSH    R4
+   \   0612  6DF5              PUSH    R5
+   \   0614  6DF6              PUSH    R6
+   \   0616  0D14              MOV.W   R1,R4
+    386          
+    387                  int                             cnt ;
+    388                  unsigned char   csum, ok ;
+    389          
+    390                  csum = 0 ;
+   \   0618  FD00              MOV.B   #0,R5L
+    391                  for (cnt = 8 ; cnt < (PACKED_DATA_SIZE -1) ; cnt++) {
+   \   061A  79060008          MOV.W   #8,R6
+   \   061E            ?0154:
+   \   061E  79010027          MOV.W   #39,R1
+   \   0622  1D16              CMP.W   R1,R6
+   \   0624  4C14              BGE     ?0153
+   \   0626            ?0155:
+    392                          csum = crc[csum ^ *data++] ;
+   \   0626  0D41              MOV.W   R4,R1
+   \   0628  0B04              ADDS.W  #1,R4
+   \   062A  681B              MOV.B   @R1,R3L
+   \   062C  15DB              XOR.B   R5L,R3L
+   \   062E  F300              MOV.B   #0,R3H
+   \   0630  0933              ADD.W   R3,R3
+   \   0632  6E3D0001          MOV.B   @(crc+1,R3),R5L
+   \   0636  0B06              ADDS.W  #1,R6
+    393                  }
+    394                  if (csum == *data) {
+   \   0638  40E4              BRA     ?0154
+   \   063A            ?0153:
+   \   063A  6849              MOV.B   @R4,R1L
+   \   063C  1CD9              CMP.B   R5L,R1L
+   \   063E  4604              BNE     ?0158
+   \   0640            ?0157:
+    395                          return TRUE ;
+   \   0640  F901              MOV.B   #1,R1L
+    396                  } else {
+   \   0642  4002              BRA     ?0159
+   \   0644            ?0158:
+    397                          return FALSE ;
+   \   0644  F900              MOV.B   #0,R1L
+    398                  }
+   \   0646            ?0159:
+   \   0646  6D76              POP     R6
+   \   0648  6D75              POP     R5
+   \   064A  6D74              POP     R4
+   \   064C  5470              RTS
+    399          }
+    400          
+    401          /*************************************************************************
+    402          *
+    403          * Make Eepdata checksum
+    404          *
+    405          *************************************************************************/
+    406          void MakeEepChksum(unsigned char *data)
+    407          {
+   \   064E            MakeEepChksum:
+   \   064E  6DF4              PUSH    R4
+   \   0650  6DF5              PUSH    R5
+   \   0652  6DF6              PUSH    R6
+   \   0654  0D14              MOV.W   R1,R4
+    408          
+    409                  int                             cnt ;
+    410                  unsigned char   csum ;
+    411          
+    412                  csum = 0 ;
+   \   0656  FD00              MOV.B   #0,R5L
+    413                  for (cnt = 8 ; cnt < (PACKED_DATA_SIZE -1) ; cnt++) {
+   \   0658  79060008          MOV.W   #8,R6
+   \   065C            ?0161:
+   \   065C  79010027          MOV.W   #39,R1
+   \   0660  1D16              CMP.W   R1,R6
+   \   0662  4C14              BGE     ?0160
+   \   0664            ?0162:
+    414                          csum = crc[csum ^ *data++] ;
+   \   0664  0D41              MOV.W   R4,R1
+   \   0666  0B04              ADDS.W  #1,R4
+   \   0668  681B              MOV.B   @R1,R3L
+   \   066A  15DB              XOR.B   R5L,R3L
+   \   066C  F300              MOV.B   #0,R3H
+   \   066E  0933              ADD.W   R3,R3
+   \   0670  6E3D0001          MOV.B   @(crc+1,R3),R5L
+   \   0674  0B06              ADDS.W  #1,R6
+    415                  }
+    416                  *data = csum ;
+   \   0676  40E4              BRA     ?0161
+   \   0678            ?0160:
+   \   0678  68CD              MOV.B   R5L,@R4
+    417          }
+   \   067A  6D76              POP     R6
+   \   067C  6D75              POP     R5
+   \   067E  6D74              POP     R4
+   \   0680  5470              RTS
+    418          
+    419          
+   \   0682                    END
+
+Errors: none
+Warnings: none
+Code size: 1666
+Constant size: 0
+Static variable size: Data(0) Iram(0)
+

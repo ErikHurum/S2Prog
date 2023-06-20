@@ -1,0 +1,114 @@
+;*********************************************************************
+;*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+;*        Solutions for real time microcontroller applications       *
+;*********************************************************************
+;*                                                                   *
+;*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+;*                  www.segger.com                                   *
+;*                                                                   *
+;*********************************************************************
+;
+;---------------------------------------------------------------------
+;File   : Startup.s79
+;Purpose: Startup file for embOS and IAR embedded workbench V4
+;-------- END-OF-HEADER ----------------------------------------------
+;
+
+        MODULE  ?RESET
+
+
+SCRO_AHB_UNB    EQU     0x5C002034
+
+        RSEG    CSTACK:DATA(2)
+        RSEG    IRQ_STACK:DATA(2)
+        COMMON  INTVEC:CODE:NOROOT(2)
+        PUBLIC  __program_start
+        EXTERN  IRQ_Handler
+        EXTERN  ?main
+        CODE32  ; Always ARM mode after reset
+
+        org 0x00
+__program_start:     b   ?cstartup            ; RESET handler
+undef_handler:       b   undef_handler        ; Handler for undefined instructions
+swi_handler:         b   swi_handler          ; Handler for Software interrupts.
+prefetch_handler:    b   prefetch_handler     ; Handle Errors(Aborts) on instruction fetch
+data_handler:        b   data_handler         ; Handle Errors(Aborts) on data read or write
+        org 0x18
+                     ldr pc,=IRQ_Handler      ; IRQ handler
+fiq_handler:         b   fiq_handler          ; FIQ handler
+
+        LTORG            ; Constant table entries (for ldr pc) will be placed at 0x20
+
+/**********************************************************************
+* ?CSTARTUP
+*
+* Execution starts here.
+* After a reset, the mode is ARM, Supervisor, interrupts disabled.
+*/
+?cstartup:
+        LDR     pc, =NextInst
+
+NextInst
+        NOP   ; execute some instructions to access CPU registers after wake
+        NOP  ; up from Reset, while waiting for OSC stabilization
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP
+
+
+; --- Remap Flash Bank 0 at address 0x0 and Bank 1 at address 0x80000,
+;     when the bank 0 is the boot bank, then enable the Bank 1.
+
+        LDR R6, =0x54000000    ; BOOT BANK Size = 512KB
+        LDR R7, =0x4           ; (2^4) * 32 = 512KB
+        STR R7, [R6]
+
+        LDR R6, =0x54000004    ; NON BOOT BANK Size = 32KB
+        LDR R7, =0x2           ; (2^2) * 8 = 32KB
+        STR R7, [R6]
+
+        LDR R6, =0x5400000C    ; BOOT BANK Address = 0x0
+        LDR R7, =0x0
+        STR R7, [R6]
+
+        LDR R6, =0x54000010    ; NON BOOT BANK Address = 0x80000
+        LDR R7, =0x20000       ; need to put 0x20000 because FMI bus on A[25:2] of CPU bus
+        STR R7, [R6]
+
+        LDR R6, =0x54000018    ; Enable CS on both banks
+        LDR R7, =0x18
+        STR R7, [R6]
+
+; --- Enable 96K RAM
+        LDR     R0, = SCRO_AHB_UNB
+        LDR     R1, = 0x0191   ; PFQBC enabled / DTCM & AHB wait-states disabled
+        STR     R1, [R0]
+
+; --- Initialize Stack pointer registers
+
+        ; Enter each required mode in turn and set up the stack pointer
+
+        msr     cpsr_c,#0xd2                        ; Change mode to IRQ mode, FIQ and IRQ disabled
+        ldr     sp,=SFE(IRQ_STACK) & 0xFFFFFFF8     ; End of IRQ_STACK
+        msr     cpsr_c,#0xDF                        ; Change mode to SYS mode, FIQ and IRQ disabled
+        ldr     sp,=SFE(CSTACK) & 0xFFFFFFF8        ; End of CSTACK
+
+
+; --- Set bits 17-18 (DTCM/ITCM order bits) of the Core Configuration Control Register
+
+        MOV     r0, #0x60000
+        MCR     p15,0x1,r0,c15,c1,0
+
+; Jump to startup code in library
+        ldr     r0,=?main
+        bx      r0
+
+        LTORG
+        ENDMOD
+        END
+
+; ***** EOF **********************************************************

@@ -1,0 +1,114 @@
+;*********************************************************************
+;*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+;*        Solutions for real time microcontroller applications       *
+;*********************************************************************
+;*                                                                   *
+;*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+;*                  www.segger.com                                   *
+;*                                                                   *
+;*********************************************************************
+;
+;---------------------------------------------------------------------
+;File   : Startup_TMS470R1B1M.s79
+;Purpose: Startup file for embOS and IAR embedded workbench V4
+;         running on TMS470
+;-------- END-OF-HEADER ----------------------------------------------
+;
+
+        MODULE  ?RESET
+
+        RSEG    DATA_I:DATA(2)
+        RSEG    CSTACK:DATA(2)
+        RSEG    IRQ_STACK:DATA(2)
+        COMMON  INTVEC:CODE:NOROOT(2)
+        PUBLIC  __program_start
+        EXTERN  IRQ_Handler
+        EXTERN  ?main
+        CODE32  ; Always ARM mode after reset
+
+        org 0x00
+__program_start:     b   ?cstartup            ; RESET handler
+undef_handler:       b   undef_handler        ; Handler for undefined instructions
+swi_handler:         b   swi_handler          ; Handler for Software interrupts.
+prefetch_handler:    b   prefetch_handler     ; Handle Errors(Aborts) on instruction fetch
+data_handler:        b   data_handler         ; Handle Errors(Aborts) on data read or write
+        org 0x18
+                     ldr pc,=IRQ_Handler      ; IRQ handler
+fiq_handler:         b   fiq_handler          ; FIQ handler
+
+        LTORG        ; Constant table entries (for ldr pc) will be placed at 0x20
+
+/**********************************************************************
+* ?CSTARTUP
+*
+* Execution starts here.
+* After a reset, the mode is ARM, Supervisor, interrupts disabled.
+*/
+?cstartup:
+        msr     cpsr_c,#0xd2                        ; Change mode to IRQ mode, FIQ and IRQ disabled
+        ldr     sp,=SFE(IRQ_STACK) & 0xFFFFFFF8     ; End of IRQ_STACK
+        msr     cpsr_c,#0xDF                        ; Change mode to SYS mode, FIQ and IRQ disabled
+        ldr     sp,=SFE(CSTACK) & 0xFFFFFFF8        ; End of CSTACK
+
+Remap:
+// Initialize Chip selects, enable internal RAM, if not already done by debugger
+// if ((MFBALR0 & (1 << 8)) == 0) {  // Memory mapping enabled?
+        MVN      R0,#+255
+        BIC      R0,R0,#0x100        // R0 now points to MFBAH0 (0xfffffe00)
+        LDR      R1,[R0, #+0x04]     // load MFBALR0  (0xfffffe04)
+        TST      R1,#0x100
+        BNE      RemapEnd
+
+// Set memory select 0, whole FLASH, block size to 1M */
+// MFBALR0  = 0x000000B0;
+        MOV      R1,#+176
+        STR      R1,[R0, #+0x04]    // Store MFBALR0  (0xfffffe04)
+// MFBAHR0  = 0x00000000;
+        MOV      R1,#+0
+        STR      R1,[R0, #+0]       // Store MFBAHR0  (0xfffffe00)
+
+// Disable FLASH which is connected to memory select 1
+// MFBALR1  = 0x00000000;
+// MFBAHR1  = 0x00000000;
+        STR      R1,[R0, #+0x0c]    // Store MFBAHR1  (0xfffffe08)
+        STR      R1,[R0, #+0x08]    // Store MFBAHR1  (0xfffffe08)
+
+// activate 64 K RAM at 0x00400000 that is connected to memory select 2 */
+// MFBAHR2  = 0x00000040;
+//      MOV      R2,#SFB(DATA_I) >> 16
+        MOV      R2,#0x40
+        STR      R2,[R0, #+0x10]    // Store MFBAHR2  (0xfffffe10)
+// MFBALR2  = 0x00000070;
+        MOV      R2,#+112
+        STR      R2,[R0, #+0x14]    // Store MFBALR2  (0xfffffe14)
+
+// Disable RAM which is connected to memory select 3 */
+// MFBAHR3  = 0x00000000;
+        STR      R1,[R0, #+0x18]    // Store MFBAHR3  (0xfffffe18)
+// MFBALR3  = 0x00000000;
+        STR      R1,[R0, #+0x1c]    // Store MFBALR3  (0xfffffe1c)
+
+// Activate HET RAM at 0x00800000 1k that is connected to memory select 4 */
+// MFBAHR4  = 0x00000080;
+        MOV      R2,#+128
+        STR      R2,[R0, #+0x20]    // Store MFBAHR4  (0xfffffe20)
+
+// MFBALR4  = 0x00000020;
+        MOV      R2,#+32
+        STR      R2,[R0, #+0x24]    // Store MFBALR4  (0xfffffe24)
+
+// Activate new mapping by writing 1 to MFBALR0.8 */
+// MFBALR0  = 0x000001B0;
+        MOV      R1,#+432
+        STR      R1,[R0, #+0x04]    // Store MFBALR0  (0xfffffe04)
+RemapEnd:
+
+; Jump to startup code in library
+        ldr     r0,=?main
+        bx      r0
+
+        LTORG
+        ENDMOD
+        END
+
+; ***** EOF **********************************************************

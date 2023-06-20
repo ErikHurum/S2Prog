@@ -1,0 +1,405 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:11 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\anpro_udp.cpp                      #
+#    Command line    =  D:\S2Prog\TXU\src\anpro_udp.cpp --fpu None -D        #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\anpro_udp.lst               #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\anpro_udp.r79                #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\anpro_udp.cpp
+      1          
+      2          #include "lwip/opt.h"
+      3          
+      4          #if LWIP_SOCKET
+      5          #include <string.h>
+      6          #include <stdio.h>
+      7          #include <stdlib.h>
+      8          
+      9          #include "anpro_net.h"
+     10          #include "anpro_net_util.h"
+     11          #include "anpro_tcp_server.h"
+     12          #include "anpro_udp.h"
+     13          
+     14          #include "RTOS.h"
+     15          #include "app/list.h"
+     16          #include "app/sg_timer.h"
+     17          
+     18          #include "TSNIncludes.h"
+     19          #include "TSNMessageQ.h"
+     20          
+     21          #include "lwip/mem.h"
+     22          #include "lwip/debug.h"
+     23          #include "lwip/def.h"
+     24          #include "lwip/api.h"
+     25          #include "lwip/stats.h"
+     26          #include "lwip/sockets.h"
+     27          
+     28          #include "app/circ_buffer.h"
+     29          extern U32 IP_AddressMain;
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     30          static u8_t   _bounce_buffer[MAX_ANPRO10_MESSAGE_SIZE];
+   \                     _bounce_buffer:
+   \   00000000                      DS8 16192
+     31          
+     32          static s32_t
+     33          anpro10_udp_subnet_broadcast(s32_t sock, u16_t port, u8_t* msg, s32_t len)
+     34          {
+     35            struct sockaddr_in    anpro_daddr;
+     36            ip_addr_t             bcast_addr;
+     37            s32_t                 ret;
+     38          
+     39            // XXX split message logic if necessary
+     40          
+     41            get_anpro_net_subnet_broadcast_address(&bcast_addr);
+     42          
+     43            memset(&anpro_daddr, 0, sizeof(anpro_daddr));
+     44            anpro_daddr.sin_family        = AF_INET;
+     45            anpro_daddr.sin_addr.s_addr   = bcast_addr.addr;
+     46            anpro_daddr.sin_port          = htons(port);
+     47          
+     48            ret = sendto(sock, msg, len, 0, (struct sockaddr*)&anpro_daddr, sizeof(anpro_daddr));
+     49            
+     50            return ret;
+     51          }
+     52          
+     53          static s32_t
+     54          anpro10_udp_tx_to_master(s32_t sock, u16_t port, u8_t* msg, s32_t len)
+     55          {
+     56            struct sockaddr_in    anpro_daddr;
+     57            ip_addr_t             bcast_addr;
+     58            s32_t                 ret;
+     59          
+     60            // XXX split message logic if necessary
+     61          
+     62          
+     63            memset(&anpro_daddr, 0, sizeof(anpro_daddr));
+     64            anpro_daddr.sin_family        = AF_INET;
+     65            if (PROProjectInfo::IP_AddressMain) {
+     66                anpro_daddr.sin_addr.s_addr   = PROProjectInfo::IP_AddressMain + (PROProjectInfo::IP_AddressTCUSlaveStart << 24);
+     67            } else {
+     68                anpro_daddr.sin_addr.s_addr   = inet_addr("192.168.227.50");
+     69            }
+     70            anpro_daddr.sin_port          = htons(port);
+     71          
+     72            ret = sendto(sock, msg, len, 0, (struct sockaddr*)&anpro_daddr, sizeof(anpro_daddr));
+     73            return ret;
+     74          }
+     75          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     76          s32_t
+     77          anpro10_udp_broadcast(s32_t sock, u16_t dest_port, u8_t* msg, s32_t len)
+     78          {
+   \                     ??anpro10_udp_broadcast:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+     79            QueueANPRO10_CommandHeading*  NCmd = (QueueANPRO10_CommandHeading*)msg;
+     80            u8_t*                         pkt_pos;
+     81          
+     82            pkt_pos  = _bounce_buffer;
+     83            pkt_pos += ANPRO10_AddPacketPreAmble(pkt_pos);
+   \   00000004   ........           LDR      R6,??DataTable2  ;; _bounce_buffer
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   0150A0E1           MOV      R5,R1
+   \   00000014   0270A0E1           MOV      R7,R2
+   \   00000018   0600A0E1           MOV      R0,R6
+   \   0000001C   ........           _BLF     ??ANPRO10_AddPacketPreAmble,??ANPRO10_AddPacketPreAmble??rA
+     84            pkt_pos += ANPRO10_AddPacketHeading(pkt_pos, NCmd->TxInfo.rxAddr, NCmd->TxInfo.rxId);
+   \   00000020   0520D7E5           LDRB     R2,[R7, #+5]
+   \   00000024   0410D7E5           LDRB     R1,[R7, #+4]
+   \   00000028   068080E0           ADD      R8,R0,R6
+   \   0000002C   0800A0E1           MOV      R0,R8
+   \   00000030   ........           _BLF     ??ANPRO10_AddPacketHeading,??ANPRO10_AddPacketHeading??rA
+   \   00000034   088080E0           ADD      R8,R0,R8
+     85            pkt_pos += ANPRO10_AddCommand(pkt_pos, (u8_t*)&NCmd->Data);
+   \   00000038   061087E2           ADD      R1,R7,#+6
+   \   0000003C   0800A0E1           MOV      R0,R8
+   \   00000040   ........           _BLF     ??ANPRO10_AddCommand,??ANPRO10_AddCommand??rA
+   \   00000044   087080E0           ADD      R7,R0,R8
+   \   00000048   0020A0E3           MOV      R2,#+0
+   \   0000004C   061047E0           SUB      R1,R7,R6
+   \   00000050   0600A0E1           MOV      R0,R6
+     86            pkt_pos += ANPRO10_AddPacketTail(_bounce_buffer, (pkt_pos - _bounce_buffer), false);
+   \   00000054   ........           _BLF     ??ANPRO10_AddPacketTail,??ANPRO10_AddPacketTail??rA
+   \   00000058   077080E0           ADD      R7,R0,R7
+     87          
+     88            return anpro10_udp_subnet_broadcast(sock, dest_port, 
+     89                &_bounce_buffer[ANPRO10_PREAMBLE_SIZE],
+     90                (pkt_pos - _bounce_buffer) - ANPRO10_PREAMBLE_SIZE);
+   \   0000005C   0D00A0E1           MOV      R0,SP
+   \   00000060   ........           _BLF     ??get_anpro_net_subnet_broadcast_address,??get_anpro_net_subnet_broadcast_address??rA
+   \   00000064   1020A0E3           MOV      R2,#+16
+   \   00000068   0010A0E3           MOV      R1,#+0
+   \   0000006C   08008DE2           ADD      R0,SP,#+8
+   \   00000070   ........           _BLF     memset,??memset??rA
+   \   00000074   0210A0E3           MOV      R1,#+2
+   \   00000078   0910CDE5           STRB     R1,[SP, #+9]
+   \   0000007C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000080   0500A0E1           MOV      R0,R5
+   \   00000084   0C108DE5           STR      R1,[SP, #+12]
+   \   00000088   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   0000008C   BA00CDE1           STRH     R0,[SP, #+10]
+   \   00000090   1000A0E3           MOV      R0,#+16
+   \   00000094   01002DE9           PUSH     {R0}
+   \   00000098   0C008DE2           ADD      R0,SP,#+12
+   \   0000009C   01002DE9           PUSH     {R0}
+   \   000000A0   0030A0E3           MOV      R3,#+0
+   \   000000A4   060047E0           SUB      R0,R7,R6
+   \   000000A8   042040E2           SUB      R2,R0,#+4
+   \   000000AC   041086E2           ADD      R1,R6,#+4
+   \   000000B0   0400A0E1           MOV      R0,R4
+   \   000000B4   ........           _BLF     lwip_sendto,??lwip_sendto??rA
+   \   000000B8   20D08DE2           ADD      SP,SP,#+32
+   \   000000BC   F041BDE8           POP      {R4-R8,LR}
+   \   000000C0   1EFF2FE1           BX       LR               ;; return
+     91          }
+     92          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     93          s32_t
+     94          anpro10_udp_unicast(s32_t sock, u16_t dest_port, u8_t* msg, s32_t len)
+     95          {
+   \                     ??anpro10_udp_unicast:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+     96            QueueANPRO10_CommandHeading*  NCmd = (QueueANPRO10_CommandHeading*)msg;
+     97            u8_t*                         pkt_pos;
+     98          
+     99            pkt_pos  = _bounce_buffer;
+    100            pkt_pos += ANPRO10_AddPacketPreAmble(pkt_pos);
+   \   00000004   ........           LDR      R6,??DataTable2  ;; _bounce_buffer
+   \   00000008   14D04DE2           SUB      SP,SP,#+20
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   0150A0E1           MOV      R5,R1
+   \   00000014   0270A0E1           MOV      R7,R2
+   \   00000018   0600A0E1           MOV      R0,R6
+   \   0000001C   ........           _BLF     ??ANPRO10_AddPacketPreAmble,??ANPRO10_AddPacketPreAmble??rA
+    101            pkt_pos += ANPRO10_AddPacketHeading(pkt_pos, NCmd->TxInfo.rxAddr, NCmd->TxInfo.rxId);
+   \   00000020   0520D7E5           LDRB     R2,[R7, #+5]
+   \   00000024   0410D7E5           LDRB     R1,[R7, #+4]
+   \   00000028   068080E0           ADD      R8,R0,R6
+   \   0000002C   0800A0E1           MOV      R0,R8
+   \   00000030   ........           _BLF     ??ANPRO10_AddPacketHeading,??ANPRO10_AddPacketHeading??rA
+   \   00000034   088080E0           ADD      R8,R0,R8
+    102            pkt_pos += ANPRO10_AddCommand(pkt_pos, (u8_t*)&NCmd->Data);
+   \   00000038   061087E2           ADD      R1,R7,#+6
+   \   0000003C   0800A0E1           MOV      R0,R8
+   \   00000040   ........           _BLF     ??ANPRO10_AddCommand,??ANPRO10_AddCommand??rA
+   \   00000044   087080E0           ADD      R7,R0,R8
+   \   00000048   0020A0E3           MOV      R2,#+0
+   \   0000004C   061047E0           SUB      R1,R7,R6
+   \   00000050   0600A0E1           MOV      R0,R6
+    103            pkt_pos += ANPRO10_AddPacketTail(_bounce_buffer, (pkt_pos - _bounce_buffer), false);
+   \   00000054   ........           _BLF     ??ANPRO10_AddPacketTail,??ANPRO10_AddPacketTail??rA
+   \   00000058   077080E0           ADD      R7,R0,R7
+    104          
+    105            return anpro10_udp_tx_to_master(sock, dest_port, 
+    106                &_bounce_buffer[ANPRO10_PREAMBLE_SIZE],
+    107                (pkt_pos - _bounce_buffer) - ANPRO10_PREAMBLE_SIZE);
+   \   0000005C   1020A0E3           MOV      R2,#+16
+   \   00000060   0010A0E3           MOV      R1,#+0
+   \   00000064   04008DE2           ADD      R0,SP,#+4
+   \   00000068   ........           _BLF     memset,??memset??rA
+   \   0000006C   6C009FE5           LDR      R0,??anpro10_udp_unicast_1  ;; ??IP_AddressMain
+   \   00000070   0210A0E3           MOV      R1,#+2
+   \   00000074   0510CDE5           STRB     R1,[SP, #+5]
+   \   00000078   000090E5           LDR      R0,[R0, #+0]
+   \   0000007C   000050E3           CMP      R0,#+0
+   \   00000080   0300000A           BEQ      ??anpro10_udp_unicast_2
+   \   00000084   58209FE5           LDR      R2,??anpro10_udp_unicast_1+0x4  ;; ??IP_AddressTCUSlaveStart
+   \   00000088   0020D2E5           LDRB     R2,[R2, #+0]
+   \   0000008C   020C80E0           ADD      R0,R0,R2, LSL #+24
+   \   00000090   010000EA           B        ??anpro10_udp_unicast_3
+   \                     ??anpro10_udp_unicast_2:
+   \   00000094   4C009FE5           LDR      R0,??anpro10_udp_unicast_1+0x8  ;; `?<Constant "192.168.227.50">`
+   \   00000098   ........           _BLF     ipaddr_addr,??ipaddr_addr??rA
+   \                     ??anpro10_udp_unicast_3:
+   \   0000009C   08008DE5           STR      R0,[SP, #+8]
+   \   000000A0   0500A0E1           MOV      R0,R5
+   \   000000A4   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000A8   B600CDE1           STRH     R0,[SP, #+6]
+   \   000000AC   1000A0E3           MOV      R0,#+16
+   \   000000B0   01002DE9           PUSH     {R0}
+   \   000000B4   08008DE2           ADD      R0,SP,#+8
+   \   000000B8   01002DE9           PUSH     {R0}
+   \   000000BC   0030A0E3           MOV      R3,#+0
+   \   000000C0   060047E0           SUB      R0,R7,R6
+   \   000000C4   042040E2           SUB      R2,R0,#+4
+   \   000000C8   041086E2           ADD      R1,R6,#+4
+   \   000000CC   0400A0E1           MOV      R0,R4
+   \   000000D0   ........           _BLF     lwip_sendto,??lwip_sendto??rA
+   \   000000D4   1CD08DE2           ADD      SP,SP,#+28
+   \   000000D8   F041BDE8           POP      {R4-R8,LR}
+   \   000000DC   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro10_udp_unicast_1:
+   \   000000E0   ........           DC32     ??IP_AddressMain
+   \   000000E4   ........           DC32     ??IP_AddressTCUSlaveStart
+   \   000000E8   ........           DC32     `?<Constant "192.168.227.50">`
+    108          }
+    109          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    110          void
+    111          anpro10_rx_udp_message(s32_t sock, ANPRO10_Reader* reader)
+    112          {
+   \                     ??anpro10_rx_udp_message:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+    113            s32_t               len;
+    114            u32_t               from_len;
+    115            struct sockaddr_in  from;
+    116            ip_addr_t           myaddr;
+    117          
+    118            // XXX split message logic if necessary
+    119          
+    120            from_len = sizeof(from);
+    121            len = recvfrom(sock, _bounce_buffer, MAX_ANPRO10_MESSAGE_SIZE, 0, (struct sockaddr*)&from, &from_len); 
+   \   00000004   ........           LDR      R5,??DataTable2  ;; _bounce_buffer
+   \   00000008   18D04DE2           SUB      SP,SP,#+24
+   \   0000000C   0140A0E1           MOV      R4,R1
+   \   00000010   1020A0E3           MOV      R2,#+16
+   \   00000014   04208DE5           STR      R2,[SP, #+4]
+   \   00000018   04108DE2           ADD      R1,SP,#+4
+   \   0000001C   02002DE9           PUSH     {R1}
+   \   00000020   0C108DE2           ADD      R1,SP,#+12
+   \   00000024   02002DE9           PUSH     {R1}
+   \   00000028   0030A0E3           MOV      R3,#+0
+   \   0000002C   FD2DA0E3           MOV      R2,#+16192
+   \   00000030   0510A0E1           MOV      R1,R5
+   \   00000034   ........           _BLF     lwip_recvfrom,??lwip_recvfrom??rA
+   \   00000038   0060A0E1           MOV      R6,R0
+    122          
+    123            if(len <= 0)
+   \   0000003C   010056E3           CMP      R6,#+1
+   \   00000040   08D08DE2           ADD      SP,SP,#+8
+   \   00000044   0F0000BA           BLT      ??anpro10_rx_udp_message_1
+    124            {
+    125              return;
+    126            }
+    127          
+    128            get_anpro_net_ip_address(&myaddr, CurrentDeviceId, CurrentDeviceAddress);
+   \   00000048   44009FE5           LDR      R0,??anpro10_rx_udp_message_2  ;; CurrentDeviceAddress
+   \   0000004C   F020D0E1           LDRSH    R2,[R0, #+0]
+   \   00000050   40009FE5           LDR      R0,??anpro10_rx_udp_message_2+0x4  ;; CurrentDeviceId
+   \   00000054   FF2002E2           AND      R2,R2,#0xFF
+   \   00000058   F010D0E1           LDRSH    R1,[R0, #+0]
+   \   0000005C   0D00A0E1           MOV      R0,SP
+   \   00000060   FF1001E2           AND      R1,R1,#0xFF
+   \   00000064   ........           _BLF     ??get_anpro_net_ip_address,??get_anpro_net_ip_address??rA
+    129          
+    130            if(from.sin_addr.s_addr == myaddr.addr)
+   \   00000068   0C009DE5           LDR      R0,[SP, #+12]
+   \   0000006C   00109DE5           LDR      R1,[SP, #+0]
+   \   00000070   010050E1           CMP      R0,R1
+   \   00000074   0300000A           BEQ      ??anpro10_rx_udp_message_1
+    131            {
+    132              return;
+    133            }
+    134          
+    135            anpro10_reader_feed(reader, _bounce_buffer, len);
+   \   00000078   0620A0E1           MOV      R2,R6
+   \   0000007C   0510A0E1           MOV      R1,R5
+   \   00000080   0400A0E1           MOV      R0,R4
+   \   00000084   ........           _BLF     ??anpro10_reader_feed,??anpro10_reader_feed??rA
+    136          }
+   \                     ??anpro10_rx_udp_message_1:
+   \   00000088   18D08DE2           ADD      SP,SP,#+24
+   \   0000008C   7040BDE8           POP      {R4-R6,LR}
+   \   00000090   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro10_rx_udp_message_2:
+   \   00000094   ........           DC32     CurrentDeviceAddress
+   \   00000098   ........           DC32     CurrentDeviceId
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "192.168.227.50">`:
+   \   00000000   3139322E3136       DC8 "192.168.227.50"
+   \              382E3232372E
+   \              353000      
+   \   0000000F   00                 DC8 0
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable2:
+   \   00000000   ........           DC32     _bounce_buffer
+    137          
+    138          #endif //!LWIP_SOCKET
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     __sti__routine()                   0
+     anpro10_rx_udp_message(s32_t, ANPRO10_Reader *)
+                                       48
+     anpro10_udp_broadcast(s32_t, u16_t, u8_t *, s32_t)
+                                       56
+     anpro10_udp_unicast(s32_t, u16_t, u8_t *, s32_t)
+                                       52
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     _bounce_buffer                 16192
+     anpro10_udp_broadcast(s32_t, u16_t, u8_t *, s32_t)
+                                      196
+     anpro10_udp_unicast(s32_t, u16_t, u8_t *, s32_t)
+                                      236
+     anpro10_rx_udp_message(s32_t, ANPRO10_Reader *)
+                                      156
+     ?<Constant "192.168.227.50">      16
+     __sti__routine()                   4
+     ??DataTable2                       4
+      Others                          176
+
+ 
+    756 bytes in segment CODE
+     16 bytes in segment DATA_C
+ 16 192 bytes in segment DATA_Z
+      4 bytes in segment DIFUNCT
+     12 bytes in segment INITTAB
+ 
+    600 bytes of CODE  memory (+ 172 bytes shared)
+     16 bytes of CONST memory
+ 16 192 bytes of DATA  memory
+
+Errors: none
+Warnings: 1

@@ -1,0 +1,208 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:12 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\def.c              #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\def.c --fpu None   #
+#                       -D OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D   #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\def.lst                     #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\def.r79                      #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\def.c
+      1          /**
+      2           * @file
+      3           * Common functions used throughout the stack.
+      4           *
+      5           */
+      6          
+      7          /*
+      8           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+      9           * All rights reserved.
+     10           *
+     11           * Redistribution and use in source and binary forms, with or without modification,
+     12           * are permitted provided that the following conditions are met:
+     13           *
+     14           * 1. Redistributions of source code must retain the above copyright notice,
+     15           *    this list of conditions and the following disclaimer.
+     16           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     17           *    this list of conditions and the following disclaimer in the documentation
+     18           *    and/or other materials provided with the distribution.
+     19           * 3. The name of the author may not be used to endorse or promote products
+     20           *    derived from this software without specific prior written permission.
+     21           *
+     22           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     23           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     24           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     25           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     26           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     27           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     28           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     29           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     30           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     31           * OF SUCH DAMAGE.
+     32           *
+     33           * This file is part of the lwIP TCP/IP stack.
+     34           *
+     35           * Author: Simon Goldschmidt
+     36           *
+     37           */
+     38          
+     39          #include "lwip/opt.h"
+     40          #include "lwip/def.h"
+     41          
+     42          /**
+     43           * These are reference implementations of the byte swapping functions.
+     44           * Again with the aim of being simple, correct and fully portable.
+     45           * Byte swapping is the second thing you would want to optimize. You will
+     46           * need to port it to your architecture and in your cc.h:
+     47           * 
+     48           * #define LWIP_PLATFORM_BYTESWAP 1
+     49           * #define LWIP_PLATFORM_HTONS(x) <your_htons>
+     50           * #define LWIP_PLATFORM_HTONL(x) <your_htonl>
+     51           *
+     52           * Note ntohs() and ntohl() are merely references to the htonx counterparts.
+     53           */
+     54          
+     55          #if (LWIP_PLATFORM_BYTESWAP == 0) && (BYTE_ORDER == LITTLE_ENDIAN)
+     56          
+     57          /**
+     58           * Convert an u16_t from host- to network byte order.
+     59           *
+     60           * @param n u16_t in host byte order
+     61           * @return n in network byte order
+     62           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     63          u16_t
+     64          lwip_htons(u16_t n)
+     65          {
+     66            return ((n & 0xff) << 8) | ((n & 0xff00) >> 8);
+   \                     lwip_htons:
+   \   00000000   2014A0E1           LSR      R1,R0,#+8
+   \   00000004   000481E1           ORR      R0,R1,R0, LSL #+8
+   \   00000008   0008A0E1           MOV      R0,R0, LSL #+16
+   \   0000000C   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     67          }
+     68          
+     69          /**
+     70           * Convert an u16_t from network- to host byte order.
+     71           *
+     72           * @param n u16_t in network byte order
+     73           * @return n in host byte order
+     74           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     75          u16_t
+     76          lwip_ntohs(u16_t n)
+     77          {
+     78            return lwip_htons(n);
+   \                     lwip_ntohs:
+   \   00000000   2014A0E1           LSR      R1,R0,#+8
+   \   00000004   000481E1           ORR      R0,R1,R0, LSL #+8
+   \   00000008   0008A0E1           MOV      R0,R0, LSL #+16
+   \   0000000C   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     79          }
+     80          
+     81          /**
+     82           * Convert an u32_t from host- to network byte order.
+     83           *
+     84           * @param n u32_t in host byte order
+     85           * @return n in network byte order
+     86           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     87          u32_t
+     88          lwip_htonl(u32_t n)
+     89          {
+     90            return ((n & 0xff) << 24) |
+     91              ((n & 0xff00) << 8) |
+     92              ((n & 0xff0000UL) >> 8) |
+     93              ((n & 0xff000000UL) >> 24);
+   \                     lwip_htonl:
+   \   00000000   FF1C00E2           AND      R1,R0,#0xFF00
+   \   00000004   0114A0E1           LSL      R1,R1,#+8
+   \   00000008   001C81E1           ORR      R1,R1,R0, LSL #+24
+   \   0000000C   FF2800E2           AND      R2,R0,#0xFF0000
+   \   00000010   221481E1           ORR      R1,R1,R2, LSR #+8
+   \   00000014   200C81E1           ORR      R0,R1,R0, LSR #+24
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+     94          }
+     95          
+     96          /**
+     97           * Convert an u32_t from network- to host byte order.
+     98           *
+     99           * @param n u32_t in network byte order
+    100           * @return n in host byte order
+    101           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    102          u32_t
+    103          lwip_ntohl(u32_t n)
+    104          {
+   \                     lwip_ntohl:
+   \   00000000   00402DE9           PUSH     {LR}
+    105            return lwip_htonl(n);
+   \   00000004   ........           BL       lwip_htonl
+   \   00000008   0040BDE8           POP      {LR}
+   \   0000000C   1EFF2FE1           BX       LR               ;; return
+    106          }
+    107          
+    108          #endif /* (LWIP_PLATFORM_BYTESWAP == 0) && (BYTE_ORDER == LITTLE_ENDIAN) */
+    109          
+
+   Maximum stack usage in bytes:
+
+     Function   CSTACK
+     --------   ------
+     lwip_htonl     0
+     lwip_htons     0
+     lwip_ntohl     4
+     lwip_ntohs     0
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+     lwip_htons       20
+     lwip_ntohs       20
+     lwip_htonl       28
+     lwip_ntohl       16
+      Others          16
+
+ 
+ 100 bytes in segment CODE
+ 
+ 84 bytes of CODE memory (+ 16 bytes shared)
+
+Errors: none
+Warnings: none

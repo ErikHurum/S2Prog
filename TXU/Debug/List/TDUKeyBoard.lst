@@ -1,0 +1,1633 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:18:22 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\TDUKeyBoard.cpp                    #
+#    Command line    =  D:\S2Prog\TXU\src\TDUKeyBoard.cpp --fpu None -D      #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\TDUKeyBoard.lst             #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\TDUKeyBoard.r79              #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\TDUKeyBoard.cpp
+      1          #include "TDUIncludes.h"
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+   \   static GUI_FONT const __data TDU_FONT_BIG
+   \                     TDU_FONT_BIG:
+   \   00000000                      DS8 36
+      2          #include "TDUKeyBoard.h"
+      3          
+      4          //#if (GUI_WINSUPPORT && GUI_SUPPORT_TOUCH)
+      5          
+      6          #define countof(Obj) (sizeof(Obj)/sizeof(Obj[0]))
+      7          
+      8          /* Static variables */
+      9          static char   _CmdNext;
+     10          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     11          int TDU_WaitKey(void) {
+   \                     ??TDU_WaitKey:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+     12          	int r = 0;
+   \   00000004   0040A0E3           MOV      R4,#+0
+     13          	int tMax = GUI_GetTime() + 2*4000;
+   \   00000008   ........           _BLF     GUI_GetTime,??GUI_GetTime??rA
+   \   0000000C   7D5D80E2           ADD      R5,R0,#+8000
+     14          	int tDiff;
+     15          	int c = GUI_GetKey();
+   \   00000010   ........           _BLF     GUI_GetKey,??GUI_GetKey??rA
+     16          	while ( tDiff = tMax-GUI_GetTime(), (tDiff > 0) ) {
+   \                     ??TDU_WaitKey_1:
+   \   00000014   ........           _BLF     GUI_GetTime,??GUI_GetTime??rA
+   \   00000018   000045E0           SUB      R0,R5,R0
+   \   0000001C   010050E3           CMP      R0,#+1
+   \   00000020   050000BA           BLT      ??TDU_WaitKey_2
+     17          		TSN_Delay(10);
+   \   00000024   0A00A0E3           MOV      R0,#+10
+   \   00000028   ........           _BLF     OS_Delay,??OS_Delay??rA
+     18          		WM_ExecIdle();
+   \   0000002C   ........           _BLF     WM_Exec,??WM_Exec??rA
+     19          		if ( (r = GUI_GetKey()) != 0 )
+   \   00000030   ........           _BLF     GUI_GetKey,??GUI_GetKey??rA
+   \   00000034   0040B0E1           MOVS     R4,R0
+   \   00000038   F5FFFF0A           BEQ      ??TDU_WaitKey_1
+     20          			break;
+     21          	}
+     22          	WM_ExecIdle();
+   \                     ??TDU_WaitKey_2:
+   \   0000003C   ........           _BLF     WM_Exec,??WM_Exec??rA
+     23          	return r;
+   \   00000040   0400A0E1           MOV      R0,R4
+   \   00000044   3040BDE8           POP      {R4,R5,LR}
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+     24          }
+     25          
+     26          
+     27          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     28          int TDU_CheckCancel(void) {
+   \                     ??TDU_CheckCancel:
+   \   00000000   00402DE9           PUSH     {LR}
+     29          	int c = GUI_GetKey();
+   \   00000004   ........           _BLF     GUI_GetKey,??GUI_GetKey??rA
+     30          #if GUI_WINSUPPORT
+     31          	WM_ExecIdle();
+   \   00000008   ........           _BLF     WM_Exec,??WM_Exec??rA
+     32          #endif
+     33          	return _CmdNext;
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   0000A0E3           MOV      R0,#+0
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+     34          }
+     35          
+     36          /*********************************************************************
+     37          *       _ExecKeyboard
+     38          * This creates a keyboard.
+     39          * The routine returns after ENTER or ESC has been pressed.
+     40          **********************************************************************/
+     41          
+
+   \                                 In segment DATA_I, align 4, align-sorted
+     42          static char _acTextAll[] ={ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+   \                     _acTextAll:
+   \   00000000                      DS8 40
+   \   00000028                      REQUIRE `?<Initializer for _acTextAll>`
+     43          	'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
+     44          	'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L',
+     45          	'Z', 'X', 'C', 'V', 'B', 'N', 'M', '.', '-', 0
+     46          };
+     47          
+
+   \                                 In segment DATA_I, align 4, align-sorted
+     48          static char _acTextNum[] = {
+   \                     _acTextNum:
+   \   00000000                      DS8 16
+   \   00000010                      REQUIRE `?<Initializer for _acTextNum>`
+     49          	'7','8','9',
+     50          	'4','5','6',
+     51          	'1','2','3',
+     52          	'0','.','-',0
+     53          };
+     54          
+
+   \                                 In segment DATA_I, align 4, align-sorted
+     55          static char _acTextNumPinCode[] = {
+   \                     _acTextNumPinCode:
+   \   00000000                      DS8 12
+   \   0000000C                      REQUIRE `?<Initializer for _acTextNumPinCode>`
+     56          	'7','8','9',
+     57          	'4','5','6',
+     58          	'1','2','3',
+     59          	'0',0
+     60          };
+     61          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     62          TDUKeyBoard::~TDUKeyBoard(void)
+     63          {
+   \                     `?~TDUKeyBoard`:
+   \   00000000   00402DE9           PUSH     {LR}
+     64          }
+   \   00000004   9C0080E2           ADD      R0,R0,#+156
+   \   00000008   ........           _BLF     `?~CloseWindowTimer`,`?~CloseWindowTimer??rA`
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     65          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     66          TDUKeyBoard::TDUKeyBoard(void)
+   \                     ??TDUKeyBoard:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     67          {
+   \   00000008   9C0084E2           ADD      R0,R4,#+156
+   \   0000000C   ........           _BLF     ??CloseWindowTimer,??CloseWindowTimer??rA
+     68          	Closed = true;
+   \   00000010   0100A0E3           MOV      R0,#+1
+   \   00000014   9800C4E5           STRB     R0,[R4, #+152]
+     69          }
+   \   00000018   0400A0E1           MOV      R0,R4
+   \   0000001C   1040BDE8           POP      {R4,LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+     70          
+     71          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     72          int TDUKeyBoard::ExecKeyBoardAll(WM_HWIN hCurrentWin,char *buf)
+     73          {
+   \                     ??ExecKeyBoardAll:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+   \   00000004   54D04DE2           SUB      SP,SP,#+84
+   \   00000008   0040A0E1           MOV      R4,R0
+     74          	int ReturnValue = -1;
+     75          	if ( Closed ) {
+   \   0000000C   9800D4E5           LDRB     R0,[R4, #+152]
+   \   00000010   0250A0E1           MOV      R5,R2
+   \   00000014   00A0E0E3           MVN      R10,#+0
+   \   00000018   000050E3           CMP      R0,#+0
+   \   0000001C   B400000A           BEQ      ??ExecKeyBoardAll_1
+     76          		UseCallBack = false;
+   \   00000020   0000A0E3           MOV      R0,#+0
+   \   00000024   9400C4E5           STRB     R0,[R4, #+148]
+     77          		int i;
+     78          		int Key;
+     79          		BUTTON_Handle ahButton[39];
+     80          		BUTTON_Handle hButtonESC;
+     81          		BUTTON_Handle hButtonEnter;
+     82          		EDIT_Handle   hEdit;
+     83          		U8 TBuf[2];
+     84          		Closed = false;
+   \   00000028   9800C4E5           STRB     R0,[R4, #+152]
+     85          
+     86          		WinHandl  = WM_CreateWindow( 2,40,286,180,WM_CF_SHOW,cbKeyBoard,0);
+   \   0000002C   01002DE9           PUSH     {R0}
+   \   00000030   ........           LDR      R0,??DataTable8  ;; ??cbKeyBoard
+   \   00000034   0060A0E3           MOV      R6,#+0
+   \   00000038   01002DE9           PUSH     {R0}
+   \   0000003C   0200A0E3           MOV      R0,#+2
+   \   00000040   01002DE9           PUSH     {R0}
+   \   00000044   B430A0E3           MOV      R3,#+180
+   \   00000048   472F80E3           ORR      R2,R0,#0x11C
+   \   0000004C   2810A0E3           MOV      R1,#+40
+   \   00000050   ........           _BLF     WM_CreateWindow,??WM_CreateWindow??rA
+   \   00000054   B609C4E1           STRH     R0,[R4, #+150]
+     87          		WM_BringToTop(WinHandl);
+   \   00000058   ........           _BLF     WM_BringToTop,??WM_BringToTop??rA
+     88          
+     89          		/* Create Keyboard Buttons */
+     90          		for ( i=0; i<(countof(ahButton)-1); i++ ) {
+   \   0000005C   0620A0E1           MOV      R2,R6
+   \   00000060   0CD08DE2           ADD      SP,SP,#+12
+   \   00000064   120000EA           B        ??ExecKeyBoardAll_2
+     91          			int Pos = (i <(countof(ahButton)-1)) ? i : i+4;
+     92          			int x0 = (i<29) ?  5+28*(Pos%10) :  5+28*((Pos+1)%10) ;
+     93          			int y0 = (i<29) ? 76+28*(Pos/10) : 76+28*((Pos+1)/10) ;
+     94          			char c = _acTextAll[i];
+     95          			int Id = c ? c : 1;
+     96          			char ac[2] = {0};
+   \                     ??ExecKeyBoardAll_3:
+   \   00000068   02908DE2           ADD      R9,SP,#+2
+   \   0000006C   00A0A0E3           MOV      R10,#+0
+   \   00000070   00A0C9E5           STRB     R10,[R9, #+0]
+   \   00000074   01A0C9E5           STRB     R10,[R9, #+1]
+     97          			char *s= ac;
+     98          			ac[0] = c;
+   \   00000078   0230CDE5           STRB     R3,[SP, #+2]
+     99          			ahButton[i] = BUTTON_Create( x0, y0, 25, 25, Id,BUTTON_CF_SHOW );
+   \   0000007C   0230A0E3           MOV      R3,#+2
+   \   00000080   08002DE9           PUSH     {R3}
+   \   00000084   04002DE9           PUSH     {R2}
+   \   00000088   1930A0E3           MOV      R3,#+25
+   \   0000008C   0320A0E1           MOV      R2,R3
+   \   00000090   ........           _BLF     BUTTON_Create,??BUTTON_Create??rA
+   \   00000094   B000C7E1           STRH     R0,[R7, #+0]
+    100          			BUTTON_SetText(ahButton[i], s);
+   \   00000098   0070A0E1           MOV      R7,R0
+   \   0000009C   0A108DE2           ADD      R1,SP,#+10
+   \   000000A0   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    101          #if GUI_SUPPORT_MEMDEV
+    102          			BUTTON_EnableMemdev(ahButton[i]);
+   \   000000A4   0700A0E1           MOV      R0,R7
+   \   000000A8   ........           _BLF     WM_EnableMemdev,??WM_EnableMemdev??rA
+   \   000000AC   0820A0E1           MOV      R2,R8
+   \   000000B0   08D08DE2           ADD      SP,SP,#+8
+   \                     ??ExecKeyBoardAll_2:
+   \   000000B4   04008DE2           ADD      R0,SP,#+4
+   \   000000B8   827080E0           ADD      R7,R0,R2, LSL #+1
+   \   000000BC   260052E3           CMP      R2,#+38
+   \   000000C0   2700002A           BCS      ??ExecKeyBoardAll_4
+   \   000000C4   3C029FE5           LDR      R0,??ExecKeyBoardAll_5+0x4  ;; 0x66666667
+   \   000000C8   0210A0E1           MOV      R1,R2
+   \   000000CC   018082E2           ADD      R8,R2,#+1
+   \   000000D0   1D0052E3           CMP      R2,#+29
+   \   000000D4   0D0000AA           BGE      ??ExecKeyBoardAll_6
+   \   000000D8   9130C9E0           SMULL    R3,R9,R1,R0
+   \   000000DC   4991A0E1           ASR      R9,R9,#+2
+   \   000000E0   A19F89E0           ADD      R9,R9,R1, LSR #+31
+   \   000000E4   0A30A0E3           MOV      R3,#+10
+   \   000000E8   930909E0           MUL      R9,R3,R9
+   \   000000EC   090041E0           SUB      R0,R1,R9
+   \   000000F0   1C30A0E3           MOV      R3,#+28
+   \   000000F4   930000E0           MUL      R0,R3,R0
+   \   000000F8   08329FE5           LDR      R3,??ExecKeyBoardAll_5+0x4  ;; 0x66666667
+   \   000000FC   050080E2           ADD      R0,R0,#+5
+   \   00000100   9391CAE0           SMULL    R9,R10,R3,R1
+   \   00000104   4AA1A0E1           ASR      R10,R10,#+2
+   \   00000108   A11F8AE0           ADD      R1,R10,R1, LSR #+31
+   \   0000010C   0C0000EA           B        ??ExecKeyBoardAll_7
+   \                     ??ExecKeyBoardAll_6:
+   \   00000110   9810C3E0           SMULL    R1,R3,R8,R0
+   \   00000114   4331A0E1           ASR      R3,R3,#+2
+   \   00000118   A83F83E0           ADD      R3,R3,R8, LSR #+31
+   \   0000011C   0A10A0E3           MOV      R1,#+10
+   \   00000120   910303E0           MUL      R3,R1,R3
+   \   00000124   030048E0           SUB      R0,R8,R3
+   \   00000128   1C10A0E3           MOV      R1,#+28
+   \   0000012C   910000E0           MUL      R0,R1,R0
+   \   00000130   D0119FE5           LDR      R1,??ExecKeyBoardAll_5+0x4  ;; 0x66666667
+   \   00000134   050080E2           ADD      R0,R0,#+5
+   \   00000138   9138C9E0           SMULL    R3,R9,R1,R8
+   \   0000013C   4991A0E1           ASR      R9,R9,#+2
+   \   00000140   A81F89E0           ADD      R1,R9,R8, LSR #+31
+   \                     ??ExecKeyBoardAll_7:
+   \   00000144   1C30A0E3           MOV      R3,#+28
+   \   00000148   930101E0           MUL      R1,R3,R1
+   \   0000014C   B8319FE5           LDR      R3,??ExecKeyBoardAll_5+0x8  ;; _acTextAll
+   \   00000150   4C1081E2           ADD      R1,R1,#+76
+   \   00000154   0330D2E7           LDRB     R3,[R2, +R3]
+   \   00000158   0320B0E1           MOVS     R2,R3
+   \   0000015C   0120A003           MOVEQ    R2,#+1
+   \   00000160   C0FFFFEA           B        ??ExecKeyBoardAll_3
+    103          #endif
+    104          		}
+    105          		ahButton[i]  = BUTTON_Create(  89, 188, 109, 25, ' ',BUTTON_CF_SHOW );
+    106          		hButtonESC   = BUTTON_Create( 220,  46,  60, 25, GUI_ID_CANCEL,BUTTON_CF_SHOW );
+    107          		hButtonEnter = BUTTON_Create( 257, 132,  25, 53, GUI_ID_CLOSE,BUTTON_CF_SHOW );
+    108          		BUTTON_SetText(hButtonESC, "ESC");
+    109          		BUTTON_SetFont(hButtonEnter,&GUI_Font8x16);
+   \                     ??ExecKeyBoardAll_4:
+   \   00000164   ........           LDR      R10,??DataTable11  ;; GUI_Font8x16
+   \   00000168   0200A0E3           MOV      R0,#+2
+   \   0000016C   01002DE9           PUSH     {R0}
+   \   00000170   2000A0E3           MOV      R0,#+32
+   \   00000174   01002DE9           PUSH     {R0}
+   \   00000178   1930A0E3           MOV      R3,#+25
+   \   0000017C   6D20A0E3           MOV      R2,#+109
+   \   00000180   BC10A0E3           MOV      R1,#+188
+   \   00000184   5900A0E3           MOV      R0,#+89
+   \   00000188   ........           _BLF     BUTTON_Create,??BUTTON_Create??rA
+   \   0000018C   B000C7E1           STRH     R0,[R7, #+0]
+   \   00000190   0200A0E3           MOV      R0,#+2
+   \   00000194   01002DE9           PUSH     {R0}
+   \   00000198   01002DE9           PUSH     {R0}
+   \   0000019C   1930A0E3           MOV      R3,#+25
+   \   000001A0   3C20A0E3           MOV      R2,#+60
+   \   000001A4   2E10A0E3           MOV      R1,#+46
+   \   000001A8   DC00A0E3           MOV      R0,#+220
+   \   000001AC   ........           _BLF     BUTTON_Create,??BUTTON_Create??rA
+   \   000001B0   0070A0E1           MOV      R7,R0
+   \   000001B4   0200A0E3           MOV      R0,#+2
+   \   000001B8   01002DE9           PUSH     {R0}
+   \   000001BC   0500A0E3           MOV      R0,#+5
+   \   000001C0   01002DE9           PUSH     {R0}
+   \   000001C4   3530A0E3           MOV      R3,#+53
+   \   000001C8   1920A0E3           MOV      R2,#+25
+   \   000001CC   8410A0E3           MOV      R1,#+132
+   \   000001D0   FC0080E2           ADD      R0,R0,#+252
+   \   000001D4   ........           _BLF     BUTTON_Create,??BUTTON_Create??rA
+   \   000001D8   0080A0E1           MOV      R8,R0
+   \   000001DC   481F8FE2           ADR      R1,??ExecKeyBoardAll_5  ;; "ESC"
+   \   000001E0   0700A0E1           MOV      R0,R7
+   \   000001E4   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+   \   000001E8   0A10A0E1           MOV      R1,R10
+   \   000001EC   0800A0E1           MOV      R0,R8
+   \   000001F0   ........           _BLF     BUTTON_SetFont,??BUTTON_SetFont??rA
+    110          		TBuf[0] = 148;
+   \   000001F4   9410A0E3           MOV      R1,#+148
+   \   000001F8   1810CDE5           STRB     R1,[SP, #+24]
+    111          		TBuf[1] = 0;
+   \   000001FC   1960CDE5           STRB     R6,[SP, #+25]
+    112          		BUTTON_SetText(hButtonEnter, (char*)TBuf);
+   \   00000200   18108DE2           ADD      R1,SP,#+24
+   \   00000204   0800A0E1           MOV      R0,R8
+   \   00000208   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    113          		hEdit = EDIT_Create( 5, 46, 210, 25, ' ', 80, 0 );
+   \   0000020C   0000A0E3           MOV      R0,#+0
+   \   00000210   01002DE9           PUSH     {R0}
+   \   00000214   5000A0E3           MOV      R0,#+80
+   \   00000218   01002DE9           PUSH     {R0}
+   \   0000021C   2000A0E3           MOV      R0,#+32
+   \   00000220   01002DE9           PUSH     {R0}
+   \   00000224   1930A0E3           MOV      R3,#+25
+   \   00000228   D220A0E3           MOV      R2,#+210
+   \   0000022C   2E10A0E3           MOV      R1,#+46
+   \   00000230   0500A0E3           MOV      R0,#+5
+   \   00000234   ........           _BLF     EDIT_Create,??EDIT_Create??rA
+   \   00000238   24D08DE2           ADD      SP,SP,#+36
+   \   0000023C   0090A0E1           MOV      R9,R0
+    114          		EDIT_SetFont(hEdit, &GUI_Font8x16);
+   \   00000240   0A10A0E1           MOV      R1,R10
+   \   00000244   ........           _BLF     EDIT_SetFont,??EDIT_SetFont??rA
+    115          		/* Handle Keyboard until ESC or ENTER is pressed */
+    116          		do {
+    117          			Key = TDU_WaitKey();
+   \                     ??ExecKeyBoardAll_8:
+   \   00000248   ........           BL       ??TDU_WaitKey
+   \   0000024C   00B0B0E1           MOVS     R11,R0
+    118          			switch ( Key ) {
+   \   00000250   02005012           SUBSNE   R0,R0,#+2
+   \   00000254   0200000A           BEQ      ??ExecKeyBoardAll_9
+   \   00000258   030050E2           SUBS     R0,R0,#+3
+   \   0000025C   0300000A           BEQ      ??ExecKeyBoardAll_10
+   \   00000260   080000EA           B        ??ExecKeyBoardAll_11
+    119          			case 0:
+    120          			case GUI_ID_CANCEL:
+    121          				buf[0]=0;
+   \                     ??ExecKeyBoardAll_9:
+   \   00000264   0060C5E5           STRB     R6,[R5, #+0]
+    122          				ReturnValue = -1;
+   \   00000268   06A0E0E1           MVN      R10,R6
+   \   0000026C   090000EA           B        ??ExecKeyBoardAll_12
+    123          				break;
+    124          			case GUI_ID_CLOSE:
+    125          				EDIT_GetText(hEdit, buf, 180);
+   \                     ??ExecKeyBoardAll_10:
+   \   00000270   B420A0E3           MOV      R2,#+180
+   \   00000274   0510A0E1           MOV      R1,R5
+   \   00000278   0900A0E1           MOV      R0,R9
+   \   0000027C   ........           _BLF     EDIT_GetText,??EDIT_GetText??rA
+    126          				ReturnValue = 0;
+   \   00000280   00A0A0E3           MOV      R10,#+0
+   \   00000284   030000EA           B        ??ExecKeyBoardAll_12
+    127          				break;
+    128          			default:
+    129          				EDIT_AddKey(hEdit, Key);
+   \                     ??ExecKeyBoardAll_11:
+   \   00000288   0B10A0E1           MOV      R1,R11
+   \   0000028C   0900A0E1           MOV      R0,R9
+   \   00000290   ........           _BLF     EDIT_AddKey,??EDIT_AddKey??rA
+    130          				ReturnValue = 1;
+   \   00000294   01A0A0E3           MOV      R10,#+1
+    131          			}
+    132          		} while ( (Key!=GUI_ID_CLOSE) && (Key!=GUI_ID_CANCEL) && (Key!=0) );
+   \                     ??ExecKeyBoardAll_12:
+   \   00000298   05005BE3           CMP      R11,#+5
+   \   0000029C   02005B13           CMPNE    R11,#+2
+   \   000002A0   00005B13           CMPNE    R11,#+0
+   \   000002A4   E7FFFF1A           BNE      ??ExecKeyBoardAll_8
+    133          		/* Cleanup */
+    134          		for ( i=0; i< countof(ahButton); i++ ) {
+   \   000002A8   0050A0E3           MOV      R5,#+0
+   \   000002AC   040000EA           B        ??ExecKeyBoardAll_13
+    135          			BUTTON_Delete(ahButton[i]);
+   \                     ??ExecKeyBoardAll_14:
+   \   000002B0   04008DE2           ADD      R0,SP,#+4
+   \   000002B4   850080E0           ADD      R0,R0,R5, LSL #+1
+   \   000002B8   F000D0E1           LDRSH    R0,[R0, #+0]
+    136          		}
+   \   000002BC   015085E2           ADD      R5,R5,#+1
+   \   000002C0   ........           _BLF     WM_DeleteWindow,??WM_DeleteWindow??rA
+   \                     ??ExecKeyBoardAll_13:
+   \   000002C4   270055E3           CMP      R5,#+39
+   \   000002C8   F8FFFF3A           BCC      ??ExecKeyBoardAll_14
+    137          		BUTTON_Delete(hButtonESC);
+   \   000002CC   0700A0E1           MOV      R0,R7
+   \   000002D0   ........           _BLF     WM_DeleteWindow,??WM_DeleteWindow??rA
+    138          		BUTTON_Delete(hButtonEnter);
+   \   000002D4   0800A0E1           MOV      R0,R8
+   \   000002D8   ........           _BLF     WM_DeleteWindow,??WM_DeleteWindow??rA
+    139          		EDIT_Delete(hEdit);
+   \   000002DC   0900A0E1           MOV      R0,R9
+   \   000002E0   ........           _BLF     WM_DeleteWindow,??WM_DeleteWindow??rA
+    140          		WM_DeleteWindow(WinHandl);
+   \   000002E4   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   000002E8   ........           _BLF     WM_DeleteWindow,??WM_DeleteWindow??rA
+    141          		Closed = true;
+   \   000002EC   0100A0E3           MOV      R0,#+1
+   \   000002F0   9800C4E5           STRB     R0,[R4, #+152]
+    142          //		WM_ExecIdle();
+    143          	}
+    144          	return ReturnValue;
+   \                     ??ExecKeyBoardAll_1:
+   \   000002F4   0A00A0E1           MOV      R0,R10
+   \   000002F8   54D08DE2           ADD      SP,SP,#+84
+   \   000002FC   F04FBDE8           POP      {R4-R11,LR}
+   \   00000300   1EFF2FE1           BX       LR               ;; return
+   \                     ??ExecKeyBoardAll_5:
+   \   00000304   45534300           DC8      "ESC"
+   \   00000308   67666666           DC32     0x66666667
+   \   0000030C   ........           DC32     _acTextAll
+    145          }
+    146          
+    147          //New keypad for PinCode.
+
+   \                                 In segment CODE, align 4, keep-with-next
+    148          void TDUKeyBoard::ExecKeyBoardPinCode(WM_HWIN hCurrentWin,int WordKey, int ID)
+    149          {
+   \                     ??ExecKeyBoardPinCode:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   20D04DE2           SUB      SP,SP,#+32
+   \   00000008   0040A0E1           MOV      R4,R0
+    150          	if ( Closed ) {
+   \   0000000C   9800D4E5           LDRB     R0,[R4, #+152]
+   \   00000010   0250A0E1           MOV      R5,R2
+   \   00000014   000050E3           CMP      R0,#+0
+   \   00000018   C700000A           BEQ      ??ExecKeyBoardPinCode_1
+    151          		Closed = false;
+   \   0000001C   0060A0E3           MOV      R6,#+0
+   \   00000020   0000A0E3           MOV      R0,#+0
+   \   00000024   9800C4E5           STRB     R0,[R4, #+152]
+    152          		UseCallBack = true;
+   \   00000028   0100A0E3           MOV      R0,#+1
+   \   0000002C   9400C4E5           STRB     R0,[R4, #+148]
+    153          		int i;
+    154          //		int Key;
+    155          		U8 TBuf[2];
+    156          		ReturnBuf[0] = 0;
+   \   00000030   3A60C4E5           STRB     R6,[R4, #+58]
+    157          		ReturnValue = -1;
+   \   00000034   000060E2           RSB      R0,R0,#+0
+   \   00000038   8C0084E5           STR      R0,[R4, #+140]
+    158          		ValueID = ID;
+   \   0000003C   903084E5           STR      R3,[R4, #+144]
+    159          		DialogWinHandl = hCurrentWin;
+   \   00000040   B010C4E1           STRH     R1,[R4, #+0]
+    160          
+    161          		//	WinHandl  = WM_CreateWindowAsChild( 2,40,118,150,hCurrentWin,WM_CF_SHOW,cbKeyBoard,0);
+    162          		//	WinHandl  = WM_CreateWindow( 2,40,118,170,WM_CF_SHOW,cbKeyBoardPinCode,0);
+    163          		WinHandl  = WM_CreateWindow( 100,40,118,170,WM_CF_SHOW,cbKeyBoardPinCode,0);
+   \   00000044   0600A0E1           MOV      R0,R6
+   \   00000048   01002DE9           PUSH     {R0}
+   \   0000004C   F4029FE5           LDR      R0,??ExecKeyBoardPinCode_2  ;; ??cbKeyBoardPinCode
+   \   00000050   AA30A0E3           MOV      R3,#+170
+   \   00000054   01002DE9           PUSH     {R0}
+   \   00000058   0200A0E3           MOV      R0,#+2
+   \   0000005C   01002DE9           PUSH     {R0}
+   \   00000060   7620A0E3           MOV      R2,#+118
+   \   00000064   2810A0E3           MOV      R1,#+40
+   \   00000068   6400A0E3           MOV      R0,#+100
+   \   0000006C   ........           _BLF     WM_CreateWindow,??WM_CreateWindow??rA
+   \   00000070   B609C4E1           STRH     R0,[R4, #+150]
+    164          		WM_SetStayOnTop(WinHandl, 1);
+   \   00000074   0110A0E3           MOV      R1,#+1
+   \   00000078   ........           _BLF     WM_SetStayOnTop,??WM_SetStayOnTop??rA
+    165          
+    166          		for ( i=0; i<countof(ahButtonPinCode); i++ ) {
+   \   0000007C   0670A0E1           MOV      R7,R6
+   \   00000080   0CD08DE2           ADD      SP,SP,#+12
+    167          			int x0 =  3+28*(i%3);//5+28*(i%3);
+    168          			int y0 = 56+28*(i/3);//76+28*(i/3);
+    169          			char c = _acTextNumPinCode[i];
+   \                     ??ExecKeyBoardPinCode_3:
+   \   00000084   C0029FE5           LDR      R0,??ExecKeyBoardPinCode_2+0x4  ;; _acTextNumPinCode
+    170          			int Id = c ? c : 1;
+    171          			char ac[2] = {0,0};
+   \   00000088   02208DE2           ADD      R2,SP,#+2
+   \   0000008C   0000D7E7           LDRB     R0,[R7, +R0]
+   \   00000090   0030A0E3           MOV      R3,#+0
+   \   00000094   0030C2E5           STRB     R3,[R2, #+0]
+   \   00000098   0010B0E1           MOVS     R1,R0
+   \   0000009C   0110A003           MOVEQ    R1,#+1
+   \   000000A0   0130C2E5           STRB     R3,[R2, #+1]
+    172          			char *s= ac;
+    173          			ac[0] = c;
+   \   000000A4   0200CDE5           STRB     R0,[SP, #+2]
+    174          			ahButtonPinCode[i] = BUTTON_CreateAsChild( x0, y0, 25, 25, WinHandl, Id, BUTTON_CF_SHOW );
+   \   000000A8   0200A0E3           MOV      R0,#+2
+   \   000000AC   01002DE9           PUSH     {R0}
+   \   000000B0   02002DE9           PUSH     {R1}
+   \   000000B4   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   000000B8   878084E0           ADD      R8,R4,R7, LSL #+1
+   \   000000BC   1930A0E3           MOV      R3,#+25
+   \   000000C0   01002DE9           PUSH     {R0}
+   \   000000C4   ........           LDR      R0,??DataTable10  ;; 0x55555556
+   \   000000C8   0320A0E1           MOV      R2,R3
+   \   000000CC   9017CCE0           SMULL    R1,R12,R0,R7
+   \   000000D0   A70F8CE0           ADD      R0,R12,R7, LSR #+31
+   \   000000D4   1C10A0E3           MOV      R1,#+28
+   \   000000D8   910000E0           MUL      R0,R1,R0
+   \   000000DC   381080E2           ADD      R1,R0,#+56
+   \   000000E0   ........           LDR      R0,??DataTable10  ;; 0x55555556
+   \   000000E4   97C0CEE0           SMULL    R12,LR,R7,R0
+   \   000000E8   A7EF8EE0           ADD      LR,LR,R7, LSR #+31
+   \   000000EC   03C0A0E3           MOV      R12,#+3
+   \   000000F0   9C0E0EE0           MUL      LR,R12,LR
+   \   000000F4   0E0047E0           SUB      R0,R7,LR
+   \   000000F8   1CC0A0E3           MOV      R12,#+28
+   \   000000FC   9C0000E0           MUL      R0,R12,R0
+   \   00000100   030080E2           ADD      R0,R0,#+3
+   \   00000104   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   00000108   B200C8E1           STRH     R0,[R8, #+2]
+    175          			BUTTON_SetText(ahButtonPinCode[i], s);
+   \   0000010C   0E108DE2           ADD      R1,SP,#+14
+   \   00000110   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    176          		}
+   \   00000114   017087E2           ADD      R7,R7,#+1
+   \   00000118   0A0057E3           CMP      R7,#+10
+   \   0000011C   0CD08DE2           ADD      SP,SP,#+12
+   \   00000120   D7FFFF3A           BCC      ??ExecKeyBoardPinCode_3
+    177          		hButtonBackSpace  = BUTTON_CreateAsChild( 86,  56, 25, 25, WinHandl, GUI_KEY_BACKSPACE,BUTTON_CF_SHOW );
+    178          		hButtonESC              = BUTTON_CreateAsChild( 86,  84, 25, 25, WinHandl, GUI_KEY_ESCAPE,BUTTON_CF_SHOW );
+    179          		hButtonEnter            = BUTTON_CreateAsChild( 86, 112, 25, 53, WinHandl, GUI_KEY_ENTER, BUTTON_CF_SHOW );
+    180          
+    181          		BUTTON_SetFont(hButtonBackSpace,&GUI_Font8x16);
+   \   00000124   ........           LDR      R7,??DataTable11  ;; GUI_Font8x16
+   \   00000128   0200A0E3           MOV      R0,#+2
+   \   0000012C   01002DE9           PUSH     {R0}
+   \   00000130   0800A0E3           MOV      R0,#+8
+   \   00000134   01002DE9           PUSH     {R0}
+   \   00000138   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   0000013C   1930A0E3           MOV      R3,#+25
+   \   00000140   1920A0E3           MOV      R2,#+25
+   \   00000144   01002DE9           PUSH     {R0}
+   \   00000148   3810A0E3           MOV      R1,#+56
+   \   0000014C   5600A0E3           MOV      R0,#+86
+   \   00000150   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   00000154   BE02C4E1           STRH     R0,[R4, #+46]
+   \   00000158   0200A0E3           MOV      R0,#+2
+   \   0000015C   01002DE9           PUSH     {R0}
+   \   00000160   1B00A0E3           MOV      R0,#+27
+   \   00000164   01002DE9           PUSH     {R0}
+   \   00000168   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   0000016C   1930A0E3           MOV      R3,#+25
+   \   00000170   0320A0E1           MOV      R2,R3
+   \   00000174   01002DE9           PUSH     {R0}
+   \   00000178   5410A0E3           MOV      R1,#+84
+   \   0000017C   5600A0E3           MOV      R0,#+86
+   \   00000180   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   00000184   B003C4E1           STRH     R0,[R4, #+48]
+   \   00000188   0200A0E3           MOV      R0,#+2
+   \   0000018C   01002DE9           PUSH     {R0}
+   \   00000190   0D00A0E3           MOV      R0,#+13
+   \   00000194   01002DE9           PUSH     {R0}
+   \   00000198   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   0000019C   3530A0E3           MOV      R3,#+53
+   \   000001A0   1920A0E3           MOV      R2,#+25
+   \   000001A4   01002DE9           PUSH     {R0}
+   \   000001A8   7010A0E3           MOV      R1,#+112
+   \   000001AC   5600A0E3           MOV      R0,#+86
+   \   000001B0   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   000001B4   24D08DE2           ADD      SP,SP,#+36
+   \   000001B8   B203C4E1           STRH     R0,[R4, #+50]
+   \   000001BC   FE02D4E1           LDRSH    R0,[R4, #+46]
+   \   000001C0   0710A0E1           MOV      R1,R7
+   \   000001C4   ........           _BLF     BUTTON_SetFont,??BUTTON_SetFont??rA
+    182          		TBuf[0] = 144;
+   \   000001C8   9010A0E3           MOV      R1,#+144
+   \   000001CC   0010CDE5           STRB     R1,[SP, #+0]
+    183          		TBuf[1] = 0;
+   \   000001D0   0160CDE5           STRB     R6,[SP, #+1]
+    184          		BUTTON_SetText(hButtonBackSpace,(char*)TBuf);
+   \   000001D4   FE02D4E1           LDRSH    R0,[R4, #+46]
+   \   000001D8   0D10A0E1           MOV      R1,SP
+   \   000001DC   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    185          
+    186          		BUTTON_SetText(hButtonESC,           "Esc");
+   \   000001E0   F003D4E1           LDRSH    R0,[R4, #+48]
+   \   000001E4   ........           ADR      R1,??DataTable3  ;; "Esc"
+   \   000001E8   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    187          
+    188          		BUTTON_SetFont(hButtonEnter,&GUI_Font8x16);
+   \   000001EC   F203D4E1           LDRSH    R0,[R4, #+50]
+   \   000001F0   0710A0E1           MOV      R1,R7
+   \   000001F4   ........           _BLF     BUTTON_SetFont,??BUTTON_SetFont??rA
+    189          		TBuf[0] = 148;
+   \   000001F8   9410A0E3           MOV      R1,#+148
+   \   000001FC   0010CDE5           STRB     R1,[SP, #+0]
+    190          		TBuf[1] = 0;
+   \   00000200   0160CDE5           STRB     R6,[SP, #+1]
+    191          		BUTTON_SetText(hButtonEnter, (char*)TBuf);
+   \   00000204   F203D4E1           LDRSH    R0,[R4, #+50]
+   \   00000208   0D10A0E1           MOV      R1,SP
+   \   0000020C   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    192          
+    193          		hText   = TEXT_CreateAsChild( 3,  3, 108, 22, WinHandl, 0, WM_CF_SHOW, FindDictionaryWord(WordKey).c_str(), TEXT_CF_LEFT | TEXT_CF_VCENTER );
+   \   00000210   0510A0E1           MOV      R1,R5
+   \   00000214   04008DE2           ADD      R0,SP,#+4
+   \   00000218   ........           _BLF     ??FindDictionaryWord,??FindDictionaryWord??rA
+   \   0000021C   1C009DE5           LDR      R0,[SP, #+28]
+   \   00000220   0C10A0E3           MOV      R1,#+12
+   \   00000224   100050E3           CMP      R0,#+16
+   \   00000228   08009D25           LDRCS    R0,[SP, #+8]
+   \   0000022C   1630A0E3           MOV      R3,#+22
+   \   00000230   08008D32           ADDCC    R0,SP,#+8
+   \   00000234   02002DE9           PUSH     {R1}
+   \   00000238   01002DE9           PUSH     {R0}
+   \   0000023C   0200A0E3           MOV      R0,#+2
+   \   00000240   01002DE9           PUSH     {R0}
+   \   00000244   0000A0E3           MOV      R0,#+0
+   \   00000248   01002DE9           PUSH     {R0}
+   \   0000024C   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   00000250   6C20A0E3           MOV      R2,#+108
+   \   00000254   0310A0E3           MOV      R1,#+3
+   \   00000258   01002DE9           PUSH     {R0}
+   \   0000025C   0100A0E1           MOV      R0,R1
+   \   00000260   ........           _BLF     TEXT_CreateAsChild,??TEXT_CreateAsChild??rA
+   \   00000264   B403C4E1           STRH     R0,[R4, #+52]
+   \   00000268   0620A0E1           MOV      R2,R6
+   \   0000026C   0110A0E3           MOV      R1,#+1
+   \   00000270   18008DE2           ADD      R0,SP,#+24
+   \   00000274   ........           _BLF     ??_Tidy,??_Tidy??rA
+    194          		TEXT_SetTextColor(hText,GUI_WHITE);
+   \   00000278   F403D4E1           LDRSH    R0,[R4, #+52]
+   \   0000027C   FF14E0E3           MVN      R1,#-16777216
+   \   00000280   ........           _BLF     TEXT_SetTextColor,??TEXT_SetTextColor??rA
+    195          		hTextEdit = EDIT_CreateAsChild( 3, 27, 108, 25, WinHandl, ' ', 80, 0 );
+   \   00000284   0600A0E1           MOV      R0,R6
+   \   00000288   01002DE9           PUSH     {R0}
+   \   0000028C   5000A0E3           MOV      R0,#+80
+   \   00000290   01002DE9           PUSH     {R0}
+   \   00000294   2000A0E3           MOV      R0,#+32
+   \   00000298   01002DE9           PUSH     {R0}
+   \   0000029C   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   000002A0   1930A0E3           MOV      R3,#+25
+   \   000002A4   6C20A0E3           MOV      R2,#+108
+   \   000002A8   01002DE9           PUSH     {R0}
+   \   000002AC   1B10A0E3           MOV      R1,#+27
+   \   000002B0   0300A0E3           MOV      R0,#+3
+   \   000002B4   ........           _BLF     EDIT_CreateAsChild,??EDIT_CreateAsChild??rA
+   \   000002B8   24D08DE2           ADD      SP,SP,#+36
+   \   000002BC   B603C4E1           STRH     R0,[R4, #+54]
+    196          		EDIT_SetFont(hTextEdit, &GUI_Font8x16);
+   \   000002C0   0710A0E1           MOV      R1,R7
+   \   000002C4   ........           _BLF     EDIT_SetFont,??EDIT_SetFont??rA
+    197          		hTextEditPinCode = EDIT_CreateAsChild( 3, 27, 108, 25, WinHandl, ' ', 80, 0 );
+   \   000002C8   0600A0E1           MOV      R0,R6
+   \   000002CC   01002DE9           PUSH     {R0}
+   \   000002D0   5000A0E3           MOV      R0,#+80
+   \   000002D4   01002DE9           PUSH     {R0}
+   \   000002D8   2000A0E3           MOV      R0,#+32
+   \   000002DC   01002DE9           PUSH     {R0}
+   \   000002E0   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   000002E4   1930A0E3           MOV      R3,#+25
+   \   000002E8   6C20A0E3           MOV      R2,#+108
+   \   000002EC   01002DE9           PUSH     {R0}
+   \   000002F0   1B10A0E3           MOV      R1,#+27
+   \   000002F4   0300A0E3           MOV      R0,#+3
+   \   000002F8   ........           _BLF     EDIT_CreateAsChild,??EDIT_CreateAsChild??rA
+   \   000002FC   B803C4E1           STRH     R0,[R4, #+56]
+    198          		EDIT_SetFont(hTextEditPinCode, &GUI_Font8x16);
+   \   00000300   0710A0E1           MOV      R1,R7
+   \   00000304   ........           _BLF     EDIT_SetFont,??EDIT_SetFont??rA
+    199          		WM_HideWindow(hTextEditPinCode);
+   \   00000308   F803D4E1           LDRSH    R0,[R4, #+56]
+   \   0000030C   ........           _BLF     WM_HideWindow,??WM_HideWindow??rA
+    200          		CloseTimer.Init(WinHandl,false,&Closed,TimeOut);
+   \   00000310   7000A0E3           MOV      R0,#+112
+   \   00000314   5C0D80E3           ORR      R0,R0,#0x1700
+   \   00000318   01002DE9           PUSH     {R0}
+   \   0000031C   F619D4E1           LDRSH    R1,[R4, #+150]
+   \   00000320   983084E2           ADD      R3,R4,#+152
+   \   00000324   0620A0E1           MOV      R2,R6
+   \   00000328   9C0084E2           ADD      R0,R4,#+156
+   \   0000032C   ........           _BLF     ??Init,??Init??rA
+    201          		WM_EnableMemdev(WinHandl);
+   \   00000330   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   00000334   ........           _BLF     WM_EnableMemdev,??WM_EnableMemdev??rA
+   \   00000338   14D08DE2           ADD      SP,SP,#+20
+    202          	}
+    203          }
+   \                     ??ExecKeyBoardPinCode_1:
+   \   0000033C   20D08DE2           ADD      SP,SP,#+32
+   \   00000340   F041BDE8           POP      {R4-R8,LR}
+   \   00000344   1EFF2FE1           BX       LR               ;; return
+   \                     ??ExecKeyBoardPinCode_2:
+   \   00000348   ........           DC32     ??cbKeyBoardPinCode
+   \   0000034C   ........           DC32     _acTextNumPinCode
+    204          //New keypad for num.
+
+   \                                 In segment CODE, align 4, keep-with-next
+    205          void TDUKeyBoard::ExecKeyBoardNum(WM_HWIN hCurrentWin,int WordKey, int ID)
+    206          {
+   \                     ??ExecKeyBoardNum:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   20D04DE2           SUB      SP,SP,#+32
+   \   00000008   0040A0E1           MOV      R4,R0
+    207          	if ( Closed ) {
+   \   0000000C   9800D4E5           LDRB     R0,[R4, #+152]
+   \   00000010   0250A0E1           MOV      R5,R2
+   \   00000014   000050E3           CMP      R0,#+0
+   \   00000018   B400000A           BEQ      ??ExecKeyBoardNum_1
+    208          		Closed = false;
+   \   0000001C   0060A0E3           MOV      R6,#+0
+   \   00000020   0000A0E3           MOV      R0,#+0
+   \   00000024   9800C4E5           STRB     R0,[R4, #+152]
+    209          		UseCallBack = true;
+   \   00000028   0100A0E3           MOV      R0,#+1
+   \   0000002C   9400C4E5           STRB     R0,[R4, #+148]
+    210          		int i;
+    211          //		int Key;
+    212          		U8 TBuf[2];
+    213          		ReturnBuf[0] = 0;
+   \   00000030   3A60C4E5           STRB     R6,[R4, #+58]
+    214          		ReturnValue = -1;
+   \   00000034   000060E2           RSB      R0,R0,#+0
+   \   00000038   8C0084E5           STR      R0,[R4, #+140]
+    215          		ValueID = ID;
+   \   0000003C   903084E5           STR      R3,[R4, #+144]
+    216          		DialogWinHandl = hCurrentWin;
+   \   00000040   B010C4E1           STRH     R1,[R4, #+0]
+    217          
+    218          		//	WinHandl  = WM_CreateWindowAsChild( 2,40,118,150,hCurrentWin,WM_CF_SHOW,cbKeyBoard,0);
+    219          		WinHandl  = WM_CreateWindow( 2,40,118,170,WM_CF_SHOW,cbKeyBoard,0);
+   \   00000044   0600A0E1           MOV      R0,R6
+   \   00000048   01002DE9           PUSH     {R0}
+   \   0000004C   ........           LDR      R0,??DataTable8  ;; ??cbKeyBoard
+   \   00000050   AA30A0E3           MOV      R3,#+170
+   \   00000054   01002DE9           PUSH     {R0}
+   \   00000058   0200A0E3           MOV      R0,#+2
+   \   0000005C   01002DE9           PUSH     {R0}
+   \   00000060   7620A0E3           MOV      R2,#+118
+   \   00000064   2810A0E3           MOV      R1,#+40
+   \   00000068   ........           _BLF     WM_CreateWindow,??WM_CreateWindow??rA
+   \   0000006C   B609C4E1           STRH     R0,[R4, #+150]
+    220          		WM_SetStayOnTop(WinHandl, 1);
+   \   00000070   0110A0E3           MOV      R1,#+1
+   \   00000074   ........           _BLF     WM_SetStayOnTop,??WM_SetStayOnTop??rA
+    221          
+    222          		for ( i=0; i<countof(ahButton); i++ ) {
+   \   00000078   0670A0E1           MOV      R7,R6
+   \   0000007C   0CD08DE2           ADD      SP,SP,#+12
+    223          			int x0 =  3+28*(i%3);//5+28*(i%3);
+    224          			int y0 = 56+28*(i/3);//76+28*(i/3);
+    225          			char c = _acTextNum[i];
+   \                     ??ExecKeyBoardNum_2:
+   \   00000080   74029FE5           LDR      R0,??ExecKeyBoardNum_3  ;; _acTextNum
+    226          			int Id = c ? c : 1;
+    227          			char ac[2] = {0,0};
+   \   00000084   02208DE2           ADD      R2,SP,#+2
+   \   00000088   0000D7E7           LDRB     R0,[R7, +R0]
+   \   0000008C   0030A0E3           MOV      R3,#+0
+   \   00000090   0030C2E5           STRB     R3,[R2, #+0]
+   \   00000094   0010B0E1           MOVS     R1,R0
+   \   00000098   0110A003           MOVEQ    R1,#+1
+   \   0000009C   0130C2E5           STRB     R3,[R2, #+1]
+    228          			char *s= ac;
+    229          			ac[0] = c;
+   \   000000A0   0200CDE5           STRB     R0,[SP, #+2]
+    230          			ahButton[i] = BUTTON_CreateAsChild( x0, y0, 25, 25, WinHandl, Id, BUTTON_CF_SHOW );
+   \   000000A4   0200A0E3           MOV      R0,#+2
+   \   000000A8   01002DE9           PUSH     {R0}
+   \   000000AC   02002DE9           PUSH     {R1}
+   \   000000B0   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   000000B4   878084E0           ADD      R8,R4,R7, LSL #+1
+   \   000000B8   1930A0E3           MOV      R3,#+25
+   \   000000BC   01002DE9           PUSH     {R0}
+   \   000000C0   ........           LDR      R0,??DataTable10  ;; 0x55555556
+   \   000000C4   0320A0E1           MOV      R2,R3
+   \   000000C8   9017CCE0           SMULL    R1,R12,R0,R7
+   \   000000CC   A70F8CE0           ADD      R0,R12,R7, LSR #+31
+   \   000000D0   1C10A0E3           MOV      R1,#+28
+   \   000000D4   910000E0           MUL      R0,R1,R0
+   \   000000D8   381080E2           ADD      R1,R0,#+56
+   \   000000DC   ........           LDR      R0,??DataTable10  ;; 0x55555556
+   \   000000E0   97C0CEE0           SMULL    R12,LR,R7,R0
+   \   000000E4   A7EF8EE0           ADD      LR,LR,R7, LSR #+31
+   \   000000E8   03C0A0E3           MOV      R12,#+3
+   \   000000EC   9C0E0EE0           MUL      LR,R12,LR
+   \   000000F0   0E0047E0           SUB      R0,R7,LR
+   \   000000F4   1CC0A0E3           MOV      R12,#+28
+   \   000000F8   9C0000E0           MUL      R0,R12,R0
+   \   000000FC   030080E2           ADD      R0,R0,#+3
+   \   00000100   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   00000104   B601C8E1           STRH     R0,[R8, #+22]
+    231          			BUTTON_SetText(ahButton[i], s);
+   \   00000108   0E108DE2           ADD      R1,SP,#+14
+   \   0000010C   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    232          		}
+   \   00000110   017087E2           ADD      R7,R7,#+1
+   \   00000114   0C0057E3           CMP      R7,#+12
+   \   00000118   0CD08DE2           ADD      SP,SP,#+12
+   \   0000011C   D7FFFF3A           BCC      ??ExecKeyBoardNum_2
+    233          		hButtonBackSpace  = BUTTON_CreateAsChild( 86,  56, 25, 25, WinHandl, GUI_KEY_BACKSPACE,BUTTON_CF_SHOW );
+    234          		hButtonESC              = BUTTON_CreateAsChild( 86,  84, 25, 25, WinHandl, GUI_KEY_ESCAPE,BUTTON_CF_SHOW );
+    235          		hButtonEnter            = BUTTON_CreateAsChild( 86, 112, 25, 53, WinHandl, GUI_KEY_ENTER, BUTTON_CF_SHOW );
+    236          
+    237          		BUTTON_SetFont(hButtonBackSpace,&GUI_Font8x16);
+   \   00000120   ........           LDR      R7,??DataTable11  ;; GUI_Font8x16
+   \   00000124   0200A0E3           MOV      R0,#+2
+   \   00000128   01002DE9           PUSH     {R0}
+   \   0000012C   0800A0E3           MOV      R0,#+8
+   \   00000130   01002DE9           PUSH     {R0}
+   \   00000134   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   00000138   1930A0E3           MOV      R3,#+25
+   \   0000013C   1920A0E3           MOV      R2,#+25
+   \   00000140   01002DE9           PUSH     {R0}
+   \   00000144   3810A0E3           MOV      R1,#+56
+   \   00000148   5600A0E3           MOV      R0,#+86
+   \   0000014C   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   00000150   BE02C4E1           STRH     R0,[R4, #+46]
+   \   00000154   0200A0E3           MOV      R0,#+2
+   \   00000158   01002DE9           PUSH     {R0}
+   \   0000015C   1B00A0E3           MOV      R0,#+27
+   \   00000160   01002DE9           PUSH     {R0}
+   \   00000164   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   00000168   1930A0E3           MOV      R3,#+25
+   \   0000016C   0320A0E1           MOV      R2,R3
+   \   00000170   01002DE9           PUSH     {R0}
+   \   00000174   5410A0E3           MOV      R1,#+84
+   \   00000178   5600A0E3           MOV      R0,#+86
+   \   0000017C   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   00000180   B003C4E1           STRH     R0,[R4, #+48]
+   \   00000184   0200A0E3           MOV      R0,#+2
+   \   00000188   01002DE9           PUSH     {R0}
+   \   0000018C   0D00A0E3           MOV      R0,#+13
+   \   00000190   01002DE9           PUSH     {R0}
+   \   00000194   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   00000198   3530A0E3           MOV      R3,#+53
+   \   0000019C   1920A0E3           MOV      R2,#+25
+   \   000001A0   01002DE9           PUSH     {R0}
+   \   000001A4   7010A0E3           MOV      R1,#+112
+   \   000001A8   5600A0E3           MOV      R0,#+86
+   \   000001AC   ........           _BLF     BUTTON_CreateAsChild,??BUTTON_CreateAsChild??rA
+   \   000001B0   24D08DE2           ADD      SP,SP,#+36
+   \   000001B4   B203C4E1           STRH     R0,[R4, #+50]
+   \   000001B8   FE02D4E1           LDRSH    R0,[R4, #+46]
+   \   000001BC   0710A0E1           MOV      R1,R7
+   \   000001C0   ........           _BLF     BUTTON_SetFont,??BUTTON_SetFont??rA
+    238          		TBuf[0] = 144;
+   \   000001C4   9010A0E3           MOV      R1,#+144
+   \   000001C8   0010CDE5           STRB     R1,[SP, #+0]
+    239          		TBuf[1] = 0;
+   \   000001CC   0160CDE5           STRB     R6,[SP, #+1]
+    240          		BUTTON_SetText(hButtonBackSpace,(char*)TBuf);
+   \   000001D0   FE02D4E1           LDRSH    R0,[R4, #+46]
+   \   000001D4   0D10A0E1           MOV      R1,SP
+   \   000001D8   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    241          
+    242          		BUTTON_SetText(hButtonESC,           "Esc");
+   \   000001DC   F003D4E1           LDRSH    R0,[R4, #+48]
+   \   000001E0   ........           ADR      R1,??DataTable7  ;; "Esc"
+   \   000001E4   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    243          
+    244          		BUTTON_SetFont(hButtonEnter,&GUI_Font8x16);
+   \   000001E8   F203D4E1           LDRSH    R0,[R4, #+50]
+   \   000001EC   0710A0E1           MOV      R1,R7
+   \   000001F0   ........           _BLF     BUTTON_SetFont,??BUTTON_SetFont??rA
+    245          		TBuf[0] = 148;
+   \   000001F4   9410A0E3           MOV      R1,#+148
+   \   000001F8   0010CDE5           STRB     R1,[SP, #+0]
+    246          		TBuf[1] = 0;
+   \   000001FC   0160CDE5           STRB     R6,[SP, #+1]
+    247          		BUTTON_SetText(hButtonEnter,(char*)TBuf);
+   \   00000200   F203D4E1           LDRSH    R0,[R4, #+50]
+   \   00000204   0D10A0E1           MOV      R1,SP
+   \   00000208   ........           _BLF     BUTTON_SetText,??BUTTON_SetText??rA
+    248          
+    249          		hText   = TEXT_CreateAsChild( 3,  3, 108, 22, WinHandl, 0, WM_CF_SHOW, FindDictionaryWord(WordKey).c_str(), TEXT_CF_LEFT | TEXT_CF_VCENTER );
+   \   0000020C   0510A0E1           MOV      R1,R5
+   \   00000210   04008DE2           ADD      R0,SP,#+4
+   \   00000214   ........           _BLF     ??FindDictionaryWord,??FindDictionaryWord??rA
+   \   00000218   1C009DE5           LDR      R0,[SP, #+28]
+   \   0000021C   0C10A0E3           MOV      R1,#+12
+   \   00000220   100050E3           CMP      R0,#+16
+   \   00000224   08009D25           LDRCS    R0,[SP, #+8]
+   \   00000228   1630A0E3           MOV      R3,#+22
+   \   0000022C   08008D32           ADDCC    R0,SP,#+8
+   \   00000230   02002DE9           PUSH     {R1}
+   \   00000234   01002DE9           PUSH     {R0}
+   \   00000238   0200A0E3           MOV      R0,#+2
+   \   0000023C   01002DE9           PUSH     {R0}
+   \   00000240   0000A0E3           MOV      R0,#+0
+   \   00000244   01002DE9           PUSH     {R0}
+   \   00000248   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   0000024C   6C20A0E3           MOV      R2,#+108
+   \   00000250   0310A0E3           MOV      R1,#+3
+   \   00000254   01002DE9           PUSH     {R0}
+   \   00000258   0100A0E1           MOV      R0,R1
+   \   0000025C   ........           _BLF     TEXT_CreateAsChild,??TEXT_CreateAsChild??rA
+   \   00000260   B403C4E1           STRH     R0,[R4, #+52]
+   \   00000264   0620A0E1           MOV      R2,R6
+   \   00000268   0110A0E3           MOV      R1,#+1
+   \   0000026C   18008DE2           ADD      R0,SP,#+24
+   \   00000270   ........           _BLF     ??_Tidy,??_Tidy??rA
+    250          		TEXT_SetTextColor(hText,GUI_WHITE);
+   \   00000274   F403D4E1           LDRSH    R0,[R4, #+52]
+   \   00000278   FF14E0E3           MVN      R1,#-16777216
+   \   0000027C   ........           _BLF     TEXT_SetTextColor,??TEXT_SetTextColor??rA
+    251          		hTextEdit = EDIT_CreateAsChild( 3, 27, 108, 25, WinHandl, ' ', 80, 0 );
+   \   00000280   0600A0E1           MOV      R0,R6
+   \   00000284   01002DE9           PUSH     {R0}
+   \   00000288   5000A0E3           MOV      R0,#+80
+   \   0000028C   01002DE9           PUSH     {R0}
+   \   00000290   2000A0E3           MOV      R0,#+32
+   \   00000294   01002DE9           PUSH     {R0}
+   \   00000298   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   0000029C   1930A0E3           MOV      R3,#+25
+   \   000002A0   6C20A0E3           MOV      R2,#+108
+   \   000002A4   01002DE9           PUSH     {R0}
+   \   000002A8   1B10A0E3           MOV      R1,#+27
+   \   000002AC   0300A0E3           MOV      R0,#+3
+   \   000002B0   ........           _BLF     EDIT_CreateAsChild,??EDIT_CreateAsChild??rA
+   \   000002B4   24D08DE2           ADD      SP,SP,#+36
+   \   000002B8   B603C4E1           STRH     R0,[R4, #+54]
+    252          		EDIT_SetFont(hTextEdit, &GUI_Font8x16);
+   \   000002BC   0710A0E1           MOV      R1,R7
+   \   000002C0   ........           _BLF     EDIT_SetFont,??EDIT_SetFont??rA
+    253          		CloseTimer.Init(WinHandl,false,&Closed,TimeOut);
+   \   000002C4   7000A0E3           MOV      R0,#+112
+   \   000002C8   5C0D80E3           ORR      R0,R0,#0x1700
+   \   000002CC   01002DE9           PUSH     {R0}
+   \   000002D0   F619D4E1           LDRSH    R1,[R4, #+150]
+   \   000002D4   983084E2           ADD      R3,R4,#+152
+   \   000002D8   0620A0E1           MOV      R2,R6
+   \   000002DC   9C0084E2           ADD      R0,R4,#+156
+   \   000002E0   ........           _BLF     ??Init,??Init??rA
+    254          		WM_EnableMemdev(WinHandl);
+   \   000002E4   F609D4E1           LDRSH    R0,[R4, #+150]
+   \   000002E8   ........           _BLF     WM_EnableMemdev,??WM_EnableMemdev??rA
+   \   000002EC   04D08DE2           ADD      SP,SP,#+4
+    255          	}
+    256          }
+   \                     ??ExecKeyBoardNum_1:
+   \   000002F0   20D08DE2           ADD      SP,SP,#+32
+   \   000002F4   F041BDE8           POP      {R4-R8,LR}
+   \   000002F8   1EFF2FE1           BX       LR               ;; return
+   \                     ??ExecKeyBoardNum_3:
+   \   000002FC   ........           DC32     _acTextNum
+    257          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    258          void TDUKeyBoard::EndKeyBoardNum(void)
+    259          {
+   \                     ??EndKeyBoardNum:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0CD04DE2           SUB      SP,SP,#+12
+   \   00000008   0040A0E1           MOV      R4,R0
+    260          	if ( !Closed ) {
+   \   0000000C   9800D4E5           LDRB     R0,[R4, #+152]
+   \   00000010   000050E3           CMP      R0,#+0
+   \   00000014   1300001A           BNE      ??EndKeyBoardNum_1
+    261          		if ( ReturnValue == 0 ) {
+   \   00000018   8C0094E5           LDR      R0,[R4, #+140]
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   0B00001A           BNE      ??EndKeyBoardNum_2
+    262          			WM_MESSAGE MyMsgPtr;
+    263          			MyMsgPtr.hWin = DialogWinHandl;
+   \   00000024   F010D4E1           LDRSH    R1,[R4, #+0]
+   \   00000028   B410CDE1           STRH     R1,[SP, #+4]
+    264          			MyMsgPtr.hWinSrc = ValueID;
+   \   0000002C   901094E5           LDR      R1,[R4, #+144]
+   \   00000030   B610CDE1           STRH     R1,[SP, #+6]
+    265          //		MyMsgPtr.hWinSrc = WinHandl;
+    266          			MyMsgPtr.MsgId = MESSAGE_KEYPAD_RETURN;
+   \   00000034   0B10A0E3           MOV      R1,#+11
+   \   00000038   401E81E3           ORR      R1,R1,#0x400
+   \   0000003C   00108DE5           STR      R1,[SP, #+0]
+    267          			//	MyMsgPtr.Data.v = ValueID;
+    268          			MyMsgPtr.Data.p = ReturnBuf;
+   \   00000040   3A1084E2           ADD      R1,R4,#+58
+   \   00000044   08108DE5           STR      R1,[SP, #+8]
+    269          			WM_SendMessage(DialogWinHandl,&MyMsgPtr);
+   \   00000048   F000D4E1           LDRSH    R0,[R4, #+0]
+   \   0000004C   0D10A0E1           MOV      R1,SP
+   \   00000050   ........           _BLF     WM_SendMessage,??WM_SendMessage??rA
+    270          			//	WM_SendToParent(WinHandl,MyMsgPtr);
+    271          			//			MyMsgPtr.hWinSrc = ValueID;
+    272          //		WM_SendMessage(ParentWinHandl,&MyMsgPtr);
+    273          			//		WM_SendMessageNoPara(ParentWinHandl,MESSAGE_KEYPAD_RETURN);
+    274          		}
+    275          /* Cleanup */
+    276          /* No need 	WM_DeleteWindow delets all child
+    277          	for (int i=0; i< countof(ahButton); i++) {
+    278          			BUTTON_Delete(ahButton[i]);
+    279          		}
+    280          		BUTTON_Delete(hButtonBackSpace);
+    281          		BUTTON_Delete(hButtonESC);
+    282          		BUTTON_Delete(hButtonEnter);
+    283          		EDIT_Delete(hTextEdit);*/
+    284          
+    285          		CloseTimer.Stop();
+   \                     ??EndKeyBoardNum_2:
+   \   00000054   B81094E5           LDR      R1,[R4, #+184]
+   \   00000058   9C0084E2           ADD      R0,R4,#+156
+   \   0000005C   001091E5           LDR      R1,[R1, #+0]
+   \   00000060   0FE0A0E1           MOV      LR,PC
+   \   00000064   11FF2FE1           BX       R1
+    286          	}
+    287          }
+   \                     ??EndKeyBoardNum_1:
+   \   00000068   1740BDE8           POP      {R0-R2,R4,LR}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    288          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    289          void TDUKeyBoard::cbKeyBoard(WM_MESSAGE * pMsg) {
+   \                     ??cbKeyBoard:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0CD04DE2           SUB      SP,SP,#+12
+   \   00000008   0050A0E1           MOV      R5,R0
+    290          	int NCode, Id;
+    291          //	WM_HWIN hEdit0;
+    292          	//WM_HWIN hWin = pMsg->hWin;
+    293          	switch ( pMsg->MsgId ) {
+   \   0000000C   000095E5           LDR      R0,[R5, #+0]
+   \   00000010   010050E2           SUBS     R0,R0,#+1
+   \   00000014   2B00000A           BEQ      ??cbKeyBoard_1
+   \   00000018   0C0040E2           SUB      R0,R0,#+12
+   \   0000001C   010050E3           CMP      R0,#+1
+   \   00000020   2800009A           BLS      ??cbKeyBoard_1
+   \   00000024   020050E2           SUBS     R0,R0,#+2
+   \   00000028   0200000A           BEQ      ??cbKeyBoard_2
+   \   0000002C   170050E2           SUBS     R0,R0,#+23
+   \   00000030   0A00000A           BEQ      ??cbKeyBoard_3
+   \   00000034   4D0000EA           B        ??cbKeyBoard_4
+    294          	case WM_TOUCH_CHILD:
+    295          		break;
+    296          	case WM_PAINT:
+    297          		GUI_SetBkColor(TDU_C_KB_BACK);
+   \                     ??cbKeyBoard_2:
+   \   00000038   ........           LDR      R0,??DataTable15  ;; 0x404040
+   \   0000003C   ........           _BLF     GUI_SetBkColor,??GUI_SetBkColor??rA
+    298          		GUI_Clear();
+   \   00000040   ........           _BLF     GUI_Clear,??GUI_Clear??rA
+    299          		GUI_SetColor(TDU_C_KB_TEXT);
+   \   00000044   0000A0E3           MOV      R0,#+0
+   \   00000048   ........           _BLF     GUI_SetColor,??GUI_SetColor??rA
+    300          		GUI_SetTextMode(GUI_TM_TRANS);
+   \   0000004C   0200A0E3           MOV      R0,#+2
+   \   00000050   ........           _BLF     GUI_SetTextMode,??GUI_SetTextMode??rA
+    301          		GUI_SetFont(&TDU_FONT_BIG);
+   \   00000054   ........           LDR      R0,??DataTable16  ;; TDU_FONT_BIG
+   \   00000058   ........           _BLF     GUI_SetFont,??GUI_SetFont??rA
+   \   0000005C   190000EA           B        ??cbKeyBoard_1
+    302          		break;
+    303          	case WM_CREATE:
+    304          		break;
+    305          	case WM_NOTIFY_PARENT:
+    306          		{
+    307          			if ( KeyBoard->UseCallBack ) {
+   \                     ??cbKeyBoard_3:
+   \   00000060   ........           LDR      R4,??DataTable17  ;; KeyBoard
+   \   00000064   000094E5           LDR      R0,[R4, #+0]
+   \   00000068   9400D0E5           LDRB     R0,[R0, #+148]
+   \   0000006C   000050E3           CMP      R0,#+0
+   \   00000070   1400000A           BEQ      ??cbKeyBoard_1
+    308          				Id    = WM_GetId(pMsg->hWinSrc);	/* Id of widget */
+   \   00000074   F600D5E1           LDRSH    R0,[R5, #+6]
+   \   00000078   ........           _BLF     WM_GetId,??WM_GetId??rA
+    309          				NCode = pMsg->Data.v;
+    310          				switch ( NCode ) {
+   \   0000007C   081095E5           LDR      R1,[R5, #+8]
+   \   00000080   020051E3           CMP      R1,#+2
+   \   00000084   0F00001A           BNE      ??cbKeyBoard_1
+    311          				case WM_NOTIFICATION_RELEASED:		/* React only if released */
+    312          					switch ( Id ) {
+   \   00000088   001094E5           LDR      R1,[R4, #+0]
+   \   0000008C   0020B0E1           MOVS     R2,R0
+   \   00000090   F633D1E1           LDRSH    R3,[R1, #+54]
+   \   00000094   0300000A           BEQ      ??cbKeyBoard_5
+   \   00000098   0D2050E2           SUBS     R2,R0,#+13
+   \   0000009C   0B00000A           BEQ      ??cbKeyBoard_6
+   \   000000A0   0E2052E2           SUBS     R2,R2,#+14
+   \   000000A4   2600001A           BNE      ??cbKeyBoard_7
+    313          					case 0:
+    314          					case GUI_KEY_ESCAPE:
+    315          						KeyBoard->ReturnBuf[0]=0;
+   \                     ??cbKeyBoard_5:
+   \   000000A8   0000A0E3           MOV      R0,#+0
+   \   000000AC   3A00C1E5           STRB     R0,[R1, #+58]
+    316          						KeyBoard->CloseTimer.Stop();
+   \   000000B0   001094E5           LDR      R1,[R4, #+0]
+   \                     ??cbKeyBoard_8:
+   \   000000B4   9C0081E2           ADD      R0,R1,#+156
+   \   000000B8   B81091E5           LDR      R1,[R1, #+184]
+   \   000000BC   001091E5           LDR      R1,[R1, #+0]
+   \   000000C0   0FE0A0E1           MOV      LR,PC
+   \   000000C4   11FF2FE1           BX       R1
+   \                     ??cbKeyBoard_1:
+   \   000000C8   3740BDE8           POP      {R0-R2,R4,R5,LR}
+   \   000000CC   1EFF2FE1           BX       LR
+    317          						break;
+    318          					case GUI_KEY_ENTER:
+    319          						{
+    320          							EDIT_GetText(KeyBoard->hTextEdit, KeyBoard->ReturnBuf, BUF_SIZE);
+   \                     ??cbKeyBoard_6:
+   \   000000D0   5020A0E3           MOV      R2,#+80
+   \   000000D4   3A1081E2           ADD      R1,R1,#+58
+   \   000000D8   0300A0E1           MOV      R0,R3
+   \   000000DC   ........           _BLF     EDIT_GetText,??EDIT_GetText??rA
+    321          							if ( KeyBoard->ReturnBuf[0] ) {
+   \   000000E0   001094E5           LDR      R1,[R4, #+0]
+   \   000000E4   3A00D1E5           LDRB     R0,[R1, #+58]
+   \   000000E8   000050E3           CMP      R0,#+0
+   \   000000EC   F0FFFF0A           BEQ      ??cbKeyBoard_8
+    322          								WM_MESSAGE MyMsgPtr;
+    323          								MyMsgPtr.hWin = KeyBoard->DialogWinHandl;
+   \   000000F0   F020D1E1           LDRSH    R2,[R1, #+0]
+    324          								MyMsgPtr.hWinSrc = KeyBoard->ValueID;
+    325          								MyMsgPtr.MsgId = MESSAGE_KEYPAD_RETURN;
+    326          								//  	MyMsgPtr.Data.v = ValueID;
+    327          								MyMsgPtr.Data.p = KeyBoard->ReturnBuf;
+    328          								KeyBoard->CloseTimer.Stop();
+   \   000000F4   9C0081E2           ADD      R0,R1,#+156
+   \   000000F8   B420CDE1           STRH     R2,[SP, #+4]
+   \   000000FC   902091E5           LDR      R2,[R1, #+144]
+   \   00000100   B620CDE1           STRH     R2,[SP, #+6]
+   \   00000104   0B20A0E3           MOV      R2,#+11
+   \   00000108   402E82E3           ORR      R2,R2,#0x400
+   \   0000010C   00208DE5           STR      R2,[SP, #+0]
+   \   00000110   3A2081E2           ADD      R2,R1,#+58
+   \   00000114   08208DE5           STR      R2,[SP, #+8]
+   \   00000118   B81091E5           LDR      R1,[R1, #+184]
+   \   0000011C   001091E5           LDR      R1,[R1, #+0]
+   \   00000120   0FE0A0E1           MOV      LR,PC
+   \   00000124   11FF2FE1           BX       R1
+   \   00000128   000094E5           LDR      R0,[R4, #+0]
+   \   0000012C   F000D0E1           LDRSH    R0,[R0, #+0]
+   \   00000130   010050E3           CMP      R0,#+1
+   \   00000134   E3FFFFBA           BLT      ??cbKeyBoard_1
+    329          								if ( KeyBoard->DialogWinHandl > 0 )
+    330          									WM_SendMessage(KeyBoard->DialogWinHandl,&MyMsgPtr);
+   \   00000138   0D10A0E1           MOV      R1,SP
+   \   0000013C   ........           _BLF     WM_SendMessage,??WM_SendMessage??rA
+   \   00000140   E0FFFFEA           B        ??cbKeyBoard_1
+    331          							} else {
+    332          								KeyBoard->ReturnBuf[0]=0;
+    333          								KeyBoard->CloseTimer.Stop();
+    334          							}
+    335          						}
+    336          						break;
+    337          					default:
+    338          						{
+    339          							EDIT_AddKey(KeyBoard->hTextEdit, Id);
+   \                     ??cbKeyBoard_7:
+   \   00000144   0010A0E1           MOV      R1,R0
+   \   00000148   0300A0E1           MOV      R0,R3
+   \   0000014C   ........           _BLF     EDIT_AddKey,??EDIT_AddKey??rA
+    340          							KeyBoard->ReturnValue = 1;
+   \   00000150   000094E5           LDR      R0,[R4, #+0]
+   \   00000154   0110A0E3           MOV      R1,#+1
+   \   00000158   8C1080E5           STR      R1,[R0, #+140]
+    341          							KeyBoard->CloseTimer.ReStart(KeyBoard->TimeOut);
+   \   0000015C   7010A0E3           MOV      R1,#+112
+   \   00000160   5C1D81E3           ORR      R1,R1,#0x1700
+   \   00000164   9C0080E2           ADD      R0,R0,#+156
+   \   00000168   ........           _BLF     ??ReStart,??ReStart??rA
+   \   0000016C   D5FFFFEA           B        ??cbKeyBoard_1
+    342          						}
+    343          						break;
+    344          					}
+    345          				}
+    346          			}
+    347          		}
+    348          		break;
+    349          	case WM_KEY:
+    350          		break;
+    351          	default:
+    352          		WM_DefaultProc(pMsg);
+   \                     ??cbKeyBoard_4:
+   \   00000170   0500A0E1           MOV      R0,R5
+   \   00000174   ........           _BLF     WM_DefaultProc,??WM_DefaultProc??rA
+    353          		break;
+    354          	}
+    355          }
+   \                     ??cbKeyBoard_9:
+   \   00000178   D2FFFFEA           B        ??cbKeyBoard_1
+    356          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    357          void TDUKeyBoard::cbKeyBoardPinCode(WM_MESSAGE * pMsg) {
+   \                     ??cbKeyBoardPinCode:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0CD04DE2           SUB      SP,SP,#+12
+   \   00000008   0050A0E1           MOV      R5,R0
+    358          	int NCode, Id;
+    359          //	WM_HWIN hEdit0;
+    360          	//WM_HWIN hWin = pMsg->hWin;
+    361          	switch ( pMsg->MsgId ) {
+   \   0000000C   000095E5           LDR      R0,[R5, #+0]
+   \   00000010   010050E2           SUBS     R0,R0,#+1
+   \   00000014   2E00000A           BEQ      ??cbKeyBoardPinCode_1
+   \   00000018   0C0040E2           SUB      R0,R0,#+12
+   \   0000001C   010050E3           CMP      R0,#+1
+   \   00000020   2B00009A           BLS      ??cbKeyBoardPinCode_1
+   \   00000024   020050E2           SUBS     R0,R0,#+2
+   \   00000028   0200000A           BEQ      ??cbKeyBoardPinCode_2
+   \   0000002C   170050E2           SUBS     R0,R0,#+23
+   \   00000030   0A00000A           BEQ      ??cbKeyBoardPinCode_3
+   \   00000034   590000EA           B        ??cbKeyBoardPinCode_4
+    362          	case WM_TOUCH_CHILD:
+    363          		break;
+    364          	case WM_PAINT:
+    365          		GUI_SetBkColor(TDU_C_KB_BACK);
+   \                     ??cbKeyBoardPinCode_2:
+   \   00000038   ........           LDR      R0,??DataTable15  ;; 0x404040
+   \   0000003C   ........           _BLF     GUI_SetBkColor,??GUI_SetBkColor??rA
+    366          		GUI_Clear();
+   \   00000040   ........           _BLF     GUI_Clear,??GUI_Clear??rA
+    367          		GUI_SetColor(TDU_C_KB_TEXT);
+   \   00000044   0000A0E3           MOV      R0,#+0
+   \   00000048   ........           _BLF     GUI_SetColor,??GUI_SetColor??rA
+    368          		GUI_SetTextMode(GUI_TM_TRANS);
+   \   0000004C   0200A0E3           MOV      R0,#+2
+   \   00000050   ........           _BLF     GUI_SetTextMode,??GUI_SetTextMode??rA
+    369          		GUI_SetFont(&TDU_FONT_BIG);
+   \   00000054   ........           LDR      R0,??DataTable16  ;; TDU_FONT_BIG
+   \   00000058   ........           _BLF     GUI_SetFont,??GUI_SetFont??rA
+   \   0000005C   1C0000EA           B        ??cbKeyBoardPinCode_1
+    370          		break;
+    371          	case WM_CREATE:
+    372          		break;
+    373          	case WM_NOTIFY_PARENT:
+    374          		{
+    375          			if ( KeyBoard->UseCallBack ) {
+   \                     ??cbKeyBoardPinCode_3:
+   \   00000060   ........           LDR      R4,??DataTable17  ;; KeyBoard
+   \   00000064   000094E5           LDR      R0,[R4, #+0]
+   \   00000068   9400D0E5           LDRB     R0,[R0, #+148]
+   \   0000006C   000050E3           CMP      R0,#+0
+   \   00000070   1700000A           BEQ      ??cbKeyBoardPinCode_1
+    376          				Id    = WM_GetId(pMsg->hWinSrc);	/* Id of widget */
+   \   00000074   F600D5E1           LDRSH    R0,[R5, #+6]
+   \   00000078   ........           _BLF     WM_GetId,??WM_GetId??rA
+   \   0000007C   0060A0E1           MOV      R6,R0
+    377          				NCode = pMsg->Data.v;
+    378          				switch ( NCode ) {
+   \   00000080   080095E5           LDR      R0,[R5, #+8]
+   \   00000084   020050E3           CMP      R0,#+2
+   \   00000088   1100001A           BNE      ??cbKeyBoardPinCode_1
+    379          				case WM_NOTIFICATION_RELEASED:		/* React only if released */
+    380          					switch ( Id ) {
+   \   0000008C   001094E5           LDR      R1,[R4, #+0]
+   \   00000090   0620B0E1           MOVS     R2,R6
+   \   00000094   F803D1E1           LDRSH    R0,[R1, #+56]
+   \   00000098   0500000A           BEQ      ??cbKeyBoardPinCode_5
+   \   0000009C   082056E2           SUBS     R2,R6,#+8
+   \   000000A0   2900000A           BEQ      ??cbKeyBoardPinCode_6
+   \   000000A4   052052E2           SUBS     R2,R2,#+5
+   \   000000A8   0B00000A           BEQ      ??cbKeyBoardPinCode_7
+   \   000000AC   0E2052E2           SUBS     R2,R2,#+14
+   \   000000B0   2C00001A           BNE      ??cbKeyBoardPinCode_8
+    381          					case 0:
+    382          					case GUI_KEY_ESCAPE:
+    383          						KeyBoard->ReturnBuf[0]=0;
+   \                     ??cbKeyBoardPinCode_5:
+   \   000000B4   0000A0E3           MOV      R0,#+0
+   \   000000B8   3A00C1E5           STRB     R0,[R1, #+58]
+    384          						KeyBoard->CloseTimer.Stop();
+   \   000000BC   001094E5           LDR      R1,[R4, #+0]
+   \                     ??cbKeyBoardPinCode_9:
+   \   000000C0   9C0081E2           ADD      R0,R1,#+156
+   \   000000C4   B81091E5           LDR      R1,[R1, #+184]
+   \   000000C8   001091E5           LDR      R1,[R1, #+0]
+   \   000000CC   0FE0A0E1           MOV      LR,PC
+   \   000000D0   11FF2FE1           BX       R1
+   \                     ??cbKeyBoardPinCode_1:
+   \   000000D4   7740BDE8           POP      {R0-R2,R4-R6,LR}
+   \   000000D8   1EFF2FE1           BX       LR
+    385          						break;
+    386          					case GUI_KEY_ENTER:
+    387          						{
+    388          							EDIT_GetText(KeyBoard->hTextEditPinCode, KeyBoard->ReturnBuf, BUF_SIZE);
+   \                     ??cbKeyBoardPinCode_7:
+   \   000000DC   5020A0E3           MOV      R2,#+80
+   \   000000E0   3A1081E2           ADD      R1,R1,#+58
+   \   000000E4   ........           _BLF     EDIT_GetText,??EDIT_GetText??rA
+    389          							if ( KeyBoard->ReturnBuf[0] ) {
+   \   000000E8   001094E5           LDR      R1,[R4, #+0]
+   \   000000EC   3A00D1E5           LDRB     R0,[R1, #+58]
+   \   000000F0   000050E3           CMP      R0,#+0
+   \   000000F4   F1FFFF0A           BEQ      ??cbKeyBoardPinCode_9
+    390          								WM_MESSAGE MyMsgPtr;
+    391          								MyMsgPtr.hWin = KeyBoard->DialogWinHandl;
+   \   000000F8   F020D1E1           LDRSH    R2,[R1, #+0]
+    392          								MyMsgPtr.hWinSrc = KeyBoard->ValueID;
+    393          								//		MyMsgPtr.hWinSrc = WinHandl;
+    394          								MyMsgPtr.MsgId = MESSAGE_PINCODE_RETURN;
+    395          								//	MyMsgPtr.Data.v = ValueID;
+    396          								MyMsgPtr.Data.p = KeyBoard->ReturnBuf;
+    397          								KeyBoard->CloseTimer.Stop();
+   \   000000FC   9C0081E2           ADD      R0,R1,#+156
+   \   00000100   B420CDE1           STRH     R2,[SP, #+4]
+   \   00000104   902091E5           LDR      R2,[R1, #+144]
+   \   00000108   B620CDE1           STRH     R2,[SP, #+6]
+   \   0000010C   0C20A0E3           MOV      R2,#+12
+   \   00000110   402E82E3           ORR      R2,R2,#0x400
+   \   00000114   00208DE5           STR      R2,[SP, #+0]
+   \   00000118   3A2081E2           ADD      R2,R1,#+58
+   \   0000011C   08208DE5           STR      R2,[SP, #+8]
+   \   00000120   B81091E5           LDR      R1,[R1, #+184]
+   \   00000124   001091E5           LDR      R1,[R1, #+0]
+   \   00000128   0FE0A0E1           MOV      LR,PC
+   \   0000012C   11FF2FE1           BX       R1
+   \   00000130   000094E5           LDR      R0,[R4, #+0]
+   \   00000134   F000D0E1           LDRSH    R0,[R0, #+0]
+   \   00000138   010050E3           CMP      R0,#+1
+   \   0000013C   E4FFFFBA           BLT      ??cbKeyBoardPinCode_1
+    398          								if ( KeyBoard->DialogWinHandl > 0 )
+    399          									WM_SendMessage(KeyBoard->DialogWinHandl,&MyMsgPtr);
+   \   00000140   0D10A0E1           MOV      R1,SP
+   \   00000144   ........           _BLF     WM_SendMessage,??WM_SendMessage??rA
+   \   00000148   E1FFFFEA           B        ??cbKeyBoardPinCode_1
+    400          							} else {
+    401          								KeyBoard->ReturnBuf[0]=0;
+    402          								KeyBoard->CloseTimer.Stop();
+    403          							}
+    404          						}
+    405          						break;
+    406          					case GUI_KEY_BACKSPACE:
+    407          						EDIT_AddKey(KeyBoard->hTextEditPinCode, Id);
+   \                     ??cbKeyBoardPinCode_6:
+   \   0000014C   0610A0E1           MOV      R1,R6
+   \   00000150   ........           _BLF     EDIT_AddKey,??EDIT_AddKey??rA
+    408          						EDIT_AddKey(KeyBoard->hTextEdit, Id);
+   \   00000154   000094E5           LDR      R0,[R4, #+0]
+   \   00000158   0610A0E1           MOV      R1,R6
+   \   0000015C   F603D0E1           LDRSH    R0,[R0, #+54]
+   \   00000160   ........           _BLF     EDIT_AddKey,??EDIT_AddKey??rA
+   \   00000164   DAFFFFEA           B        ??cbKeyBoardPinCode_1
+    409          						break;
+    410          					default:
+    411          						{
+    412          							EDIT_AddKey(KeyBoard->hTextEditPinCode, Id);
+   \                     ??cbKeyBoardPinCode_8:
+   \   00000168   0610A0E1           MOV      R1,R6
+   \   0000016C   ........           _BLF     EDIT_AddKey,??EDIT_AddKey??rA
+    413          							int test = '*' ? '*' : 1;
+    414          							EDIT_AddKey(KeyBoard->hTextEdit, test);
+   \   00000170   000094E5           LDR      R0,[R4, #+0]
+   \   00000174   2A10A0E3           MOV      R1,#+42
+   \   00000178   F603D0E1           LDRSH    R0,[R0, #+54]
+   \   0000017C   ........           _BLF     EDIT_AddKey,??EDIT_AddKey??rA
+    415          							KeyBoard->ReturnValue = 1;
+   \   00000180   000094E5           LDR      R0,[R4, #+0]
+   \   00000184   0110A0E3           MOV      R1,#+1
+   \   00000188   8C1080E5           STR      R1,[R0, #+140]
+    416          							KeyBoard->CloseTimer.ReStart(KeyBoard->TimeOut);
+   \   0000018C   7010A0E3           MOV      R1,#+112
+   \   00000190   5C1D81E3           ORR      R1,R1,#0x1700
+   \   00000194   9C0080E2           ADD      R0,R0,#+156
+   \   00000198   ........           _BLF     ??ReStart,??ReStart??rA
+   \   0000019C   CCFFFFEA           B        ??cbKeyBoardPinCode_1
+    417          						}
+    418          						break;
+    419          					}
+    420          				}
+    421          			}
+    422          		}
+    423          		break;
+    424          	case WM_KEY:
+    425          		break;
+    426          	default:
+    427          		WM_DefaultProc(pMsg);
+   \                     ??cbKeyBoardPinCode_4:
+   \   000001A0   0500A0E1           MOV      R0,R5
+   \   000001A4   ........           _BLF     WM_DefaultProc,??WM_DefaultProc??rA
+    428          		break;
+    429          	}
+    430          }
+   \                     ??cbKeyBoardPinCode_10:
+   \   000001A8   C9FFFFEA           B        ??cbKeyBoardPinCode_1
+
+   \                                 In segment DATA_ID, align 4, align-sorted
+   \                     `?<Initializer for _acTextAll>`:
+   \   00000000   313233343536       DC8 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 81, 87, 69, 82, 84, 89, 85
+   \              373839305157
+   \              4552545955  
+   \   00000011   494F50415344       DC8 73, 79, 80, 65, 83, 68, 70, 71, 72, 74, 75, 76, 90, 88, 67, 86, 66
+   \              4647484A4B4C
+   \              5A58435642  
+   \   00000022   4E4D2E2D0000       DC8 78, 77, 46, 45, 0, 0
+
+   \                                 In segment DATA_ID, align 4, align-sorted
+   \                     `?<Initializer for _acTextNum>`:
+   \   00000000   373839343536       DC8 55, 56, 57, 52, 53, 54, 49, 50, 51, 48, 46, 45, 0, 0, 0, 0
+   \              313233302E2D
+   \              00000000    
+
+   \                                 In segment DATA_ID, align 4, align-sorted
+   \                     `?<Initializer for _acTextNumPinCode>`:
+   \   00000000   373839343536       DC8 55, 56, 57, 52, 53, 54, 49, 50, 51, 48, 0, 0
+   \              313233300000
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment DATA_C, align 1, align-sorted
+   \   00000000   0000               DC8 0, 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \   00000000   45534300           DC8 "ESC"
+
+   \                                 In segment DATA_C, align 1, align-sorted
+   \   00000000   0000               DC8 0, 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \   00000000   45736300           DC8 "Esc"
+
+   \                                 In segment DATA_C, align 1, align-sorted
+   \   00000000   0000               DC8 0, 0
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs TDUKeyBoard &TDUKeyBoard::new TDUKeyBoard()
+   \                     `??new TDUKeyBoard`:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   C400A0E3           MOV      R0,#+196
+   \   00000008   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0000000A           BEQ      `??new TDUKeyBoard_1`
+   \   00000014   ........           BL       ??TDUKeyBoard
+   \                     `??new TDUKeyBoard_1`:
+   \   00000018   0040BDE8           POP      {LR}
+   \   0000001C   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs void TDUKeyBoard::delete ~TDUKeyBoard(TDUKeyBoard *)
+   \                     `??delete ~TDUKeyBoard`:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0300000A           BEQ      `??delete ~TDUKeyBoard_1`
+   \   0000000C   9C0084E2           ADD      R0,R4,#+156
+   \   00000010   ........           _BLF     `?~CloseWindowTimer`,`?~CloseWindowTimer??rA`
+   \   00000014   0400A0E1           MOV      R0,R4
+   \   00000018   ........           _BLF     `??operator delete`,`??operator delete??rA`
+   \                     `??delete ~TDUKeyBoard_1`:
+   \   0000001C   1040BDE8           POP      {R4,LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1C109FE5           LDR      R1,??__sti__routine_1  ;; GUI_Font24_1
+   \   00000004   ........           LDR      R0,??DataTable16  ;; TDU_FONT_BIG
+   \   00000008   30002DE9           PUSH     {R4,R5}
+   \   0000000C   3C10B1E8           LDM      R1!,{R2-R5,R12}
+   \   00000010   3C10A0E8           STM      R0!,{R2-R5,R12}
+   \   00000014   1C1091E8           LDM      R1,{R2-R4,R12}
+   \   00000018   1C1080E8           STM      R0,{R2-R4,R12}
+   \   0000001C   3000BDE8           POP      {R4,R5}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+   \                     ??__sti__routine_1:
+   \   00000024   ........           DC32     GUI_Font24_1
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable3:
+   \   00000000   45736300           DC8      "Esc"
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable7:
+   \   00000000   45736300           DC8      "Esc"
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable8:
+   \   00000000   ........           DC32     ??cbKeyBoard
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable10:
+   \   00000000   56555555           DC32     0x55555556
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable11:
+   \   00000000   ........           DC32     GUI_Font8x16
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable15:
+   \   00000000   40404000           DC32     0x404040
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable16:
+   \   00000000   ........           DC32     TDU_FONT_BIG
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable17:
+   \   00000000   ........           DC32     KeyBoard
+    431          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     TDUKeyBoard::EndKeyBoardNum()     20
+     TDUKeyBoard::ExecKeyBoardAll(GUI_HWIN, char *)
+                                      156
+     TDUKeyBoard::ExecKeyBoardNum(GUI_HWIN, int, int)
+                                       92
+     TDUKeyBoard::ExecKeyBoardPinCode(GUI_HWIN, int, int)
+                                       92
+     TDUKeyBoard::TDUKeyBoard()         8
+     TDUKeyBoard::cbKeyBoard(WM_MESSAGE *)
+                                       24
+     TDUKeyBoard::cbKeyBoardPinCode(WM_MESSAGE *)
+                                       28
+     TDUKeyBoard::delete ~TDUKeyBoard(TDUKeyBoard *)
+                                        8
+     TDUKeyBoard::new TDUKeyBoard()     4
+     TDUKeyBoard::~TDUKeyBoard()        4
+     TDU_CheckCancel()                  4
+     TDU_WaitKey()                     12
+     __sti__routine()                   8
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     TDU_FONT_BIG                     36
+     TDU_WaitKey()                    76
+     TDU_CheckCancel()                24
+     _acTextAll                       40
+     _acTextNum                       16
+     _acTextNumPinCode                12
+     TDUKeyBoard::~TDUKeyBoard()      20
+     TDUKeyBoard::TDUKeyBoard()       36
+     TDUKeyBoard::ExecKeyBoardAll(GUI_HWIN, char *)
+                                     784
+     TDUKeyBoard::ExecKeyBoardPinCode(GUI_HWIN, int, int)
+                                     848
+     TDUKeyBoard::ExecKeyBoardNum(GUI_HWIN, int, int)
+                                     768
+     TDUKeyBoard::EndKeyBoardNum()   112
+     TDUKeyBoard::cbKeyBoard(WM_MESSAGE *)
+                                     380
+     TDUKeyBoard::cbKeyBoardPinCode(WM_MESSAGE *)
+                                     428
+     ?<Initializer for _acTextAll>    40
+     ?<Initializer for _acTextNum>    16
+     ?<Initializer for _acTextNumPinCode>
+                                      12
+     ?<Constant {'\000'}>              2
+     ?<Constant "ESC">                 4
+     ?<Constant {'\000', '\000'}>      2
+     ?<Constant "Esc">                 4
+     ?<Constant {'\000', '\000'}>_1    2
+     TDUKeyBoard::new TDUKeyBoard()   32
+     TDUKeyBoard::delete ~TDUKeyBoard(TDUKeyBoard *)
+                                      36
+     __sti__routine()                 40
+     ??DataTable3                      4
+     ??DataTable7                      4
+     ??DataTable8                      4
+     ??DataTable10                     4
+     ??DataTable11                     4
+     ??DataTable15                     4
+     ??DataTable16                     4
+     ??DataTable17                     4
+      Others                         524
+
+ 
+ 4 112 bytes in segment CODE
+    14 bytes in segment DATA_C
+    68 bytes in segment DATA_I
+    68 bytes in segment DATA_ID
+    36 bytes in segment DATA_Z
+     4 bytes in segment DIFUNCT
+    24 bytes in segment INITTAB
+ 
+ 3 620 bytes of CODE  memory (+ 520 bytes shared)
+    82 bytes of CONST memory
+   104 bytes of DATA  memory
+
+Errors: none
+Warnings: none

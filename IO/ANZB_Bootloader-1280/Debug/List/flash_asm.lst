@@ -1,0 +1,163 @@
+###############################################################################
+#                                                                             #
+#     IAR Assembler V7.30.5.1680/W32 for Microchip AVR 30/Jan/2023  09:43:17  #
+#     Copyright 2022 IAR Systems AB.                                          #
+#                                                                             #
+#           Target option =  Relative jumps do not wrap                       #
+#           Source file   =  D:\S2Prog\IO\ANZB_Bootloader\Src\flash_asm.s90   #
+#           List file     =  D:\S2Prog\IO\ANZB_Bootloader\Debug\List\flash_asm.lst#
+#           Object file   =  D:\S2Prog\IO\ANZB_Bootloader\Debug\Obj\flash_asm.r90#
+#           Command line  =  -f C:\Users\ESY\AppData\Local\Temp\EW4F64.tmp    #
+#                            (D:\S2Prog\IO\ANZB_Bootloader\Src\flash_asm.s90  #
+#                            -v3 -OD:\S2Prog\IO\ANZB_Bootloader\Debug\Obj     #
+#                            -s+ -w+ -r -DENABLE_BIT_DEFINITIONS              #
+#                            -D__ATMEGA_1280__ -M<>                           #
+#                            -LD:\S2Prog\IO\ANZB_Bootloader\Debug\List -t8    #
+#                            -u_enhancedCore -D__HAS_ENHANCED_CORE__=1        #
+#                            -D__HAS_MUL__=1                                  #
+#                            -IC:\Program Files (x86)\IAR Systems\Embedded Workbench 8.4\avr\INC\\ #
+#                            -ID:\S2Prog\IO\ANZB_Bootloader\INC\\             #
+#                            -D__MEMORY_MODEL__=2 -D__ATmega1280__=1          #
+#                            -D__HAS_ELPM__=1)                                #
+#                                                                             #
+###############################################################################
+
+      1    00000000                      NAME    assembly(16)
+      2    00000000                  PUBLIC  write_page
+      3    00000000                      PUBLIC  fill_temp_buffer
+      4    00000000                      PUBLIC  do_spm
+      5    00000000                      PUBLIC  write_lock_bits
+      6    00000000                      PUBLIC  read_program_memory
+      7    00000000                      RSEG    CODE
+      8    00000000              
+      9    00000000              
+     10    00000000              #ifdef __ATMEGA_1280__
+     11    00000000              #include        "iom1280.h"
+     12    00000000              #endif
+     13    00000000              
+     14    00000000              #ifdef __ATMEGA_1281__
+     15    00000000              #include        "iom1281.h"
+     16    00000000              #endif
+     17    00000000              write_page:
+     18    00000000 D028                 RCALL   WAIT_SPMEN  ;Wait for SPMEN
+                                                              flag cleared
+     19    00000002 2FF1                 MOV     R31,R17         
+     20    00000004 2FE0                 MOV     R30,R16     ;move adress to z
+                                                              pointer (R31=ZH
+                                                              R30=ZL)
+     21    00000006 93200037             STS     SPMCSR, R18   ; argument 2
+                                                                decides
+                                                                function
+                                                                (r18)
+     22    0000000A 95E8                 SPM                ;Store program
+                                                             memory
+     23    0000000C FFFF                 DW      0xFFFF      ;For future part
+                                                              compatibility,
+                                                              instruction
+                                                              alignment
+     24    0000000E 0000                 NOP
+     25    00000010 C020                 RJMP    WAIT_SPMEN ;Wait for SPMEN
+                                                             flag cleared
+     26    00000012              
+     27    00000012              
+     28    00000012              do_spm:
+     29    00000012 D01F                 RCALL   WAIT_SPMEN  ;Wait for SPMEN
+                                                              flag cleared
+     30    00000014 2FF1                 MOV     R31,R17         
+     31    00000016 2FE0                 MOV     R30,R16     ;move adress to z
+                                                              pointer (R31=ZH
+                                                              R30=ZL)
+     32    00000018 BF27                 OUT SPMCSR, R18     ; argument 2
+                                                              decides function
+                                                              (r18)
+     33    0000001A 95E8                 SPM
+     34    0000001C C01A                 RJMP    WAIT_SPMEN ;Wait for SPMEN
+                                                             flag cleared
+     35    0000001E              
+     36    0000001E              
+     37    0000001E              fill_temp_buffer:
+     38    0000001E D019                 RCALL   WAIT_SPMEN  ;Wait for SPMEN
+                                                              flag cleared
+     39    00000020 2FF3                 MOV     R31,R19     ;move adress to z
+                                                              pointer (R31=ZH
+                                                              R30=ZL)  
+                                                              
+     40    00000022 2FE2                 MOV     R30,R18     
+     41    00000024 2E11                 MOV     R1,R17      ;move data to reg
+                                                              0 and 1     
+                                                              
+     42    00000026 2E00                 MOV     R0,R16
+     43    00000028                      
+     44    00000028 E021                 LDI     R18,(1<<SPMEN)
+     45    0000002A BF27                 OUT SPMCSR, R18    ; r18 decides
+                                                             function
+     46    0000002C 95E8                 SPM
+     47    0000002E C011                 RJMP   WAIT_SPMEN  ;Wait for SPMEN
+                                                             flag cleared
+     48    00000030              
+     49    00000030              
+     50    00000030              read_program_memory:
+     51    00000030 D010                 RCALL    WAIT_SPMEN
+     52    00000032 2FF1                 MOV     R31,R17     ;R31=ZH R30=ZL
+     53    00000034 2FE0                 MOV     R30,R16     ;move adress to z
+                                                              pointer
+     54    00000036 FD20                 SBRC    R18,0       ;read lockbits?
+                                                              (second
+                                                              argument=0x09)
+     55    00000038                                          ;if so, place
+                                  second argument in SPMEN register
+     56    00000038 BF27                 OUT SPMCSR, R18     ; r18 decides
+                                                              function
+     57    0000003A                      
+     58    0000003A 95D8                 ELPM                ;read LSB       
+                                                              
+     59    0000003C              
+     60    0000003C 2D00                 MOV     R16,R0      ;read LSB         
+                                                               
+     61    0000003E 95E3                 INC     R30
+     62    00000040              
+     63    00000040 95D8                 ELPM                ;read LSB       
+                                                              
+     64    00000042              
+     65    00000042 2D10                 MOV     R17,R0      ;read MSB (ignored
+                                                              when reading
+                                                              lockbits)
+     66    00000044 9508                 RET
+     67    00000046              
+     68    00000046              
+     69    00000046              write_lock_bits:
+     70    00000046 D005                 RCALL   WAIT_SPMEN  ;Wait for SPMEN
+                                                              flag cleared
+     71    00000048 2E00                 MOV     R0,R16   
+     72    0000004A E029                 LDI     R18,((1<<BLBSET)|(1<<SPMEN))
+     73    0000004C              
+     74    0000004C BF27                 OUT SPMCSR, R18    ; r18 decides
+                                                             function
+     75    0000004E 95E8                 SPM                ;write lockbits
+     76    00000050 C000                 RJMP   WAIT_SPMEN  ;Wait for SPMEN
+                                                             flag cleared
+     77    00000052                      
+     78    00000052              
+     79    00000052              WAIT_SPMEN:
+     80    00000052 2E02                 MOV             R0, R18
+     81    00000054 B727                 IN R18, SPMCSR      ; get SPMCR into
+                                                              r18
+     82    00000056 FD20                 SBRC    R18,SPMEN
+     83    00000058 CFFC                 RJMP    WAIT_SPMEN  ;Wait for SPMEN
+                                                              flag cleared
+     84    0000005A 2D20                 MOV             R18, R0
+     85    0000005C              
+     86    0000005C 9508                 RET
+     87    0000005E              
+     88    0000005E              
+     89    0000005E              END
+##############################
+#          CRC:6B5E          #
+#        Errors:   0         #
+#        Warnings: 0         #
+#         Bytes: 94          #
+##############################
+
+
+
+

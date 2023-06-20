@@ -1,0 +1,99 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2007   SEGGER Microcontroller Systeme GmbH        *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : LH79520.mac
+Purpose : Setup file for EWARM and LH79520 CPUs.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+
+/*********************************************************************
+*
+*       _Init()
+*/
+_Init() {
+  __emulatorSpeed(30000);
+  __writeMemory32(0x00000003, 0xFFFE201C,"Memory"); // Set CPU  divider to 6   (CPU/FCLK = (309.6576 MHz) / 6 = 51.609600 MHz)
+  __writeMemory32(0x00000003, 0xFFFE2018,"Memory"); // Set HCLK divider to 6   (HCLK     = (309.6576 MHz) / 6 = 51.609600 MHz)
+  __writeMemory32(0x00000263 ,0xFFFE2000,"Memory"); // Enable PLL,
+                                                    // Enable internal crystal oscillator (14.7456 MHz)
+                                                    // CLKOUT = FCLK
+                                                    // HCLK is derived from the 309.6576 MHz output of the PLL
+                                                    // All RCPC registers are RW (write-enabled)
+  __writeMemory32(0x00000001,0xFFFE2088,"Memory");  // Use FastBus mode extension; Core and HCLK must have the same clock config.
+  __writeMemory32(0x100024EF,0xFFFF1000,"Memory");  // Setup static memory CS0
+  __writeMemory32(0x1000FFEF,0xFFFF1004,"Memory");  // Setup static memory CS1
+  __writeMemory32(0x1000FFEF,0xFFFF1008,"Memory");  // Setup static memory CS2
+  __writeMemory32(0x0000FBEF,0xFFFF100C,"Memory");  // Setup static memory CS3
+  __writeMemory32(0x10007580,0xFFFF1010,"Memory");  // Setup static memory CS4
+  __writeMemory32(0x100034c0,0xFFFF1014,"Memory");  // Setup static memory CS5
+  __writeMemory32(0x1000FFEF,0xFFFF1018,"Memory");  // Setup static memory CS6
+  __writeMemory32(0x000017EF,0xFFFE5000,"Memory");  // MEMMUX
+  __writeMemory32(0x000001FE,0xFFFE5008,"Memory");  // MISCMUX
+  __writeMemory32(0x0000000F,0xFFFE5010,"Memory");  // UARTMUX
+  __writeMemory32(0x00000005,0xFFFE202C,"Memory");  // Enable HCLK signals for SDRAM/DMA controller
+  __sleep(2000);                                    // Wait for SDRAM controller
+  __writeMemory32(0x00000003,0xFFFF2004,"Memory");  // Issue a NOP to the SDRAM
+  __sleep(200000);                                  // Wait for SDRAM controller
+  __writeMemory32(0x00000001,0xFFFF2004,"Memory");  // Issue a PALL (Precharge All) to the SDRAM
+  __sleep(250000);                                  // Wait for SDRAM controller
+  __writeMemory32(750,0xFFFF2008,"Memory");         // Update SDRAM refresh timer
+  __sleep(250000);                                  // Wait for SDRAM controller
+  __writeMemory32(0x00000002,0xFFFF2004,"Memory");  // Enable the SDRAM MODE command
+  __sleep(25000);                                   // Wait for SDRAM controller
+  __emulatorStatusCheckOnRead(1);                   // Disable checks on read
+  __readMemory32(0x20022000, "Memory");
+  __sleep(20000);                                   // Wait til SDRAM controller is idle
+  __emulatorStatusCheckOnRead(0);                   // enable checks on read
+  __writeMemory32(0x01A40088,0xFFFF2000,"Memory");  // No 256M device (DCS0)
+                                                    // x16/x32 device (DCS0)
+                                                    // 4 bank device  (DCS0)
+                                                    // No 256M device (DCS1)
+                                                    // x16/x32 device (DCS1)
+                                                    // 2 bank device  (DCS1)
+                                                    // 2 bank device  (DCS1)
+                                                    // SDCLK signal runs continuously
+                                                    // Clock Enables are driven continuously HIGH
+                                                    // External Bus width = 32
+                                                    // CAS Latency = 2
+                                                    // RAS Latency = 2
+                                                    // Enable auto-precharge
+  __sleep(2000);                                    // Wait til SDRAM controller is idle
+  __writeMemory32(0x0000000c,0xFFFF2004,"Memory");  // Set to normal mode
+  __sleep(200000);                                  // Wait for SDRAM controller
+  __writeMemory32(0x00000001,0xFFFE2008,"Memory");  // Remap SDRAM to 0x00000000
+  __emulatorSpeed(0);
+}
+
+/*********************************************************************
+*
+*       execUserReset()
+*/
+execUserReset() {
+  __message "execUserReset()";  
+//  __emulatorStatusCheckOnRead(1);                   // Disable checks on read
+//  __writeMemory32(0x0000DEAD, 0xFFFE200C,"Memory"); // Perform a soft RESET
+//  __emulatorStatusCheckOnRead(0);                   // Enable checks on read
+//  _Init();
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*/
+execUserPreload() {
+  __message "execUserPreload()";  
+  _Init();
+}
+
+/**************** End of file ***************************************/

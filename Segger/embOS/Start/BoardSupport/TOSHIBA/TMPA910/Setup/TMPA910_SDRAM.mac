@@ -1,0 +1,187 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2008   SEGGER Microcontroller GmbH & Co. KG       *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : TMPA910_SDRAM.mac
+Purpose : Setup file for IAR
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+/*********************************************************************
+*
+*       _InitPLL() 
+*/
+_InitPLL() {
+  __message("TMPA910_SDRAM.mac: _InitPLL()");
+  __writeMemory32(0x00000007,0xF005000C,"Memory");  // PLL multiplier: Multiply by 8
+  __writeMemory32(0x00000065,0xF0050010,"Memory");  // PLL output frequence range >= 140 MHz
+  __writeMemory32(0x00000087,0xF005000C,"Memory");  // PLL control: ON
+  __sleep(100);                                     // Wait until PLL is locked
+  __writeMemory32(0x00000002,0xF0050008,"Memory");  // Select PLL output as system source
+  __writeMemory32(0x00000000,0xF0050004,"Memory");  // System clock gear = 0 => Full speed
+}
+
+/*********************************************************************
+*
+*       _InitSDRAM()
+*/
+_InitSDRAM() {
+  __message "TMPA910_SDRAM.mac: _InitSDRAM()";
+  /*
+  * Code from RTOSInit
+  *
+  //
+  // Port drive setting
+  //
+  _PMCDRV          = 0x00000071;
+  //
+  // Initialize SDRAM timing paramater
+  //
+  _DMC_CAS_LATENCY = 0x00000006;
+  _DMC_T_DQSS      = 0x00000000;
+  _DMC_T_MRD       = 0x00000002;
+  _DMC_T_RAS       = 0x00000007;
+
+  _DMC_T_RC        = 0x0000000A;
+  _DMC_T_RCD       = 0x00000013;
+
+  _DMC_T_RFC       = 0x0000010A;
+
+  _DMC_T_RP        = 0x00000013;
+  _DMC_T_RRD       = 0x00000002;
+  _DMC_T_WR        = 0x00000002;
+  _DMC_T_WTR       = 0x00000001;
+  _DMC_T_XP        = 0x0000000A;
+  _DMC_T_XSR       = 0x0000000B;
+  _DMC_T_ESR       = 0x00000014;
+
+  //
+  // Configure SDRAM type parameter
+  _DMC_MEMORY_CFG  = 0x00008011;
+  _DMC_USER_CONFIG = 0x00000011;   // 32 bit memory interface
+
+  _DMC_REFRESH_PRD = 0x00000A60;
+  _DMC_CHIP_0_CFG  = 0x000140FF;
+
+  _DMC_DIRECT_CMD  = 0x000C0000;
+  _DMC_DIRECT_CMD  = 0x00000000;
+
+  _DMC_DIRECT_CMD  = 0x00040000;
+  _DMC_DIRECT_CMD  = 0x00040000;
+  _DMC_DIRECT_CMD  = 0x00080031;
+  //
+  // Finally start SDRAM
+  //
+  _DMC_MEMC_CMD    = MEMC_CMD_GO;
+  */
+
+  // WriteMemory(Value, address, "Memory");
+  // _PMCDRV = 0x00000071;
+  __writeMemory32(0x00000071,0xF0020260,"Memory");
+
+
+  //_DMC_CAS_LATENCY=0x00000006;
+  __writeMemory32(0x00000006,0xf4300014,"Memory");
+
+  //_DMC_T_DQSS   = 0x00000000;
+  __writeMemory32(0x00000000,0xf4300018,"Memory");
+
+  //_DMC_T_MRD    = 0x00000002;
+  __writeMemory32(0x00000002,0xf430001C,"Memory");
+
+  //_DMC_T_RAS    = 0x00000007;
+  __writeMemory32(0x00000007,0xf4300020,"Memory");
+
+  //_DMC_T_RC     = 0x0000000A;
+  __writeMemory32(0x0000000A,0xf4300024,"Memory");
+
+  //_DMC_T_RCD    = 0x00000013;
+  __writeMemory32(0x00000013,0xf4300028,"Memory");
+
+  //_DMC_T_RFC    = 0x0000010A;
+  __writeMemory32(0x0000010A,0xf430002C,"Memory");
+
+  //_DMC_T_RP     = 0x00000013;
+  __writeMemory32(0x00000013,0xf4300030,"Memory");
+
+  //_DMC_T_RRD    = 0x00000002;
+  __writeMemory32(0x00000002,0xf4300034,"Memory");
+
+  //_DMC_T_WR     = 0x00000002;
+  __writeMemory32(0x00000002,0xf4300038,"Memory");
+
+  //_DMC_T_WTR    = 0x00000001;
+  __writeMemory32(0x00000001,0xf430003C,"Memory");
+
+  //_DMC_T_XP     = 0x0000000A;
+  __writeMemory32(0x0000000A,0xf4300040,"Memory");
+
+  //_DMC_T_XSR    = 0x0000000B;
+  __writeMemory32(0x0000000B,0xf4300044,"Memory");
+
+  //_DMC_T_ESR    = 0x00000014;
+  __writeMemory32(0x00000014,0xf4300048,"Memory");
+
+  //_DMC_MEMORY_CFG=0x00008011;
+  __writeMemory32(0x00008011,0xf430000C,"Memory");
+
+  //_DMC_USER_CONFIG=0x00000011;   // 32 bit memory interface
+  __writeMemory32(0x00000011,0xf4300304,"Memory");
+
+  //_DMC_REFRESH_PRD=0x00000A60;
+  __writeMemory32(0x00000A60,0xf4300010,"Memory");
+
+  //_DMC_CHIP_0_CFG=0x000140FF;
+  __writeMemory32(0x000140FF,0xf4300200,"Memory");
+
+  //_DMC_DIRECT_CMD=0x000C0000;
+  __writeMemory32(0x000C0000,0xf4300008,"Memory");
+
+  //_DMC_DIRECT_CMD=0x00000000;
+  __writeMemory32(0x00000000,0xf4300008,"Memory");
+
+  //_DMC_DIRECT_CMD=0x00040000;
+  __writeMemory32(0x00040000,0xf4300008,"Memory");
+
+  //_DMC_DIRECT_CMD=0x00040000;
+  __writeMemory32(0x00040000,0xf4300008,"Memory");
+
+  //_DMC_DIRECT_CMD=0x00080031;
+  __writeMemory32(0x00080031,0xf4300008,"Memory");
+
+  //_DMC_MEMC_CMD    = MEMC_CMD_GO;
+  __writeMemory32(0x00000000,0xf4300004,"Memory");
+
+}
+
+
+/*********************************************************************
+*
+*       execUserReset()
+*/
+execUserReset() {
+  __message "TMPA910_SDRAM.mac: execUserReset()";
+  __emulatorSpeed(7999000);   // Use adaptive
+  _InitPLL();
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*/
+execUserPreload() {
+  __message "TMPA910_SDRAM.mac: execUserPreload()";
+  execUserReset();
+  _InitSDRAM();
+}
+
+/**************** End of file ***************************************/

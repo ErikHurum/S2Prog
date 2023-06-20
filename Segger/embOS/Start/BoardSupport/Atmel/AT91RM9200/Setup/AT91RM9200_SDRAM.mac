@@ -1,0 +1,88 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2005   SEGGER Microcontroller Systeme GmbH        *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : AT91RM9200_SDRAM.mac
+Purpose : Setup file for EWARM and AT91RM9200 CPU.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+setup() {
+  __var i, clk;
+
+  // ******************************************************
+  // Initialize clock
+  // ******************************************************
+
+  __writeMemory32(0x1, 0xFFFFFC00, "Memory");             // PMC_SCER: PCK = 1
+  __writeMemory32(0x0000FF01, 0xFFFFFC20, "Memory");      // PMC_MOR: MOSCEN = 1, enable main clock
+
+  while(((clk = __readMemory32(0xFFFFFC24, "Memory")) & 0x00010000) == 0);  // Wait until Fosc is stable
+  __writeMemory32(0x1, 0xFFFFFC30, "Memory");             // PMC_MCKR: CSS = 1, PRES = 0, MDIV = 0
+
+  // ******************************************************
+  // Test and set Remap
+  // ******************************************************
+
+  __writeMemory32(0xAAAAAAAA,0x00000000,"Memory");
+  if(__readMemory32(0x00000000,"Memory") != 0xAAAAAAAA) {
+    __writeMemory32(0x01,0xFFFFFF00,"Memory");    // MC_RCR: toggle remap bit
+  }
+
+  // ******************************************************
+  // Initialize SDRAM
+  // ******************************************************
+
+  __writeMemory32(0xFFFF0000,0xFFFFF870,"Memory");  // Select peripheral A function: D16..D31 used as data signals for SDRAM
+  __writeMemory32(0x00000000,0xFFFFF874,"Memory");  // Disable peripheral B function
+  __writeMemory32(0xFFFF0000,0xFFFFF804,"Memory");  // Disable PIO for D16..D31
+  __writeMemory32(0x00000002,0xFFFFFF60,"Memory");  // Setup MEMC to support CS1 = SDRAM
+  __writeMemory32(0x2188C155,0xFFFFFF98,"Memory");  // Init SDRAM controller
+  //
+  // Send Precharge All command to SDRAM
+  //
+  __writeMemory32(0x00000002,0xFFFFFF90,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  //
+  // Eight Auto-refresh are provided
+  //
+  __writeMemory32(0x00000004,0xFFFFFF90,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  //
+  // Send mode register command to program the SDRAM parameters
+  //
+  __writeMemory32(0x00000003,0xFFFFFF90,"Memory");
+  __writeMemory32(0x00000000,0x20000200,"Memory");
+  //
+  // Write refresh rate into SDRAMC refresh timer COUNT register
+  //
+  __writeMemory32(0x000002E0,0xFFFFFF94,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+  //
+  // Normal Mode Command is provided, 3 clocks after tMRD is set
+  //
+  __writeMemory32(0x00000000,0xFFFFFF90,"Memory");
+  __writeMemory32(0x00000000,0x20000000,"Memory");
+}
+
+execUserPreload() {
+  setup();
+  __message("Target init macro complete");
+}
+

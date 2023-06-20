@@ -1,0 +1,705 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:05 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\anpro_net.cpp                      #
+#    Command line    =  D:\S2Prog\TXU\src\anpro_net.cpp --fpu None -D        #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\anpro_net.lst               #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\anpro_net.r79                #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\anpro_net.cpp
+      1          #include "lwip/opt.h"
+      2          
+      3          
+      4          #if LWIP_SOCKET
+      5          
+      6          #include <string.h>
+      7          #include <stdio.h>
+      8          #include <stdlib.h>
+      9          
+     10          #include "anpro_net.h"
+     11          
+     12          #include "lwip/tcp_impl.h"
+     13          #include "lwip/udp.h"
+     14          #include "lwip/tcpip.h"
+     15          #include "lwip/api.h"
+     16          
+     17          #include "TSNIncludes.h"
+     18          
+     19          extern bool Master;
+     20          extern TSNUart *fake_uart_port_for_tcp_clientPtr;
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     21          static ANPRO_TCP_Server       _anpro_tcp_server;
+   \                     _anpro_tcp_server:
+   \   00000000                      DS8 48924
+   \   0000BF1C                      DS8 48920
+     22          static ANPRO_TCP_ClientMgr    _tcp_client_mgr;
+     23          
+     24          static void start_anpro_tcp_server(void) {
+     25              anpro_server_init(&_anpro_tcp_server, PROProjectInfo::IP_TCP_ServerPort, 1, PROProjectInfo::IP_UDP_NetPort, ANPRO_TCP_FLASH_PROG_PORT/*PROProjectInfo::IP_TCP_FlashPort*/);
+     26          }
+     27          
+     28          static void start_anpro_tcp_client(void) {
+     29              struct sockaddr_in  server_addr;
+     30              ip_addr_t           server_ip;
+     31              if (PROProjectInfo::IP_AddressMain) {
+     32                  server_ip.addr = PROProjectInfo::IP_AddressMain + (PROProjectInfo::IP_AddressTCU_Master << 24);
+     33              } else {
+     34                  ANPRO_MASTER_IP(&server_ip);
+     35              }
+     36          
+     37              memset(&server_addr, 0, sizeof(server_addr));
+     38              server_addr.sin_family      = AF_INET;
+     39              server_addr.sin_addr.s_addr = server_ip.addr;
+     40              server_addr.sin_port        = htons(PROProjectInfo::IP_TCP_ServerPort);
+     41          
+     42              anpro_client_mgr_init(&_tcp_client_mgr, 1, PROProjectInfo::IP_UDP_NetPort);
+     43              anpro_client_connection_register(&_tcp_client_mgr, &server_addr, 0);
+     44              anpro_client_mgr_start(&_tcp_client_mgr);
+     45          }
+     46          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     47          void start_anpro_net(void) {
+     48              if (Master) {
+   \                     ??start_anpro_net:
+   \   00000000   ........           LDR      R0,??DataTable19  ;; Master
+   \   00000004   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000008   ........           LDR      R5,??DataTable21  ;; _anpro_tcp_server
+   \   0000000C   DC609FE5           LDR      R6,??start_anpro_net_1  ;; ??IP_TCP_ServerPort
+   \   00000010   DC409FE5           LDR      R4,??start_anpro_net_1+0x4  ;; ??IP_UDP_NetPort
+   \   00000014   10D04DE2           SUB      SP,SP,#+16
+   \   00000018   0000D0E5           LDRB     R0,[R0, #+0]
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   0C00000A           BEQ      ??start_anpro_net_2
+     49                  start_anpro_tcp_server();
+   \   00000024   FA0DA0E3           MOV      R0,#+16000
+   \   00000028   01002DE9           PUSH     {R0}
+   \   0000002C   003094E5           LDR      R3,[R4, #+0]
+   \   00000030   001096E5           LDR      R1,[R6, #+0]
+   \   00000034   0338A0E1           MOV      R3,R3, LSL #+16
+   \   00000038   2338A0E1           MOV      R3,R3, LSR #+16
+   \   0000003C   0120A0E3           MOV      R2,#+1
+   \   00000040   0118A0E1           MOV      R1,R1, LSL #+16
+   \   00000044   2118A0E1           MOV      R1,R1, LSR #+16
+   \   00000048   0500A0E1           MOV      R0,R5
+   \   0000004C   ........           _BLF     ??anpro_server_init,??anpro_server_init??rA
+   \   00000050   04D08DE2           ADD      SP,SP,#+4
+   \   00000054   230000EA           B        ??start_anpro_net_3
+     50              } else {
+     51                  start_anpro_tcp_client();
+   \                     ??start_anpro_net_2:
+   \   00000058   ........           LDR      R0,??DataTable14  ;; ??IP_AddressMain
+   \   0000005C   000090E5           LDR      R0,[R0, #+0]
+   \   00000060   000050E3           CMP      R0,#+0
+   \   00000064   0300000A           BEQ      ??start_anpro_net_4
+   \   00000068   ........           LDR      R1,??DataTable7  ;; ??IP_AddressTCU_Master
+   \   0000006C   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000070   017C80E0           ADD      R7,R0,R1, LSL #+24
+   \   00000074   000000EA           B        ??start_anpro_net_5
+   \                     ??start_anpro_net_4:
+   \   00000078   78709FE5           LDR      R7,??start_anpro_net_1+0x8  ;; 0x1ee3a8c0
+   \                     ??start_anpro_net_5:
+   \   0000007C   1020A0E3           MOV      R2,#+16
+   \   00000080   0010A0E3           MOV      R1,#+0
+   \   00000084   0D00A0E1           MOV      R0,SP
+   \   00000088   ........           _BLF     memset,??memset??rA
+   \   0000008C   0210A0E3           MOV      R1,#+2
+   \   00000090   0110CDE5           STRB     R1,[SP, #+1]
+   \   00000094   04708DE5           STR      R7,[SP, #+4]
+   \   00000098   000096E5           LDR      R0,[R6, #+0]
+   \   0000009C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   000000A0   2008A0E1           MOV      R0,R0, LSR #+16
+   \   000000A4   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000A8   B200CDE1           STRH     R0,[SP, #+2]
+   \   000000AC   002094E5           LDR      R2,[R4, #+0]
+   \   000000B0   1C00A0E3           MOV      R0,#+28
+   \   000000B4   BF0C80E3           ORR      R0,R0,#0xBF00
+   \   000000B8   055080E0           ADD      R5,R0,R5
+   \   000000BC   0228A0E1           MOV      R2,R2, LSL #+16
+   \   000000C0   2228A0E1           MOV      R2,R2, LSR #+16
+   \   000000C4   0110A0E3           MOV      R1,#+1
+   \   000000C8   0500A0E1           MOV      R0,R5
+   \   000000CC   ........           _BLF     ??anpro_client_mgr_init,??anpro_client_mgr_init??rA
+   \   000000D0   0020A0E3           MOV      R2,#+0
+   \   000000D4   0D10A0E1           MOV      R1,SP
+   \   000000D8   0500A0E1           MOV      R0,R5
+   \   000000DC   ........           _BLF     ??anpro_client_connection_register,??anpro_client_connection_register??rA
+   \   000000E0   0500A0E1           MOV      R0,R5
+   \   000000E4   ........           _BLF     ??anpro_client_mgr_start,??anpro_client_mgr_start??rA
+     52              }
+     53          }
+   \                     ??start_anpro_net_3:
+   \   000000E8   FF40BDE8           POP      {R0-R7,LR}
+   \   000000EC   1EFF2FE1           BX       LR               ;; return
+   \                     ??start_anpro_net_1:
+   \   000000F0   ........           DC32     ??IP_TCP_ServerPort
+   \   000000F4   ........           DC32     ??IP_UDP_NetPort
+   \   000000F8   C0A8E31E           DC32     0x1ee3a8c0
+     54          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     55          void get_anpro_net_ip_address(ip_addr_t *ipaddr, uint8_t device_id, uint8_t device_address) {
+     56              uint8_t   ipaddr_last_part = 0;
+   \                     ??get_anpro_net_ip_address:
+   \   00000000   0030A0E3           MOV      R3,#+0
+     57          
+     58          
+     59              switch (device_id) {
+   \   00000004   201051E2           SUBS     R1,R1,#+32
+   \   00000008   0600000A           BEQ      ??get_anpro_net_ip_address_1
+   \   0000000C   101051E2           SUBS     R1,R1,#+16
+   \   00000010   0200000A           BEQ      ??get_anpro_net_ip_address_2
+   \   00000014   101051E2           SUBS     R1,R1,#+16
+   \   00000018   0A00000A           BEQ      ??get_anpro_net_ip_address_3
+   \   0000001C   0C0000EA           B        ??get_anpro_net_ip_address_4
+     60              case DEVICE_TDU:
+     61                  ipaddr_last_part = PROProjectInfo::IP_AddressTDUStart + device_address;
+   \                     ??get_anpro_net_ip_address_2:
+   \   00000020   ........           LDR      R1,??DataTable12  ;; ??IP_AddressTDUStart
+   \   00000024   080000EA           B        ??get_anpro_net_ip_address_5
+     62                  break;
+     63              case DEVICE_TCU:
+     64                  if (!Master) {
+   \                     ??get_anpro_net_ip_address_1:
+   \   00000028   ........           LDR      R1,??DataTable19  ;; Master
+   \   0000002C   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000030   000051E3           CMP      R1,#+0
+     65                      ipaddr_last_part = PROProjectInfo::IP_AddressTCUSlaveStart + device_address;
+   \   00000034   ........           LDREQ    R1,??DataTable11  ;; ??IP_AddressTCUSlaveStart
+   \   00000038   0300000A           BEQ      ??get_anpro_net_ip_address_5
+     66                  } else {
+     67                      ipaddr_last_part = PROProjectInfo::IP_AddressTCU_Master;
+   \   0000003C   ........           LDR      R1,??DataTable7  ;; ??IP_AddressTCU_Master
+   \   00000040   0030D1E5           LDRB     R3,[R1, #+0]
+   \   00000044   020000EA           B        ??get_anpro_net_ip_address_4
+     68                  }
+     69                  break;
+     70              case DEVICE_PCSW: // Not needed as this code is for TCU/TDU only
+     71                  ipaddr_last_part = PROProjectInfo::IP_AddressPCStart + device_address;
+   \                     ??get_anpro_net_ip_address_3:
+   \   00000048   ........           LDR      R1,??DataTable13  ;; ??IP_AddressPCStart
+   \                     ??get_anpro_net_ip_address_5:
+   \   0000004C   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000050   013082E0           ADD      R3,R2,R1
+     72                  break;
+     73              }
+     74              if (PROProjectInfo::IP_AddressMain) {
+   \                     ??get_anpro_net_ip_address_4:
+   \   00000054   ........           LDR      R1,??DataTable14  ;; ??IP_AddressMain
+   \   00000058   FF3003E2           AND      R3,R3,#0xFF
+   \   0000005C   001091E5           LDR      R1,[R1, #+0]
+   \   00000060   000051E3           CMP      R1,#+0
+     75                  ipaddr->addr = PROProjectInfo::IP_AddressMain + (ipaddr_last_part << 24);
+     76              } else {
+     77                  ANPRO_IPADDRESS(ipaddr, ipaddr_last_part);
+   \   00000064   0C109F05           LDREQ    R1,??get_anpro_net_ip_address_6  ;; 0xe3a8c0
+   \   00000068   031C8110           ADDNE    R1,R1,R3, LSL #+24
+   \   0000006C   031C8101           ORREQ    R1,R1,R3, LSL #+24
+   \   00000070   001080E5           STR      R1,[R0, #+0]
+     78              }
+     79          }
+   \   00000074   1EFF2FE1           BX       LR               ;; return
+   \                     ??get_anpro_net_ip_address_6:
+   \   00000078   C0A8E300           DC32     0xe3a8c0
+     80          #pragma diag_suppress=Pe068 // IAR specific: No warning for integer conversion resulted in a change of sign
+
+   \                                 In segment CODE, align 4, keep-with-next
+     81          void get_anpro_net_subnet_broadcast_address(ip_addr_t *ipaddr) {
+     82              if (PROProjectInfo::IP_AddressMain) {
+   \                     ??get_anpro_net_subnet_broadcast_address:
+   \   00000000   ........           LDR      R1,??DataTable14  ;; ??IP_AddressMain
+   \   00000004   001091E5           LDR      R1,[R1, #+0]
+   \   00000008   000051E3           CMP      R1,#+0
+     83                  ipaddr->addr = PROProjectInfo::IP_AddressMain + (255 << 24);
+     84              } else {
+     85                  ANPRO_BROADCAST_ADDRESS(ipaddr);
+   \   0000000C   08109F05           LDREQ    R1,??get_anpro_net_subnet_broadcast_address_1  ;; 0xffffffffffe3a8c0
+   \   00000010   FF148112           ADDNE    R1,R1,#-16777216
+   \   00000014   001080E5           STR      R1,[R0, #+0]
+     86              }
+     87          }
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+   \                     ??get_anpro_net_subnet_broadcast_address_1:
+   \   0000001C   C0A8E3FF           DC32     0xffffffffffe3a8c0
+     88          
+     89          
+     90          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     91          void get_anpro_device_id_addr_from_ip_addr(u32_t ipaddr, u8_t *device_id, u8_t *device_addr) {
+     92              u8_t    last_digit = (u8_t)(ipaddr & 0xff);
+     93              // TCU slave
+     94              if (last_digit >= PROProjectInfo::IP_AddressTCUSlaveStart && last_digit <= PROProjectInfo::IP_AddressTCUSlaveEnd) {   // slave TCU
+   \                     ??get_anpro_device_id_addr_from_ip_addr:
+   \   00000000   ........           LDR      R3,??DataTable11  ;; ??IP_AddressTCUSlaveStart
+   \   00000004   30002DE9           PUSH     {R4,R5}
+   \   00000008   0040D3E5           LDRB     R4,[R3, #+0]
+   \   0000000C   FF0000E2           AND      R0,R0,#0xFF
+   \   00000010   040050E1           CMP      R0,R4
+   \   00000014   0700003A           BCC      ??get_anpro_device_id_addr_from_ip_addr_1
+   \   00000018   7C409FE5           LDR      R4,??get_anpro_device_id_addr_from_ip_addr_2  ;; ??IP_AddressTCUSlaveEnd
+   \   0000001C   0040D4E5           LDRB     R4,[R4, #+0]
+   \   00000020   000054E1           CMP      R4,R0
+   \   00000024   0300003A           BCC      ??get_anpro_device_id_addr_from_ip_addr_1
+     95                  *device_id    = DEVICE_TCU;
+   \                     ??get_anpro_device_id_addr_from_ip_addr_3:
+   \   00000028   2040A0E3           MOV      R4,#+32
+   \   0000002C   0040C1E5           STRB     R4,[R1, #+0]
+     96                  *device_addr  = last_digit - PROProjectInfo::IP_AddressTCUSlaveStart;
+   \   00000030   0010D3E5           LDRB     R1,[R3, #+0]
+   \   00000034   140000EA           B        ??get_anpro_device_id_addr_from_ip_addr_4
+     97              } else if (last_digit >= PROProjectInfo::IP_AddressTDUStart && last_digit <= PROProjectInfo::IP_AddressTDUEnd) {   // TDU
+   \                     ??get_anpro_device_id_addr_from_ip_addr_1:
+   \   00000038   ........           LDR      R12,??DataTable12  ;; ??IP_AddressTDUStart
+   \   0000003C   0050DCE5           LDRB     R5,[R12, #+0]
+   \   00000040   050050E1           CMP      R0,R5
+   \   00000044   0500003A           BCC      ??get_anpro_device_id_addr_from_ip_addr_5
+   \   00000048   50409FE5           LDR      R4,??get_anpro_device_id_addr_from_ip_addr_2+0x4  ;; ??IP_AddressTDUEnd
+   \   0000004C   0040D4E5           LDRB     R4,[R4, #+0]
+   \   00000050   000054E1           CMP      R4,R0
+   \   00000054   0100003A           BCC      ??get_anpro_device_id_addr_from_ip_addr_5
+     98                  *device_id    = DEVICE_TDU;
+   \   00000058   3030A0E3           MOV      R3,#+48
+   \   0000005C   080000EA           B        ??get_anpro_device_id_addr_from_ip_addr_6
+     99                  *device_addr  = last_digit - PROProjectInfo::IP_AddressTDUStart;
+    100              } else if (last_digit >= PROProjectInfo::IP_AddressPCStart && last_digit <= PROProjectInfo::IP_AddressPCEnd) {   // PCSW
+   \                     ??get_anpro_device_id_addr_from_ip_addr_5:
+   \   00000060   ........           LDR      R12,??DataTable13  ;; ??IP_AddressPCStart
+   \   00000064   0050DCE5           LDRB     R5,[R12, #+0]
+   \   00000068   050050E1           CMP      R0,R5
+   \   0000006C   EDFFFF3A           BCC      ??get_anpro_device_id_addr_from_ip_addr_3
+   \   00000070   2C409FE5           LDR      R4,??get_anpro_device_id_addr_from_ip_addr_2+0x8  ;; ??IP_AddressPCEnd
+   \   00000074   0040D4E5           LDRB     R4,[R4, #+0]
+   \   00000078   000054E1           CMP      R4,R0
+   \   0000007C   E9FFFF3A           BCC      ??get_anpro_device_id_addr_from_ip_addr_3
+    101                  *device_id    = DEVICE_PCSW;
+   \   00000080   4030A0E3           MOV      R3,#+64
+   \                     ??get_anpro_device_id_addr_from_ip_addr_6:
+   \   00000084   0030C1E5           STRB     R3,[R1, #+0]
+    102                  *device_addr  = last_digit - PROProjectInfo::IP_AddressPCStart;
+   \   00000088   0010DCE5           LDRB     R1,[R12, #+0]
+   \                     ??get_anpro_device_id_addr_from_ip_addr_4:
+   \   0000008C   010040E0           SUB      R0,R0,R1
+   \   00000090   0000C2E5           STRB     R0,[R2, #+0]
+    103              } else {   // obviously there is a bug if we hit this case
+    104                         // FIXME
+    105                         // just crash instead of this bullshit
+    106                  *device_id    = DEVICE_TCU;
+    107                  *device_addr  = last_digit - PROProjectInfo::IP_AddressTCUSlaveStart;
+    108              }
+    109          }
+   \   00000094   3000BDE8           POP      {R4,R5}
+   \   00000098   1EFF2FE1           BX       LR               ;; return
+   \                     ??get_anpro_device_id_addr_from_ip_addr_2:
+   \   0000009C   ........           DC32     ??IP_AddressTCUSlaveEnd
+   \   000000A0   ........           DC32     ??IP_AddressTDUEnd
+   \   000000A4   ........           DC32     ??IP_AddressPCEnd
+    110          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    111          void setup_anpro_network_address(struct netif *nif, ip_addr_t *netmask, ip_addr_t *gw, ip_addr_t *ipaddr) {
+   \                     ??setup_anpro_network_address:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   00C0A0E1           MOV      R12,R0
+   \   00000008   0300A0E1           MOV      R0,R3
+    112              ANPRO_MACADDR(nif->hwaddr, CurrentDeviceId, CurrentDeviceAddress);
+   \   0000000C   0030A0E3           MOV      R3,#+0
+   \   00000010   2330CCE5           STRB     R3,[R12, #+35]
+   \   00000014   0130A0E3           MOV      R3,#+1
+   \   00000018   2430CCE5           STRB     R3,[R12, #+36]
+   \   0000001C   0230A0E3           MOV      R3,#+2
+   \   00000020   2530CCE5           STRB     R3,[R12, #+37]
+   \   00000024   0330A0E3           MOV      R3,#+3
+   \   00000028   2630CCE5           STRB     R3,[R12, #+38]
+   \   0000002C   5C309FE5           LDR      R3,??setup_anpro_network_address_1  ;; CurrentDeviceId
+   \   00000030   F040D3E1           LDRSH    R4,[R3, #+0]
+   \   00000034   2740CCE5           STRB     R4,[R12, #+39]
+   \   00000038   54409FE5           LDR      R4,??setup_anpro_network_address_1+0x4  ;; CurrentDeviceAddress
+   \   0000003C   F050D4E1           LDRSH    R5,[R4, #+0]
+   \   00000040   2850CCE5           STRB     R5,[R12, #+40]
+    113              if (PROProjectInfo::IP_AddressMain) {
+   \   00000044   ........           LDR      R5,??DataTable14  ;; ??IP_AddressMain
+   \   00000048   00C095E5           LDR      R12,[R5, #+0]
+   \   0000004C   00005CE3           CMP      R12,#+0
+   \   00000050   0300000A           BEQ      ??setup_anpro_network_address_2
+    114                  // ANPRO Gateway address
+    115                  gw->addr = PROProjectInfo::IP_AddressMain + (PROProjectInfo::IP_AddressGateWay << 24);
+   \   00000054   3C509FE5           LDR      R5,??setup_anpro_network_address_1+0x8  ;; ??IP_AddressGateWay
+   \   00000058   0050D5E5           LDRB     R5,[R5, #+0]
+   \   0000005C   055C8CE0           ADD      R5,R12,R5, LSL #+24
+   \   00000060   000000EA           B        ??setup_anpro_network_address_3
+    116              } else {
+    117                  ANPRO_GATEWEAY_IP(gw);
+   \                     ??setup_anpro_network_address_2:
+   \   00000064   30509FE5           LDR      R5,??setup_anpro_network_address_1+0xC  ;; 0x1e3a8c0
+   \                     ??setup_anpro_network_address_3:
+   \   00000068   005082E5           STR      R5,[R2, #+0]
+    118              }
+    119              ANPRO_SUBNET(netmask);
+   \   0000006C   FF24E0E3           MVN      R2,#-16777216
+   \   00000070   002081E5           STR      R2,[R1, #+0]
+    120              get_anpro_net_ip_address(ipaddr, CurrentDeviceId, CurrentDeviceAddress);
+   \   00000074   F020D4E1           LDRSH    R2,[R4, #+0]
+   \   00000078   F010D3E1           LDRSH    R1,[R3, #+0]
+   \   0000007C   FF2002E2           AND      R2,R2,#0xFF
+   \   00000080   FF1001E2           AND      R1,R1,#0xFF
+   \   00000084   ........           BL       ??get_anpro_net_ip_address
+    121          }
+   \   00000088   3040BDE8           POP      {R4,R5,LR}
+   \   0000008C   1EFF2FE1           BX       LR               ;; return
+   \                     ??setup_anpro_network_address_1:
+   \   00000090   ........           DC32     CurrentDeviceId
+   \   00000094   ........           DC32     CurrentDeviceAddress
+   \   00000098   ........           DC32     ??IP_AddressGateWay
+   \   0000009C   C0A8E301           DC32     0x1e3a8c0
+    122          
+    123          static void anpro_net_forward(QueueANPRO10_CommandHeading *Command, bool urgent) {
+    124              if (Master) {
+    125                  if (urgent) {
+    126                      anpro_server_post_message_urgent(&_anpro_tcp_server, (void *)Command,
+    127                                                       Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+    128                  } else {
+    129                      anpro_server_post_message_normal(&_anpro_tcp_server, (void *)Command,
+    130                                                       Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+    131                  }
+    132              } else {
+    133                  if (urgent) {
+    134                      anpro_client_post_message_urgent(&_tcp_client_mgr, (void *)Command,
+    135                                                       Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+    136                  } else {
+    137                      anpro_client_post_message_normal(&_tcp_client_mgr, (void *)Command,
+    138                                                       Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+    139                  }
+    140              }
+    141          }
+    142          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    143          bool anpro_net_send_normal(void *Cmd) {
+    144              QueueANPRO10_CommandHeading *Command  = (QueueANPRO10_CommandHeading *)Cmd;
+    145          
+    146                  anpro_net_forward(Command, false);
+   \                     ??anpro_net_send_normal:
+   \   00000000   ........           LDR      R2,??DataTable19  ;; Master
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   0020D2E5           LDRB     R2,[R2, #+0]
+   \   0000000C   0010A0E1           MOV      R1,R0
+   \   00000010   0830D1E5           LDRB     R3,[R1, #+8]
+   \   00000014   ........           LDR      R0,??DataTable21  ;; _anpro_tcp_server
+   \   00000018   000052E3           CMP      R2,#+0
+   \   0000001C   0920D1E5           LDRB     R2,[R1, #+9]
+   \   00000020   022483E1           ORR      R2,R3,R2, LSL #+8
+   \   00000024   0A2082E2           ADD      R2,R2,#+10
+   \   00000028   0100000A           BEQ      ??anpro_net_send_normal_1
+   \   0000002C   ........           _BLF     ??anpro_server_post_message_normal,??anpro_server_post_message_normal??rA
+   \   00000030   030000EA           B        ??anpro_net_send_normal_2
+   \                     ??anpro_net_send_normal_1:
+   \   00000034   1C30A0E3           MOV      R3,#+28
+   \   00000038   BF3C83E3           ORR      R3,R3,#0xBF00
+   \   0000003C   000083E0           ADD      R0,R3,R0
+   \   00000040   ........           _BLF     ??anpro_client_post_message_normal,??anpro_client_post_message_normal??rA
+    147              return true;
+   \                     ??anpro_net_send_normal_2:
+   \   00000044   0040BDE8           POP      {LR}
+   \   00000048   0100A0E3           MOV      R0,#+1
+   \   0000004C   1EFF2FE1           BX       LR               ;; return
+    148              }
+    149          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    150          bool anpro_net_send_urgent(void *Cmd) {
+    151              QueueANPRO10_CommandHeading *Command  = (QueueANPRO10_CommandHeading *)Cmd;
+    152          
+    153                  anpro_net_forward(Command, true);
+   \                     ??anpro_net_send_urgent:
+   \   00000000   ........           LDR      R2,??DataTable19  ;; Master
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   0020D2E5           LDRB     R2,[R2, #+0]
+   \   0000000C   0010A0E1           MOV      R1,R0
+   \   00000010   0830D1E5           LDRB     R3,[R1, #+8]
+   \   00000014   ........           LDR      R0,??DataTable21  ;; _anpro_tcp_server
+   \   00000018   000052E3           CMP      R2,#+0
+   \   0000001C   0920D1E5           LDRB     R2,[R1, #+9]
+   \   00000020   022483E1           ORR      R2,R3,R2, LSL #+8
+   \   00000024   0A2082E2           ADD      R2,R2,#+10
+   \   00000028   0100000A           BEQ      ??anpro_net_send_urgent_1
+   \   0000002C   ........           _BLF     ??anpro_server_post_message_urgent,??anpro_server_post_message_urgent??rA
+   \   00000030   030000EA           B        ??anpro_net_send_urgent_2
+   \                     ??anpro_net_send_urgent_1:
+   \   00000034   1C30A0E3           MOV      R3,#+28
+   \   00000038   BF3C83E3           ORR      R3,R3,#0xBF00
+   \   0000003C   000083E0           ADD      R0,R3,R0
+   \   00000040   ........           _BLF     ??anpro_client_post_message_urgent,??anpro_client_post_message_urgent??rA
+    154              return true;
+   \                     ??anpro_net_send_urgent_2:
+   \   00000044   0040BDE8           POP      {LR}
+   \   00000048   0100A0E3           MOV      R0,#+1
+   \   0000004C   1EFF2FE1           BX       LR               ;; return
+    155          }
+    156          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    157          bool anpro_net_is_this_cmd_for_net_interface(QueueANPRO10_CommandHeading *cmd) {
+    158              if (!fake_uart_port_for_tcp_clientPtr && cmd->TxInfo.Port == NULL) {
+   \                     ??anpro_net_is_this_cmd_for_net_interface:
+   \   00000000   A8109FE5           LDR      R1,??anpro_net_is_this_cmd_for_net_interface_1  ;; fake_uart_port_for_tcp_clientPtr
+   \   00000004   10402DE9           PUSH     {R4,LR}
+   \   00000008   0CD04DE2           SUB      SP,SP,#+12
+   \   0000000C   001091E5           LDR      R1,[R1, #+0]
+   \   00000010   000051E3           CMP      R1,#+0
+   \   00000014   0900001A           BNE      ??anpro_net_is_this_cmd_for_net_interface_2
+   \   00000018   0D20A0E1           MOV      R2,SP
+   \                     ??anpro_net_is_this_cmd_for_net_interface_3:
+   \   0000001C   0030D1E7           LDRB     R3,[R1, +R0]
+   \   00000020   0230C1E7           STRB     R3,[R1, +R2]
+   \   00000024   011081E2           ADD      R1,R1,#+1
+   \   00000028   040051E3           CMP      R1,#+4
+   \   0000002C   FAFFFFBA           BLT      ??anpro_net_is_this_cmd_for_net_interface_3
+   \   00000030   00109DE5           LDR      R1,[SP, #+0]
+   \   00000034   000051E3           CMP      R1,#+0
+    159                  return false;
+   \   00000038   0000A003           MOVEQ    R0,#+0
+   \   0000003C   1900000A           BEQ      ??anpro_net_is_this_cmd_for_net_interface_4
+    160              }
+    161          
+    162              if (Master) {
+   \                     ??anpro_net_is_this_cmd_for_net_interface_2:
+   \   00000040   ........           LDR      R1,??DataTable19  ;; Master
+   \   00000044   0140A0E3           MOV      R4,#+1
+   \   00000048   0010D1E5           LDRB     R1,[R1, #+0]
+   \   0000004C   08208DE2           ADD      R2,SP,#+8
+   \   00000050   000051E3           CMP      R1,#+0
+   \   00000054   0010A0E3           MOV      R1,#+0
+   \   00000058   0800000A           BEQ      ??anpro_net_is_this_cmd_for_net_interface_5
+    163                  return is_this_port_for_anpro_tcp_server(cmd->TxInfo.Port);
+   \                     ??anpro_net_is_this_cmd_for_net_interface_6:
+   \   0000005C   0030D1E7           LDRB     R3,[R1, +R0]
+   \   00000060   04208DE2           ADD      R2,SP,#+4
+   \   00000064   0230C1E7           STRB     R3,[R1, +R2]
+   \   00000068   011081E2           ADD      R1,R1,#+1
+   \   0000006C   040051E3           CMP      R1,#+4
+   \   00000070   F9FFFFBA           BLT      ??anpro_net_is_this_cmd_for_net_interface_6
+   \   00000074   04009DE5           LDR      R0,[SP, #+4]
+   \   00000078   ........           _BLF     ??is_this_port_for_anpro_tcp_server,??is_this_port_for_anpro_tcp_server??rA
+   \   0000007C   060000EA           B        ??anpro_net_is_this_cmd_for_net_interface_7
+    164              }
+    165          
+    166              return is_this_port_for_anpro_tcp_client(cmd->TxInfo.Port);
+   \                     ??anpro_net_is_this_cmd_for_net_interface_5:
+   \   00000080   0030D1E7           LDRB     R3,[R1, +R0]
+   \   00000084   0230C1E7           STRB     R3,[R1, +R2]
+   \   00000088   011081E2           ADD      R1,R1,#+1
+   \   0000008C   040051E3           CMP      R1,#+4
+   \   00000090   FAFFFFBA           BLT      ??anpro_net_is_this_cmd_for_net_interface_5
+   \   00000094   08009DE5           LDR      R0,[SP, #+8]
+   \   00000098   ........           _BLF     ??is_this_port_for_anpro_tcp_client,??is_this_port_for_anpro_tcp_client??rA
+   \                     ??anpro_net_is_this_cmd_for_net_interface_7:
+   \   0000009C   000050E3           CMP      R0,#+0
+   \   000000A0   0040A003           MOVEQ    R4,#+0
+   \   000000A4   0400A0E1           MOV      R0,R4
+   \                     ??anpro_net_is_this_cmd_for_net_interface_4:
+   \   000000A8   1E40BDE8           POP      {R1-R4,LR}
+   \   000000AC   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_net_is_this_cmd_for_net_interface_1:
+   \   000000B0   ........           DC32     fake_uart_port_for_tcp_clientPtr
+    167          }
+    168          
+    169          //
+    170          // just for a test
+    171          //
+
+   \                                 In segment CODE, align 4, keep-with-next
+    172          extern "C"
+    173          void test_eventfd_for_anpro10_instance1(void) {
+   \                     test_eventfd_for_anpro10_instance1:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+    174              u8_t    msg[16];
+    175          
+    176              memset(msg, 0xde, sizeof(msg));
+   \   00000008   1020A0E3           MOV      R2,#+16
+   \   0000000C   DE10A0E3           MOV      R1,#+222
+   \   00000010   0D00A0E1           MOV      R0,SP
+   \   00000014   ........           _BLF     memset,??memset??rA
+    177          
+    178              anpro_server_post_message_urgent(&_anpro_tcp_server, msg, sizeof(msg));
+   \   00000018   ........           LDR      R0,??DataTable21  ;; _anpro_tcp_server
+   \   0000001C   1020A0E3           MOV      R2,#+16
+   \   00000020   0D10A0E1           MOV      R1,SP
+   \   00000024   ........           _BLF     ??anpro_server_post_message_urgent,??anpro_server_post_message_urgent??rA
+    179          }
+   \   00000028   0F40BDE8           POP      {R0-R3,LR}
+   \   0000002C   1EFF2FE1           BX       LR               ;; return
+    180          
+    181          //
+    182          // server debug
+    183          //
+
+   \                                 In segment CODE, align 4, keep-with-next
+    184          extern "C"
+    185          void anpro_net_server_debug(char *msg_buf) {
+    186              anpro_server_debug(&_anpro_tcp_server, msg_buf);
+   \                     anpro_net_server_debug:
+   \   00000000   0010A0E1           MOV      R1,R0
+   \   00000004   ........           LDR      R0,??DataTable21  ;; _anpro_tcp_server
+   \   00000008   00402DE9           PUSH     {LR}
+   \   0000000C   ........           _BLF     ??anpro_server_debug,??anpro_server_debug??rA
+    187          }
+   \   00000010   0040BDE8           POP      {LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+    188          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    189          extern "C"
+    190          void anpro_net_client_debug(char *msg_buf) {
+    191              anpro_client_debug(&_tcp_client_mgr, msg_buf);
+   \                     anpro_net_client_debug:
+   \   00000000   0010A0E1           MOV      R1,R0
+   \   00000004   0C009FE5           LDR      R0,??anpro_net_client_debug_0  ;; _anpro_tcp_server + 48924
+   \   00000008   00402DE9           PUSH     {LR}
+   \   0000000C   ........           _BLF     ??anpro_client_debug,??anpro_client_debug??rA
+    192          }
+   \   00000010   0040BDE8           POP      {LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_net_client_debug_0:
+   \   00000018   ........           DC32     _anpro_tcp_server + 48924
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable7:
+   \   00000000   ........           DC32     ??IP_AddressTCU_Master
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable11:
+   \   00000000   ........           DC32     ??IP_AddressTCUSlaveStart
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable12:
+   \   00000000   ........           DC32     ??IP_AddressTDUStart
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable13:
+   \   00000000   ........           DC32     ??IP_AddressPCStart
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable14:
+   \   00000000   ........           DC32     ??IP_AddressMain
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable19:
+   \   00000000   ........           DC32     Master
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable21:
+   \   00000000   ........           DC32     _anpro_tcp_server
+    193          
+    194          #endif //!LWIP_SOCKET
+    195          
+    196          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     __sti__routine()                   0
+     anpro_net_client_debug             4
+     anpro_net_is_this_cmd_for_net_interface(QueueANPRO10_CommandHeading *)
+                                       24
+     anpro_net_send_normal(void *)      4
+     anpro_net_send_urgent(void *)      4
+     anpro_net_server_debug             4
+     get_anpro_device_id_addr_from_ip_addr(u32_t, u8_t *, u8_t *)
+                                        8
+     get_anpro_net_ip_address(ip_addr *, uint8_t, uint8_t)
+                                        0
+     get_anpro_net_subnet_broadcast_address(ip_addr *)
+                                        0
+     setup_anpro_network_address(netif *, ip_addr *, ip_addr *, ip_addr *)
+                                       12
+     start_anpro_net()                 40
+     test_eventfd_for_anpro10_instance1
+                                       20
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     _anpro_tcp_server              97844
+     start_anpro_net()                252
+     get_anpro_net_ip_address(ip_addr *, uint8_t, uint8_t)
+                                      124
+     get_anpro_net_subnet_broadcast_address(ip_addr *)
+                                       32
+     get_anpro_device_id_addr_from_ip_addr(u32_t, u8_t *, u8_t *)
+                                      168
+     setup_anpro_network_address(netif *, ip_addr *, ip_addr *, ip_addr *)
+                                      160
+     anpro_net_send_normal(void *)     80
+     anpro_net_send_urgent(void *)     80
+     anpro_net_is_this_cmd_for_net_interface(QueueANPRO10_CommandHeading *)
+                                      180
+     test_eventfd_for_anpro10_instance1
+                                       48
+     anpro_net_server_debug            24
+     anpro_net_client_debug            28
+     __sti__routine()                   4
+     ??DataTable7                       4
+     ??DataTable11                      4
+     ??DataTable12                      4
+     ??DataTable13                      4
+     ??DataTable14                      4
+     ??DataTable19                      4
+     ??DataTable21                      4
+      Others                          232
+
+ 
+  1 424 bytes in segment CODE
+ 97 844 bytes in segment DATA_Z
+      4 bytes in segment DIFUNCT
+     12 bytes in segment INITTAB
+ 
+  1 212 bytes of CODE memory (+ 228 bytes shared)
+ 97 844 bytes of DATA memory
+
+Errors: none
+Warnings: none

@@ -1,0 +1,58 @@
+//*********************************************************************
+//*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+//*        Solutions for real time microcontroller applications       *
+//*********************************************************************
+//*                                                                   *
+//*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+//*                  www.segger.com                                   *
+//*                                                                   *
+//*********************************************************************
+//
+//---------------------------------------------------------------------
+//File   : AT91SAM9260_SDRAM.xcl
+//Purpose: Linker file for AT91SAM9260 and IAR embedded workbench V4
+//-------- END-OF-HEADER ----------------------------------------------
+//
+
+-DROMSTART=20000000
+-DROMEND=23FFFFFF
+-DRAMSTART=20000000
+-DRAMEND=23FFFFFF
+-DIRAMSTART=0           // Internal SRRAM0, remapped to 0x00
+-DIRAMEND=03FF          // SRAM size is 1KB, the remaining space is used for EMAC!
+
+-D_CSTACK_SIZE=(80*4)
+-D_IRQ_STACK_SIZE=(3*(4*7)+8)  // Nesting level * (Size per interrupt) + margin for alignement
+
+-carm
+
+//************************************************
+// Address range for reset and exception
+// vectors (INTVEC).
+// The vector area is 32 bytes,
+// an additional 32 bytes is allocated for the
+// constant table used by ldr PC in cstartup.s79.
+//************************************************
+-Z(CODE)INTVEC=IRAMSTART-IRAMEND
+
+//************************************************
+// Startup code and exception routines (ICODE).
+//************************************************
+-Z(CODE)ICODE=IRAMSTART-IRAMEND
+-Z(CODE)DIFUNCT,SWITAB,CODE,CODE_ID=ROMSTART-ROMEND
+
+//************************************************
+// Various constants and initializers.
+//************************************************
+-Z(CONST)INITTAB,DATA_ID,DATA_C,CHECKSUM=ROMSTART-ROMEND
+
+
+//************************************************
+// Data segments.
+//************************************************
+-Z(DATA)DATA_I,DATA_Z,DATA_N,CODE_I=RAMSTART-RAMEND
+-Z(DATA)CSTACK+_CSTACK_SIZE,IRQ_STACK+_IRQ_STACK_SIZE=IRAMSTART-IRAMEND
+-QCODE_I=CODE_ID
+
+
+

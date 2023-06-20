@@ -1,0 +1,283 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:15
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\rtosinit.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\embOS\rtosinit.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\rtosinit.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\embOS -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\embOS -y
+#        --initializers_in_flash --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e
+#        -I D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\embOS\rtosinit.r90.iar_deps
+#    Locale                =  C
+#    List file             =
+#        D:\S2Prog\IO\ANZB-1281\Debug\List\embOS\rtosinit.lst
+#    Object file           =
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\embOS\rtosinit.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\rtosinit.c
+      1          /*********************************************************************
+      2          *               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+      3          *       Solutions for real time microcontroller applications         *
+      4          **********************************************************************
+      5          *                                                                    *
+      6          *       (C) 2002   SEGGER Microcontroller Systeme GmbH               *
+      7          *                                                                    *
+      8          *       www.segger.com     Support: support@segger.com               *
+      9          *                                                                    *
+     10          **********************************************************************
+     11          *                                                                    *
+     12          *       embOS * Real time operating system for microcontrollers      *
+     13          *                                                                    *
+     14          **********************************************************************
+     15          
+     16          ----------------------------------------------------------------------
+     17          File    : RTOSInit.c   (for ATMEL AT90)
+     18          Purpose : Initializes and handles the hardware for embOS as far
+     19                    as required by embOS.
+     20                    Feel free to modify this file acc. to your
+     21                    target system.
+     22          --------  END-OF-HEADER  ---------------------------------------------
+     23          */
+     24          
+     25          #include "RTOS.H"
+     26          #ifdef __ATMEGA_1280__
+     27          #include	"iom1280.h"
+     28          #endif
+     29          
+     30          #ifdef __ATMEGA_1281__
+     31          #include	"iom1281.h"
+     32          #endif
+     33          #include "constants.h"
+     34          /*
+     35          #if (((__TID__ >> 4) & 0x0F) == 1)
+     36            #include "IO8535.H"
+     37          #elif (((__TID__ >> 4) & 0x0F) == 3)
+     38            #include "IOM603.H"
+     39          #else
+     40            #error "This CPU version (selected by -v) is not supported !"
+     41          #endif
+     42          */
+     43          /*********************************************************************
+     44          *
+     45          *       Configuration
+     46          *
+     47          **********************************************************************
+     48          */
+     49          
+     50          //#define OS_FSYS CPU_XTAL    // System frequency [Hz]
+     51          
+     52          /* Select UART for embOSView.
+     53             If you do not want (or can not due to hardware limitations) to dedicate
+     54             a UART to embOSView, please define it to be -1
+     55             Currently the standard code below supports only UART 1
+     56             (But is easily changed to UART 0)
+     57          */
+     58          #ifndef OS_UART
+     59              #define OS_UART 0
+     60          #endif
+     61          #ifndef OS_BAUDRATE
+     62              #define OS_BAUDRATE 19200L
+     63          #endif
+     64          
+     65          /*********************************************************************
+     66          *
+     67          *       OS_InitHW
+     68          *
+     69          **********************************************************************
+     70          
+     71          Initialize the hardware required for the OS to run. This will work
+     72          on any target hardware, but may have to be tailored a little
+     73          (regarding the clock frequency). Of course the same holds true
+     74          if for some reason you choose to use an other timer.
+     75          Here we use Timer 1 with Compare match. If other Timer has to be used,
+     76          also change the interrupt vector number in OS_ISR_Tick()
+     77          */
+     78          
+     79          
+     80          void OS_InitHW(void) {
+     81              TCCR1A=  (0<<6)       // 0: No output
+     82                       |(0<<4)             // 0: No output
+     83                       |(0<<0);            // No PWM
+     84              TCCR1B=  (1<<7)       // 0: Disable noise canceler
+     85                       |(0<<6)             // X: Capture edge
+     86                       |(1<<3)             // 1: Reset on compare match
+     87                       |(1<<0);            // 1: clock source CK/1
+     88              OCR1A = (XTAL_CPU/1000)-1;         // generate 1ms interrupts
+     89              TIMSK |= (1<<4);      // Output CompareA Match Interrupt Enable
+     90              //  SREG  = 0x80 ;        // global interrupt
+     91              OS_COM_Init();        // Initialize communication to embOS Viewer
+     92          
+     93          }
+     94          
+     95          /*********************************************************************
+     96          *
+     97          *       Idle loop  (OS_Idle)
+     98          *
+     99          **********************************************************************
+    100          
+    101           Please note:
+    102           This is basically the "core" of the idle loop
+    103           This core loop can be changed, but:
+    104           The idle loop does not have a stack of its own, therefore no
+    105           functionality should be implemented that relies on the stack
+    106           to be preserved. However, a simple program loop can be programmed
+    107           (like toggeling an output or incrementing a counter)
+    108          */
+    109          
+    110          void OS_Idle(void) {          // Idle loop: No task is ready to exec
+    111              for (;;);                   // Nothing to do ... wait for a interrupt
+    112          }
+    113          
+    114          /*********************************************************************
+    115          *
+    116          *       Get time [cycles]
+    117          *
+    118          **********************************************************************
+    119          
+    120              This routine is required for task-info via embOS Viewer.
+    121              It returns the system time in clock cycles.
+    122          */
+    123          
+    124          static int ReadHWTimer(void) {
+    125              OS_U16 r = TCNT1L;
+    126              asm ("nop");
+    127              return r |(TCNT1H<<8);
+    128          }
+    129          
+    130          OS_U32 OS_GetTime_Cycles(void) {
+    131              unsigned int t_cnt = ReadHWTimer();
+    132              OS_U32 time = OS_Time;
+    133              //
+    134              // Check if timer interrupt pending ...
+    135              if (TIFR&(1<<4)) {
+    136                  t_cnt = ReadHWTimer();
+    137                  time++;
+    138              }
+    139          //  return (XTAL_CPU/1000)*time  + t_cnt;
+    140              return(XTAL_CPU/1000)*time  + t_cnt;
+    141          }
+    142          
+    143          /*********************************************************************
+    144          *
+    145          *       OS_ConvertCycles2us
+    146          *
+    147          **********************************************************************
+    148          
+    149          Purpose:
+    150             Convert Cycles into micro seconds. (For profiling only)
+    151          
+    152             If you have a clock frequency which is not a multiple of 1 MHz,
+    153             you may have to modify this routine in order to get proper
+    154             diagonstics.
+    155          Please note:
+    156             This routine is required for profiling only.
+    157             It does not affect operation of the OS.
+    158          */
+    159          
+    160          OS_U32 OS_ConvertCycles2us(OS_U32 Cycles) {
+    161              return Cycles/(XTAL_CPU/1000000);
+    162          }
+    163          
+    164          /*********************************************************************
+    165          *
+    166          *       OS_Tick interrupt
+    167          *
+    168          **********************************************************************
+    169          */
+    170          
+    171          #pragma vector = TIMER1_COMPA_vect
+    172          __interrupt void OS_ISR_Tick (void) { OS_TickHandler();}
+    173          
+    174          /*********************************************************************
+    175          *
+    176          *       Communication for embOSView (UART 0)
+    177          *
+    178          **********************************************************************
+    179          */
+    180          
+    181          #if (OS_UART == 0)
+    182          
+    183          void OS_COM_Init(void) {
+    184              UBRR0L  = ((XTAL_CPU / 16 / OS_BAUDRATE )-1) & 0xff;
+    185              UBRR0H  = (((XTAL_CPU / 16 / OS_BAUDRATE )-1)>> 8) & 0xff;
+    186              UCSR0C  = 0x06;       /* n,8,1 */
+    187              UCSR0A  = 0x00;
+    188              UCSR0B =  (0<<0)      // X
+    189                        |(0<<1)      // X
+    190                        |(0<<2)      // CHR9: 9-bit Characters
+    191                        |(1<<3)      // TXEN: Transmitter Enable
+    192                        |(1<<4)      // RXEN: Receiver Enable
+    193                        |(0<<5)      // UDRIE: UART Data Register Empty Interrupt Enable
+    194                        |(0<<6)      // TXCIE Tx complete interrupt enable
+    195                        |(0<<7);     // RXCIE Rx complete interrupt enable
+    196              UCSR0B =  (0<<0)      // X
+    197                        |(0<<1)      // X
+    198                        |(0<<2)      // CHR9: 9-bit Characters
+    199                        |(1<<3)      // TXEN: Transmitter Enable
+    200                        |(1<<4)      // RXEN: Receiver Enable
+    201                        |(0<<5)      // UDRIE: UART Data Register Empty Interrupt Enable
+    202                        |(1<<6)      // TXCIE Tx complete interrupt enable
+    203                        |(1<<7);     // RXCIE Rx complete interrupt enable
+    204          }
+    205          
+    206          void OS_COM_Send1(unsigned char c) {
+    207              UDR0 = c;
+    208              UCSR0B |=  (1<<6);      // Generate interrupt on transmit buffer emtpy
+    209          }
+    210          
+    211              #pragma vector = USART0_RXC_vect
+    212          __interrupt void ISR_uart0_rx (void) {
+    213              UCSR0B &=  ~(1<<7);     // Avoid nesting itself !!!
+    214              OS_EnterNestableInterrupt();
+    215              OS_OnRx(UDR0);
+    216              OS_DI();             // Disable before allowing Rx interrupt
+    217              UCSR0B |=  (1<<7);
+    218              OS_LeaveNestableInterrupt();
+    219          }
+    220          
+    221              #pragma vector = USART0_TXC_vect
+    222          __interrupt void ISR_uart0_tx (void) {/*USART0_TXC_vect*/
+    223              OS_EnterNestableInterrupt();
+    224              if (OS_OnTx()) {
+    225                  UCSR0B &=  ~(1<<6);   // Do not generate any more interrupts
+    226              }
+    227              OS_LeaveNestableInterrupt();
+    228          }
+    229          
+    230          #else  /* No communication routines, just dummies  */
+    231          void OS_COM_Init(void) {}
+    232          void OS_COM_Send1(OS_U8 c) {
+    233              OS_COM_ClearTxActive();    /* let OS know that transmitter is not busy */
+    234              OS_USEPARA(c);             /* Avoid compiler warning */
+    235          }
+    236          #endif /* defined (OS_UART) */
+    237          
+    238          /*****  EOF  ********************************************************/
+    239          
+    240          
+
+Errors: 12
+Warnings: 1

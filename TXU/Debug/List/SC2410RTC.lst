@@ -1,0 +1,550 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:17:17 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\SC2410RTC.cpp                      #
+#    Command line    =  D:\S2Prog\TXU\src\SC2410RTC.cpp --fpu None -D        #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\SC2410RTC.lst               #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\SC2410RTC.r79                #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\SC2410RTC.cpp
+      1          #include "RTOS.h"
+      2          #include "def.h"
+      3          #include "2410addr.h"
+      4          #include <time.h>
+      5          extern 	volatile time_t CurrentTime;
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+      6          OS_RSEMA RTCSema;
+   \                     RTCSema:
+   \   00000000                      DS8 16
+
+   \                                 In segment CODE, align 4, keep-with-next
+      7          U8 IntToBCD(int IntVal)
+      8          {
+      9          	return((IntVal/10) << 4) + (IntVal % 10 );
+   \                     ??IntToBCD:
+   \   00000000   ........           LDR      R1,??DataTable12  ;; 0x66666667
+   \   00000004   9120C3E0           SMULL    R2,R3,R1,R0
+   \   00000008   ........           LDR      R2,??DataTable12  ;; 0x66666667
+   \   0000000C   4331A0E1           ASR      R3,R3,#+2
+   \   00000010   A01F83E0           ADD      R1,R3,R0, LSR #+31
+   \   00000014   9032CCE0           SMULL    R3,R12,R0,R2
+   \   00000018   4CC1A0E1           ASR      R12,R12,#+2
+   \   0000001C   A0CF8CE0           ADD      R12,R12,R0, LSR #+31
+   \   00000020   0A30A0E3           MOV      R3,#+10
+   \   00000024   930C0CE0           MUL      R12,R3,R12
+   \   00000028   0C0040E0           SUB      R0,R0,R12
+   \   0000002C   010280E0           ADD      R0,R0,R1, LSL #+4
+   \   00000030   FF0000E2           AND      R0,R0,#0xFF
+   \   00000034   1EFF2FE1           BX       LR               ;; return
+     10          }
+     11          
+     12          //************************[ Rtc_Init ]*********************************
+
+   \                                 In segment CODE, align 4, keep-with-next
+     13          void SetRTC(time_t NewTime)
+     14          {
+   \                     ??SetRTC:
+   \   00000000   71402DE9           PUSH     {R0,R4-R6,LR}
+     15          	struct tm *tBuf = localtime((const time_t*)&NewTime);
+   \   00000004   0D00A0E1           MOV      R0,SP
+   \   00000008   ........           _BLF     localtime,??localtime??rA
+   \   0000000C   0040A0E1           MOV      R4,R0
+     16          
+     17            // hkim
+     18            OS_IncDI();
+   \   00000010   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+     19          	CurrentTime = NewTime;
+   \   00000014   ........           LDR      R0,??DataTable15  ;; CurrentTime
+   \   00000018   00109DE5           LDR      R1,[SP, #+0]
+   \   0000001C   001080E5           STR      R1,[R0, #+0]
+     20            OS_DecRI();
+   \   00000020   ........           LDR      R0,??DataTable16  ;; OS_Counters + 1
+   \   00000024   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000028   000050E3           CMP      R0,#+0
+   \   0000002C   0000001A           BNE      ??SetRTC_1
+   \   00000030   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+     21          	OS_Use(&RTCSema);
+   \                     ??SetRTC_1:
+   \   00000034   ........           LDR      R5,??DataTable17  ;; RTCSema
+   \   00000038   0500A0E1           MOV      R0,R5
+   \   0000003C   ........           _BLF     OS_Use,??OS_Use??rA
+     22          	rRTCCON  = 0x1;						 //No reset, Merge BCD counters, 1/32768, RTC Control enable
+     23          
+     24          	rBCDYEAR = IntToBCD(tBuf->tm_year % 100);
+   \   00000040   E4219FE5           LDR      R2,??SetRTC_2    ;; 0x51eb851f
+   \   00000044   4000A0E3           MOV      R0,#+64
+   \   00000048   570480E3           ORR      R0,R0,#0x57000000
+   \   0000004C   0110A0E3           MOV      R1,#+1
+   \   00000050   0010C0E5           STRB     R1,[R0, #+0]
+   \   00000054   141094E5           LDR      R1,[R4, #+20]
+   \   00000058   9132CCE0           SMULL    R3,R12,R1,R2
+   \   0000005C   CCC2A0E1           ASR      R12,R12,#+5
+   \   00000060   A1CF8CE0           ADD      R12,R12,R1, LSR #+31
+   \   00000064   6430A0E3           MOV      R3,#+100
+   \   00000068   930C0CE0           MUL      R12,R3,R12
+   \   0000006C   ........           LDR      R3,??DataTable12  ;; 0x66666667
+   \   00000070   0C1041E0           SUB      R1,R1,R12
+   \   00000074   93C1CEE0           SMULL    R12,LR,R3,R1
+   \   00000078   ........           LDR      R12,??DataTable12  ;; 0x66666667
+   \   0000007C   482080E2           ADD      R2,R0,#+72
+   \   00000080   4EE1A0E1           ASR      LR,LR,#+2
+   \   00000084   A13F8EE0           ADD      R3,LR,R1, LSR #+31
+   \   00000088   91ECC6E0           SMULL    LR,R6,R1,R12
+   \   0000008C   4661A0E1           ASR      R6,R6,#+2
+   \   00000090   A16F86E0           ADD      R6,R6,R1, LSR #+31
+   \   00000094   0AE0A0E3           MOV      LR,#+10
+   \   00000098   9E0606E0           MUL      R6,LR,R6
+   \   0000009C   061041E0           SUB      R1,R1,R6
+   \   000000A0   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   000000A4   0010C2E5           STRB     R1,[R2, #+0]
+     25          	rBCDMON  = IntToBCD(tBuf->tm_mon+1);
+   \   000000A8   101094E5           LDR      R1,[R4, #+16]
+   \   000000AC   0C30A0E1           MOV      R3,R12
+   \   000000B0   011081E2           ADD      R1,R1,#+1
+   \   000000B4   9361CCE0           SMULL    R6,R12,R3,R1
+   \   000000B8   ........           LDR      R6,??DataTable12  ;; 0x66666667
+   \   000000BC   442080E2           ADD      R2,R0,#+68
+   \   000000C0   4CC1A0E1           ASR      R12,R12,#+2
+   \   000000C4   A13F8CE0           ADD      R3,R12,R1, LSR #+31
+   \   000000C8   91C6CEE0           SMULL    R12,LR,R1,R6
+   \   000000CC   4EE1A0E1           ASR      LR,LR,#+2
+   \   000000D0   A1EF8EE0           ADD      LR,LR,R1, LSR #+31
+   \   000000D4   0AC0A0E3           MOV      R12,#+10
+   \   000000D8   9C0E0EE0           MUL      LR,R12,LR
+   \   000000DC   0E1041E0           SUB      R1,R1,LR
+   \   000000E0   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   000000E4   0010C2E5           STRB     R1,[R2, #+0]
+     26          	rBCDDATE = IntToBCD(tBuf->tm_mday);
+   \   000000E8   0C1094E5           LDR      R1,[R4, #+12]
+   \   000000EC   0630A0E1           MOV      R3,R6
+   \   000000F0   9361CCE0           SMULL    R6,R12,R3,R1
+   \   000000F4   ........           LDR      R6,??DataTable12  ;; 0x66666667
+   \   000000F8   3C2080E3           ORR      R2,R0,#0x3C
+   \   000000FC   4CC1A0E1           ASR      R12,R12,#+2
+   \   00000100   A13F8CE0           ADD      R3,R12,R1, LSR #+31
+   \   00000104   91C6CEE0           SMULL    R12,LR,R1,R6
+   \   00000108   4EE1A0E1           ASR      LR,LR,#+2
+   \   0000010C   A1EF8EE0           ADD      LR,LR,R1, LSR #+31
+   \   00000110   0AC0A0E3           MOV      R12,#+10
+   \   00000114   9C0E0EE0           MUL      LR,R12,LR
+   \   00000118   0E1041E0           SUB      R1,R1,LR
+   \   0000011C   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   00000120   0010C2E5           STRB     R1,[R2, #+0]
+     27          	rBCDDAY  = IntToBCD(tBuf->tm_wday);				//SUN:1 MON:2 TUE:3 WED:4 THU:5 FRI:6 SAT:7
+   \   00000124   181094E5           LDR      R1,[R4, #+24]
+   \   00000128   0630A0E1           MOV      R3,R6
+   \   0000012C   9361CCE0           SMULL    R6,R12,R3,R1
+   \   00000130   ........           LDR      R6,??DataTable12  ;; 0x66666667
+   \   00000134   402080E2           ADD      R2,R0,#+64
+   \   00000138   4CC1A0E1           ASR      R12,R12,#+2
+   \   0000013C   A13F8CE0           ADD      R3,R12,R1, LSR #+31
+   \   00000140   91C6CEE0           SMULL    R12,LR,R1,R6
+   \   00000144   4EE1A0E1           ASR      LR,LR,#+2
+   \   00000148   A1EF8EE0           ADD      LR,LR,R1, LSR #+31
+   \   0000014C   0AC0A0E3           MOV      R12,#+10
+   \   00000150   9C0E0EE0           MUL      LR,R12,LR
+   \   00000154   0E1041E0           SUB      R1,R1,LR
+   \   00000158   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   0000015C   0010C2E5           STRB     R1,[R2, #+0]
+     28          	rBCDHOUR = IntToBCD(tBuf->tm_hour);
+   \   00000160   081094E5           LDR      R1,[R4, #+8]
+   \   00000164   0630A0E1           MOV      R3,R6
+   \   00000168   9361CCE0           SMULL    R6,R12,R3,R1
+   \   0000016C   ........           LDR      R6,??DataTable12  ;; 0x66666667
+   \   00000170   382080E3           ORR      R2,R0,#0x38
+   \   00000174   4CC1A0E1           ASR      R12,R12,#+2
+   \   00000178   A13F8CE0           ADD      R3,R12,R1, LSR #+31
+   \   0000017C   91C6CEE0           SMULL    R12,LR,R1,R6
+   \   00000180   4EE1A0E1           ASR      LR,LR,#+2
+   \   00000184   A1EF8EE0           ADD      LR,LR,R1, LSR #+31
+   \   00000188   0AC0A0E3           MOV      R12,#+10
+   \   0000018C   9C0E0EE0           MUL      LR,R12,LR
+   \   00000190   0E1041E0           SUB      R1,R1,LR
+   \   00000194   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   00000198   0010C2E5           STRB     R1,[R2, #+0]
+     29          	rBCDMIN  = IntToBCD(tBuf->tm_min);
+   \   0000019C   041094E5           LDR      R1,[R4, #+4]
+   \   000001A0   0630A0E1           MOV      R3,R6
+   \   000001A4   9361CCE0           SMULL    R6,R12,R3,R1
+   \   000001A8   ........           LDR      R6,??DataTable12  ;; 0x66666667
+   \   000001AC   342080E3           ORR      R2,R0,#0x34
+   \   000001B0   4CC1A0E1           ASR      R12,R12,#+2
+   \   000001B4   A13F8CE0           ADD      R3,R12,R1, LSR #+31
+   \   000001B8   91C6CEE0           SMULL    R12,LR,R1,R6
+   \   000001BC   4EE1A0E1           ASR      LR,LR,#+2
+   \   000001C0   A1EF8EE0           ADD      LR,LR,R1, LSR #+31
+   \   000001C4   0AC0A0E3           MOV      R12,#+10
+   \   000001C8   9C0E0EE0           MUL      LR,R12,LR
+   \   000001CC   0E1041E0           SUB      R1,R1,LR
+   \   000001D0   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   000001D4   0010C2E5           STRB     R1,[R2, #+0]
+     30          	rBCDSEC  = IntToBCD(tBuf->tm_sec);
+   \   000001D8   001094E5           LDR      R1,[R4, #+0]
+   \   000001DC   0630A0E1           MOV      R3,R6
+   \   000001E0   9341C6E0           SMULL    R4,R6,R3,R1
+   \   000001E4   ........           LDR      R4,??DataTable12  ;; 0x66666667
+   \   000001E8   302080E3           ORR      R2,R0,#0x30
+   \   000001EC   4661A0E1           ASR      R6,R6,#+2
+   \   000001F0   A13F86E0           ADD      R3,R6,R1, LSR #+31
+   \   000001F4   9164CCE0           SMULL    R6,R12,R1,R4
+   \   000001F8   4CC1A0E1           ASR      R12,R12,#+2
+   \   000001FC   A1CF8CE0           ADD      R12,R12,R1, LSR #+31
+   \   00000200   0A60A0E3           MOV      R6,#+10
+   \   00000204   960C0CE0           MUL      R12,R6,R12
+   \   00000208   0C1041E0           SUB      R1,R1,R12
+   \   0000020C   031281E0           ADD      R1,R1,R3, LSL #+4
+   \   00000210   0010C2E5           STRB     R1,[R2, #+0]
+     31          	rRTCCON  = 0x0;							//No reset, Merge BCD counters, 1/32768, RTC Control disable
+   \   00000214   0010A0E3           MOV      R1,#+0
+   \   00000218   0010C0E5           STRB     R1,[R0, #+0]
+     32          	OS_Unuse(&RTCSema);
+   \   0000021C   0500A0E1           MOV      R0,R5
+   \   00000220   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+     33          }
+   \   00000224   7140BDE8           POP      {R0,R4-R6,LR}
+   \   00000228   1EFF2FE1           BX       LR               ;; return
+   \                     ??SetRTC_2:
+   \   0000022C   1F85EB51           DC32     0x51eb851f
+     34          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     35          U8 BCD_to_Int(int BCDVal)
+     36          {
+     37          	return (10*(BCDVal>>4) + (BCDVal & 0xF));
+   \                     ??BCD_to_Int:
+   \   00000000   4012A0E1           ASR      R1,R0,#+4
+   \   00000004   0A20A0E3           MOV      R2,#+10
+   \   00000008   0F0000E2           AND      R0,R0,#0xF
+   \   0000000C   920120E0           MLA      R0,R2,R1,R0
+   \   00000010   FF0000E2           AND      R0,R0,#0xFF
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+     38          }
+     39          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     40          void GetRTC(void)
+     41          {
+   \                     ??GetRTC:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+     42          	struct tm tBuf;
+     43            U8 Year,Month,Date,Hour,Minute,Seconds;
+     44          	OS_Use(&RTCSema);
+   \   00000004   ........           LDR      R11,??DataTable17  ;; RTCSema
+   \   00000008   24D04DE2           SUB      SP,SP,#+36
+   \   0000000C   0B00A0E1           MOV      R0,R11
+   \   00000010   ........           _BLF     OS_Use,??OS_Use??rA
+     45            rRTCCON  = 0x1;
+   \   00000014   4000A0E3           MOV      R0,#+64
+   \   00000018   570480E3           ORR      R0,R0,#0x57000000
+   \   0000001C   0110A0E3           MOV      R1,#+1
+   \   00000020   0010C0E5           STRB     R1,[R0, #+0]
+     46          	do{
+     47          		Seconds = rBCDSEC;
+   \                     ??GetRTC_1:
+   \   00000024   301080E3           ORR      R1,R0,#0x30
+   \   00000028   0040D1E5           LDRB     R4,[R1, #+0]
+     48          		Minute  = rBCDMIN;
+   \   0000002C   341080E3           ORR      R1,R0,#0x34
+   \   00000030   00A0D1E5           LDRB     R10,[R1, #+0]
+     49          		Hour		= rBCDHOUR;
+   \   00000034   381080E3           ORR      R1,R0,#0x38
+   \   00000038   0050D1E5           LDRB     R5,[R1, #+0]
+     50          		Date		= rBCDDATE;
+   \   0000003C   3C1080E3           ORR      R1,R0,#0x3C
+   \   00000040   0060D1E5           LDRB     R6,[R1, #+0]
+     51          		Month		= rBCDMON;
+   \   00000044   441080E2           ADD      R1,R0,#+68
+   \   00000048   0070D1E5           LDRB     R7,[R1, #+0]
+     52          		Year    = rBCDYEAR;
+   \   0000004C   481080E2           ADD      R1,R0,#+72
+   \   00000050   0080D1E5           LDRB     R8,[R1, #+0]
+     53          	}while(!Seconds);
+   \   00000054   0410B0E1           MOVS     R1,R4
+   \   00000058   F1FFFF0A           BEQ      ??GetRTC_1
+     54            rRTCCON  = 0x0;
+   \   0000005C   0090A0E3           MOV      R9,#+0
+   \   00000060   0090C0E5           STRB     R9,[R0, #+0]
+     55          	OS_Unuse(&RTCSema);
+   \   00000064   0B00A0E1           MOV      R0,R11
+   \   00000068   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+     56          
+     57          	tBuf.tm_sec  = BCD_to_Int(Seconds);
+   \   0000006C   4412A0E1           ASR      R1,R4,#+4
+   \   00000070   0A20A0E3           MOV      R2,#+10
+   \   00000074   0F3004E2           AND      R3,R4,#0xF
+   \   00000078   923121E0           MLA      R1,R2,R1,R3
+   \   0000007C   FF1001E2           AND      R1,R1,#0xFF
+   \   00000080   00108DE5           STR      R1,[SP, #+0]
+     58          	tBuf.tm_min  = BCD_to_Int(Minute );
+   \   00000084   4A12A0E1           ASR      R1,R10,#+4
+   \   00000088   0F300AE2           AND      R3,R10,#0xF
+   \   0000008C   923121E0           MLA      R1,R2,R1,R3
+   \   00000090   FF1001E2           AND      R1,R1,#0xFF
+   \   00000094   04108DE5           STR      R1,[SP, #+4]
+     59          	tBuf.tm_hour = BCD_to_Int(Hour   );
+   \   00000098   4512A0E1           ASR      R1,R5,#+4
+   \   0000009C   0F3005E2           AND      R3,R5,#0xF
+   \   000000A0   923121E0           MLA      R1,R2,R1,R3
+   \   000000A4   FF1001E2           AND      R1,R1,#0xFF
+   \   000000A8   08108DE5           STR      R1,[SP, #+8]
+     60          	tBuf.tm_mday = BCD_to_Int(Date   );
+   \   000000AC   4612A0E1           ASR      R1,R6,#+4
+   \   000000B0   0F3006E2           AND      R3,R6,#0xF
+   \   000000B4   923121E0           MLA      R1,R2,R1,R3
+   \   000000B8   FF1001E2           AND      R1,R1,#0xFF
+   \   000000BC   0C108DE5           STR      R1,[SP, #+12]
+     61          	tBuf.tm_mon  = BCD_to_Int(Month  )-1;
+   \   000000C0   4712A0E1           ASR      R1,R7,#+4
+   \   000000C4   0F3007E2           AND      R3,R7,#0xF
+   \   000000C8   923121E0           MLA      R1,R2,R1,R3
+   \   000000CC   FF1001E2           AND      R1,R1,#0xFF
+   \   000000D0   011041E2           SUB      R1,R1,#+1
+   \   000000D4   10108DE5           STR      R1,[SP, #+16]
+     62          	tBuf.tm_year = BCD_to_Int(Year   )+100;
+   \   000000D8   4812A0E1           ASR      R1,R8,#+4
+   \   000000DC   0F3008E2           AND      R3,R8,#0xF
+   \   000000E0   923121E0           MLA      R1,R2,R1,R3
+   \   000000E4   FF1001E2           AND      R1,R1,#0xFF
+   \   000000E8   641081E2           ADD      R1,R1,#+100
+   \   000000EC   14108DE5           STR      R1,[SP, #+20]
+     63            tBuf.tm_isdst= 0;
+   \   000000F0   20908DE5           STR      R9,[SP, #+32]
+     64          
+     65          	time_t NewTime = mktime(&tBuf);
+   \   000000F4   0D00A0E1           MOV      R0,SP
+   \   000000F8   ........           _BLF     mktime,??mktime??rA
+   \   000000FC   0040A0E1           MOV      R4,R0
+     66          
+     67            if ( int(NewTime)!=-1 ) {  
+   \   00000100   010074E3           CMN      R4,#+1
+   \   00000104   0200000A           BEQ      ??GetRTC_2
+     68              if ( NewTime < 0x4B5FE6A7 || NewTime < 0 ) { // 27 Jan 2010
+   \   00000108   ........           LDR      R0,??DataTable18  ;; 0x4b5fe6a7
+   \   0000010C   000054E1           CMP      R4,R0
+     69                NewTime = 0x4B5FE6A7;
+   \   00000110   0040A0B1           MOVLT    R4,R0
+     70              }
+     71            }
+     72          
+     73            // hkim
+     74            OS_IncDI();
+   \                     ??GetRTC_2:
+   \   00000114   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+     75            CurrentTime = NewTime;
+   \   00000118   ........           LDR      R0,??DataTable15  ;; CurrentTime
+   \   0000011C   004080E5           STR      R4,[R0, #+0]
+     76            OS_DecRI();
+   \   00000120   ........           LDR      R0,??DataTable16  ;; OS_Counters + 1
+   \   00000124   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000128   000050E3           CMP      R0,#+0
+   \   0000012C   0000001A           BNE      ??GetRTC_3
+   \   00000130   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+     77          }
+   \                     ??GetRTC_3:
+   \   00000134   24D08DE2           ADD      SP,SP,#+36
+   \   00000138   F04FBDE8           POP      {R4-R11,LR}
+   \   0000013C   1EFF2FE1           BX       LR               ;; return
+     78          
+     79          extern "C" {
+
+   \                                 In segment CODE, align 4, keep-with-next
+     80          time_t GetRTC2(void)
+     81          {
+   \                     GetRTC2:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+     82            struct tm tBuf;
+     83          
+     84            U8 Year,Month,Date,Hour,Minute,Seconds;
+     85            time_t NewTime;
+     86          
+     87            OS_Use(&RTCSema);
+   \   00000004   ........           LDR      R11,??DataTable17  ;; RTCSema
+   \   00000008   24D04DE2           SUB      SP,SP,#+36
+   \   0000000C   0B00A0E1           MOV      R0,R11
+   \   00000010   ........           _BLF     OS_Use,??OS_Use??rA
+     88            rRTCCON  = 0x1;
+   \   00000014   4000A0E3           MOV      R0,#+64
+   \   00000018   570480E3           ORR      R0,R0,#0x57000000
+   \   0000001C   0110A0E3           MOV      R1,#+1
+   \   00000020   0010C0E5           STRB     R1,[R0, #+0]
+     89          	do{
+     90          		Seconds = rBCDSEC;
+   \                     ??GetRTC2_0:
+   \   00000024   301080E3           ORR      R1,R0,#0x30
+   \   00000028   0040D1E5           LDRB     R4,[R1, #+0]
+     91          		Minute  = rBCDMIN;
+   \   0000002C   341080E3           ORR      R1,R0,#0x34
+   \   00000030   00A0D1E5           LDRB     R10,[R1, #+0]
+     92          		Hour		= rBCDHOUR;
+   \   00000034   381080E3           ORR      R1,R0,#0x38
+   \   00000038   0050D1E5           LDRB     R5,[R1, #+0]
+     93              Date		= rBCDDATE;
+   \   0000003C   3C1080E3           ORR      R1,R0,#0x3C
+   \   00000040   0060D1E5           LDRB     R6,[R1, #+0]
+     94          		Month		= rBCDMON;
+   \   00000044   441080E2           ADD      R1,R0,#+68
+   \   00000048   0070D1E5           LDRB     R7,[R1, #+0]
+     95          		Year    = rBCDYEAR;
+   \   0000004C   481080E2           ADD      R1,R0,#+72
+   \   00000050   0080D1E5           LDRB     R8,[R1, #+0]
+     96          	}while(!Seconds);
+   \   00000054   0410B0E1           MOVS     R1,R4
+   \   00000058   F1FFFF0A           BEQ      ??GetRTC2_0
+     97            rRTCCON  = 0x0;
+   \   0000005C   0090A0E3           MOV      R9,#+0
+   \   00000060   0090C0E5           STRB     R9,[R0, #+0]
+     98          	OS_Unuse(&RTCSema);
+   \   00000064   0B00A0E1           MOV      R0,R11
+   \   00000068   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+     99          	tBuf.tm_sec  = BCD_to_Int(Seconds);
+   \   0000006C   4412A0E1           ASR      R1,R4,#+4
+   \   00000070   0A20A0E3           MOV      R2,#+10
+   \   00000074   0F3004E2           AND      R3,R4,#0xF
+   \   00000078   923121E0           MLA      R1,R2,R1,R3
+   \   0000007C   FF1001E2           AND      R1,R1,#0xFF
+   \   00000080   00108DE5           STR      R1,[SP, #+0]
+    100          	tBuf.tm_min  = BCD_to_Int(Minute );
+   \   00000084   4A12A0E1           ASR      R1,R10,#+4
+   \   00000088   0F300AE2           AND      R3,R10,#0xF
+   \   0000008C   923121E0           MLA      R1,R2,R1,R3
+   \   00000090   FF1001E2           AND      R1,R1,#0xFF
+   \   00000094   04108DE5           STR      R1,[SP, #+4]
+    101          	tBuf.tm_hour = BCD_to_Int(Hour   );
+   \   00000098   4512A0E1           ASR      R1,R5,#+4
+   \   0000009C   0F3005E2           AND      R3,R5,#0xF
+   \   000000A0   923121E0           MLA      R1,R2,R1,R3
+   \   000000A4   FF1001E2           AND      R1,R1,#0xFF
+   \   000000A8   08108DE5           STR      R1,[SP, #+8]
+    102            tBuf.tm_mday = BCD_to_Int(Date   );
+   \   000000AC   4612A0E1           ASR      R1,R6,#+4
+   \   000000B0   0F3006E2           AND      R3,R6,#0xF
+   \   000000B4   923121E0           MLA      R1,R2,R1,R3
+   \   000000B8   FF1001E2           AND      R1,R1,#0xFF
+   \   000000BC   0C108DE5           STR      R1,[SP, #+12]
+    103          	tBuf.tm_mon  = BCD_to_Int(Month  )-1;
+   \   000000C0   4712A0E1           ASR      R1,R7,#+4
+   \   000000C4   0F3007E2           AND      R3,R7,#0xF
+   \   000000C8   923121E0           MLA      R1,R2,R1,R3
+   \   000000CC   FF1001E2           AND      R1,R1,#0xFF
+   \   000000D0   011041E2           SUB      R1,R1,#+1
+   \   000000D4   10108DE5           STR      R1,[SP, #+16]
+    104          	tBuf.tm_year = BCD_to_Int(Year   )+100;
+   \   000000D8   4812A0E1           ASR      R1,R8,#+4
+   \   000000DC   0F3008E2           AND      R3,R8,#0xF
+   \   000000E0   923121E0           MLA      R1,R2,R1,R3
+   \   000000E4   FF1001E2           AND      R1,R1,#0xFF
+   \   000000E8   641081E2           ADD      R1,R1,#+100
+   \   000000EC   14108DE5           STR      R1,[SP, #+20]
+    105          	tBuf.tm_isdst= 0; 
+   \   000000F0   20908DE5           STR      R9,[SP, #+32]
+    106          
+    107            NewTime = mktime(&tBuf);
+   \   000000F4   0D00A0E1           MOV      R0,SP
+   \   000000F8   ........           _BLF     mktime,??mktime??rA
+    108          	if ( int(NewTime)!=-1 ) {  
+   \   000000FC   010070E3           CMN      R0,#+1
+   \   00000100   0200000A           BEQ      ??GetRTC2_1
+    109          		if ( NewTime < 0x4B5FE6A7 || NewTime < 0 ) { // 27 Jan 2010
+   \   00000104   ........           LDR      R1,??DataTable18  ;; 0x4b5fe6a7
+   \   00000108   010050E1           CMP      R0,R1
+    110          			NewTime = 0x4B5FE6A7;
+   \   0000010C   0100A0B1           MOVLT    R0,R1
+    111                          }
+    112          	}
+    113            return NewTime;
+   \                     ??GetRTC2_1:
+   \   00000110   24D08DE2           ADD      SP,SP,#+36
+   \   00000114   F04FBDE8           POP      {R4-R11,LR}
+   \   00000118   1EFF2FE1           BX       LR               ;; return
+    114          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable12:
+   \   00000000   67666666           DC32     0x66666667
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable15:
+   \   00000000   ........           DC32     CurrentTime
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable16:
+   \   00000000   ........           DC32     OS_Counters + 1
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable17:
+   \   00000000   ........           DC32     RTCSema
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable18:
+   \   00000000   A7E65F4B           DC32     0x4b5fe6a7
+    115          }
+
+   Maximum stack usage in bytes:
+
+     Function        CSTACK
+     --------        ------
+     BCD_to_Int(int)     0
+     GetRTC()           72
+     GetRTC2            72
+     IntToBCD(int)       0
+     SetRTC(long)       20
+
+
+   Segment part sizes:
+
+     Function/Label  Bytes
+     --------------  -----
+     RTCSema           16
+     IntToBCD(int)     56
+     SetRTC(long)     560
+     BCD_to_Int(int)   24
+     GetRTC()         320
+     GetRTC2          284
+     ??DataTable12      4
+     ??DataTable15      4
+     ??DataTable16      4
+     ??DataTable17      4
+     ??DataTable18      4
+      Others          104
+
+ 
+ 1 356 bytes in segment CODE
+    16 bytes in segment DATA_Z
+    12 bytes in segment INITTAB
+ 
+ 1 264 bytes of CODE memory (+ 104 bytes shared)
+    16 bytes of DATA memory
+
+Errors: none
+Warnings: none

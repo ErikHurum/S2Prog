@@ -1,0 +1,347 @@
+//---------------------------------------------------------------------------
+#include "TSNIncludes.h"
+#ifdef ANWIN
+	#include "LiteCall.hpp"
+    #include "LiteAccess.hpp"
+    #pragma hdrstop
+    #include "MainUnit.h"
+#endif
+
+#pragma hdrstop
+
+#include "TWMRepository.h"
+#include "TankWashingException.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+
+/// ***************************************************
+/// Public functions
+/// ***************************************************
+
+TWMRepository::TWMRepository(SQLiteAccessor* _accessor)
+{
+	accessor = _accessor;
+}
+
+
+/// Check if a tank washing machine object exists in the database
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::ExistsById(int id, bool& exists)
+{
+	AnsiString Query("SELECT Count(*) AS Count FROM WashingMachines WHERE Id=");
+	Query.cat_sprintf("%d", id);
+
+    TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+    try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+        LiteQuery->SQL->Text = Query;
+        LiteQuery->Open();
+		exists = bool( LiteQuery->FieldByName("Count")->AsInteger);
+		LiteQuery->Close();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+	return true;
+
+}
+
+
+
+/// Check if a cargo tank has washing machines mounted (according to the DB data).
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::ExistsByTankId(int tankId, bool& exists)
+{
+	AnsiString Query("SELECT COUNT(*) AS Count FROM WashingMachines WHERE TankId=");
+	Query.cat_sprintf("%d", tankId);
+
+    TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+	try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+		LiteQuery->SQL->Text = Query;
+		LiteQuery->Open();
+		//AnsiString Result = LiteQuery->FieldByName("Count")->AsString;
+		exists = bool( LiteQuery->FieldByName("Count")->AsInteger);
+		LiteQuery->Close();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+
+	return true;
+}
+
+
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::Create(TankWashingMachine& twm)
+{
+	AnsiString Query("SELECT * FROM WashingMachines");
+
+
+	TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+    try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+		LiteQuery->SQL->Text = Query;
+        LiteQuery->Open();
+		LiteQuery->Append();
+		LiteQuery->FieldByName("Identifier")->AsAnsiString					= twm.Identifier;
+		LiteQuery->FieldByName("SerialId")->AsAnsiString					= twm.SerialId;
+		LiteQuery->FieldByName("NozzleDiameterMM")->AsInteger				= twm.NozzleDiameter_mm;
+		LiteQuery->FieldByName("NumberOfNozzles")->AsInteger				= twm.NumberOfNozzles;
+		LiteQuery->FieldByName("GearRatio")->AsFloat						= twm.GearRatio;
+		LiteQuery->FieldByName("TankId")->AsFloat							= twm.TankId;
+		LiteQuery->FieldByName("RunningTimeSinceLastService")->AsInteger 	= twm.RunningTimeSinceLastService;
+		LiteQuery->FieldByName("LifeRunningTime")->AsInteger				= twm.LifeRunningTime;
+		LiteQuery->FieldByName("MachineTypeId")->AsInteger					= twm.MachineTypeId;
+		LiteQuery->Post();
+		LiteQuery->Close();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+	return true;
+}
+
+
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::ReadById(int id, TankWashingMachine& twm)
+{
+	if (id < 1) {
+		throw TankWashingException("Read error: Tank Washing Machine's Id property cannot be zero or lower");
+	}
+
+	AnsiString Query("SELECT * FROM WashingMachines WHERE Id = ");
+	Query.cat_sprintf("%d", id);
+    TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+    try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+        LiteQuery->SQL->Text  = Query;
+        LiteQuery->Open();
+		twm.Identifier 					= LiteQuery->FieldByName("Identifier")->AsAnsiString;
+		twm.SerialId 					= LiteQuery->FieldByName("SerialId")->AsAnsiString;
+		twm.NozzleDiameter_mm 			= LiteQuery->FieldByName("NozzleDiameterMM")->AsInteger;
+		twm.NumberOfNozzles 			= LiteQuery->FieldByName("NumberOfNozzles")->AsInteger;
+		twm.GearRatio 					= LiteQuery->FieldByName("GearRatio")->AsFloat;
+		twm.TankId 						= LiteQuery->FieldByName("TankId")->AsFloat;
+		twm.RunningTimeSinceLastService = LiteQuery->FieldByName("RunningTimeSinceLastService")->AsInteger;
+		twm.LifeRunningTime 			= LiteQuery->FieldByName("LifeRunningTime")->AsInteger;
+		twm.MachineTypeId 				= LiteQuery->FieldByName("MachineTypeId")->AsInteger;
+		LiteQuery->Close();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+
+
+	return true;
+}
+
+
+
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::Update(TankWashingMachine& twm)
+{
+	AnsiString Query("SELECT * FROM WashingMachines ");
+	Query.cat_sprintf("WHERE Id = %d", twm.IDNumber);
+
+
+	TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+    try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+		LiteQuery->SQL->Text = Query;
+        LiteQuery->Open();
+		LiteQuery->Edit();
+		LiteQuery->FieldByName("RunningTimeSinceLastService")->AsInteger 	= twm.RunningTimeSinceLastService;
+		LiteQuery->FieldByName("LifeRunningTime")->AsInteger				= twm.LifeRunningTime;
+		LiteQuery->Post();
+		LiteQuery->Close();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+	return true;
+}
+
+
+/// Same as update, except it only updates fields which can be specified in the configuration file.
+/// Service related timespans etc. are not updated.
+///
+bool TWMRepository::UpdateFromConfiguration(TankWashingMachine& twm)
+{
+	AnsiString Query("SELECT * FROM WashingMachines ");
+    // Can not update Id      . Must delete database to update Id
+	Query.cat_sprintf(" WHERE Id = %d", twm.IDNumber);
+
+	TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+    try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+		LiteQuery->SQL->Text = Query;
+        LiteQuery->Open();
+		LiteQuery->Edit();
+		LiteQuery->FieldByName("Identifier")->AsAnsiString					= twm.Identifier;
+		LiteQuery->FieldByName("SerialId")->AsAnsiString					= twm.SerialId;
+		LiteQuery->FieldByName("NozzleDiameterMM")->AsInteger				= twm.NozzleDiameter_mm;
+		LiteQuery->FieldByName("NumberOfNozzles")->AsInteger				= twm.NumberOfNozzles;
+		LiteQuery->FieldByName("GearRatio")->AsFloat						= twm.GearRatio;
+		LiteQuery->FieldByName("TankId")->AsFloat							= twm.TankId;
+		LiteQuery->Post();
+		LiteQuery->Close();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+	return true;
+}
+
+
+
+
+
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::Delete(int id)
+{
+	if (id < 1) {
+		throw TankWashingException("Delete error: Tank Washing Machine's Id property cannot be zero or lower");
+	}
+
+	AnsiString query;
+	query.cat_sprintf("SELECT *FROM WashingMachines WHERE Id = %d", id);
+	TLiteQuery *LiteQuery = new TLiteQuery(NULL);
+    try {
+        MainForm->WashTrackLiteConnection->Connected = true;
+		LiteQuery->Connection = MainForm->WashTrackLiteConnection;
+		LiteQuery->SQL->Text = Query;
+        LiteQuery->Open();
+		LiteQuery->Delete();
+	}
+	__finally{
+		LiteQuery->Free();
+	}
+	return true;
+}
+
+
+/// Returns true if all OK, false otherwise
+///
+bool TWMRepository::ReadAllTankWashingMachineIDs(std::vector<int>& tankWashingMachineIDs)
+{
+	char *queryStr = "SELECT Id FROM WashingMachines ORDER BY Id";
+
+	return (accessor->RunQuery(queryStr, TWMRepository::ReadIDsCallback, &tankWashingMachineIDs) == DATABASE_READ_SUCCESS);
+}
+
+
+/// Get all tank washing machines mounted in a single cargo tank, ordered by their ID number
+///
+bool TWMRepository::ReadAllTankWashingMachinesInTank(int tankId, TankWashingMachineCollection& dest)
+{
+	if (tankId < 1) {
+		throw TankWashingException("Read error: Tank ID must be set and cannot be zero or lower");
+	}
+
+	AnsiString query("SELECT Id, Identifier, SerialId, NozzleDiameterMM, NumberOfNozzles, GearRatio, TankId, RunningTimeSinceLastService, LifeRunningTime, MachineTypeId ");
+	query += "FROM WashingMachines WHERE TankId = ";
+	query.cat_sprintf("%d", tankId);
+	query.cat_sprintf(" ORDER BY Id");
+	const char* queryStr = query.c_str();
+
+
+	return (accessor->RunQuery(queryStr, TWMRepository::Read_Many_TankWashingMachine_Callback, &dest) == DATABASE_READ_SUCCESS);
+
+}
+
+
+/// ***************************************************
+/// Private functions
+/// ***************************************************
+
+/// Used for simply determining if a tank washing machine is in the database
+/// or not.
+///
+void TWMRepository::ExistsCallback(void *context, sqlite3_stmt *stmtHandle)
+{
+	TSQLite3API *SqlAPI = new TSQLite3API;
+	SqlAPI->Initialize();
+	bool* result = (bool*)context;
+	// Set result to true if one or more TankWashingMachine row was found in the db:
+	*result = (SqlAPI->sqlite3_column_int(stmtHandle, 0) >= 1);
+	delete SqlAPI;
+}
+
+
+/// Used for reading the Tank Washing Machine IDs of a set of washing machines.
+///
+void TWMRepository::ReadIDsCallback(void *context, sqlite3_stmt *stmtHandle)
+{
+	TSQLite3API *SqlAPI = new TSQLite3API;
+	SqlAPI->Initialize();
+	vector<int>* tankWashingMachineIDs = reinterpret_cast<vector<int>*>(context);
+
+	int id = SqlAPI->sqlite3_column_int(stmtHandle, 0);
+	tankWashingMachineIDs->push_back(id);
+	delete SqlAPI;
+}
+
+
+/// Used for reading a single tank washing machine object from the database.
+///
+void TWMRepository::Read_One_TankWashingMachine_Callback(void* context, sqlite3_stmt* stmtHandle)
+{
+	TankWashingMachine* twmPtr = reinterpret_cast<TankWashingMachine*>(context);
+
+	TWMRepository::ParseOneTankWashingMachine(twmPtr, stmtHandle);
+}
+
+
+
+/// Used for reading multiple washing machine object from the database.
+///
+void TWMRepository::Read_Many_TankWashingMachine_Callback(void* context, sqlite3_stmt* stmtHandle)
+{
+	TankWashingMachineCollection* collectionPtr = reinterpret_cast<TankWashingMachineCollection*>(context);
+	TankWashingMachine* twmPtr = new TankWashingMachine();
+
+	TWMRepository::ParseOneTankWashingMachine(twmPtr, stmtHandle);
+	collectionPtr->Add(twmPtr);
+}
+
+
+
+/// Get the values for one tank washing machine, given that they are selected in the correct order.
+/// The correct order is the same order as the columns are defined in the WashingMachines table in database.
+///
+void TWMRepository::ParseOneTankWashingMachine(TankWashingMachine* twmPtr, sqlite3_stmt* stmtHandle)
+{
+	TSQLite3API *SqlAPI = new TSQLite3API;
+	SqlAPI->Initialize();
+	twmPtr->IDNumber = SqlAPI->sqlite3_column_int(stmtHandle, 0);
+
+	char* identStrPtr = (char*) (SqlAPI->sqlite3_column_text(stmtHandle, 1));
+	twmPtr->Identifier = AnsiString(identStrPtr);
+
+	char* serialIdStrPtr = (char*) (SqlAPI->sqlite3_column_text(stmtHandle, 2));
+	twmPtr->SerialId = AnsiString(serialIdStrPtr);
+
+	twmPtr->NozzleDiameter_mm 			= SqlAPI->sqlite3_column_int(stmtHandle, 3);
+	twmPtr->NumberOfNozzles 			= SqlAPI->sqlite3_column_int(stmtHandle, 4);
+	twmPtr->GearRatio 					= SqlAPI->sqlite3_column_int(stmtHandle, 5);
+
+	twmPtr->TankId 						= SqlAPI->sqlite3_column_int(stmtHandle, 6);
+	twmPtr->RunningTimeSinceLastService = SqlAPI->sqlite3_column_double(stmtHandle, 7);
+	twmPtr->LifeRunningTime 			= SqlAPI->sqlite3_column_double(stmtHandle, 8);
+	twmPtr->MachineTypeId 				= SqlAPI->sqlite3_column_int(stmtHandle, 9);
+	delete SqlAPI;
+}

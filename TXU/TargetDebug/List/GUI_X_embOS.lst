@@ -1,0 +1,418 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               13/Sep/2016  09:47:26 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  E:\VMShare\working\trunk\TXU\Config\GUI_X_embOS.c    #
+#    Command line    =  E:\VMShare\working\trunk\TXU\Config\GUI_X_embOS.c    #
+#                       --fpu None -D OS_LIBMODE_DP -D OS_RAMVECT=0 -D       #
+#                       CPU_S3C2410 -D OS_UART=1 -D ANBOOTLOADER -D          #
+#                       __ARM_LIBRARY__ -lCN E:\VMShare\working\trunk\TXU\Ta #
+#                       rgetDebug\List\ -o E:\VMShare\working\trunk\TXU\Targ #
+#                       etDebug\Obj\ -s2 --no_cse --no_unroll --no_inline    #
+#                       --no_code_motion --no_tbaa --no_clustering           #
+#                       --no_scheduling --debug --cpu_mode arm --endian      #
+#                       little --cpu ARM920T --stack_align 4 --interwork -e  #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8f.h" -I                        #
+#                       E:\VMShare\working\trunk\TXU\GUI\CORE\ -I            #
+#                       E:\VMShare\working\trunk\TXU\GUI\WM\ -I              #
+#                       E:\VMShare\working\trunk\TXU\GUI\WIDGET\ -I          #
+#                       E:\VMShare\working\trunk\TXU\CONFIG\ -I              #
+#                       E:\VMShare\working\trunk\TXU\INC\ -I                 #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\INC\ -I       #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\SRC\ -I       #
+#                       E:\VMShare\working\trunk\TXU\..\SHARED\LZO\MINILZO.1 #
+#                       08\ -I "C:\Program Files (x86)\IAR Systems\Embedded  #
+#                       Workbench 4.0\arm\INC\"                              #
+#    List file       =  E:\VMShare\working\trunk\TXU\TargetDebug\List\GUI_X_ #
+#                       embOS.lst                                            #
+#    Object file     =  E:\VMShare\working\trunk\TXU\TargetDebug\Obj\GUI_X_e #
+#                       mbOS.r79                                             #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+E:\VMShare\working\trunk\TXU\Config\GUI_X_embOS.c
+      1          /*********************************************************************
+      2          *                SEGGER MICROCONTROLLER SYSTEME GmbH                 *
+      3          *        Solutions for real time microcontroller applications        *
+      4          **********************************************************************
+      5          *                                                                    *
+      6          *        (c) 1996 - 2007  SEGGER Microcontroller Systeme GmbH        *
+      7          *                                                                    *
+      8          *        Internet: www.segger.com    Support:  support@segger.com    *
+      9          *                                                                    *
+     10          **********************************************************************
+     11          
+     12          ** emWin V4.14 - Graphical user interface for embedded applications **
+     13          emWin is protected by international copyright laws.   Knowledge of the
+     14          source code may not be used to write a similar product.  This file may
+     15          only be used in accordance with a license and should not be re-
+     16          distributed in any way. We appreciate your understanding and fairness.
+     17          ----------------------------------------------------------------------
+     18          File        : GUI_X.c
+     19          Purpose     : Config / System dependent externals for GUI
+     20          ---------------------------END-OF-HEADER------------------------------
+     21          */
+     22          
+     23          #include <stdio.h>
+     24          #include "RTOS.h"               /* embOS include */
+     25          #include "GUI.h"
+     26          #include "GUI_X.h"
+     27          
+     28          
+     29          
+     30          /*********************************************************************
+     31          *
+     32          *      Timing:
+     33          *                 GUI_GetTime()
+     34          *                 GUI_Delay(int)
+     35          
+     36            Some timing dependent routines require a GetTime
+     37            and delay funtion. Default time unit (tick), normally is
+     38            1 ms.
+     39          */
+     40          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     41          int GUI_X_GetTime(void) {
+     42            return OS_GetTime();
+   \                     GUI_X_GetTime:
+   \   00000000   04009FE5           LDR      R0,??GUI_X_GetTime_0  ;; OS_Time
+   \   00000004   000090E5           LDR      R0,[R0, #+0]
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+   \                     ??GUI_X_GetTime_0:
+   \   0000000C   ........           DC32     OS_Time
+     43          }
+     44          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     45          void GUI_X_Delay(int Period) {
+   \                     GUI_X_Delay:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+     46            OS_Delay(Period);
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           _BLF     OS_Delay,??OS_Delay??rA
+     47          }
+   \   00000010   1040BDE8           POP      {R4,LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+     48          
+     49          /*********************************************************************
+     50          *
+     51          *       GUI_X_ExecIdle()
+     52          *
+     53          */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     54          void GUI_X_ExecIdle(void) {
+   \                     GUI_X_ExecIdle:
+   \   00000000   00402DE9           PUSH     {LR}
+     55            OS_Delay(1);
+   \   00000004   0100A0E3           MOV      R0,#+1
+   \   00000008   ........           _BLF     OS_Delay,??OS_Delay??rA
+     56          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     57          
+     58          /*********************************************************************
+     59          *
+     60          *      Multitasking:
+     61          *
+     62          *                 GUI_X_InitOS()
+     63          *                 GUI_X_GetTaskId()
+     64          *                 GUI_X_Lock()
+     65          *                 GUI_X_Unlock()
+     66          *
+     67          * Note:
+     68          *   The following routines are required only if emWin is used in a
+     69          *   true multi task environment, which means you have more than one
+     70          *   thread using the emWin API.
+     71          *   In this case the
+     72          *                       #define GUI_OS 1
+     73          *  needs to be in GUIConf.h
+     74          */
+     75          
+     76          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     77          static OS_RSEMA RSema;
+   \                     RSema:
+   \   00000000                      DS8 20
+     78          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     79          void GUI_X_InitOS(void)    { OS_CreateRSema(&RSema);    }
+   \                     GUI_X_InitOS:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   ........           LDR      R0,??DataTable2  ;; RSema
+   \   00000008   ........           _BLF     OS_CreateRSema,??OS_CreateRSema??rA
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     80          void GUI_X_Unlock(void)    { OS_Unuse(&RSema); }
+   \                     GUI_X_Unlock:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   ........           LDR      R0,??DataTable2  ;; RSema
+   \   00000008   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     81          void GUI_X_Lock(void)      { OS_Use(&RSema);  }
+   \                     GUI_X_Lock:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   ........           LDR      R0,??DataTable2  ;; RSema
+   \   00000008   ........           _BLF     OS_Use,??OS_Use??rA
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     82          U32  GUI_X_GetTaskId(void) { return (U32)OS_GetTaskID(); }
+   \                     GUI_X_GetTaskId:
+   \   00000000   ........           LDR      R0,??DataTable5  ;; OS_pCurrentTask
+   \   00000004   000090E5           LDR      R0,[R0, #+0]
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+     83          
+     84          
+     85          /*********************************************************************
+     86          *
+     87          *      Event driving (optional with multitasking)
+     88          *
+     89          *                 GUI_X_WaitEvent()
+     90          *                 GUI_X_SignalEvent()
+     91          */
+     92          
+     93          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     94          static OS_TASK* _pGUITask;
+   \                     _pGUITask:
+   \   00000000                      DS8 4
+     95          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     96          void GUI_X_WaitEvent(void)    {
+   \                     GUI_X_WaitEvent:
+   \   00000000   00402DE9           PUSH     {LR}
+     97            _pGUITask = OS_GetpCurrentTask();
+   \   00000004   ........           LDR      R0,??DataTable7  ;; _pGUITask
+   \   00000008   ........           LDR      R1,??DataTable5  ;; OS_pCurrentTask
+   \   0000000C   001091E5           LDR      R1,[R1, #+0]
+   \   00000010   001080E5           STR      R1,[R0, #+0]
+     98            OS_WaitEvent(1);
+   \   00000014   0100A0E3           MOV      R0,#+1
+   \   00000018   ........           _BLF     OS_WaitEvent,??OS_WaitEvent??rA
+     99          }
+   \   0000001C   0040BDE8           POP      {LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+    100          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    101          void GUI_X_SignalEvent(void)    {
+   \                     GUI_X_SignalEvent:
+   \   00000000   00402DE9           PUSH     {LR}
+    102            if (_pGUITask) {
+   \   00000004   ........           LDR      R0,??DataTable7  ;; _pGUITask
+   \   00000008   000090E5           LDR      R0,[R0, #+0]
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0300000A           BEQ      ??GUI_X_SignalEvent_0
+    103              OS_SignalEvent(1, _pGUITask);
+   \   00000014   ........           LDR      R0,??DataTable7  ;; _pGUITask
+   \   00000018   001090E5           LDR      R1,[R0, #+0]
+   \   0000001C   0100A0E3           MOV      R0,#+1
+   \   00000020   ........           _BLF     OS_SignalEvent,??OS_SignalEvent??rA
+    104            }
+    105          }
+   \                     ??GUI_X_SignalEvent_0:
+   \   00000024   0040BDE8           POP      {LR}
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+    106          
+    107          /*********************************************************************
+    108          *
+    109          *      Keyboard input from serial input
+    110          *
+    111          * Note:
+    112          *   If embOS is used, characters typed into the log window will be placed
+    113          *   in the keyboard buffer. This is a neat feature which allows you to
+    114          *   operate your target system without having to use or even to have
+    115          *   a keyboard connected to it. (nice for demos !)
+    116          */
+    117          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    118          static void _OnRx(OS_U8 Data) {
+   \                     _OnRx:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    119            #if 0
+    120              int Key;
+    121              switch (Data) {
+    122              case 'y':
+    123                Key = GUI_KEY_LEFT;
+    124                break;
+    125              case 'x':
+    126                Key = GUI_KEY_RIGHT;
+    127                break;
+    128              case 'q':
+    129                Key = GUI_KEY_UP;
+    130                break;
+    131              case 'a':
+    132                Key = GUI_KEY_DOWN;
+    133                break;
+    134              case 'w':
+    135                Key = GUI_KEY_BACKSPACE;
+    136                break;
+    137              default:
+    138                Key = Data;
+    139              }
+    140              GUI_StoreKeyMsg(Key, 1);
+    141            #else
+    142              GUI_StoreKeyMsg(Data, 1);
+   \   00000008   0110A0E3           MOV      R1,#+1
+   \   0000000C   0400B0E1           MOVS     R0,R4
+   \   00000010   ........           _BLF     GUI_StoreKeyMsg,??GUI_StoreKeyMsg??rA
+    143            #endif
+    144          }
+   \   00000014   1040BDE8           POP      {R4,LR}
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+    145          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    146          void GUI_X_Init(void) {
+   \                     GUI_X_Init:
+   \   00000000   00402DE9           PUSH     {LR}
+    147            OS_SetRxCallback(_OnRx);
+   \   00000004   08009FE5           LDR      R0,??GUI_X_Init_0  ;; _OnRx
+   \   00000008   ........           _BLF     OS_SetRxCallback,??OS_SetRxCallback??rA
+    148          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+   \                     ??GUI_X_Init_0:
+   \   00000014   ........           DC32     _OnRx
+    149          
+    150          /*********************************************************************
+    151          *
+    152          *      Logging: OS dependent
+    153          
+    154          Note:
+    155            Logging is used in higher debug levels only. The typical target
+    156            build does not use logging and does therefor not require any of
+    157            the logging routines below. For a release build without logging
+    158            the routines below may be eliminated to save some space.
+    159            (If the linker is not function aware and eliminates unreferenced
+    160            functions automatically)
+    161          
+    162          */
+    163          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    164          void GUI_X_Log     (const char *s) { OS_SendString(s); }
+   \                     GUI_X_Log:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           _BLF     OS_SendString,??OS_SendString??rA
+   \   00000010   1040BDE8           POP      {R4,LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+    165          void GUI_X_Warn    (const char *s) { OS_SendString(s); }
+   \                     GUI_X_Warn:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           _BLF     OS_SendString,??OS_SendString??rA
+   \   00000010   1040BDE8           POP      {R4,LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+    166          void GUI_X_ErrorOut(const char *s) { OS_SendString(s); }
+   \                     GUI_X_ErrorOut:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           _BLF     OS_SendString,??OS_SendString??rA
+   \   00000010   1040BDE8           POP      {R4,LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable2:
+   \   00000000   ........           DC32     RSema
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable5:
+   \   00000000   ........           DC32     OS_pCurrentTask
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable7:
+   \   00000000   ........           DC32     _pGUITask
+    167          
+    168          
+    169          
+    170          
+    171          
+    172          
+    173          
+
+   Maximum stack usage in bytes:
+
+     Function          CSTACK
+     --------          ------
+     GUI_X_Delay           8
+     GUI_X_ErrorOut        8
+     GUI_X_ExecIdle        4
+     GUI_X_GetTaskId       0
+     GUI_X_GetTime         0
+     GUI_X_Init            4
+     GUI_X_InitOS          4
+     GUI_X_Lock            4
+     GUI_X_Log             8
+     GUI_X_SignalEvent     4
+     GUI_X_Unlock          4
+     GUI_X_WaitEvent       4
+     GUI_X_Warn            8
+     _OnRx                 8
+
+
+   Segment part sizes:
+
+     Function/Label    Bytes
+     --------------    -----
+     GUI_X_GetTime       16
+     GUI_X_Delay         24
+     GUI_X_ExecIdle      20
+     RSema               20
+     GUI_X_InitOS        20
+     GUI_X_Unlock        20
+     GUI_X_Lock          20
+     GUI_X_GetTaskId     12
+     _pGUITask            4
+     GUI_X_WaitEvent     36
+     GUI_X_SignalEvent   44
+     _OnRx               28
+     GUI_X_Init          24
+     GUI_X_Log           24
+     GUI_X_Warn          24
+     GUI_X_ErrorOut      24
+     ??DataTable2         4
+     ??DataTable5         4
+     ??DataTable7         4
+      Others            176
+
+ 
+ 512 bytes in segment CODE
+  24 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 348 bytes of CODE memory (+ 176 bytes shared)
+  24 bytes of DATA memory
+
+Errors: none
+Warnings: none

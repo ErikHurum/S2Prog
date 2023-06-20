@@ -1,0 +1,197 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:16
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\eeprom.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\eeprom.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\eeprom.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\eeprom.r90.iar_deps
+#    Locale                =  C
+#    List file             =  D:\S2Prog\IO\ANZB-1281\Debug\List\Main\eeprom.lst
+#    Object file           =  D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\eeprom.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\eeprom.c
+      1          /****************************************************************************************
+      2          / Read and write the eeprom
+      3          /
+      4          ***************************************************************************************/
+      5          #ifdef __ATMEGA_1280__
+      6          #include	"iom1280.h"
+      7          #endif
+      8          
+      9          #ifdef __ATMEGA_1281__
+     10          #include	"iom1281.h"
+     11          #endif
+     12          #include "stdio.h"
+     13          #include "math.h"
+     14          #include "externals.h"
+     15          #include "version.h"
+     16          #include "inavr.h"
+     17          
+     18          
+     19          /*---------------------------------------------------------------------------
+     20          **
+     21          **  See how many date i remining
+     22          **
+     23          **--------------------------------------------------------------------------*/
+     24          char TestEEPROM( void ) {
+     25          
+     26              return WriteCount;
+     27          }
+     28          
+     29          /*---------------------------------------------------------------------------
+     30          **
+     31          **  Reads an address in the eeprom
+     32          **
+     33          **--------------------------------------------------------------------------*/
+     34          char ReadEEPROMByte( unsigned int Address ) {
+     35          
+     36              unsigned char Data;
+     37          
+     38              while (EECR & (1<<EEWE))     // Wait until ready
+     39                  ;
+     40              EEAR = Address;
+     41              OS_IncDI();
+     42              EECR |= (1 << EERE) ;       // Don't use SetBit macrod due to timing
+     43              OS_DecRI();
+     44          
+     45              Data = EEDR;
+     46              return Data;
+     47          
+     48          }
+     49          
+     50          /*---------------------------------------------------------------------------
+     51          **
+     52          **  Write a caracther to the eeprom
+     53          **
+     54          **--------------------------------------------------------------------------*/
+     55          void WriteEEPROMByte( unsigned int Address, char Data ) {   
+     56          
+     57              while (EECR & (1<<EEWE))     // Wait until ready
+     58                  ;
+     59              OS_IncDI();
+     60              EEAR = Address;
+     61              EEDR = Data;
+     62              EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+     63              EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+     64              OS_DecRI();
+     65          }
+     66          
+     67          /*---------------------------------------------------------------------------
+     68          **
+     69          **  Read a tring from the eeprom
+     70          **
+     71          **--------------------------------------------------------------------------*/
+     72          void ReadEEPROMBuffer( unsigned int Address, char Size, char *pData ) {   
+     73              unsigned int Index;
+     74          
+     75              for ( Index = 0; Index < Size; Index++ ) {
+     76                  *pData++ = ReadEEPROMByte( Address + Index );
+     77              }
+     78          }
+     79          
+     80          /*---------------------------------------------------------------------------
+     81          **
+     82          **  Writ buffer to eeprom
+     83          **
+     84          **--------------------------------------------------------------------------*/
+     85          void WriteEEPROMBuffer( unsigned int Address, char Size, char *pData ) {   
+     86          
+     87              while (EECR & (1<<EEWE))     // Wait until ready
+     88                  ;
+     89              OS_IncDI();
+     90              pWriteBuffer = pData;
+     91              WriteCount = Size;
+     92              EEAR = Address ;
+     93              EEDR = *pData ;
+     94              pWriteBuffer++;
+     95              EEPWriteOK = false;
+     96              EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+     97              EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+     98              EECR |= (1 << EERIE) ;       // Don't use SetBit macrod due to timing
+     99              OS_DecRI();
+    100          }
+    101          
+    102          /*---------------------------------------------------------------------------
+    103          **
+    104          **  Interrupt on EEPROM write
+    105          **
+    106          **--------------------------------------------------------------------------*/
+    107          #pragma vector=EE_RDY_vect
+    108          __interrupt void IntHandler_EEPROM( void ){
+    109          
+    110              if ( --WriteCount ) {                        // More to write? 
+    111                  EEAR++;                                  // Define address and data 
+    112                  EEDR = *pWriteBuffer++;
+    113                  EECR |= (1 << EEMWE) ;       // Don't use SetBit macrod due to timing
+    114                  EECR |= (1 << EEWE) ;        // Don't use SetBit macrod due to timing
+    115              } else {
+    116                  EECR &= ~(1 << EERIE) ;       // Don't use ClrBit macrod due to timing
+    117                  EEPWriteOK = true;
+    118              }
+    119          }
+    120          
+    121          
+    122          /**===========================================================================
+    123          ** Get the stored version in EEPROM
+    124          **==========================================================================*/ 
+    125          char EEPROMVersion(void) {
+    126              char val ;
+    127              char retval = false;
+    128          
+    129              ReadEEPROMBuffer(EEPROM_ID_START, 1, (char*)&val) ;
+    130              if (val == EEPROM_ID) {                                     //correct EEPROM ID
+    131                  ReadEEPROMBuffer(EEPROM_ID_START+1, 1, (char*)&val) ;
+    132                  if (val == STORE_VERSION) {                             // and version
+    133                      ReadEEPROMBuffer(0xffe, 1, (char*)&val) ;
+    134                      if (val == EEPROM_OK) {                             // and no reset from user
+    135                          retval = true ;                                 // then everything is OK
+    136                      }
+    137                  }
+    138              }
+    139              return retval;
+    140          }
+    141          
+    142          /**===========================================================================
+    143          ** Reset the EEPROM
+    144          **==========================================================================*/ 
+    145          void EEPROMReset(void) {
+    146              EEARL = (0x0ffe & 0xff);
+    147              EEARH = (0x0ffe >> 8);
+    148              EEDR = EEPROM_RESET;
+    149              EECR |= (1<<EEMWE);
+    150              EECR |= (1<<EEWE);
+    151              while (EECR & (1<<EEWE))
+    152                  ;
+    153              WDTCR = 0x18;               //Start watchdog to genetate restart
+    154              WDTCR = 0x18;
+    155          }
+
+Errors: 42
+Warnings: 1

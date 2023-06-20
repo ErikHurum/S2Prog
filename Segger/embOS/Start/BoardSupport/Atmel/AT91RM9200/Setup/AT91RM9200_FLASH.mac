@@ -1,0 +1,52 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2005   SEGGER Microcontroller Systeme GmbH        *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : AT91RM9200_Flash.mac
+Purpose : Setup file for EWARM and AT91RM9200 CPU.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+setup() {
+  __var i,clk;
+
+  // ******************************************************
+  // Initialize clock
+  // ******************************************************
+
+  __writeMemory32(0x1, 0xFFFFFC00, "Memory");             // PMC_SCER: PCK = 1
+  __writeMemory32(0x0000FF01, 0xFFFFFC20, "Memory");      // PMC_MOR: MOSCEN = 1, enable main clock
+
+  while(((clk = __readMemory32(0xFFFFFC24, "Memory")) & 0x00010000) == 0);  // Wait until Fosc is detected
+  __writeMemory32(0x1, 0xFFFFFC30, "Memory");             // PMC_MCKR: CSS = 1, PRES = 0, MDIV = 0
+
+  // ******************************************************
+  // Test and set Remap
+  // ******************************************************
+
+  __writeMemory32(0xAAAAAAAA,0x00000000,"Memory");
+  if(__readMemory32(0x00000000,"Memory") == 0xAAAAAAAA) {
+    __writeMemory32(0x01,0xFFFFFF00,"Memory");    // MC_RCR: toggle remap bit to bring flash to addr. 0
+  }
+
+  // ******************************************************
+  // Setup access to external external AT48BV6416T x16 bit (ie. 8MB) FLASH - 70ns
+  // ******************************************************
+  i = __readMemory32(0xFFFFFF60, "Memory");
+  __writeMemory32(i & ~0x1, 0xFFFFFF60, "Memory");         // EBI_CSA: CS0A = 0, Chip Select 0 is assigned to the Static Memory Controller.
+  __writeMemory32(0x0000308D, 0xFFFFFF70, "Memory");       // FLASH NWS - 13, WSEN - 1, BAT - 1, DBW - 1(x16bit)
+}
+
+execUserPreload() {
+  setup();
+  __message("Target init macro complete");
+}

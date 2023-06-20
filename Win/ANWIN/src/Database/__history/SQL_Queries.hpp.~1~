@@ -1,0 +1,25 @@
+#pragma once
+
+#include <vector>
+
+namespace queries {
+
+
+const AnsiString WashRuns(int TankId, int StartTime, int StopTime) {
+    return "SELECT A.Id, A.Identifier, A.TankId, A.TankName,B.Id, B.Name, C.WashingMachineId,C.WaterCost, C.EnergyCost, C.MoneyCost, C.Flow,"
+           "C.StartDateTime, C.EndDateTime,C.WashTypeName, C.CleaningMediaId, C.Status"
+           " FROM( "
+           " (SELECT Id, Identifier, TankId, TankName FROM WashingMachines where TankId = "+AnsiString(TankId)+") A"
+           " INNER JOIN"
+           " (SELECT Id, Name FROM CleaningMediaTypes ) B on  B.Id = C.CleaningMediaId"
+           " INNER JOIN
+           " (SELECT WashingMachineId,StartDateTime,EndDateTime, CleaningMediaId,Status,, WaterCost, EnergyCost, MoneyCost, Flow,"
+           " CASE WashType WHEN 0 THEN 'Unknown' WHEN 1 THEN 'PreWash' WHEN 2 THEN 'Wash' ELSE 'Error' END WashTypeName FROM WashingRuns) C ON C.WashingMachineId = A.Id"
+           " ) WHERE"
+           " (C.Status=1 OR C.Status = 3 ) AND C.StartDateTime >= "+AnsiString(StartTime)+" AND C.EndDateTime <=  "+AnsiString(StopTime)+"  order by A.Id desc;";
+}
+
+
+}
+
+

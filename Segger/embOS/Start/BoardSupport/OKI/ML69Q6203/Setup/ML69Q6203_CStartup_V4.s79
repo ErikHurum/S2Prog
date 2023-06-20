@@ -1,0 +1,245 @@
+;******************************************************************************
+;
+;    Copyright (C) 2006 Segger Microcontroller Systeme GmbH
+;
+;    System Name  :  ML69Q6203 CPU Board
+;    Module Name  :  Startup routine
+;    File   Name  :  OKI6200_CStartup_V4.s79
+;    Revision     :  01.00
+;
+;******************************************************************************
+
+
+;---------------------------------------------------------------
+; Macros and definitions for the whole file
+;---------------------------------------------------------------
+
+; Mode, correspords to bits 0-5 in CPSR
+MODE_BITS DEFINE  0x1F    ; Bit mask for mode bits in CPSR
+USR_MODE  DEFINE  0x10    ; User mode
+FIQ_MODE  DEFINE  0x11    ; Fast Interrupt Request mode
+IRQ_MODE  DEFINE  0x12    ; Interrupt Request mode
+SVC_MODE  DEFINE  0x13    ; Supervisor mode
+ABT_MODE  DEFINE  0x17    ; Abort mode
+UND_MODE  DEFINE  0x1B    ; Undefined Instruction mode
+SYS_MODE  DEFINE  0x1F    ; System mode
+
+; sfrs used during startup
+BIC_BASE    DEFINE   0x78100000; address of BIC base
+DRAMC_BASE  DEFINE   0x78180000; address of DRAMC base
+
+;---------------------------------------------------------------
+; ?RESET
+; Reset Vector.
+; Normally, segment INTVEC is linked at address 0.
+; For debugging purposes, INTVEC may be placed at other
+; addresses.
+; A debugger that honors the entry point will start the
+; program in a normal way even if INTVEC is not at address 0.
+;---------------------------------------------------------------
+
+        MODULE  ?RESET
+        COMMON  INTVEC:CODE:NOROOT(2)
+        PUBLIC  __program_start
+        EXTERN  ?cstartup
+
+        EXTERN  IRQ_Handler
+        CODE32  ; Always ARM mode after reset
+        org 0x00
+__program_start
+
+#if FLASHCODE
+        b ?cstartup           ; Relative branch allows remap
+#else
+        ldr     pc,=?cstartup ; Absolute jump can reach above 0x2000000
+#endif
+        org     0x04
+        b       0x04
+        org     0x08
+swi_handler: ldr    pc,=swi_handler
+        org     0x0c
+        b       0x0c
+        org     0x10
+        b       0x10
+        org     0x14
+        nop
+        org     0x18
+        ldr     pc,=IRQ_Handler  ; OS interrupt hanlder in RTOS library
+
+        org 0x1c
+fiq_handler: ldr pc,=fiq_handler
+
+        ; Constant table entries (for ldr pc) will be placed at 0x20
+        org 0x20
+        LTORG
+        ENDMOD
+
+;---------------------------------------------------------------
+; ?CSTARTUP
+;---------------------------------------------------------------
+        MODULE  ?CSTARTUP
+
+        RSEG    IRQ_STACK:DATA(2)
+        RSEG    SVC_STACK:DATA:NOROOT(2)
+        RSEG    CSTACK:DATA(2)
+        RSEG    ICODE:CODE:NOROOT(2)
+        PUBLIC  ?cstartup
+        EXTERN  ?main
+
+; Execution starts here.
+; After a reset, the mode is ARM, Supervisor, interrupts disabled.
+
+        CODE32
+?cstartup
+
+; Add initialization needed before setup of stackpointers here
+
+        bl      setup_ex_sram_rom
+        bl      setup_ex_dram
+        bl      setup_protection_unit_cache
+
+; --- initialize stack pointer registers
+
+; Initialize the stack pointers.
+; The pattern below can be used for any of the exception stacks:
+; FIQ, IRQ, SVC, ABT, UND, SYS.
+; The USR mode uses the same stack as SYS.
+; The stack segments must be defined in the linker command file,
+; and be declared above.
+
+        mrs     r0,cpsr                             ; Original PSR value
+        bic     r0,r0,#MODE_BITS                    ; Clear the mode bits
+        orr     r0,r0,#IRQ_MODE                     ; Set IRQ mode bits
+        msr     cpsr_c,r0                           ; Change the mode
+        ldr     sp,=SFE(IRQ_STACK) & 0xFFFFFFF8     ; End of IRQ_STACK
+
+        bic     r0,r0,#MODE_BITS                    ; Clear the mode bits
+        orr     r0,r0,#SVC_MODE                     ; Set System mode bits
+        msr     cpsr_c,r0                           ; Change the mode
+        ldr     sp,=SFE(CSTACK) & 0xFFFFFFF8        ; End of SVC_STACK
+
+; Continue to ?main for more IAR specific system startup
+
+        ldr     r0,=?main
+        bx      r0
+
+
+;:*************************************************************************************************
+;; Setup external SRAM/ROM                                                                        *
+;;*************************************************************************************************
+
+setup_ex_sram_rom
+        ldr     R0, =BIC_BASE
+        ;; setup BWC register(ROM:16bit,RAM:16bit)
+        mov     R1, #0x28
+        str     R1, [R0, #0x0]
+        ;; setup ROMAC register()
+        mov     R1, #0x3
+        str     R1, [R0, #0x4]
+        ;; setup RAMAC register()
+        mov     R1, #0x1
+        str     R1, [R0, #0x8]
+
+        mov     pc, lr
+
+;:*************************************************************************************************
+;; Setup external DRAM                                                                            *
+;;*************************************************************************************************
+setup_ex_dram
+        ldr     R0, =DRAMC_BASE
+        ;; wait 200usec or more
+        mov     R1, #0x1000
+wait_loop
+        subs    R1, R1, #1
+        bpl     wait_loop
+        ;; DRAM bus width control register (DBWC@0x7818_0000)
+        ldr     R1, =0x2        ; 16bit
+        str     R1, [R0, #0]
+        ;; DRAM control register (DRMC@0x7818_0004)
+        ldr     R1, =0x02       ; column:10bit, type of DRAM:SDRAM, precharge latency:2clk
+        str     R1, [R0, #0x4]  ; auto shift to power down mode:disable, CBR refresh:disable
+        ;; DRAM parameter control register (DRPC@0x7818_0008)
+        ldr     R1, =0x9        ; slowest
+        str     R1, [R0, #0x8]
+        ;; RFCG register(RFCG@0x7818_001C)
+        ldr     R1, =0x3C       ; select refreqa(8usec)
+        str     R1, [R0, #0x1C]
+        ;; DRAM refresh cycle control register(RFSH@0x7818_0014)
+        ldr     R1, =0x1        ; refreqa(8usec) / 1
+        str     R1, [R0, #0x14]
+        ;; DRAM power down mode control register (PDWC@0x7818_0018)
+        ldr     R1, =0xF        ; 16cycle
+        str     R1, [R0, #0x18]
+        ;; all bank pre-charge
+        ldr     R1, =0x4        ; all bank precharge command
+        str     R1, [R0, #0x10]
+        ;; CBR x 8
+        ldr     R1, =0x5        ; CBR refresh command
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        str     R1, [R0, #0x10]
+        ;; SDRAM mode register (SDMD@0x7818_000C)
+        ldr     R1, =0x80       ; CL2
+        str     R1, [R0, #0xC]
+        ;; DRAM control register (DRMC@0x7818_0004)
+        ldr     R1, =0x82       ; column:10bit, type of DRAM:SDRAM, precharge latency:2clk
+        str     R1, [R0, #0x4]  ; auto shift to power down mode:disable, CBR refresh:enable
+
+        mov     pc, lr
+
+;:*************************************************************************************************
+;; Setup protection unit                                                                          *
+;;*************************************************************************************************
+setup_protection_unit_cache
+
+        ;; setup data cache (Write to CP15:Reg2)
+        ldr     R0, =0x1E       ;  area1,2,3(b0001_1110) : enable
+        mcr     p15, 0, R0, c2, c0, 0
+
+        ;; setup instruction cache (Write to CP15:Reg2)
+        ldr     R0, =0x1A       ; area1,3(b0001_1010) : enable
+        mcr     p15, 0, R0, c2, c0, 1
+
+        ;; setup write buffer (Write to CP15:Reg3)
+        ldr     R0, =0x04       ; area2(b0001_0100) : enable
+        mcr     p15, 0, R0, c3, c0, 0
+
+        ;; setup data access permission (Write to CP15:Reg5)
+        ldr     R0, =0x00036363   ; area0,2,4 : RW/RW, area1,3 : RO/RO
+        mcr     p15, 0, R0, c5, c0, 2; data access permission
+
+        ;; setup instruction access permission
+        ldr     R0, =0x00066666
+        mcr     p15, 0, R0, c5, c0, 3; instruction access permission
+
+        ;; setup base size, address and enable/disable (Write to CP15:Reg6)
+        ldr     R0, =0x3F       ; size : 4GB,   base address : 0x00000000
+        mcr     p15, 0, R0, c6, c0, 0; area0
+        ldr     R0, =0x35       ; size : 128MB, base address : 0x00000000
+        mcr     p15, 0, R0, c6, c1, 0; area1
+        ldr     R0, =0xC0000035 ; size : 128MB, base address : 0xC0000000
+        mcr     p15, 0, R0, c6, c2, 0; area2
+        ldr     R0, =0xC8000035 ; size : 128MB, base address : 0xC8000000
+        mcr     p15, 0, R0, c6, c3, 0; area3
+        ldr     R0, =0x50000035 ; size : 128MB, base address : 0x50000000
+        mcr     p15, 0, R0, c6, c4, 0; area4
+
+        ;; enable protection unit and cache(Write to CP15:Reg1)
+        mrc     p15, 0, R0, c1, c0, 0; read control register
+        orr     R0, R0, #0x1000 ; instruction cache
+        orr     R0, R0, #0x5    ; data cache and protection unit
+        mcr     p15, 0, R0, c1, c0, 0; write control register
+
+        mov     pc, lr
+
+        LTORG
+
+        ENDMOD
+
+;;*************************************************************************************************
+        END

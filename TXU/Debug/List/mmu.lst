@@ -1,0 +1,330 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:15 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\mmu.c                              #
+#    Command line    =  D:\S2Prog\TXU\src\mmu.c --fpu None -D OS_LIBMODE_SP  #
+#                       -D CPU_S3C2410 -D OS_RAMVECT=0 -D OS_UART=-1 -D      #
+#                       S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__ -D WATCHDOG=1  #
+#                       -D NETWORK=1 -lCN D:\S2Prog\TXU\Debug\List\ -o       #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\mmu.lst                     #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\mmu.r79                      #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\mmu.c
+      1          /************************************************
+      2              NAME    : MMU.C
+      3              DESC	  :
+      4              Revision: 2002.2.28 ver 0.0
+      5           ************************************************/
+      6          
+      7          #include "def.h"
+      8          #include "TSNConstants.h"
+      9          #include "2410addr.h"
+     10          #include "2410lib.h"
+     11          #include "2410slib.h"
+     12          #include "mmu.h"
+     13          
+     14          // 1) Only the section table is used.
+     15          // 2) The cachable/non-cachable area can be changed by MMT_DEFAULT value.
+     16          //    The section size is 1MB.
+     17          
+     18          
+     19          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     20          void MMU_Init(void) {
+   \                     MMU_Init:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+     21              //========================== IMPORTANT NOTE =========================
+     22              //The current stack and code area can't be re-mapped in this routine.
+     23              //If you want memory map mapped freely, your own sophisticated MMU
+     24              //initialization code is needed.
+     25              //===================================================================
+     26          
+     27              MMU_DisableDCache();
+   \   00000004   ........           _BLF     MMU_DisableDCache,??MMU_DisableDCache??rA
+     28              MMU_DisableICache();
+   \   00000008   ........           _BLF     MMU_DisableICache,??MMU_DisableICache??rA
+     29          
+     30              //If write-back is used,the DCache should be cleared.
+     31              for (int i = 0; i < 64; i++) {
+   \   0000000C   0040A0E3           MOV      R4,#+0
+     32                  for (int j = 0; j < 8; j++) {
+   \                     ??MMU_Init_0:
+   \   00000010   0050A0E3           MOV      R5,#+0
+     33                      MMU_CleanInvalidateDCacheIndex((i << 26) | (j << 5));
+   \                     ??MMU_Init_1:
+   \   00000014   8502A0E1           LSL      R0,R5,#+5
+   \   00000018   040D80E1           ORR      R0,R0,R4, LSL #+26
+   \   0000001C   ........           _BLF     MMU_CleanInvalidateDCacheIndex,??MMU_CleanInvalidateDCacheIndex??rA
+     34                  }
+   \   00000020   015085E2           ADD      R5,R5,#+1
+   \   00000024   080055E3           CMP      R5,#+8
+   \   00000028   F9FFFFBA           BLT      ??MMU_Init_1
+     35              }
+   \   0000002C   014084E2           ADD      R4,R4,#+1
+   \   00000030   400054E3           CMP      R4,#+64
+   \   00000034   F5FFFFBA           BLT      ??MMU_Init_0
+     36              MMU_InvalidateICache();
+   \   00000038   ........           _BLF     MMU_InvalidateICache,??MMU_InvalidateICache??rA
+     37          
+     38          #if 0
+     39              //To complete MMU_Init() fast, Icache may be turned on here.
+     40              MMU_EnableICache();
+     41          #endif
+     42          
+     43              MMU_DisableMMU();
+   \   0000003C   ........           _BLF     MMU_DisableMMU,??MMU_DisableMMU??rA
+     44              MMU_InvalidateTLB();
+   \   00000040   ........           _BLF     MMU_InvalidateTLB,??MMU_InvalidateTLB??rA
+     45          
+     46              //MMU_SetMTT(int vaddrStart,int vaddrEnd,int paddrStart,int attr)
+     47              MMU_SetMTT(0x00000000, 0x01b00000, 0x30000000, RW_CB);  //bank0 RAM
+   \   00000044   1E40A0E3           MOV      R4,#+30
+   \   00000048   C04E84E3           ORR      R4,R4,#0xC00
+   \   0000004C   0430A0E1           MOV      R3,R4
+   \   00000050   C025A0E3           MOV      R2,#+805306368
+   \   00000054   6C17A0E3           MOV      R1,#+28311552
+   \   00000058   0000A0E3           MOV      R0,#+0
+   \   0000005C   ........           BL       MMU_SetMTT
+     48              MMU_SetMTT(0x04000000, 0x0405ffff, 0x00000000, RO_NCNB);   //bank0	flash boot loader
+   \   00000060   1230A0E3           MOV      R3,#+18
+   \   00000064   803E83E3           ORR      R3,R3,#0x800
+   \   00000068   0020A0E3           MOV      R2,#+0
+   \   0000006C   FB14E0E3           MVN      R1,#-83886080
+   \   00000070   FA18C1E3           BIC      R1,R1,#0xFA0000
+   \   00000074   4006A0E3           MOV      R0,#+67108864
+   \   00000078   ........           BL       MMU_SetMTT
+     49          
+     50              MMU_SetMTT(0x04060000, 0x07ffffff, 0x00060000, RW_NCNB);   //bank0	flash program
+   \   0000007C   0C50C4E3           BIC      R5,R4,#0xC
+   \   00000080   0530A0E1           MOV      R3,R5
+   \   00000084   602AA0E3           MOV      R2,#+393216
+   \   00000088   F814E0E3           MVN      R1,#-134217728
+   \   0000008C   400682E3           ORR      R0,R2,#0x4000000
+   \   00000090   ........           BL       MMU_SetMTT
+     51              MMU_SetMTT(0x08000000, 0x2fffffff, 0x08000000, RW_NCNB);    //bank1
+   \   00000094   0530A0E1           MOV      R3,R5
+   \   00000098   8026A0E3           MOV      R2,#+134217728
+   \   0000009C   D014E0E3           MVN      R1,#-805306368
+   \   000000A0   8006A0E3           MOV      R0,#+134217728
+   \   000000A4   ........           BL       MMU_SetMTT
+     52          
+     53              MMU_SetMTT(0x30000000, 0x307fffff, 0x30000000, RW_CB);     //	 RAM size 0x800000 ( IC14 )
+   \   000000A8   0430A0E1           MOV      R3,R4
+   \   000000AC   C025A0E3           MOV      R2,#+805306368
+   \   000000B0   C014E0E3           MVN      R1,#-1073741824
+   \   000000B4   F816C1E3           BIC      R1,R1,#0xF800000
+   \   000000B8   0200A0E1           MOV      R0,R2
+   \   000000BC   ........           BL       MMU_SetMTT
+     54              MMU_SetMTT(0x30800000, 0x30ffffff, 0x31000000, RW_CB);     //	 RAM size 0x800000 ( IC14 )
+   \   000000C0   0430A0E1           MOV      R3,R4
+   \   000000C4   C425A0E3           MOV      R2,#+822083584
+   \   000000C8   011042E2           SUB      R1,R2,#+1
+   \   000000CC   C205A0E3           MOV      R0,#+813694976
+   \   000000D0   ........           BL       MMU_SetMTT
+     55          
+     56              MMU_SetMTT(0x31000000, 0x317fffff, 0x32000000, RW_CB);     //	 RAM size 0x800000 ( IC15 ) 
+   \   000000D4   0430A0E1           MOV      R3,R4
+   \   000000D8   C825A0E3           MOV      R2,#+838860800
+   \   000000DC   C014E0E3           MVN      R1,#-1073741824
+   \   000000E0   E816C1E3           BIC      R1,R1,#0xE800000
+   \   000000E4   C405A0E3           MOV      R0,#+822083584
+   \   000000E8   ........           BL       MMU_SetMTT
+     57              MMU_SetMTT(0x31800000, 0x31ffffff, 0x33000000, RW_CB);     //	 RAM size 0x800000 ( IC15 ) 
+   \   000000EC   0430A0E1           MOV      R3,R4
+   \   000000F0   CC25A0E3           MOV      R2,#+855638016
+   \   000000F4   CE14E0E3           MVN      R1,#-838860800
+   \   000000F8   C605A0E3           MOV      R0,#+830472192
+   \   000000FC   ........           BL       MMU_SetMTT
+     58          
+     59              MMU_SetMTT(0x34000000, 0x3fffffff, 0x34000000, RW_NCNB);     //    Was RW_NCNB
+   \   00000100   0530A0E1           MOV      R3,R5
+   \   00000104   D025A0E3           MOV      R2,#+872415232
+   \   00000108   C014E0E3           MVN      R1,#-1073741824
+   \   0000010C   0200A0E1           MOV      R0,R2
+   \   00000110   ........           BL       MMU_SetMTT
+     60              MMU_SetMTT(0x40000000, 0x47ffffff, 0x40000000, RW_NCNB);   //SFR
+   \   00000114   0530A0E1           MOV      R3,R5
+   \   00000118   4024A0E3           MOV      R2,#+1073741824
+   \   0000011C   B814E0E3           MVN      R1,#-1207959552
+   \   00000120   0200A0E1           MOV      R0,R2
+   \   00000124   ........           BL       MMU_SetMTT
+     61          
+     62              MMU_SetMTT(0x48000000, 0x5affffff, 0x48000000, RW_NCNB);   //SFR
+   \   00000128   0530A0E1           MOV      R3,R5
+   \   0000012C   4824A0E3           MOV      R2,#+1207959552
+   \   00000130   A514E0E3           MVN      R1,#-1526726656
+   \   00000134   0200A0E1           MOV      R0,R2
+   \   00000138   ........           BL       MMU_SetMTT
+     63              MMU_SetMTT(0x5b000000, 0xffffffff, 0x5b000000, RW_FAULT); //not used
+   \   0000013C   143084E2           ADD      R3,R4,#+20
+   \   00000140   5B24A0E3           MOV      R2,#+1526726656
+   \   00000144   0010E0E3           MVN      R1,#+0
+   \   00000148   0200A0E1           MOV      R0,R2
+   \   0000014C   ........           BL       MMU_SetMTT
+     64          
+     65              MMU_SetTTBase(_MMUTT_STARTADDRESS);
+   \   00000150   C705A0E3           MOV      R0,#+834666496
+   \   00000154   FE0980E3           ORR      R0,R0,#0x3F8000
+   \   00000158   ........           _BLF     MMU_SetTTBase,??MMU_SetTTBase??rA
+     66              MMU_SetDomain(0x55555550 | DOMAIN1_ATTR | DOMAIN0_ATTR);
+   \   0000015C   20009FE5           LDR      R0,??MMU_Init_2  ;; 0x55555551
+   \   00000160   ........           _BLF     MMU_SetDomain,??MMU_SetDomain??rA
+     67              //DOMAIN1: no_access, DOMAIN0,2~15=client(AP is checked)
+     68              MMU_SetProcessId(0x0);
+   \   00000164   0000A0E3           MOV      R0,#+0
+   \   00000168   ........           _BLF     MMU_SetProcessId,??MMU_SetProcessId??rA
+     69              MMU_EnableAlignFault();
+   \   0000016C   ........           _BLF     MMU_EnableAlignFault,??MMU_EnableAlignFault??rA
+     70          
+     71              MMU_EnableMMU();
+   \   00000170   ........           _BLF     MMU_EnableMMU,??MMU_EnableMMU??rA
+     72              MMU_EnableICache();
+   \   00000174   ........           _BLF     MMU_EnableICache,??MMU_EnableICache??rA
+     73              MMU_EnableDCache(); //DCache should be turned on after MMU is turned on.
+   \   00000178   ........           _BLF     MMU_EnableDCache,??MMU_EnableDCache??rA
+     74          }
+   \   0000017C   3040BDE8           POP      {R4,R5,LR}
+   \   00000180   1EFF2FE1           BX       LR               ;; return
+   \                     ??MMU_Init_2:
+   \   00000184   51555555           DC32     0x55555551
+     75          
+     76          
+     77          // attr=RW_CB,RW_CNB,RW_NCNB,RW_FAULT
+
+   \                                 In segment CODE, align 4, keep-with-next
+     78          void ChangeRomCacheStatus(int attr) {
+   \                     ChangeRomCacheStatus:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     79              MMU_DisableDCache();
+   \   00000008   ........           _BLF     MMU_DisableDCache,??MMU_DisableDCache??rA
+     80              MMU_DisableICache();
+   \   0000000C   ........           _BLF     MMU_DisableICache,??MMU_DisableICache??rA
+     81              //If write-back is used,the DCache should be cleared.
+     82              for (int i = 0; i < 64; i++) for (int j = 0; j < 8; j++) MMU_CleanInvalidateDCacheIndex((i << 26) | (j << 5));
+   \   00000010   0050A0E3           MOV      R5,#+0
+   \                     ??ChangeRomCacheStatus_0:
+   \   00000014   0060A0E3           MOV      R6,#+0
+   \                     ??ChangeRomCacheStatus_1:
+   \   00000018   8602A0E1           LSL      R0,R6,#+5
+   \   0000001C   050D80E1           ORR      R0,R0,R5, LSL #+26
+   \   00000020   ........           _BLF     MMU_CleanInvalidateDCacheIndex,??MMU_CleanInvalidateDCacheIndex??rA
+   \   00000024   016086E2           ADD      R6,R6,#+1
+   \   00000028   080056E3           CMP      R6,#+8
+   \   0000002C   F9FFFFBA           BLT      ??ChangeRomCacheStatus_1
+   \   00000030   015085E2           ADD      R5,R5,#+1
+   \   00000034   400055E3           CMP      R5,#+64
+   \   00000038   F5FFFFBA           BLT      ??ChangeRomCacheStatus_0
+     83              MMU_InvalidateICache();
+   \   0000003C   ........           _BLF     MMU_InvalidateICache,??MMU_InvalidateICache??rA
+     84              MMU_DisableMMU();
+   \   00000040   ........           _BLF     MMU_DisableMMU,??MMU_DisableMMU??rA
+     85              MMU_InvalidateTLB();
+   \   00000044   ........           _BLF     MMU_InvalidateTLB,??MMU_InvalidateTLB??rA
+     86              MMU_SetMTT(0x00000000, 0x07ffffff, 0x00000000, attr);  //bank0
+   \   00000048   0430A0E1           MOV      R3,R4
+   \   0000004C   0020A0E3           MOV      R2,#+0
+   \   00000050   F814E0E3           MVN      R1,#-134217728
+   \   00000054   0000A0E3           MOV      R0,#+0
+   \   00000058   ........           BL       MMU_SetMTT
+     87              MMU_SetMTT(0x08000000, 0x0fffffff, 0x08000000, attr);  //bank1
+   \   0000005C   0430A0E1           MOV      R3,R4
+   \   00000060   8026A0E3           MOV      R2,#+134217728
+   \   00000064   F014E0E3           MVN      R1,#-268435456
+   \   00000068   0200A0E1           MOV      R0,R2
+   \   0000006C   ........           BL       MMU_SetMTT
+     88              MMU_EnableMMU();
+   \   00000070   ........           _BLF     MMU_EnableMMU,??MMU_EnableMMU??rA
+     89              MMU_EnableICache();
+   \   00000074   ........           _BLF     MMU_EnableICache,??MMU_EnableICache??rA
+     90              MMU_EnableDCache();
+   \   00000078   ........           _BLF     MMU_EnableDCache,??MMU_EnableDCache??rA
+     91          }
+   \   0000007C   7040BDE8           POP      {R4-R6,LR}
+   \   00000080   1EFF2FE1           BX       LR               ;; return
+     92          
+     93          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     94          void MMU_SetMTT(int vaddrStart, int vaddrEnd, int paddrStart, int attr) {
+   \                     MMU_SetMTT:
+   \   00000000   10002DE9           PUSH     {R4}
+     95              U32 *pTT = (U32 *)_MMUTT_STARTADDRESS + (vaddrStart >> 20);
+   \   00000004   400AA0E1           ASR      R0,R0,#+20
+   \   00000008   C7C5A0E3           MOV      R12,#+834666496
+   \   0000000C   FEC98CE3           ORR      R12,R12,#0x3F8000
+   \   00000010   00C18CE0           ADD      R12,R12,R0, LSL #+2
+     96              int nSec = (vaddrEnd >> 20) - (vaddrStart >> 20);
+   \   00000014   410A70E0           RSBS     R0,R0,R1, ASR #+20
+     97              for (int i = 0; i <= nSec; i++) *pTT++ = attr | (((paddrStart >> 20) + i) << 20);
+   \   00000018   0010A0E3           MOV      R1,#+0
+   \   0000001C   0500004A           BMI      ??MMU_SetMTT_0
+   \                     ??MMU_SetMTT_1:
+   \   00000020   424A81E0           ADD      R4,R1,R2, ASR #+20
+   \   00000024   044A83E1           ORR      R4,R3,R4, LSL #+20
+   \   00000028   ........           STR      R4,[R12], #+4
+   \   0000002C   011081E2           ADD      R1,R1,#+1
+   \   00000030   010050E1           CMP      R0,R1
+   \   00000034   F9FFFFAA           BGE      ??MMU_SetMTT_1
+     98          }
+   \                     ??MMU_SetMTT_0:
+   \   00000038   1000BDE8           POP      {R4}
+   \   0000003C   1EFF2FE1           BX       LR               ;; return
+     99          
+    100          
+    101          
+    102          
+    103          
+    104          
+
+   Maximum stack usage in bytes:
+
+     Function             CSTACK
+     --------             ------
+     ChangeRomCacheStatus    16
+     MMU_Init                12
+     MMU_SetMTT               4
+
+
+   Segment part sizes:
+
+     Function/Label       Bytes
+     --------------       -----
+     MMU_Init              392
+     ChangeRomCacheStatus  132
+     MMU_SetMTT             64
+      Others               168
+
+ 
+ 756 bytes in segment CODE
+ 
+ 588 bytes of CODE memory (+ 168 bytes shared)
+
+Errors: none
+Warnings: none

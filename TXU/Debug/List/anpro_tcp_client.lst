@@ -1,0 +1,2185 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:08 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\anpro_tcp_client.cpp               #
+#    Command line    =  D:\S2Prog\TXU\src\anpro_tcp_client.cpp --fpu None    #
+#                       -D OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D   #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\anpro_tcp_client.lst        #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\anpro_tcp_client.r79         #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\anpro_tcp_client.cpp
+      1          ////////////////////////////////////////////////////////////////////////////////
+      2          //
+      3          // ANPRO10 TCP Client
+      4          //
+      5          // Revision History
+      6          // -June/27/2016 - initial release by hkim
+      7          //
+      8          ////////////////////////////////////////////////////////////////////////////////
+      9          #include "lwip/opt.h"
+     10          
+     11          #if LWIP_SOCKET
+     12          
+     13          #include <string.h>
+     14          #include <stdio.h>
+     15          #include <stdlib.h>
+     16          
+     17          #include "anpro_net_util.h"
+     18          #include "anpro_tcp_client.h"
+     19          #include "anpro_udp.h"
+     20          
+     21          #include "lwip/mem.h"
+     22          #include "lwip/debug.h"
+     23          #include "lwip/def.h"
+     24          #include "lwip/api.h"
+     25          #include "lwip/stats.h"
+     26          #include "lwip/sockets.h"
+     27          
+     28          #include "app/circ_buffer.h"
+     29          
+     30          #include "TSNIncludes.h"
+     31          
+     32          ////////////////////////////////////////////////////////////////////////////////
+     33          // 
+     34          // internal typedefs for connection management
+     35          //
+     36          ////////////////////////////////////////////////////////////////////////////////
+     37          #define ANPRO_CLIENT_SELECT_TIMEOUT   100000        // 100ms  change it later to infinity or something
+     38          #define ANPRO_TCP_TX_TIMEOUT          15000          // if TX window situation doesn't get batter within this,
+     39          #define ANPRO_TCP_CONNECT_TIMEOUT     4000
+     40          #define ANPRO_TCP_RECONNECT_TIMEOUT   3000
+     41          
+     42          #define ANPRO_UDP_TIMEOUT             1000
+     43          
+     44          
+     45          typedef struct __anpro_client
+     46          {
+     47            struct  list_head     con_list;       // list head for connection management
+     48            s32_t                 sd;             // socket descriptor
+     49            CircBuffer            tx_buffer;      // circular buffer for async TX
+     50            SGTimerElem           generic_timer;  // tx timer
+     51            ANPRO_TCP_ClientMgr*  climgr;         // tcp server this connection belongs to
+     52            struct sockaddr_in    server_addr;
+     53            u16_t                 station_id;     // destination station ID
+     54            ANPRO10_Reader        anp10_reader;   // ANPRO10 RX handler
+     55            u8_t                  tx_pending;
+     56          
+     57            enum
+     58            {
+     59              ANPRO_Client_Not_Connected,
+     60              ANPRO_Client_Connecting,
+     61              ANPRO_Client_Connected,
+     62              ANPRO_Client_Waiting,
+     63            } state;
+     64          } ANPRO_Client;
+     65          
+     66          ////////////////////////////////////////////////////////////////////////////////
+     67          // 
+     68          // module private prototypes
+     69          //
+     70          ////////////////////////////////////////////////////////////////////////////////
+     71          static void anpro_init_message_q(ANPRO_TCP_ClientMgr* mgr);
+     72          static void anpro_handle_message_q(ANPRO_TCP_ClientMgr* mgr);
+     73          static void anpro_timer_tick_callback(void);
+     74          static void anpro_init_timer(ANPRO_TCP_ClientMgr* mgr);
+     75          static void anpro_tx_timer_callback(SGTimerElem* te); 
+     76          static void anpro_client_check_rxtx_set(ANPRO_Client* client, fd_set* rset, fd_set* wset);
+     77          static s32_t anpro_client_handle_rx_event(ANPRO_Client* client);
+     78          static s32_t anpro_client_handle_tx_event(ANPRO_Client* client);
+     79          static void anpro_client_reset(ANPRO_Client* client);
+     80          static void anpro_client_put_reconnect_wait(ANPRO_Client* client);
+     81          
+     82          static void __on_anpro10_tx_req(ANPRO_TCP_ClientMgr* climgr, u8_t* msg, s32_t len, u8_t is_urgent_msg);
+     83          static void __on_anpro10_tx_req_normal(ANPRO_TCP_ClientMgr* climgr, u8_t* msg, s32_t len, u8_t is_urgent_msg);
+     84          
+     85          static void anpro_client_reinit_udp(SGTimerElem* te);
+     86          static void anpro_client_init_udp(ANPRO_TCP_ClientMgr* mgr);
+     87          static void anpro_client_put_udp_to_wait_state(ANPRO_TCP_ClientMgr* mgr);
+     88          
+     89          static void anpro_client_handle_debug(ANPRO_TCP_ClientMgr* mgr);
+     90          
+     91          ////////////////////////////////////////////////////////////////////////////////
+     92          // 
+     93          // module globals
+     94          //
+     95          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+     96          TSNUart   fake_uart_port_for_tcp_client = TSNUart();
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   ........           LDR      R0,??DataTable10  ;; fake_uart_port_for_tcp_client
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   ........           _BLF     ??TSNUart,??TSNUart??rA
+   \   0000000C   08009FE5           LDR      R0,??__sti__routine_1  ;; ?_0
+   \   00000010   ........           _BLF     __record_needed_destruction,??__record_needed_destruction??rA
+   \   00000014   0040BDE8           POP      {LR}
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+   \                     ??__sti__routine_1:
+   \   0000001C   ........           DC32     ?_0
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+   \                     fake_uart_port_for_tcp_client:
+   \   00000000                      DS8 224
+     97          
+     98          ////////////////////////////////////////////////////////////////////////////////
+     99          // 
+    100          // client utilities
+    101          //
+    102          ////////////////////////////////////////////////////////////////////////////////
+    103          /**
+    104           * @brief initialize EMBOS message Q and event sock for I/O multiplexing
+    105           *
+    106           * @param[in] mgr ANPRO_TCP_ClientMgr structure to initialize with
+    107           *
+    108           * @return none
+    109           */
+    110          static void
+    111          anpro_init_message_q(ANPRO_TCP_ClientMgr* mgr)
+    112          {
+    113            mgr->urgent_q = new TSNMessageQ();
+    114            mgr->normal_q = new TSNMessageQ();
+    115            mgr->queue_event    = anpro_net_create_eventfd();
+    116          }
+    117          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    118          static void
+    119          anpro_handle_message_q(ANPRO_TCP_ClientMgr* mgr)
+    120          {
+   \                     ??anpro_handle_message_q:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   04D04DE2           SUB      SP,SP,#+4
+    121            s32_t size;
+    122          
+    123            //
+    124            // XXX : possible source of bug.
+    125            // q_msg_buf is only 1K here.
+    126            //
+    127            if(mgr->urgent_q->GetMessageCond(mgr->q_msg_buf, &size) != 0)
+   \   00000008   ........           LDR      R6,??DataTable8  ;; 0xffffffff80046679
+   \   0000000C   0040A0E1           MOV      R4,R0
+   \   00000010   085084E2           ADD      R5,R4,#+8
+   \   00000014   080095E5           LDR      R0,[R5, #+8]
+   \   00000018   0D20A0E1           MOV      R2,SP
+   \   0000001C   181084E2           ADD      R1,R4,#+24
+   \   00000020   ........           _BLF     ??GetMessageCond,??GetMessageCond??rA
+   \   00000024   000050E3           CMP      R0,#+0
+   \   00000028   0900000A           BEQ      ??anpro_handle_message_q_1
+    128            {
+    129              // something to handle
+    130              ioctlsocket(mgr->queue_event, FIONDECRECV, NULL);
+   \   0000002C   000095E5           LDR      R0,[R5, #+0]
+   \   00000030   0020A0E3           MOV      R2,#+0
+   \   00000034   0610A0E1           MOV      R1,R6
+   \   00000038   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    131              __on_anpro10_tx_req(mgr, mgr->q_msg_buf, size, 1);
+   \   0000003C   00209DE5           LDR      R2,[SP, #+0]
+   \   00000040   0130A0E3           MOV      R3,#+1
+   \   00000044   181084E2           ADD      R1,R4,#+24
+   \   00000048   0400A0E1           MOV      R0,R4
+   \   0000004C   ........           BL       ??__on_anpro10_tx_req
+    132          
+    133              // return here so the next urgent message is handled properly
+    134              // it's less efficient but doesn't make any noticeable difference
+    135              return;
+   \   00000050   2C0000EA           B        ??anpro_handle_message_q_2
+    136            }
+    137          
+    138            if(mgr->normal_q->GetMessageCond(mgr->q_msg_buf, &size) != 0)
+   \                     ??anpro_handle_message_q_1:
+   \   00000054   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000058   0D20A0E1           MOV      R2,SP
+   \   0000005C   181084E2           ADD      R1,R4,#+24
+   \   00000060   ........           _BLF     ??GetMessageCond,??GetMessageCond??rA
+   \   00000064   000050E3           CMP      R0,#+0
+   \   00000068   2600000A           BEQ      ??anpro_handle_message_q_2
+    139            {
+    140              ioctlsocket(mgr->queue_event, FIONDECRECV, NULL);
+   \   0000006C   000095E5           LDR      R0,[R5, #+0]
+   \   00000070   0020A0E3           MOV      R2,#+0
+   \   00000074   0610A0E1           MOV      R1,R6
+   \   00000078   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    141              __on_anpro10_tx_req_normal(mgr, mgr->q_msg_buf, size, 0);
+   \   0000007C   00209DE5           LDR      R2,[SP, #+0]
+   \   00000080   C300A0E3           MOV      R0,#+195
+   \   00000084   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000088   0400D0E7           LDRB     R0,[R0, +R4]
+   \   0000008C   181084E2           ADD      R1,R4,#+24
+   \   00000090   000050E3           CMP      R0,#+0
+   \   00000094   1D00000A           BEQ      ??anpro_handle_message_q_3
+   \   00000098   F000A0E3           MOV      R0,#+240
+   \   0000009C   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   000000A0   045080E0           ADD      R5,R0,R4
+   \   000000A4   0000D5E5           LDRB     R0,[R5, #+0]
+   \   000000A8   000050E3           CMP      R0,#+0
+   \   000000AC   1500001A           BNE      ??anpro_handle_message_q_2
+   \   000000B0   C400A0E3           MOV      R0,#+196
+   \   000000B4   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   000000B8   046080E0           ADD      R6,R0,R4
+   \   000000BC   0230A0E1           MOV      R3,R2
+   \   000000C0   0120A0E1           MOV      R2,R1
+   \   000000C4   B010D6E1           LDRH     R1,[R6, #+0]
+   \   000000C8   040096E5           LDR      R0,[R6, #+4]
+   \   000000CC   ........           _BLF     ??anpro10_udp_unicast,??anpro10_udp_unicast??rA
+   \   000000D0   010050E3           CMP      R0,#+1
+   \   000000D4   0B0000AA           BGE      ??anpro_handle_message_q_2
+   \   000000D8   040096E5           LDR      R0,[R6, #+4]
+   \   000000DC   ........           _BLF     lwip_close,??lwip_close??rA
+   \   000000E0   0100A0E3           MOV      R0,#+1
+   \   000000E4   0000C5E5           STRB     R0,[R5, #+0]
+   \   000000E8   FA2FA0E3           MOV      R2,#+1000
+   \   000000EC   DC00A0E3           MOV      R0,#+220
+   \   000000F0   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   000000F4   041080E0           ADD      R1,R0,R4
+   \   000000F8   9800A0E3           MOV      R0,#+152
+   \   000000FC   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000100   040080E0           ADD      R0,R0,R4
+   \   00000104   ........           _BLF     add_timer,??add_timer??rA
+   \                     ??anpro_handle_message_q_2:
+   \   00000108   7140BDE8           POP      {R0,R4-R6,LR}
+   \   0000010C   1EFF2FE1           BX       LR
+   \                     ??anpro_handle_message_q_3:
+   \   00000110   0030A0E3           MOV      R3,#+0
+   \   00000114   0400A0E1           MOV      R0,R4
+   \   00000118   ........           BL       ??__on_anpro10_tx_req
+   \                     ??anpro_handle_message_q_4:
+   \   0000011C   F9FFFFEA           B        ??anpro_handle_message_q_2
+    142            }
+    143          }
+    144          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    145          static void
+    146          anpro_client_reset(ANPRO_Client* client)
+    147          {
+   \                     ??anpro_client_reset:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    148            close(client->sd);
+   \   00000008   080094E5           LDR      R0,[R4, #+8]
+    149          
+    150            reset_circ_buffer(&client->tx_buffer);
+   \   0000000C   0050A0E3           MOV      R5,#+0
+   \   00000010   ........           _BLF     lwip_close,??lwip_close??rA
+   \   00000014   0C0084E2           ADD      R0,R4,#+12
+   \   00000018   0C5080E5           STR      R5,[R0, #+12]
+   \   0000001C   105080E5           STR      R5,[R0, #+16]
+   \   00000020   085080E5           STR      R5,[R0, #+8]
+    151            anpro10_reader_reset(&client->anp10_reader);
+   \   00000024   4C0084E2           ADD      R0,R4,#+76
+   \   00000028   ........           _BLF     ??anpro10_reader_reset,??anpro10_reader_reset??rA
+   \   0000002C   5C00A0E3           MOV      R0,#+92
+   \   00000030   400C80E3           ORR      R0,R0,#0x4000
+   \   00000034   040080E0           ADD      R0,R0,R4
+   \   00000038   0050C0E5           STRB     R5,[R0, #+0]
+    152          
+    153            client->tx_pending  = FALSE;
+    154            client->state       = ANPRO_Client::ANPRO_Client_Not_Connected;
+   \   0000003C   0150C0E5           STRB     R5,[R0, #+1]
+    155            
+    156            client->sd =  init_anpro_client_socket();
+   \   00000040   ........           _BLF     ??init_anpro_client_socket,??init_anpro_client_socket??rA
+   \   00000044   080084E5           STR      R0,[R4, #+8]
+    157          }
+   \   00000048   3040BDE8           POP      {R4,R5,LR}
+   \   0000004C   1EFF2FE1           BX       LR               ;; return
+    158          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    159          static void
+    160          anpro_client_put_reconnect_wait(ANPRO_Client* client)
+    161          {
+   \                     ??anpro_client_put_reconnect_wait:
+   \   00000000   00402DE9           PUSH     {LR}
+    162            client->state = ANPRO_Client::ANPRO_Client_Waiting;
+   \   00000004   5D10A0E3           MOV      R1,#+93
+   \   00000008   401C81E3           ORR      R1,R1,#0x4000
+   \   0000000C   0320A0E3           MOV      R2,#+3
+   \   00000010   0020C1E7           STRB     R2,[R1, +R0]
+    163            add_timer(&client->climgr->timer_mgr, &client->generic_timer, ANPRO_TCP_RECONNECT_TIMEOUT);
+   \   00000014   201080E2           ADD      R1,R0,#+32
+   \   00000018   340090E5           LDR      R0,[R0, #+52]
+   \   0000001C   B820A0E3           MOV      R2,#+184
+   \   00000020   B02E82E3           ORR      R2,R2,#0xB00
+   \   00000024   9830A0E3           MOV      R3,#+152
+   \   00000028   7E3C83E3           ORR      R3,R3,#0x7E00
+   \   0000002C   000083E0           ADD      R0,R3,R0
+   \   00000030   ........           _BLF     add_timer,??add_timer??rA
+    164          }
+   \   00000034   0040BDE8           POP      {LR}
+   \   00000038   1EFF2FE1           BX       LR               ;; return
+    165          
+    166          ////////////////////////////////////////////////////////////////////////////////
+    167          // 
+    168          // timer related
+    169          //
+    170          ////////////////////////////////////////////////////////////////////////////////
+    171          /**
+    172           * @brief stimulate an evnet socket to notify a TCP server that it's time to
+    173           *        to drive a tick.
+    174           *        This is EMBOS timer callback, thus, runs in IRQ or some other
+    175           *        contexts other than TCP server thread.
+    176           *        At the moment, timer resolution is 100ms.
+    177           *
+    178           * @return none
+    179           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    180          static void
+    181          anpro_timer_tick_callback(void)
+    182          {
+    183            OS_TIMER*             t = OS_GetpCurrentTimer();
+   \                     ??anpro_timer_tick_callback:
+   \   00000000   24009FE5           LDR      R0,??anpro_timer_tick_callback_1  ;; OS_pCurrentTimer
+    184            ANPRO_TCP_ClientMgr*  climgr = container_of(t, ANPRO_TCP_ClientMgr, os_timer_tick);
+    185          
+    186            ioctlsocket(climgr->timer_tick_event, FIONINCRECV, NULL);
+   \   00000004   ........           LDR      R1,??DataTable12  ;; 0xffffffff80046678
+   \   00000008   10402DE9           PUSH     {R4,LR}
+   \   0000000C   004090E5           LDR      R4,[R0, #+0]
+   \   00000010   0020A0E3           MOV      R2,#+0
+   \   00000014   140094E5           LDR      R0,[R4, #+20]
+   \   00000018   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    187            OS_RetriggerTimer(t);
+   \   0000001C   0400A0E1           MOV      R0,R4
+   \   00000020   ........           _BLF     OS_RetriggerTimer,??OS_RetriggerTimer??rA
+    188          }
+   \   00000024   1040BDE8           POP      {R4,LR}
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_timer_tick_callback_1:
+   \   0000002C   ........           DC32     OS_pCurrentTimer
+    189          
+    190          /*
+    191           * @brief initialize a timer manager for a client manager
+    192           *
+    193           * @param client manager instance to initialize timer instance with
+    194           *
+    195           * @return none
+    196           */
+    197          static void
+    198          anpro_init_timer(ANPRO_TCP_ClientMgr* mgr)
+    199          {
+    200            //
+    201            // 100ms tick rate with 8 buckets
+    202            // this gotta be enough for this application
+    203            //
+    204            init_timer(&mgr->timer_mgr, 100, 8);
+    205          
+    206            mgr->timer_tick_event  = anpro_net_create_eventfd();
+    207          
+    208            OS_CREATETIMER(&mgr->os_timer_tick, anpro_timer_tick_callback, 100);
+    209          }
+    210          
+    211          ////////////////////////////////////////////////////////////////////////////////
+    212          // 
+    213          // socket rx/tx 
+    214          //
+    215          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    216          static s32_t
+    217          anpro_client_handle_rx_event(ANPRO_Client* client)
+    218          {
+   \                     ??anpro_client_handle_rx_event:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   80D04DE2           SUB      SP,SP,#+128
+   \   00000008   0040A0E1           MOV      R4,R0
+    219            u8_t    buffer[128];
+    220            s32_t   len;
+    221          
+    222            len = read(client->sd, (s8_t*)buffer, 128);
+   \   0000000C   080094E5           LDR      R0,[R4, #+8]
+   \   00000010   8020A0E3           MOV      R2,#+128
+   \   00000014   0D10A0E1           MOV      R1,SP
+   \   00000018   ........           _BLF     lwip_read,??lwip_read??rA
+    223            if(len <= 0)
+   \   0000001C   010050E3           CMP      R0,#+1
+   \   00000020   050000AA           BGE      ??anpro_client_handle_rx_event_1
+    224            {
+    225              anpro_client_reset(client);
+   \   00000024   0400A0E1           MOV      R0,R4
+   \   00000028   ........           BL       ??anpro_client_reset
+    226              return -1;
+   \   0000002C   80D08DE2           ADD      SP,SP,#+128
+   \   00000030   1040BDE8           POP      {R4,LR}
+   \   00000034   0000E0E3           MVN      R0,#+0
+   \   00000038   1EFF2FE1           BX       LR
+    227            }
+    228          
+    229            anpro10_reader_feed(&client->anp10_reader, buffer, len);
+   \                     ??anpro_client_handle_rx_event_1:
+   \   0000003C   0020A0E1           MOV      R2,R0
+   \   00000040   0D10A0E1           MOV      R1,SP
+   \   00000044   4C0084E2           ADD      R0,R4,#+76
+   \   00000048   ........           _BLF     ??anpro10_reader_feed,??anpro10_reader_feed??rA
+    230            return 0;
+   \   0000004C   80D08DE2           ADD      SP,SP,#+128
+   \   00000050   1040BDE8           POP      {R4,LR}
+   \   00000054   0000A0E3           MOV      R0,#+0
+   \   00000058   1EFF2FE1           BX       LR               ;; return
+    231          }
+    232          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    233          static s32_t
+    234          anpro_client_handle_tx_event(ANPRO_Client* client)
+    235          {
+   \                     ??anpro_client_handle_tx_event:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   80D04DE2           SUB      SP,SP,#+128
+   \   00000008   0040A0E1           MOV      R4,R0
+    236            u8_t    buf[128];
+    237            s32_t   circ_data_size,
+    238                    len,
+    239                    ret;
+    240          
+    241            del_timer(&client->climgr->timer_mgr, &client->generic_timer);
+   \   0000000C   085084E2           ADD      R5,R4,#+8
+   \   00000010   2C0095E5           LDR      R0,[R5, #+44]
+   \   00000014   9860A0E3           MOV      R6,#+152
+   \   00000018   7E6C86E3           ORR      R6,R6,#0x7E00
+   \   0000001C   201084E2           ADD      R1,R4,#+32
+   \   00000020   000086E0           ADD      R0,R6,R0
+   \   00000024   ........           _BLF     del_timer,??del_timer??rA
+   \   00000028   5C00A0E3           MOV      R0,#+92
+   \   0000002C   400C80E3           ORR      R0,R0,#0x4000
+   \   00000030   047080E0           ADD      R7,R0,R4
+   \   00000034   0000A0E3           MOV      R0,#+0
+   \   00000038   0000C7E5           STRB     R0,[R7, #+0]
+   \   0000003C   020000EA           B        ??anpro_client_handle_tx_event_1
+    242            client->tx_pending = FALSE;
+    243          
+    244            while((circ_data_size = get_circ_buffer_data_size(&client->tx_buffer)) != 0)
+    245            {
+    246              len = circ_data_size < 128 ? circ_data_size : 128;
+    247              peek_circ_buffer(&client->tx_buffer, (char*)buf, len);
+    248          
+    249              ret = write(client->sd, buf, len);
+    250              if(ret < 0)
+    251              {
+    252                if(!is_socket_error_would_block(client->sd))
+    253                {
+    254                  anpro_client_reset(client);
+    255                  return -1;
+    256                }
+    257                
+    258                client->tx_pending = TRUE;
+    259                add_timer(&client->climgr->timer_mgr, &client->generic_timer, ANPRO_TCP_TX_TIMEOUT);
+    260                return 0;
+    261              }
+    262          
+    263              get_circ_buffer_no_copy(&client->tx_buffer, ret);
+   \                     ??anpro_client_handle_tx_event_2:
+   \   00000040   0010A0E1           MOV      R1,R0
+   \   00000044   0C0084E2           ADD      R0,R4,#+12
+   \   00000048   ........           _BLF     get_circ_buffer_no_copy,??get_circ_buffer_no_copy??rA
+   \                     ??anpro_client_handle_tx_event_1:
+   \   0000004C   0C8095E5           LDR      R8,[R5, #+12]
+   \   00000050   000058E3           CMP      R8,#+0
+   \   00000054   1C00000A           BEQ      ??anpro_client_handle_tx_event_3
+   \   00000058   800058E3           CMP      R8,#+128
+   \   0000005C   8080A0A3           MOVGE    R8,#+128
+   \   00000060   0820A0E1           MOV      R2,R8
+   \   00000064   0D10A0E1           MOV      R1,SP
+   \   00000068   0C0084E2           ADD      R0,R4,#+12
+   \   0000006C   ........           _BLF     peek_circ_buffer,??peek_circ_buffer??rA
+   \   00000070   000095E5           LDR      R0,[R5, #+0]
+   \   00000074   0820A0E1           MOV      R2,R8
+   \   00000078   0D10A0E1           MOV      R1,SP
+   \   0000007C   ........           _BLF     lwip_write,??lwip_write??rA
+   \   00000080   000050E3           CMP      R0,#+0
+   \   00000084   EDFFFF5A           BPL      ??anpro_client_handle_tx_event_2
+   \   00000088   000095E5           LDR      R0,[R5, #+0]
+   \   0000008C   ........           _BLF     ??is_socket_error_would_block,??is_socket_error_would_block??rA
+   \   00000090   000050E3           CMP      R0,#+0
+   \   00000094   0500001A           BNE      ??anpro_client_handle_tx_event_4
+   \   00000098   0400A0E1           MOV      R0,R4
+   \   0000009C   ........           BL       ??anpro_client_reset
+   \   000000A0   80D08DE2           ADD      SP,SP,#+128
+   \   000000A4   F041BDE8           POP      {R4-R8,LR}
+   \   000000A8   0000E0E3           MVN      R0,#+0
+   \   000000AC   1EFF2FE1           BX       LR
+   \                     ??anpro_client_handle_tx_event_4:
+   \   000000B0   0100A0E3           MOV      R0,#+1
+   \   000000B4   0000C7E5           STRB     R0,[R7, #+0]
+   \   000000B8   2C0095E5           LDR      R0,[R5, #+44]
+   \   000000BC   442CC6E3           BIC      R2,R6,#0x4400
+   \   000000C0   201084E2           ADD      R1,R4,#+32
+   \   000000C4   000086E0           ADD      R0,R6,R0
+   \   000000C8   ........           _BLF     add_timer,??add_timer??rA
+    264            }
+    265            return 0;
+   \                     ??anpro_client_handle_tx_event_3:
+   \   000000CC   80D08DE2           ADD      SP,SP,#+128
+   \   000000D0   F041BDE8           POP      {R4-R8,LR}
+   \   000000D4   0000A0E3           MOV      R0,#+0
+   \   000000D8   1EFF2FE1           BX       LR               ;; return
+    266          }
+    267          
+    268          ////////////////////////////////////////////////////////////////////////////////
+    269          // 
+    270          // client session management
+    271          //
+    272          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    273          static void
+    274          anpro_client_do_pre_select(ANPRO_TCP_ClientMgr* mgr, fd_set* rset, fd_set* wset, s32_t* maxfd)
+    275          {
+   \                     ??anpro_client_do_pre_select:
+   \   00000000   F0432DE9           PUSH     {R4-R9,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    276            ANPRO_Client* client;
+    277          
+    278            if(mgr->use_udp_bcast_for_normal_msg && mgr->udp_state == ANPRO_TCP_ClientMgr::ANPRO_UDP_State_OK)
+   \   00000008   C300A0E3           MOV      R0,#+195
+   \   0000000C   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000010   0400D0E7           LDRB     R0,[R0, +R4]
+   \   00000014   0150A0E1           MOV      R5,R1
+   \   00000018   0260A0E1           MOV      R6,R2
+   \   0000001C   0370A0E1           MOV      R7,R3
+   \   00000020   000050E3           CMP      R0,#+0
+   \   00000024   0900000A           BEQ      ??anpro_client_do_pre_select_1
+   \   00000028   F000A0E3           MOV      R0,#+240
+   \   0000002C   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000030   0400D0E7           LDRB     R0,[R0, +R4]
+   \   00000034   000050E3           CMP      R0,#+0
+   \   00000038   0400001A           BNE      ??anpro_client_do_pre_select_1
+    279            {
+    280              anpro_select_add_set(mgr->udp_sock, rset, maxfd);
+   \   0000003C   C800A0E3           MOV      R0,#+200
+   \   00000040   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000044   040090E7           LDR      R0,[R0, +R4]
+   \   00000048   0720A0E1           MOV      R2,R7
+   \   0000004C   ........           _BLF     ??anpro_select_add_set,??anpro_select_add_set??rA
+    281            }
+    282          
+    283            list_for_each_entry(client, &mgr->anpro_clients, con_list, ANPRO_Client)
+   \                     ??anpro_client_do_pre_select_1:
+   \   00000050   008094E5           LDR      R8,[R4, #+0]
+   \   00000054   0A0000EA           B        ??anpro_client_do_pre_select_2
+    284            {
+    285              switch(client->state)
+    286              {
+    287              case ANPRO_Client::ANPRO_Client_Not_Connected:
+    288                {
+    289                  connect(client->sd, (struct sockaddr*)&client->server_addr, sizeof(client->server_addr));
+    290          
+    291                  anpro_select_add_set(client->sd, wset, maxfd);
+    292                  add_timer(&client->climgr->timer_mgr, &client->generic_timer, ANPRO_TCP_CONNECT_TIMEOUT);
+    293          
+    294                  client->state = ANPRO_Client::ANPRO_Client_Connecting;
+    295                }
+    296                break;
+    297          
+    298              case ANPRO_Client::ANPRO_Client_Connecting:
+    299                anpro_select_add_set(client->sd, wset, maxfd);
+    300                break;
+    301          
+    302              case ANPRO_Client::ANPRO_Client_Connected:
+    303                anpro_select_add_set(client->sd, rset, maxfd);
+   \                     ??anpro_client_do_pre_select_3:
+   \   00000058   0720A0E1           MOV      R2,R7
+   \   0000005C   0510A0E1           MOV      R1,R5
+   \   00000060   ........           _BLF     ??anpro_select_add_set,??anpro_select_add_set??rA
+    304                if(client->tx_pending)
+   \   00000064   0000D9E5           LDRB     R0,[R9, #+0]
+   \   00000068   000050E3           CMP      R0,#+0
+   \   0000006C   0300000A           BEQ      ??anpro_client_do_pre_select_4
+    305                {
+    306                  anpro_select_add_set(client->sd, wset, maxfd);
+   \   00000070   080098E5           LDR      R0,[R8, #+8]
+   \                     ??anpro_client_do_pre_select_5:
+   \   00000074   0720A0E1           MOV      R2,R7
+   \   00000078   0610A0E1           MOV      R1,R6
+   \   0000007C   ........           _BLF     ??anpro_select_add_set,??anpro_select_add_set??rA
+    307                }
+   \                     ??anpro_client_do_pre_select_4:
+   \   00000080   008098E5           LDR      R8,[R8, #+0]
+   \                     ??anpro_client_do_pre_select_2:
+   \   00000084   040058E1           CMP      R8,R4
+   \   00000088   1C00000A           BEQ      ??anpro_client_do_pre_select_6
+   \   0000008C   080098E5           LDR      R0,[R8, #+8]
+   \   00000090   5C10A0E3           MOV      R1,#+92
+   \   00000094   401C81E3           ORR      R1,R1,#0x4000
+   \   00000098   089081E0           ADD      R9,R1,R8
+   \   0000009C   0110D9E5           LDRB     R1,[R9, #+1]
+   \   000000A0   000051E3           CMP      R1,#+0
+   \   000000A4   0400000A           BEQ      ??anpro_client_do_pre_select_7
+   \   000000A8   011051E2           SUBS     R1,R1,#+1
+   \   000000AC   F0FFFF0A           BEQ      ??anpro_client_do_pre_select_5
+   \   000000B0   011051E2           SUBS     R1,R1,#+1
+   \   000000B4   E7FFFF0A           BEQ      ??anpro_client_do_pre_select_3
+   \   000000B8   F0FFFFEA           B        ??anpro_client_do_pre_select_4
+   \                     ??anpro_client_do_pre_select_7:
+   \   000000BC   1020A0E3           MOV      R2,#+16
+   \   000000C0   381088E2           ADD      R1,R8,#+56
+   \   000000C4   ........           _BLF     lwip_connect,??lwip_connect??rA
+   \   000000C8   080098E5           LDR      R0,[R8, #+8]
+   \   000000CC   0720A0E1           MOV      R2,R7
+   \   000000D0   0610A0E1           MOV      R1,R6
+   \   000000D4   ........           _BLF     ??anpro_select_add_set,??anpro_select_add_set??rA
+   \   000000D8   343098E5           LDR      R3,[R8, #+52]
+   \   000000DC   FA2EA0E3           MOV      R2,#+4000
+   \   000000E0   201088E2           ADD      R1,R8,#+32
+   \   000000E4   9800A0E3           MOV      R0,#+152
+   \   000000E8   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   000000EC   030080E0           ADD      R0,R0,R3
+   \   000000F0   ........           _BLF     add_timer,??add_timer??rA
+   \   000000F4   0100A0E3           MOV      R0,#+1
+   \   000000F8   0100C9E5           STRB     R0,[R9, #+1]
+   \   000000FC   DFFFFFEA           B        ??anpro_client_do_pre_select_4
+    308                break;
+    309          
+    310              case ANPRO_Client::ANPRO_Client_Waiting:
+    311                // nada
+    312                break;
+    313              }
+    314            }
+    315          }
+   \                     ??anpro_client_do_pre_select_6:
+   \   00000100   F043BDE8           POP      {R4-R9,LR}
+   \   00000104   1EFF2FE1           BX       LR               ;; return
+    316          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    317          static void
+    318          anpro_client_check_rxtx_set(ANPRO_Client* client, fd_set* rset, fd_set* wset)
+    319          {
+   \                     ??anpro_client_check_rxtx_set:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+   \   00000008   0040A0E1           MOV      R4,R0
+    320            switch(client->state)
+   \   0000000C   5D30A0E3           MOV      R3,#+93
+   \   00000010   403C83E3           ORR      R3,R3,#0x4000
+   \   00000014   046083E0           ADD      R6,R3,R4
+   \   00000018   0030D6E5           LDRB     R3,[R6, #+0]
+   \   0000001C   0270A0E1           MOV      R7,R2
+   \   00000020   085084E2           ADD      R5,R4,#+8
+   \   00000024   002095E5           LDR      R2,[R5, #+0]
+   \   00000028   0180A0E3           MOV      R8,#+1
+   \   0000002C   070002E2           AND      R0,R2,#0x7
+   \   00000030   1800A0E1           LSL      R0,R8,R0
+   \   00000034   013053E2           SUBS     R3,R3,#+1
+   \   00000038   0200000A           BEQ      ??anpro_client_check_rxtx_set_1
+   \   0000003C   013053E2           SUBS     R3,R3,#+1
+   \   00000040   2400000A           BEQ      ??anpro_client_check_rxtx_set_2
+   \   00000044   1A0000EA           B        ??anpro_client_check_rxtx_set_3
+    321            {
+    322            case ANPRO_Client::ANPRO_Client_Not_Connected:
+    323              // impossible to be here
+    324              break;
+    325          
+    326            case ANPRO_Client::ANPRO_Client_Connecting:
+    327              if(FD_ISSET(client->sd, wset))
+   \                     ??anpro_client_check_rxtx_set_1:
+   \   00000048   4211A0E1           ASR      R1,R2,#+2
+   \   0000004C   A11E82E0           ADD      R1,R2,R1, LSR #+29
+   \   00000050   C111D7E7           LDRB     R1,[R7, +R1, ASR #+3]
+   \   00000054   010010E1           TST      R0,R1
+   \   00000058   1500000A           BEQ      ??anpro_client_check_rxtx_set_3
+    328              {
+    329                int       err;
+    330                socklen_t optlen = sizeof(err);
+   \   0000005C   0410A0E3           MOV      R1,#+4
+   \   00000060   04108DE5           STR      R1,[SP, #+4]
+    331          
+    332                lwip_getsockopt(client->sd, SOL_SOCKET, SO_ERROR, (void*)&err, &optlen);
+   \   00000064   04008DE2           ADD      R0,SP,#+4
+   \   00000068   01002DE9           PUSH     {R0}
+   \   0000006C   000095E5           LDR      R0,[R5, #+0]
+   \   00000070   04308DE2           ADD      R3,SP,#+4
+   \   00000074   0720A0E3           MOV      R2,#+7
+   \   00000078   402D82E3           ORR      R2,R2,#0x1000
+   \   0000007C   081042E2           SUB      R1,R2,#+8
+   \   00000080   ........           _BLF     lwip_getsockopt,??lwip_getsockopt??rA
+    333                if(err == 0)
+   \   00000084   04009DE5           LDR      R0,[SP, #+4]
+   \   00000088   9870A0E3           MOV      R7,#+152
+   \   0000008C   7E7C87E3           ORR      R7,R7,#0x7E00
+   \   00000090   000050E3           CMP      R0,#+0
+   \   00000094   04D08DE2           ADD      SP,SP,#+4
+   \   00000098   0700001A           BNE      ??anpro_client_check_rxtx_set_4
+    334                {
+    335                  client->state = ANPRO_Client::ANPRO_Client_Connected;
+   \   0000009C   0200A0E3           MOV      R0,#+2
+   \   000000A0   0000C6E5           STRB     R0,[R6, #+0]
+    336                  del_timer(&client->climgr->timer_mgr, &client->generic_timer);
+   \   000000A4   2C0095E5           LDR      R0,[R5, #+44]
+   \   000000A8   201084E2           ADD      R1,R4,#+32
+   \   000000AC   000087E0           ADD      R0,R7,R0
+   \   000000B0   ........           _BLF     del_timer,??del_timer??rA
+   \                     ??anpro_client_check_rxtx_set_3:
+   \   000000B4   F341BDE8           POP      {R0,R1,R4-R8,LR}
+   \   000000B8   1EFF2FE1           BX       LR
+    337                }
+    338                else
+    339                {
+    340                  anpro_client_reset(client);
+   \                     ??anpro_client_check_rxtx_set_4:
+   \   000000BC   0400A0E1           MOV      R0,R4
+   \   000000C0   ........           BL       ??anpro_client_reset
+    341                  del_timer(&client->climgr->timer_mgr, &client->generic_timer);
+   \   000000C4   2C0095E5           LDR      R0,[R5, #+44]
+   \   000000C8   201084E2           ADD      R1,R4,#+32
+   \   000000CC   000087E0           ADD      R0,R7,R0
+   \   000000D0   ........           _BLF     del_timer,??del_timer??rA
+    342                  anpro_client_put_reconnect_wait(client);
+   \   000000D4   130000EA           B        ??anpro_client_check_rxtx_set_5
+    343                }
+    344              }
+    345              break;
+    346          
+    347            case ANPRO_Client::ANPRO_Client_Connected:
+    348              if(FD_ISSET(client->sd, rset) && anpro_client_handle_rx_event(client) != 0)
+   \                     ??anpro_client_check_rxtx_set_2:
+   \   000000D8   4231A0E1           ASR      R3,R2,#+2
+   \   000000DC   A32E82E0           ADD      R2,R2,R3, LSR #+29
+   \   000000E0   C211D1E7           LDRB     R1,[R1, +R2, ASR #+3]
+   \   000000E4   010010E1           TST      R0,R1
+   \   000000E8   0300000A           BEQ      ??anpro_client_check_rxtx_set_6
+   \   000000EC   0400A0E1           MOV      R0,R4
+   \   000000F0   ........           BL       ??anpro_client_handle_rx_event
+   \   000000F4   000050E3           CMP      R0,#+0
+   \   000000F8   0A00001A           BNE      ??anpro_client_check_rxtx_set_5
+    349              {
+    350                anpro_client_put_reconnect_wait(client);
+    351                return;
+    352              }
+    353          
+    354              if(FD_ISSET(client->sd, wset) && anpro_client_handle_tx_event(client) != 0)
+   \                     ??anpro_client_check_rxtx_set_6:
+   \   000000FC   000095E5           LDR      R0,[R5, #+0]
+   \   00000100   4011A0E1           ASR      R1,R0,#+2
+   \   00000104   A11E80E0           ADD      R1,R0,R1, LSR #+29
+   \   00000108   C111D7E7           LDRB     R1,[R7, +R1, ASR #+3]
+   \   0000010C   070000E2           AND      R0,R0,#0x7
+   \   00000110   180011E1           TST      R1,R8, LSL R0
+   \   00000114   E6FFFF0A           BEQ      ??anpro_client_check_rxtx_set_3
+   \   00000118   0400A0E1           MOV      R0,R4
+   \   0000011C   ........           BL       ??anpro_client_handle_tx_event
+   \   00000120   000050E3           CMP      R0,#+0
+   \   00000124   E2FFFF0A           BEQ      ??anpro_client_check_rxtx_set_3
+    355              {
+    356                anpro_client_put_reconnect_wait(client);
+   \                     ??anpro_client_check_rxtx_set_5:
+   \   00000128   0400A0E1           MOV      R0,R4
+   \   0000012C   ........           BL       ??anpro_client_put_reconnect_wait
+    357                return;
+   \                     ??anpro_client_check_rxtx_set_7:
+   \   00000130   DFFFFFEA           B        ??anpro_client_check_rxtx_set_3
+    358              }
+    359              break;
+    360          
+    361            case ANPRO_Client::ANPRO_Client_Waiting:
+    362              // nada
+    363              break;
+    364            }
+    365          
+    366          }
+    367          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    368          static void
+    369          anpro_client_do_post_select(ANPRO_TCP_ClientMgr* mgr, fd_set* rset, fd_set* wset)
+    370          {
+   \                     ??anpro_client_do_post_select:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+    371            ANPRO_Client* client;
+    372            struct list_head  tmp;
+    373          
+    374            //
+    375            // be careful with the following logic.
+    376            // connection can be removed from the list while
+    377            // handling rx/tx event.
+    378            // -hkim-
+    379            INIT_LIST_HEAD(&tmp);
+   \   00000010   0D10A0E1           MOV      R1,SP
+   \   00000014   00108DE5           STR      R1,[SP, #+0]
+   \   00000018   04108DE5           STR      R1,[SP, #+4]
+    380            list_cut_position(&tmp, &mgr->anpro_clients, mgr->anpro_clients.prev);
+   \   0000001C   040094E5           LDR      R0,[R4, #+4]
+   \   00000020   001094E5           LDR      R1,[R4, #+0]
+   \   00000024   0260A0E1           MOV      R6,R2
+   \   00000028   040051E1           CMP      R1,R4
+   \   0000002C   04005011           CMPNE    R0,R4
+   \   00000030   1800000A           BEQ      ??anpro_client_do_post_select_1
+   \   00000034   002090E5           LDR      R2,[R0, #+0]
+   \   00000038   00108DE5           STR      R1,[SP, #+0]
+   \   0000003C   0D30A0E1           MOV      R3,SP
+   \   00000040   043081E5           STR      R3,[R1, #+4]
+   \   00000044   04008DE5           STR      R0,[SP, #+4]
+   \   00000048   0D10A0E1           MOV      R1,SP
+   \   0000004C   001080E5           STR      R1,[R0, #+0]
+   \   00000050   002084E5           STR      R2,[R4, #+0]
+   \   00000054   044082E5           STR      R4,[R2, #+4]
+   \   00000058   0E0000EA           B        ??anpro_client_do_post_select_1
+    381          
+    382            while(!list_empty(&tmp))
+    383            {
+    384              client = list_first_entry(&tmp, ANPRO_Client, con_list);
+    385              list_del(&client->con_list);
+   \                     ??anpro_client_do_post_select_2:
+   \   0000005C   001090E5           LDR      R1,[R0, #+0]
+   \   00000060   042090E5           LDR      R2,[R0, #+4]
+   \   00000064   042081E5           STR      R2,[R1, #+4]
+   \   00000068   001082E5           STR      R1,[R2, #+0]
+   \   0000006C   0010A0E3           MOV      R1,#+0
+   \   00000070   001080E5           STR      R1,[R0, #+0]
+   \   00000074   041080E5           STR      R1,[R0, #+4]
+    386              list_add_tail(&client->con_list, &mgr->anpro_clients);
+   \   00000078   041094E5           LDR      R1,[R4, #+4]
+   \   0000007C   040084E5           STR      R0,[R4, #+4]
+   \   00000080   004080E5           STR      R4,[R0, #+0]
+   \   00000084   041080E5           STR      R1,[R0, #+4]
+   \   00000088   000081E5           STR      R0,[R1, #+0]
+    387          
+    388              anpro_client_check_rxtx_set(client, rset, wset);
+   \   0000008C   0620A0E1           MOV      R2,R6
+   \   00000090   0510A0E1           MOV      R1,R5
+   \   00000094   ........           BL       ??anpro_client_check_rxtx_set
+    389            }
+   \                     ??anpro_client_do_post_select_1:
+   \   00000098   00009DE5           LDR      R0,[SP, #+0]
+   \   0000009C   0D10A0E1           MOV      R1,SP
+   \   000000A0   010050E1           CMP      R0,R1
+   \   000000A4   ECFFFF1A           BNE      ??anpro_client_do_post_select_2
+    390          
+    391            if(mgr->use_udp_bcast_for_normal_msg && mgr->udp_state == ANPRO_TCP_ClientMgr::ANPRO_UDP_State_OK)
+   \   000000A8   C300A0E3           MOV      R0,#+195
+   \   000000AC   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   000000B0   0400D0E7           LDRB     R0,[R0, +R4]
+   \   000000B4   000050E3           CMP      R0,#+0
+   \   000000B8   1200000A           BEQ      ??anpro_client_do_post_select_3
+   \   000000BC   F000A0E3           MOV      R0,#+240
+   \   000000C0   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   000000C4   0400D0E7           LDRB     R0,[R0, +R4]
+   \   000000C8   000050E3           CMP      R0,#+0
+   \   000000CC   0D00001A           BNE      ??anpro_client_do_post_select_3
+   \   000000D0   C800A0E3           MOV      R0,#+200
+   \   000000D4   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   000000D8   040090E7           LDR      R0,[R0, +R4]
+   \   000000DC   0120A0E3           MOV      R2,#+1
+   \   000000E0   4011A0E1           ASR      R1,R0,#+2
+   \   000000E4   A11E80E0           ADD      R1,R0,R1, LSR #+29
+   \   000000E8   C111D5E7           LDRB     R1,[R5, +R1, ASR #+3]
+   \   000000EC   073000E2           AND      R3,R0,#0x7
+   \   000000F0   120311E1           TST      R1,R2, LSL R3
+   \   000000F4   0300000A           BEQ      ??anpro_client_do_post_select_3
+    392            {
+    393              if(FD_ISSET(mgr->udp_sock, rset))
+    394              {
+    395                anpro10_rx_udp_message(mgr->udp_sock, &mgr->anp10_udp_reader);
+   \   000000F8   CC10A0E3           MOV      R1,#+204
+   \   000000FC   7E1C81E3           ORR      R1,R1,#0x7E00
+   \   00000100   041081E0           ADD      R1,R1,R4
+   \   00000104   ........           _BLF     ??anpro10_rx_udp_message,??anpro10_rx_udp_message??rA
+    396              }
+    397            }
+    398          }
+   \                     ??anpro_client_do_post_select_3:
+   \   00000108   7340BDE8           POP      {R0,R1,R4-R6,LR}
+   \   0000010C   1EFF2FE1           BX       LR               ;; return
+    399          
+    400          
+    401          ////////////////////////////////////////////////////////////////////////////////
+    402          // 
+    403          // ANPRO10 RX/TX 
+    404          //
+    405          ////////////////////////////////////////////////////////////////////////////////
+    406          static void
+    407          anpro_client_tx_to(ANPRO_Client* client, u8_t* buf, s32_t len)
+    408          {
+    409            s32_t nwritten = 0,
+    410                  ret;
+    411          
+    412            if(client->tx_pending)
+    413            {
+    414              // something is already queued up
+    415              if(put_circ_buffer(&client->tx_buffer, (char*)buf, len)  == -1)
+    416              {
+    417                // XXX circular buffer overflow. count the stat for better debugging
+    418              }
+    419              return;
+    420            }
+    421          
+    422            while(nwritten < len)
+    423            {
+    424              ret = write(client->sd, &buf[nwritten], len - nwritten);
+    425              if(ret < 0)
+    426              {
+    427                if(!is_socket_error_would_block(client->sd))
+    428                {
+    429                  anpro_client_reset(client);
+    430                  anpro_client_put_reconnect_wait(client);
+    431                  return;
+    432                }
+    433          
+    434                client->tx_pending = TRUE;
+    435          
+    436                put_circ_buffer(&client->tx_buffer, (char*)&buf[nwritten], len - nwritten);
+    437                add_timer(&client->climgr->timer_mgr, &client->generic_timer, ANPRO_TCP_TX_TIMEOUT);
+    438                return;
+    439              }
+    440              nwritten += ret;
+    441            }
+    442          }
+    443          
+    444          static inline ANPRO_Client*
+    445          anpro10_route_message(ANPRO_TCP_ClientMgr* mgr, u8_t rx_addr, u8_t rx_id)
+    446          {
+    447            ANPRO_Client* client;
+    448          
+    449            list_for_each_entry(client, &mgr->anpro_clients, con_list, ANPRO_Client)
+    450            {
+    451              //if(client->station_id == rx_addr && client->state == ANPRO_Client::ANPRO_Client_Connected)
+    452              if(client->state == ANPRO_Client::ANPRO_Client_Connected)
+    453              {
+    454                return client;
+    455              }
+    456            }
+    457            return NULL;
+    458          }
+    459          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    460          static void
+    461          __on_anpro10_tx_req(ANPRO_TCP_ClientMgr* climgr, u8_t* msg, s32_t len, u8_t is_urgent_msg)
+    462          {
+   \                     ??__on_anpro10_tx_req:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+   \   00000004   04D04DE2           SUB      SP,SP,#+4
+   \   00000008   0050A0E1           MOV      R5,R0
+    463            ANPRO_Client*                 dest_route;
+    464            u8_t                          *pkt_pos;
+    465            QueueANPRO10_CommandHeading*  UCmd = (QueueANPRO10_CommandHeading*)msg;
+    466            QueueANPRO10_CommandHeading*  NCmd = (QueueANPRO10_CommandHeading*)msg;
+    467          
+    468            dest_route = is_urgent_msg ?
+    469                          anpro10_route_message(climgr, UCmd->TxInfo.rxAddr, UCmd->TxInfo.rxId) :
+    470                          anpro10_route_message(climgr, NCmd->TxInfo.rxAddr, NCmd->TxInfo.rxId);
+   \   0000000C   004095E5           LDR      R4,[R5, #+0]
+   \   00000010   0160A0E1           MOV      R6,R1
+   \   00000014   0370B0E1           MOVS     R7,R3
+   \   00000018   5D00A0E3           MOV      R0,#+93
+   \   0000001C   400C80E3           ORR      R0,R0,#0x4000
+   \   00000020   0800000A           BEQ      ??__on_anpro10_tx_req_1
+   \   00000024   000000EA           B        ??__on_anpro10_tx_req_2
+   \                     ??__on_anpro10_tx_req_3:
+   \   00000028   004094E5           LDR      R4,[R4, #+0]
+   \                     ??__on_anpro10_tx_req_2:
+   \   0000002C   050054E1           CMP      R4,R5
+   \   00000030   4200000A           BEQ      ??__on_anpro10_tx_req_4
+   \   00000034   0410D0E7           LDRB     R1,[R0, +R4]
+   \   00000038   020051E3           CMP      R1,#+2
+   \   0000003C   F9FFFF1A           BNE      ??__on_anpro10_tx_req_3
+   \   00000040   050000EA           B        ??__on_anpro10_tx_req_5
+   \                     ??__on_anpro10_tx_req_6:
+   \   00000044   004094E5           LDR      R4,[R4, #+0]
+   \                     ??__on_anpro10_tx_req_1:
+   \   00000048   050054E1           CMP      R4,R5
+   \   0000004C   3B00000A           BEQ      ??__on_anpro10_tx_req_4
+   \   00000050   0410D0E7           LDRB     R1,[R0, +R4]
+   \   00000054   020051E3           CMP      R1,#+2
+   \   00000058   F9FFFF1A           BNE      ??__on_anpro10_tx_req_6
+    471          
+    472            if(dest_route == NULL)
+   \                     ??__on_anpro10_tx_req_5:
+   \   0000005C   000054E3           CMP      R4,#+0
+   \   00000060   3600000A           BEQ      ??__on_anpro10_tx_req_4
+   \   00000064   5800A0E3           MOV      R0,#+88
+   \   00000068   FC0D80E3           ORR      R0,R0,#0x3F00
+   \   0000006C   058080E0           ADD      R8,R0,R5
+    473            {
+    474              return;
+    475            }
+    476          
+    477            pkt_pos  = climgr->tx_bounce_buffer;
+    478            pkt_pos += ANPRO10_AddPacketPreAmble(pkt_pos);
+   \   00000070   0800A0E1           MOV      R0,R8
+   \   00000074   ........           _BLF     ??ANPRO10_AddPacketPreAmble,??ANPRO10_AddPacketPreAmble??rA
+    479          
+    480            pkt_pos += is_urgent_msg ? ANPRO10_AddPacketHeading(pkt_pos, UCmd->TxInfo.rxAddr, UCmd->TxInfo.rxId) :
+    481                                       ANPRO10_AddPacketHeading(pkt_pos, NCmd->TxInfo.rxAddr, NCmd->TxInfo.rxId);
+   \   00000078   0520D6E5           LDRB     R2,[R6, #+5]
+   \   0000007C   0410D6E5           LDRB     R1,[R6, #+4]
+   \   00000080   089080E0           ADD      R9,R0,R8
+   \   00000084   0900A0E1           MOV      R0,R9
+   \   00000088   ........           _BLF     ??ANPRO10_AddPacketHeading,??ANPRO10_AddPacketHeading??rA
+   \   0000008C   099080E0           ADD      R9,R0,R9
+    482          
+    483            pkt_pos += is_urgent_msg ? ANPRO10_AddCommand(pkt_pos, (u8_t*)&UCmd->Data) :
+    484                                       ANPRO10_AddCommand(pkt_pos, (u8_t*)&NCmd->Data);
+   \   00000090   061086E2           ADD      R1,R6,#+6
+   \   00000094   0900A0E1           MOV      R0,R9
+   \   00000098   ........           _BLF     ??ANPRO10_AddCommand,??ANPRO10_AddCommand??rA
+   \   0000009C   096080E0           ADD      R6,R0,R9
+   \   000000A0   0020A0E3           MOV      R2,#+0
+   \   000000A4   081046E0           SUB      R1,R6,R8
+   \   000000A8   0800A0E1           MOV      R0,R8
+    485          
+    486            pkt_pos += ANPRO10_AddPacketTail(climgr->tx_bounce_buffer, (pkt_pos - climgr->tx_bounce_buffer), false);
+   \   000000AC   ........           _BLF     ??ANPRO10_AddPacketTail,??ANPRO10_AddPacketTail??rA
+   \   000000B0   060080E0           ADD      R0,R0,R6
+    487          
+    488            //
+    489            // XXX
+    490            // with TCP, there is no ANPRO10 preamble.
+    491            //
+    492            anpro_client_tx_to(dest_route,
+    493                &climgr->tx_bounce_buffer[ANPRO10_PREAMBLE_SIZE],   // XXX hack. we don't send preamble
+    494                (pkt_pos - climgr->tx_bounce_buffer) - ANPRO10_PREAMBLE_SIZE);
+   \   000000B4   080040E0           SUB      R0,R0,R8
+   \   000000B8   046040E2           SUB      R6,R0,#+4
+   \   000000BC   5C00A0E3           MOV      R0,#+92
+   \   000000C0   FC0D80E3           ORR      R0,R0,#0x3F00
+   \   000000C4   055080E0           ADD      R5,R0,R5
+   \   000000C8   400F80E2           ADD      R0,R0,#+256
+   \   000000CC   048080E0           ADD      R8,R0,R4
+   \   000000D0   0000D8E5           LDRB     R0,[R8, #+0]
+   \   000000D4   0070A0E3           MOV      R7,#+0
+   \   000000D8   000050E3           CMP      R0,#+0
+   \   000000DC   0500000A           BEQ      ??__on_anpro10_tx_req_7
+   \   000000E0   0620A0E1           MOV      R2,R6
+   \   000000E4   0510A0E1           MOV      R1,R5
+   \   000000E8   0C0084E2           ADD      R0,R4,#+12
+   \   000000EC   ........           _BLF     put_circ_buffer,??put_circ_buffer??rA
+   \   000000F0   120000EA           B        ??__on_anpro10_tx_req_4
+   \                     ??__on_anpro10_tx_req_8:
+   \   000000F4   077080E0           ADD      R7,R0,R7
+   \                     ??__on_anpro10_tx_req_7:
+   \   000000F8   060057E1           CMP      R7,R6
+   \   000000FC   0F0000AA           BGE      ??__on_anpro10_tx_req_4
+   \   00000100   089084E2           ADD      R9,R4,#+8
+   \   00000104   000099E5           LDR      R0,[R9, #+0]
+   \   00000108   07A046E0           SUB      R10,R6,R7
+   \   0000010C   0A20A0E1           MOV      R2,R10
+   \   00000110   051087E0           ADD      R1,R7,R5
+   \   00000114   ........           _BLF     lwip_write,??lwip_write??rA
+   \   00000118   000050E3           CMP      R0,#+0
+   \   0000011C   F4FFFF5A           BPL      ??__on_anpro10_tx_req_8
+   \   00000120   000099E5           LDR      R0,[R9, #+0]
+   \   00000124   ........           _BLF     ??is_socket_error_would_block,??is_socket_error_would_block??rA
+   \   00000128   000050E3           CMP      R0,#+0
+   \   0000012C   0500001A           BNE      ??__on_anpro10_tx_req_9
+   \   00000130   0400A0E1           MOV      R0,R4
+   \   00000134   ........           BL       ??anpro_client_reset
+   \   00000138   0400A0E1           MOV      R0,R4
+   \   0000013C   ........           BL       ??anpro_client_put_reconnect_wait
+   \                     ??__on_anpro10_tx_req_4:
+   \   00000140   F147BDE8           POP      {R0,R4-R10,LR}
+   \   00000144   1EFF2FE1           BX       LR
+   \                     ??__on_anpro10_tx_req_9:
+   \   00000148   0100A0E3           MOV      R0,#+1
+   \   0000014C   0000C8E5           STRB     R0,[R8, #+0]
+   \   00000150   0A20A0E1           MOV      R2,R10
+   \   00000154   051087E0           ADD      R1,R7,R5
+   \   00000158   0C0084E2           ADD      R0,R4,#+12
+   \   0000015C   ........           _BLF     put_circ_buffer,??put_circ_buffer??rA
+   \   00000160   2C3099E5           LDR      R3,[R9, #+44]
+   \   00000164   9820A0E3           MOV      R2,#+152
+   \   00000168   E82D82E3           ORR      R2,R2,#0x3A00
+   \   0000016C   201084E2           ADD      R1,R4,#+32
+   \   00000170   440C82E3           ORR      R0,R2,#0x4400
+   \   00000174   030080E0           ADD      R0,R0,R3
+   \   00000178   ........           _BLF     add_timer,??add_timer??rA
+   \                     ??__on_anpro10_tx_req_10:
+   \   0000017C   EFFFFFEA           B        ??__on_anpro10_tx_req_4
+    495          }
+    496          
+    497          static void
+    498          __on_anpro10_tx_req_normal(ANPRO_TCP_ClientMgr* climgr, u8_t* msg, s32_t len, u8_t is_urgent_msg)
+    499          {
+    500            if(climgr->use_udp_bcast_for_normal_msg)
+    501            {
+    502              if(climgr->udp_state != ANPRO_TCP_ClientMgr::ANPRO_UDP_State_OK)
+    503              {
+    504                return;
+    505              }
+    506          
+    507              if(anpro10_udp_unicast(climgr->udp_sock, climgr->udp_port_number, msg, len) <= 0)
+    508              {
+    509                anpro_client_put_udp_to_wait_state(climgr);
+    510              }
+    511            }
+    512            else
+    513            {
+    514              __on_anpro10_tx_req(climgr, msg, len, is_urgent_msg);
+    515            }
+    516          }
+    517          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    518          static s32_t
+    519          __on_rx_anpro10_message(ANPRO10_Reader* reader, u8_t* msg, s32_t len)
+    520          {
+    521            ANPRO10_UnpackPacket(reader->bounce_buffer, &fake_uart_port_for_tcp_client);
+   \                     ??__on_rx_anpro10_message:
+   \   00000000   ........           LDR      R1,??DataTable10  ;; fake_uart_port_for_tcp_client
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   010080E2           ADD      R0,R0,#+1
+   \   0000000C   ........           _BLF     ??ANPRO10_UnpackPacket,??ANPRO10_UnpackPacket??rA
+    522            return 0;
+   \   00000010   0040BDE8           POP      {LR}
+   \   00000014   0000A0E3           MOV      R0,#+0
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+    523          }
+    524          
+    525          ////////////////////////////////////////////////////////////////////////////////
+    526          // 
+    527          // socket TX buffer overflow timeout management
+    528          //
+    529          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    530          static void
+    531          anpro_tx_timer_callback(SGTimerElem* te)
+    532          {
+   \                     ??anpro_tx_timer_callback:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+    533            ANPRO_Client*   client = container_of(te, ANPRO_Client, generic_timer);
+   \   00000004   204040E2           SUB      R4,R0,#+32
+   \   00000008   5D00A0E3           MOV      R0,#+93
+   \   0000000C   400C80E3           ORR      R0,R0,#0x4000
+   \   00000010   040080E0           ADD      R0,R0,R4
+   \   00000014   0010D0E5           LDRB     R1,[R0, #+0]
+   \   00000018   011041E2           SUB      R1,R1,#+1
+   \   0000001C   010051E3           CMP      R1,#+1
+   \   00000020   0300009A           BLS      ??anpro_tx_timer_callback_1
+   \   00000024   021051E2           SUBS     R1,R1,#+2
+   \   00000028   0010A003           MOVEQ    R1,#+0
+   \   0000002C   0010C005           STRBEQ   R1,[R0, #+0]
+   \   00000030   030000EA           B        ??anpro_tx_timer_callback_2
+    534          
+    535            switch(client->state)
+    536            {
+    537            case ANPRO_Client::ANPRO_Client_Connecting:
+    538              // connect timeout
+    539              anpro_client_reset(client);
+   \                     ??anpro_tx_timer_callback_1:
+   \   00000034   0400A0E1           MOV      R0,R4
+   \   00000038   ........           BL       ??anpro_client_reset
+    540              anpro_client_put_reconnect_wait(client);
+   \   0000003C   0400A0E1           MOV      R0,R4
+   \   00000040   ........           BL       ??anpro_client_put_reconnect_wait
+    541              break;
+    542          
+    543            case ANPRO_Client::ANPRO_Client_Connected:
+    544              // tx timeout
+    545              anpro_client_reset(client);
+    546              anpro_client_put_reconnect_wait(client);
+    547              break;
+    548          
+    549            case ANPRO_Client::ANPRO_Client_Waiting:
+    550              client->state = ANPRO_Client::ANPRO_Client_Not_Connected;
+    551              break;
+    552            }
+    553          }
+   \                     ??anpro_tx_timer_callback_2:
+   \   00000044   1040BDE8           POP      {R4,LR}
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+    554          
+    555          ////////////////////////////////////////////////////////////////////////////////
+    556          // 
+    557          // anpro udp initialization 
+    558          //
+    559          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    560          static void
+    561          anpro_client_reinit_udp(SGTimerElem* te)
+    562          {
+   \                     ??anpro_client_reinit_udp:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+    563            ANPRO_TCP_ClientMgr* mgr = container_of(te, ANPRO_TCP_ClientMgr, udp_wait_timer);
+    564          
+    565            anpro_client_init_udp(mgr);
+   \   00000004   DB10E0E3           MVN      R1,#+219
+   \   00000008   BE1CC1E3           BIC      R1,R1,#0xBE00
+   \   0000000C   004081E0           ADD      R4,R1,R0
+   \   00000010   C400A0E3           MOV      R0,#+196
+   \   00000014   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000018   045080E0           ADD      R5,R0,R4
+   \   0000001C   B000D5E1           LDRH     R0,[R5, #+0]
+   \   00000020   ........           _BLF     ??init_anpro_udp_socket,??init_anpro_udp_socket??rA
+   \   00000024   ........           LDR      R1,??DataTable9  ;; ??__on_rx_anpro10_message
+   \   00000028   040085E5           STR      R0,[R5, #+4]
+   \   0000002C   CC00A0E3           MOV      R0,#+204
+   \   00000030   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000034   040080E0           ADD      R0,R0,R4
+   \   00000038   ........           _BLF     ??anpro10_reader_init,??anpro10_reader_init??rA
+   \   0000003C   E400A0E3           MOV      R0,#+228
+   \   00000040   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000044   045080E0           ADD      R5,R0,R4
+   \   00000048   0000A0E3           MOV      R0,#+0
+   \   0000004C   0C00C5E5           STRB     R0,[R5, #+12]
+   \   00000050   DC00A0E3           MOV      R0,#+220
+   \   00000054   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000058   040080E0           ADD      R0,R0,R4
+   \   0000005C   ........           _BLF     init_timer_elem,??init_timer_elem??rA
+   \   00000060   ........           LDR      R0,??DataTable7  ;; ??anpro_client_reinit_udp
+   \   00000064   000085E5           STR      R0,[R5, #+0]
+    566          }
+   \   00000068   3040BDE8           POP      {R4,R5,LR}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    567          
+    568          static void
+    569          anpro_client_init_udp(ANPRO_TCP_ClientMgr* mgr)
+    570          {
+    571            mgr->udp_sock = init_anpro_udp_socket(mgr->udp_port_number);
+    572            anpro10_reader_init(&mgr->anp10_udp_reader, __on_rx_anpro10_message);
+    573          
+    574            mgr->udp_state = ANPRO_TCP_ClientMgr::ANPRO_UDP_State_OK;
+    575            init_timer_elem(&mgr->udp_wait_timer);
+    576          
+    577            mgr->udp_wait_timer.cb = anpro_client_reinit_udp;
+    578          }
+    579          
+    580          static void
+    581          anpro_client_put_udp_to_wait_state(ANPRO_TCP_ClientMgr* mgr)
+    582          {
+    583            close(mgr->udp_sock);
+    584            mgr->udp_state = ANPRO_TCP_ClientMgr::ANPRO_UDP_State_Waiting;
+    585            add_timer(&mgr->timer_mgr, &mgr->udp_wait_timer, ANPRO_UDP_TIMEOUT);
+    586          }
+    587            
+    588          
+    589          ////////////////////////////////////////////////////////////////////////////////
+    590          // 
+    591          // client manager thread
+    592          //
+    593          ////////////////////////////////////////////////////////////////////////////////
+    594          /**
+    595           * @brief main TCP client manager task.
+    596           *        It just polls socket/queue/timer event and
+    597           *        executes appropriate handlers
+    598           *
+    599           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    600          static void 
+    601          anpro_client_thread(void* arg)
+    602          {
+   \                     ??anpro_client_thread:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   BC00A0E3           MOV      R0,#+188
+   \   00000010   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000014   045080E0           ADD      R5,R0,R4
+   \   00000018   0700D5E5           LDRB     R0,[R5, #+7]
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   1200000A           BEQ      ??anpro_client_thread_1
+    603            ANPRO_TCP_ClientMgr*  mgr;
+    604            s32_t                 maxfd,
+    605                                  ret;
+    606            fd_set                rset,
+    607                                  wset;
+    608            struct timeval        tv;
+    609          
+    610            mgr = (ANPRO_TCP_ClientMgr*)arg;
+    611          
+    612            if(mgr->use_udp_bcast_for_normal_msg)
+    613            {
+    614              anpro_client_init_udp(mgr);
+   \   00000024   B800D5E1           LDRH     R0,[R5, #+8]
+   \   00000028   ........           _BLF     ??init_anpro_udp_socket,??init_anpro_udp_socket??rA
+   \   0000002C   ........           LDR      R1,??DataTable9  ;; ??__on_rx_anpro10_message
+   \   00000030   0C0085E5           STR      R0,[R5, #+12]
+   \   00000034   CC00A0E3           MOV      R0,#+204
+   \   00000038   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   0000003C   040080E0           ADD      R0,R0,R4
+   \   00000040   ........           _BLF     ??anpro10_reader_init,??anpro10_reader_init??rA
+   \   00000044   E400A0E3           MOV      R0,#+228
+   \   00000048   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   0000004C   046080E0           ADD      R6,R0,R4
+   \   00000050   0000A0E3           MOV      R0,#+0
+   \   00000054   0C00C6E5           STRB     R0,[R6, #+12]
+   \   00000058   DC00A0E3           MOV      R0,#+220
+   \   0000005C   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000060   040080E0           ADD      R0,R0,R4
+   \   00000064   ........           _BLF     init_timer_elem,??init_timer_elem??rA
+   \   00000068   ........           LDR      R0,??DataTable7  ;; ??anpro_client_reinit_udp
+   \   0000006C   000086E5           STR      R0,[R6, #+0]
+    615            }
+    616          
+    617            for(;;)
+    618            {
+    619              maxfd = 0;
+   \                     ??anpro_client_thread_1:
+   \   00000070   0010A0E3           MOV      R1,#+0
+   \   00000074   04108DE5           STR      R1,[SP, #+4]
+    620              FD_ZERO(&rset);
+   \   00000078   0220A0E3           MOV      R2,#+2
+   \   0000007C   0D00A0E1           MOV      R0,SP
+   \   00000080   ........           _BLF     memset,??memset??rA
+    621              FD_ZERO(&wset);
+   \   00000084   0220A0E3           MOV      R2,#+2
+   \   00000088   0010A0E3           MOV      R1,#+0
+   \   0000008C   02008DE2           ADD      R0,SP,#+2
+   \   00000090   ........           _BLF     memset,??memset??rA
+    622          
+    623              tv.tv_sec  = 0;
+   \   00000094   0010A0E3           MOV      R1,#+0
+   \   00000098   08108DE5           STR      R1,[SP, #+8]
+    624              tv.tv_usec = ANPRO_CLIENT_SELECT_TIMEOUT;
+   \   0000009C   601BA0E3           MOV      R1,#+98304
+   \   000000A0   6A1E81E3           ORR      R1,R1,#0x6A0
+   \   000000A4   0C108DE5           STR      R1,[SP, #+12]
+    625          
+    626              anpro_select_add_set(mgr->queue_event,  &rset, &maxfd);
+   \   000000A8   080094E5           LDR      R0,[R4, #+8]
+   \   000000AC   04208DE2           ADD      R2,SP,#+4
+   \   000000B0   0D10A0E1           MOV      R1,SP
+   \   000000B4   ........           _BLF     ??anpro_select_add_set,??anpro_select_add_set??rA
+    627              anpro_select_add_set(mgr->timer_tick_event, &rset, &maxfd);
+   \   000000B8   000095E5           LDR      R0,[R5, #+0]
+   \   000000BC   04208DE2           ADD      R2,SP,#+4
+   \   000000C0   0D10A0E1           MOV      R1,SP
+   \   000000C4   ........           _BLF     ??anpro_select_add_set,??anpro_select_add_set??rA
+    628          
+    629              anpro_client_do_pre_select(mgr, &rset, &wset, &maxfd);
+   \   000000C8   04308DE2           ADD      R3,SP,#+4
+   \   000000CC   02208DE2           ADD      R2,SP,#+2
+   \   000000D0   0D10A0E1           MOV      R1,SP
+   \   000000D4   0400A0E1           MOV      R0,R4
+   \   000000D8   ........           BL       ??anpro_client_do_pre_select
+    630          
+    631              ret = select(maxfd + 1, &rset, &wset, 0, &tv);
+   \   000000DC   08008DE2           ADD      R0,SP,#+8
+   \   000000E0   01002DE9           PUSH     {R0}
+   \   000000E4   08009DE5           LDR      R0,[SP, #+8]
+   \   000000E8   0030A0E3           MOV      R3,#+0
+   \   000000EC   06208DE2           ADD      R2,SP,#+6
+   \   000000F0   04108DE2           ADD      R1,SP,#+4
+   \   000000F4   010080E2           ADD      R0,R0,#+1
+   \   000000F8   ........           _BLF     lwip_select,??lwip_select??rA
+   \   000000FC   0060A0E1           MOV      R6,R0
+   \   00000100   F400A0E3           MOV      R0,#+244
+   \   00000104   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000108   047080E0           ADD      R7,R0,R4
+   \   0000010C   0700A0E1           MOV      R0,R7
+    632          
+    633              anpro_client_handle_debug(mgr);
+   \   00000110   ........           _BLF     OS_EVENT_Get,??OS_EVENT_Get??rA
+   \   00000114   000050E3           CMP      R0,#+0
+   \   00000118   04D08DE2           ADD      SP,SP,#+4
+   \   0000011C   0700000A           BEQ      ??anpro_client_thread_2
+   \   00000120   0700A0E1           MOV      R0,R7
+   \   00000124   ........           _BLF     OS_EVENT_Wait,??OS_EVENT_Wait??rA
+   \   00000128   0400A0E1           MOV      R0,R4
+   \   0000012C   ........           BL       ??anpro_client_debug_handler
+   \   00000130   FC00A0E3           MOV      R0,#+252
+   \   00000134   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000138   040080E0           ADD      R0,R0,R4
+   \   0000013C   ........           _BLF     OS_EVENT_Set,??OS_EVENT_Set??rA
+    634          
+    635              if(ret <= 0)
+   \                     ??anpro_client_thread_2:
+   \   00000140   010056E3           CMP      R6,#+1
+   \   00000144   C9FFFFBA           BLT      ??anpro_client_thread_1
+    636              {
+    637                continue;
+    638              }
+    639          
+    640              if(FD_ISSET(mgr->timer_tick_event, &rset))
+   \   00000148   000095E5           LDR      R0,[R5, #+0]
+   \   0000014C   002095E5           LDR      R2,[R5, #+0]
+   \   00000150   4011A0E1           ASR      R1,R0,#+2
+   \   00000154   A10E80E0           ADD      R0,R0,R1, LSR #+29
+   \   00000158   0D10A0E1           MOV      R1,SP
+   \   0000015C   C001D1E7           LDRB     R0,[R1, +R0, ASR #+3]
+   \   00000160   0160A0E3           MOV      R6,#+1
+   \   00000164   072002E2           AND      R2,R2,#0x7
+   \   00000168   160210E1           TST      R0,R6, LSL R2
+   \   0000016C   0700000A           BEQ      ??anpro_client_thread_3
+    641              {
+    642                drive_timer(&mgr->timer_mgr);
+   \   00000170   9800A0E3           MOV      R0,#+152
+   \   00000174   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000178   040080E0           ADD      R0,R0,R4
+   \   0000017C   ........           _BLF     drive_timer,??drive_timer??rA
+    643                ioctlsocket(mgr->timer_tick_event, FIONDECRECV, NULL);
+   \   00000180   ........           LDR      R1,??DataTable8  ;; 0xffffffff80046679
+   \   00000184   000095E5           LDR      R0,[R5, #+0]
+   \   00000188   0020A0E3           MOV      R2,#+0
+   \   0000018C   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    644              }
+    645          
+    646              if(FD_ISSET(mgr->queue_event, &rset))
+   \                     ??anpro_client_thread_3:
+   \   00000190   080094E5           LDR      R0,[R4, #+8]
+   \   00000194   4011A0E1           ASR      R1,R0,#+2
+   \   00000198   A10E80E0           ADD      R0,R0,R1, LSR #+29
+   \   0000019C   0D10A0E1           MOV      R1,SP
+   \   000001A0   C001D1E7           LDRB     R0,[R1, +R0, ASR #+3]
+   \   000001A4   081094E5           LDR      R1,[R4, #+8]
+   \   000001A8   071001E2           AND      R1,R1,#0x7
+   \   000001AC   160110E1           TST      R0,R6, LSL R1
+   \   000001B0   0100000A           BEQ      ??anpro_client_thread_4
+    647              {
+    648                anpro_handle_message_q(mgr);
+   \   000001B4   0400A0E1           MOV      R0,R4
+   \   000001B8   ........           BL       ??anpro_handle_message_q
+    649              }
+    650          
+    651              anpro_client_do_post_select(mgr, &rset, &wset);
+   \                     ??anpro_client_thread_4:
+   \   000001BC   02208DE2           ADD      R2,SP,#+2
+   \   000001C0   0D10A0E1           MOV      R1,SP
+   \   000001C4   0400A0E1           MOV      R0,R4
+   \   000001C8   ........           BL       ??anpro_client_do_post_select
+   \   000001CC   A7FFFFEA           B        ??anpro_client_thread_1
+    652            }
+    653          }
+    654          
+    655          ////////////////////////////////////////////////////////////////////////////////
+    656          // 
+    657          // debug interface
+    658          //
+    659          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    660          static void
+    661          anpro_client_debug_handler(ANPRO_TCP_ClientMgr* mgr)
+    662          {
+   \                     ??anpro_client_debug_handler:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+    663            char* buf_ptr = (char*)mgr->msg_buf;
+    664          
+    665            if(strcmp((char*)mgr->msg_buf, "list_conn") == 0)
+   \   00000004   04519FE5           LDR      R5,??anpro_client_debug_handler_1  ;; `?<Constant "======== Client List ...">`
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   1400A0E3           MOV      R0,#+20
+   \   00000010   BF0C80E3           ORR      R0,R0,#0xBF00
+   \   00000014   04A090E7           LDR      R10,[R0, +R4]
+   \   00000018   AC1085E2           ADD      R1,R5,#+172
+   \   0000001C   0A00A0E1           MOV      R0,R10
+   \   00000020   ........           _BLF     strcmp,??strcmp??rA
+   \   00000024   000050E3           CMP      R0,#+0
+   \   00000028   3300001A           BNE      ??anpro_client_debug_handler_2
+    666            {
+    667              ANPRO_Client* con;
+    668              int               i = 0;
+   \   0000002C   0060A0E3           MOV      R6,#+0
+    669          
+    670              buf_ptr += sprintf(buf_ptr, "======== Client List =======\r\n");
+   \   00000030   0510A0E1           MOV      R1,R5
+   \   00000034   0A00A0E1           MOV      R0,R10
+   \   00000038   ........           _BLF     sprintf,??sprintf??rA
+    671          
+    672              list_for_each_entry(con, &mgr->anpro_clients, con_list, ANPRO_Client)
+   \   0000003C   007094E5           LDR      R7,[R4, #+0]
+   \   00000040   0AA080E0           ADD      R10,R0,R10
+   \                     ??anpro_client_debug_handler_3:
+   \   00000044   040057E1           CMP      R7,R4
+   \   00000048   2E00000A           BEQ      ??anpro_client_debug_handler_4
+    673              {
+    674                uint32_t addr, port;
+    675          
+    676                addr = ntohl(con->server_addr.sin_addr.s_addr);
+   \   0000004C   3C0097E5           LDR      R0,[R7, #+60]
+   \   00000050   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   00000054   0090A0E1           MOV      R9,R0
+    677                port = ntohs(con->server_addr.sin_port);
+   \   00000058   BA03D7E1           LDRH     R0,[R7, #+58]
+   \   0000005C   ........           _BLF     lwip_ntohs,??lwip_ntohs??rA
+   \   00000060   0080A0E1           MOV      R8,R0
+    678          
+    679                buf_ptr += sprintf(buf_ptr, "Client %d: Dest IP-Addr %d.%d.%d.%d\r\n", i, 
+    680                    ((addr >> 24) & 0xff),
+    681                    ((addr >> 16) & 0xff),
+    682                    ((addr >> 8) & 0xff),
+    683                    ((addr >> 0) & 0xff));
+   \   00000064   FF0009E2           AND      R0,R9,#0xFF
+   \   00000068   01002DE9           PUSH     {R0}
+   \   0000006C   FF00A0E3           MOV      R0,#+255
+   \   00000070   290400E0           AND      R0,R0,R9, LSR #+8
+   \   00000074   01002DE9           PUSH     {R0}
+   \   00000078   FF00A0E3           MOV      R0,#+255
+   \   0000007C   290800E0           AND      R0,R0,R9, LSR #+16
+   \   00000080   01002DE9           PUSH     {R0}
+   \   00000084   293CA0E1           LSR      R3,R9,#+24
+   \   00000088   0620A0E1           MOV      R2,R6
+   \   0000008C   201085E2           ADD      R1,R5,#+32
+   \   00000090   0A00A0E1           MOV      R0,R10
+   \   00000094   ........           _BLF     sprintf,??sprintf??rA
+   \   00000098   0A9080E0           ADD      R9,R0,R10
+    684                buf_ptr += sprintf(buf_ptr, "Client %d: Dest Port %d\r\n", i, port);
+   \   0000009C   0830A0E1           MOV      R3,R8
+   \   000000A0   0620A0E1           MOV      R2,R6
+   \   000000A4   481085E2           ADD      R1,R5,#+72
+   \   000000A8   0900A0E1           MOV      R0,R9
+   \   000000AC   ........           _BLF     sprintf,??sprintf??rA
+    685                buf_ptr += sprintf(buf_ptr, "Client %d: Station ID %d\r\n", i, con->station_id);
+   \   000000B0   B834D7E1           LDRH     R3,[R7, #+72]
+   \   000000B4   098080E0           ADD      R8,R0,R9
+   \   000000B8   0620A0E1           MOV      R2,R6
+   \   000000BC   641085E2           ADD      R1,R5,#+100
+   \   000000C0   0800A0E1           MOV      R0,R8
+   \   000000C4   ........           _BLF     sprintf,??sprintf??rA
+   \   000000C8   088080E0           ADD      R8,R0,R8
+    686                buf_ptr += sprintf(buf_ptr, "Client %d: State %d\r\n", i, con->state);
+   \   000000CC   5D00A0E3           MOV      R0,#+93
+   \   000000D0   400C80E3           ORR      R0,R0,#0x4000
+   \   000000D4   0730D0E7           LDRB     R3,[R0, +R7]
+   \   000000D8   0620A0E1           MOV      R2,R6
+   \   000000DC   801085E2           ADD      R1,R5,#+128
+   \   000000E0   0800A0E1           MOV      R0,R8
+   \   000000E4   ........           _BLF     sprintf,??sprintf??rA
+    687                i++;
+    688              }
+   \   000000E8   007097E5           LDR      R7,[R7, #+0]
+   \   000000EC   08A080E0           ADD      R10,R0,R8
+   \   000000F0   016086E2           ADD      R6,R6,#+1
+   \   000000F4   0CD08DE2           ADD      SP,SP,#+12
+   \   000000F8   D1FFFFEA           B        ??anpro_client_debug_handler_3
+    689            } else {
+    690              sprintf(buf_ptr, "Unknown Command\r\n");
+   \                     ??anpro_client_debug_handler_2:
+   \   000000FC   981085E2           ADD      R1,R5,#+152
+   \   00000100   0A00A0E1           MOV      R0,R10
+   \   00000104   ........           _BLF     sprintf,??sprintf??rA
+    691            }
+    692          }
+   \                     ??anpro_client_debug_handler_4:
+   \   00000108   F047BDE8           POP      {R4-R10,LR}
+   \   0000010C   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_client_debug_handler_1:
+   \   00000110   ........           DC32     `?<Constant "======== Client List ...">`
+    693          
+    694          static void
+    695          anpro_client_handle_debug(ANPRO_TCP_ClientMgr* mgr)
+    696          {
+    697            if(OS_EVENT_Get(&mgr->debug_req_event) == 0)
+    698            {
+    699              return;
+    700            }
+    701          
+    702            OS_EVENT_Wait(&mgr->debug_req_event);
+    703          
+    704            anpro_client_debug_handler(mgr);
+    705          
+    706            OS_EVENT_Set(&mgr->debug_rsp_event);
+    707          }
+    708          
+    709          static void
+    710          anpro_client_debug_init(ANPRO_TCP_ClientMgr* mgr)
+    711          {
+    712            OS_CREATERSEMA(&mgr->debug_lock);
+    713            OS_EVENT_Create(&mgr->debug_req_event);
+    714            OS_EVENT_Create(&mgr->debug_rsp_event);
+    715            mgr->msg_buf = NULL;
+    716          }
+    717          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    718          void
+    719          anpro_client_debug(ANPRO_TCP_ClientMgr* mgr, char* msg_buf)
+    720          {
+   \                     ??anpro_client_debug:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+   \   0000000C   0400A0E3           MOV      R0,#+4
+   \   00000010   BF0C80E3           ORR      R0,R0,#0xBF00
+   \   00000014   046080E0           ADD      R6,R0,R4
+   \   00000018   0600A0E1           MOV      R0,R6
+    721            OS_Use(&mgr->debug_lock);
+   \   0000001C   ........           _BLF     OS_Use,??OS_Use??rA
+    722          
+    723            mgr->msg_buf = msg_buf;
+   \   00000020   1400A0E3           MOV      R0,#+20
+   \   00000024   BF0C80E3           ORR      R0,R0,#0xBF00
+   \   00000028   045080E7           STR      R5,[R0, +R4]
+    724          
+    725            // notify the tasky
+    726            OS_EVENT_Set(&mgr->debug_req_event);
+   \   0000002C   200040E2           SUB      R0,R0,#+32
+   \   00000030   040080E0           ADD      R0,R0,R4
+   \   00000034   ........           _BLF     OS_EVENT_Set,??OS_EVENT_Set??rA
+    727          
+    728            // wait for the debug complete
+    729            OS_EVENT_Wait(&mgr->debug_rsp_event);
+   \   00000038   FC00A0E3           MOV      R0,#+252
+   \   0000003C   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   00000040   040080E0           ADD      R0,R0,R4
+   \   00000044   ........           _BLF     OS_EVENT_Wait,??OS_EVENT_Wait??rA
+    730          
+    731            OS_Unuse(&mgr->debug_lock);
+   \   00000048   0600A0E1           MOV      R0,R6
+   \   0000004C   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    732          }
+   \   00000050   7040BDE8           POP      {R4-R6,LR}
+   \   00000054   1EFF2FE1           BX       LR               ;; return
+    733          
+    734          
+    735          ////////////////////////////////////////////////////////////////////////////////
+    736          // 
+    737          // public interface
+    738          //
+    739          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    740          void
+    741          anpro_client_mgr_init(ANPRO_TCP_ClientMgr* mgr, u8_t use_udp, u16_t udp_port_number)
+    742          {
+   \                     ??anpro_client_mgr_init:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+   \   0000000C   0260A0E1           MOV      R6,R2
+    743            INIT_LIST_HEAD(&mgr->anpro_clients);
+   \   00000010   004084E5           STR      R4,[R4, #+0]
+   \   00000014   044084E5           STR      R4,[R4, #+4]
+    744            anpro_init_message_q(mgr);
+   \   00000018   0C00A0E3           MOV      R0,#+12
+   \   0000001C   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   00000020   0070B0E1           MOVS     R7,R0
+   \   00000024   0000000A           BEQ      ??anpro_client_mgr_init_1
+   \   00000028   ........           _BLF     ??TSNMessageQ,??TSNMessageQ??rA
+   \                     ??anpro_client_mgr_init_1:
+   \   0000002C   107084E5           STR      R7,[R4, #+16]
+   \   00000030   0C00A0E3           MOV      R0,#+12
+   \   00000034   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   00000038   0070B0E1           MOVS     R7,R0
+   \   0000003C   0000000A           BEQ      ??anpro_client_mgr_init_2
+   \   00000040   ........           _BLF     ??TSNMessageQ,??TSNMessageQ??rA
+   \                     ??anpro_client_mgr_init_2:
+   \   00000044   147084E5           STR      R7,[R4, #+20]
+   \   00000048   ........           _BLF     ??anpro_net_create_eventfd,??anpro_net_create_eventfd??rA
+   \   0000004C   080084E5           STR      R0,[R4, #+8]
+    745            anpro_init_timer(mgr);
+   \   00000050   0820A0E3           MOV      R2,#+8
+   \   00000054   6410A0E3           MOV      R1,#+100
+   \   00000058   9800A0E3           MOV      R0,#+152
+   \   0000005C   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000060   040080E0           ADD      R0,R0,R4
+   \   00000064   ........           _BLF     init_timer,??init_timer??rA
+   \   00000068   BC00A0E3           MOV      R0,#+188
+   \   0000006C   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000070   047080E0           ADD      R7,R0,R4
+   \   00000074   ........           _BLF     ??anpro_net_create_eventfd,??anpro_net_create_eventfd??rA
+   \   00000078   80109FE5           LDR      R1,??anpro_client_mgr_init_3  ;; ??anpro_timer_tick_callback
+   \   0000007C   000087E5           STR      R0,[R7, #+0]
+   \   00000080   A800A0E3           MOV      R0,#+168
+   \   00000084   7E0C80E3           ORR      R0,R0,#0x7E00
+   \   00000088   048080E0           ADD      R8,R0,R4
+   \   0000008C   6420A0E3           MOV      R2,#+100
+   \   00000090   0800A0E1           MOV      R0,R8
+   \   00000094   ........           _BLF     OS_CreateTimer,??OS_CreateTimer??rA
+   \   00000098   0800A0E1           MOV      R0,R8
+   \   0000009C   ........           _BLF     OS_StartTimer,??OS_StartTimer??rA
+    746            mgr->initialized = 1;
+    747          
+    748            mgr->use_udp_bcast_for_normal_msg         = use_udp;
+    749            mgr->udp_port_number                      = udp_port_number;
+    750          
+    751            fake_uart_port_for_tcp_client.SystemMatch = true;
+   \   000000A0   5C109FE5           LDR      R1,??anpro_client_mgr_init_3+0x4  ;; fake_uart_port_for_tcp_client + 194
+   \   000000A4   0100A0E3           MOV      R0,#+1
+   \   000000A8   0600C7E5           STRB     R0,[R7, #+6]
+   \   000000AC   0750C7E5           STRB     R5,[R7, #+7]
+   \   000000B0   B860C7E1           STRH     R6,[R7, #+8]
+   \   000000B4   0000C1E5           STRB     R0,[R1, #+0]
+    752          
+    753            anpro_client_debug_init(mgr);
+   \   000000B8   0400A0E3           MOV      R0,#+4
+   \   000000BC   BF0C80E3           ORR      R0,R0,#0xBF00
+   \   000000C0   040080E0           ADD      R0,R0,R4
+   \   000000C4   ........           _BLF     OS_CreateRSema,??OS_CreateRSema??rA
+   \   000000C8   F400A0E3           MOV      R0,#+244
+   \   000000CC   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   000000D0   040080E0           ADD      R0,R0,R4
+   \   000000D4   ........           _BLF     OS_EVENT_Create,??OS_EVENT_Create??rA
+   \   000000D8   FC00A0E3           MOV      R0,#+252
+   \   000000DC   BE0C80E3           ORR      R0,R0,#0xBE00
+   \   000000E0   040080E0           ADD      R0,R0,R4
+   \   000000E4   ........           _BLF     OS_EVENT_Create,??OS_EVENT_Create??rA
+   \   000000E8   1400A0E3           MOV      R0,#+20
+   \   000000EC   BF0C80E3           ORR      R0,R0,#0xBF00
+   \   000000F0   0010A0E3           MOV      R1,#+0
+   \   000000F4   041080E7           STR      R1,[R0, +R4]
+    754          }
+   \   000000F8   F041BDE8           POP      {R4-R8,LR}
+   \   000000FC   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_client_mgr_init_3:
+   \   00000100   ........           DC32     ??anpro_timer_tick_callback
+   \   00000104   ........           DC32     fake_uart_port_for_tcp_client + 194
+    755          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    756          void
+    757          anpro_client_connection_register(ANPRO_TCP_ClientMgr* mgr, struct sockaddr_in* server_addr, u16_t dest_station)
+    758          {
+   \                     ??anpro_client_connection_register:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0160A0E1           MOV      R6,R1
+   \   0000000C   0270A0E1           MOV      R7,R2
+    759            ANPRO_Client* client;
+    760            s32_t         sd;
+    761          
+    762            sd = init_anpro_client_socket();
+   \   00000010   ........           _BLF     ??init_anpro_client_socket,??init_anpro_client_socket??rA
+   \   00000014   0080B0E1           MOVS     R8,R0
+    763            if(sd < 0)
+   \   00000018   2A00004A           BMI      ??anpro_client_connection_register_1
+    764            {
+    765              return;
+    766            }
+    767          
+    768            client = (ANPRO_Client*)malloc(sizeof(ANPRO_Client));
+   \   0000001C   6000A0E3           MOV      R0,#+96
+   \   00000020   400C80E3           ORR      R0,R0,#0x4000
+   \   00000024   ........           _BLF     __data_malloc,??__data_malloc??rA
+   \   00000028   0050B0E1           MOVS     R5,R0
+    769            if(client == NULL)
+   \   0000002C   0200001A           BNE      ??anpro_client_connection_register_2
+    770            {
+    771              close(sd);
+   \                     ??anpro_client_connection_register_3:
+   \   00000030   0800A0E1           MOV      R0,R8
+   \   00000034   ........           _BLF     lwip_close,??lwip_close??rA
+    772              return;
+   \   00000038   220000EA           B        ??anpro_client_connection_register_1
+    773            }
+    774          
+    775            if(init_circ_buffer(&client->tx_buffer, MAX_ANPRO10_MESSAGE_SIZE) != 0)
+   \                     ??anpro_client_connection_register_2:
+   \   0000003C   FD1DA0E3           MOV      R1,#+16192
+   \   00000040   0C0085E2           ADD      R0,R5,#+12
+   \   00000044   ........           _BLF     init_circ_buffer,??init_circ_buffer??rA
+   \   00000048   000050E3           CMP      R0,#+0
+   \   0000004C   0200000A           BEQ      ??anpro_client_connection_register_4
+    776            {
+    777              free(client);
+   \   00000050   0500A0E1           MOV      R0,R5
+   \   00000054   ........           _BLF     __data_free,??__data_free??rA
+    778              close(sd);
+   \   00000058   F4FFFFEA           B        ??anpro_client_connection_register_3
+    779              return;
+    780            }
+    781          
+    782            client->sd         = sd;
+   \                     ??anpro_client_connection_register_4:
+   \   0000005C   088085E5           STR      R8,[R5, #+8]
+    783            client->station_id = dest_station;
+   \   00000060   B874C5E1           STRH     R7,[R5, #+72]
+    784            memcpy(&client->server_addr, server_addr, sizeof(struct sockaddr_in));
+   \   00000064   1020A0E3           MOV      R2,#+16
+   \   00000068   0610A0E1           MOV      R1,R6
+   \   0000006C   380085E2           ADD      R0,R5,#+56
+   \   00000070   ........           _BLF     memcpy,??memcpy??rA
+    785          
+    786            anpro10_reader_init(&client->anp10_reader, __on_rx_anpro10_message);
+   \   00000074   ........           LDR      R1,??DataTable9  ;; ??__on_rx_anpro10_message
+   \   00000078   4C0085E2           ADD      R0,R5,#+76
+   \   0000007C   ........           _BLF     ??anpro10_reader_init,??anpro10_reader_init??rA
+   \   00000080   5C00A0E3           MOV      R0,#+92
+   \   00000084   400C80E3           ORR      R0,R0,#0x4000
+   \   00000088   056080E0           ADD      R6,R0,R5
+   \   0000008C   0070A0E3           MOV      R7,#+0
+   \   00000090   0070C6E5           STRB     R7,[R6, #+0]
+    787            client->tx_pending = FALSE;
+    788          
+    789            init_timer_elem(&client->generic_timer);
+   \   00000094   200085E2           ADD      R0,R5,#+32
+   \   00000098   ........           _BLF     init_timer_elem,??init_timer_elem??rA
+    790            client->generic_timer.cb     = anpro_tx_timer_callback;
+   \   0000009C   2C009FE5           LDR      R0,??anpro_client_connection_register_5  ;; ??anpro_tx_timer_callback
+   \   000000A0   280085E5           STR      R0,[R5, #+40]
+    791          
+    792            client->climgr = mgr;
+   \   000000A4   344085E5           STR      R4,[R5, #+52]
+    793            client->state = ANPRO_Client::ANPRO_Client_Not_Connected;
+   \   000000A8   0170C6E5           STRB     R7,[R6, #+1]
+    794          
+    795            INIT_LIST_HEAD(&client->con_list);
+   \   000000AC   005085E5           STR      R5,[R5, #+0]
+   \   000000B0   045085E5           STR      R5,[R5, #+4]
+    796            list_add_tail(&client->con_list, &mgr->anpro_clients);
+   \   000000B4   040094E5           LDR      R0,[R4, #+4]
+   \   000000B8   045084E5           STR      R5,[R4, #+4]
+   \   000000BC   004085E5           STR      R4,[R5, #+0]
+   \   000000C0   040085E5           STR      R0,[R5, #+4]
+   \   000000C4   005080E5           STR      R5,[R0, #+0]
+    797          }
+   \                     ??anpro_client_connection_register_1:
+   \   000000C8   F041BDE8           POP      {R4-R8,LR}
+   \   000000CC   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_client_connection_register_5:
+   \   000000D0   ........           DC32     ??anpro_tx_timer_callback
+    798          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    799          void
+    800          anpro_client_mgr_start(ANPRO_TCP_ClientMgr* mgr)
+    801          {
+    802            sys_thread_new("anpro_climgr", anpro_client_thread, mgr, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+   \                     ??anpro_client_mgr_start:
+   \   00000000   30209FE5           LDR      R2,??anpro_client_mgr_start_1  ;; ??anpro_client_thread
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   40D04DE2           SUB      SP,SP,#+64
+   \   0000000C   B410A0E3           MOV      R1,#+180
+   \   00000010   02002DE9           PUSH     {R1}
+   \   00000014   831DA0E3           MOV      R1,#+8384
+   \   00000018   02002DE9           PUSH     {R1}
+   \   0000001C   18109FE5           LDR      R1,??anpro_client_mgr_start_1+0x4  ;; `?<Constant "anpro_climgr">`
+   \   00000020   0030A0E1           MOV      R3,R0
+   \   00000024   08008DE2           ADD      R0,SP,#+8
+   \   00000028   ........           _BLF     sys_thread_new,??sys_thread_new??rA
+    803          }
+   \   0000002C   48D08DE2           ADD      SP,SP,#+72
+   \   00000030   0040BDE8           POP      {LR}
+   \   00000034   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_client_mgr_start_1:
+   \   00000038   ........           DC32     ??anpro_client_thread
+   \   0000003C   ........           DC32     `?<Constant "anpro_climgr">`
+    804          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    805          u8_t
+    806          is_this_port_for_anpro_tcp_client(TSNUart* port)
+    807          {
+    808            if(port == &fake_uart_port_for_tcp_client)
+   \                     ??is_this_port_for_anpro_tcp_client:
+   \   00000000   ........           LDR      R1,??DataTable10  ;; fake_uart_port_for_tcp_client
+   \   00000004   010050E1           CMP      R0,R1
+    809            {
+    810              return 1;
+   \   00000008   0100A003           MOVEQ    R0,#+1
+   \   0000000C   1EFF2F01           BXEQ     LR
+    811            }
+    812            return 0;
+   \   00000010   0000A0E3           MOV      R0,#+0
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+    813          }
+    814          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    815          s8_t
+    816          anpro_client_post_message_urgent(ANPRO_TCP_ClientMgr* climgr, void* msg, int size)
+    817          {
+   \                     ??anpro_client_post_message_urgent:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+    818            if(!climgr->initialized)
+   \   00000004   C230A0E3           MOV      R3,#+194
+   \   00000008   7E3C83E3           ORR      R3,R3,#0x7E00
+   \   0000000C   0030D3E7           LDRB     R3,[R3, +R0]
+   \   00000010   000053E3           CMP      R3,#+0
+   \   00000014   0200001A           BNE      ??anpro_client_post_message_urgent_1
+    819            {
+    820              return -1;
+   \                     ??anpro_client_post_message_urgent_2:
+   \   00000018   1040BDE8           POP      {R4,LR}
+   \   0000001C   0000E0E3           MVN      R0,#+0
+   \   00000020   1EFF2FE1           BX       LR
+    821            }
+    822          
+    823            if(!climgr->urgent_q->PostMessage(msg, size))
+   \                     ??anpro_client_post_message_urgent_1:
+   \   00000024   084080E2           ADD      R4,R0,#+8
+   \   00000028   080094E5           LDR      R0,[R4, #+8]
+   \   0000002C   ........           _BLF     ??PostMessage,??PostMessage??rA
+   \   00000030   000050E3           CMP      R0,#+0
+   \   00000034   F7FFFF0A           BEQ      ??anpro_client_post_message_urgent_2
+    824            {
+    825              //
+    826              // 32k size queue and enqueue fails?
+    827              // this means something is fucked up seriously!!!
+    828              // at the moment, we do nada
+    829              //
+    830              return -1;
+    831            }
+    832          
+    833            // signal the event socket
+    834            ioctl(climgr->queue_event, FIONINCRECV, NULL);
+   \   00000038   ........           LDR      R1,??DataTable12  ;; 0xffffffff80046678
+   \   0000003C   000094E5           LDR      R0,[R4, #+0]
+   \   00000040   0020A0E3           MOV      R2,#+0
+   \   00000044   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    835            return 0;
+   \   00000048   1040BDE8           POP      {R4,LR}
+   \   0000004C   0000A0E3           MOV      R0,#+0
+   \   00000050   1EFF2FE1           BX       LR               ;; return
+    836          }
+    837          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    838          s8_t
+    839          anpro_client_post_message_normal(ANPRO_TCP_ClientMgr* climgr, void* msg, int size)
+    840          {
+   \                     ??anpro_client_post_message_normal:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+    841            if(!climgr->initialized)
+   \   00000004   C230A0E3           MOV      R3,#+194
+   \   00000008   7E3C83E3           ORR      R3,R3,#0x7E00
+   \   0000000C   0030D3E7           LDRB     R3,[R3, +R0]
+   \   00000010   000053E3           CMP      R3,#+0
+   \   00000014   0200001A           BNE      ??anpro_client_post_message_normal_1
+    842            {
+    843              return -1;
+   \                     ??anpro_client_post_message_normal_2:
+   \   00000018   1040BDE8           POP      {R4,LR}
+   \   0000001C   0000E0E3           MVN      R0,#+0
+   \   00000020   1EFF2FE1           BX       LR
+    844            }
+    845          
+    846            if(!climgr->normal_q->PostMessage(msg, size))
+   \                     ??anpro_client_post_message_normal_1:
+   \   00000024   084080E2           ADD      R4,R0,#+8
+   \   00000028   0C0094E5           LDR      R0,[R4, #+12]
+   \   0000002C   ........           _BLF     ??PostMessage,??PostMessage??rA
+   \   00000030   000050E3           CMP      R0,#+0
+   \   00000034   F7FFFF0A           BEQ      ??anpro_client_post_message_normal_2
+    847            {
+    848              //
+    849              // 32k size queue and enqueue fails?
+    850              // this means something is fucked up seriously!!!
+    851              // at the moment, we do nada
+    852              //
+    853              return -1;
+    854            }
+    855          
+    856            // signal the event socket
+    857            ioctl(climgr->queue_event, FIONINCRECV, NULL);
+   \   00000038   ........           LDR      R1,??DataTable12  ;; 0xffffffff80046678
+   \   0000003C   000094E5           LDR      R0,[R4, #+0]
+   \   00000040   0020A0E3           MOV      R2,#+0
+   \   00000044   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    858            return 0;
+   \   00000048   1040BDE8           POP      {R4,LR}
+   \   0000004C   0000A0E3           MOV      R0,#+0
+   \   00000050   1EFF2FE1           BX       LR               ;; return
+    859          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable7:
+   \   00000000   ........           DC32     ??anpro_client_reinit_udp
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable8:
+   \   00000000   79660480           DC32     0xffffffff80046679
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable9:
+   \   00000000   ........           DC32     ??__on_rx_anpro10_message
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable10:
+   \   00000000   ........           DC32     fake_uart_port_for_tcp_client
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable12:
+   \   00000000   78660480           DC32     0xffffffff80046678
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "======== Client List ...">`:
+   \   00000000   3D3D3D3D3D3D       DC8 "======== Client List =======\015\012"
+   \              3D3D20436C69
+   \              656E74204C69
+   \              7374203D3D3D
+   \              3D3D3D3D0D0A
+   \              00          
+   \   0000001F   00                 DC8 0
+   \   00000020   436C69656E74       DC8 "Client %d: Dest IP-Addr %d.%d.%d.%d\015\012"
+   \              2025643A2044
+   \              657374204950
+   \              2D4164647220
+   \              25642E25642E
+   \              25642E25640D
+   \              0A00        
+   \   00000046   0000               DC8 0, 0
+   \   00000048   436C69656E74       DC8 "Client %d: Dest Port %d\015\012"
+   \              2025643A2044
+   \              65737420506F
+   \              72742025640D
+   \              0A00        
+   \   00000062   0000               DC8 0, 0
+   \   00000064   436C69656E74       DC8 "Client %d: Station ID %d\015\012"
+   \              2025643A2053
+   \              746174696F6E
+   \              204944202564
+   \              0D0A00      
+   \   0000007F   00                 DC8 0
+   \   00000080   436C69656E74       DC8 "Client %d: State %d\015\012"
+   \              2025643A2053
+   \              746174652025
+   \              640D0A00    
+   \   00000096   0000               DC8 0, 0
+   \   00000098   556E6B6E6F77       DC8 "Unknown Command\015\012"
+   \              6E20436F6D6D
+   \              616E640D0A00
+   \   000000AA   0000               DC8 0, 0
+   \   000000AC   6C6973745F63       DC8 "list_conn"
+   \              6F6E6E00    
+   \   000000B6   0000               DC8 0, 0
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "anpro_climgr">`:
+   \   00000000   616E70726F5F       DC8 "anpro_climgr"
+   \              636C696D6772
+   \              00          
+   \   0000000D   000000             DC8 0, 0, 0
+    860          
+    861          #endif /* LWIP_SOCKET */
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     __on_anpro10_tx_req(ANPRO_TCP_ClientMgr *, u8_t *, s32_t, u8_t)
+                                       36
+     __on_rx_anpro10_message(ANPRO10_Reader *, u8_t *, s32_t)
+                                        4
+     __sti__routine()                   4
+     anpro_client_check_rxtx_set(__anpro_client *, fd_set *, fd_set *)
+                                       36
+     anpro_client_connection_register(ANPRO_TCP_ClientMgr *, sockaddr_in *, u16_t)
+                                       24
+     anpro_client_debug(ANPRO_TCP_ClientMgr *, char *)
+                                       16
+     anpro_client_debug_handler(ANPRO_TCP_ClientMgr *)
+                                       44
+     anpro_client_do_post_select(ANPRO_TCP_ClientMgr *, fd_set *, fd_set *)
+                                       24
+     anpro_client_do_pre_select(ANPRO_TCP_ClientMgr *, fd_set *, fd_set *, s32_t *)
+                                       28
+     anpro_client_handle_rx_event(__anpro_client *)
+                                      136
+     anpro_client_handle_tx_event(__anpro_client *)
+                                      152
+     anpro_client_mgr_init(ANPRO_TCP_ClientMgr *, u8_t, u16_t)
+                                       24
+     anpro_client_mgr_start(ANPRO_TCP_ClientMgr *)
+                                       76
+     anpro_client_post_message_normal(ANPRO_TCP_ClientMgr *, void *, int)
+                                        8
+     anpro_client_post_message_urgent(ANPRO_TCP_ClientMgr *, void *, int)
+                                        8
+     anpro_client_put_reconnect_wait(__anpro_client *)
+                                        4
+     anpro_client_reinit_udp(SGTimerElem *)
+                                       12
+     anpro_client_reset(__anpro_client *)
+                                       12
+     anpro_client_thread(void *)       40
+     anpro_handle_message_q(ANPRO_TCP_ClientMgr *)
+                                       20
+     anpro_timer_tick_callback()        8
+     anpro_tx_timer_callback(SGTimerElem *)
+                                        8
+     is_this_port_for_anpro_tcp_client(TSNUart *)
+                                        0
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     __sti__routine()                 32
+     fake_uart_port_for_tcp_client   224
+     anpro_handle_message_q(ANPRO_TCP_ClientMgr *)
+                                     288
+     anpro_client_reset(__anpro_client *)
+                                      80
+     anpro_client_put_reconnect_wait(__anpro_client *)
+                                      60
+     anpro_timer_tick_callback()      48
+     anpro_client_handle_rx_event(__anpro_client *)
+                                      92
+     anpro_client_handle_tx_event(__anpro_client *)
+                                     220
+     anpro_client_do_pre_select(ANPRO_TCP_ClientMgr *, fd_set *, fd_set *, s32_t *)
+                                     264
+     anpro_client_check_rxtx_set(__anpro_client *, fd_set *, fd_set *)
+                                     308
+     anpro_client_do_post_select(ANPRO_TCP_ClientMgr *, fd_set *, fd_set *)
+                                     272
+     __on_anpro10_tx_req(ANPRO_TCP_ClientMgr *, u8_t *, s32_t, u8_t)
+                                     384
+     __on_rx_anpro10_message(ANPRO10_Reader *, u8_t *, s32_t)
+                                      28
+     anpro_tx_timer_callback(SGTimerElem *)
+                                      76
+     anpro_client_reinit_udp(SGTimerElem *)
+                                     112
+     anpro_client_thread(void *)     464
+     anpro_client_debug_handler(ANPRO_TCP_ClientMgr *)
+                                     276
+     anpro_client_debug(ANPRO_TCP_ClientMgr *, char *)
+                                      88
+     anpro_client_mgr_init(ANPRO_TCP_ClientMgr *, u8_t, u16_t)
+                                     264
+     anpro_client_connection_register(ANPRO_TCP_ClientMgr *, sockaddr_in *, u16_t)
+                                     212
+     anpro_client_mgr_start(ANPRO_TCP_ClientMgr *)
+                                      64
+     is_this_port_for_anpro_tcp_client(TSNUart *)
+                                      24
+     anpro_client_post_message_urgent(ANPRO_TCP_ClientMgr *, void *, int)
+                                      84
+     anpro_client_post_message_normal(ANPRO_TCP_ClientMgr *, void *, int)
+                                      84
+     ??DataTable7                      4
+     ??DataTable8                      4
+     ??DataTable9                      4
+     ??DataTable10                     4
+     ??DataTable12                     4
+     ?<Constant "======== Client List ...">
+                                     184
+     ?<Constant "anpro_climgr">       16
+      Others                         796
+
+ 
+ 4 608 bytes in segment CODE
+   212 bytes in segment DATA_C
+   228 bytes in segment DATA_Z
+     4 bytes in segment DIFUNCT
+    12 bytes in segment INITTAB
+ 
+ 3 848 bytes of CODE  memory (+ 776 bytes shared)
+   212 bytes of CONST memory
+   228 bytes of DATA  memory
+
+Errors: none
+Warnings: none

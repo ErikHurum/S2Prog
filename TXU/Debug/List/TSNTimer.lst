@@ -1,0 +1,325 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:19:52 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\TSNTimer.cpp                    #
+#    Command line    =  D:\S2Prog\Shared\Src\TSNTimer.cpp --fpu None -D      #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\TSNTimer.lst                #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\TSNTimer.r79                 #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\TSNTimer.cpp
+      1          //For all
+      2          //TSN Help Objects
+      3          #ifndef BORLAND
+      4          	//#include "stdafx.h"
+      5          #endif
+      6          #ifdef WIN32
+      7          #ifdef BORLAND
+      8          	#include<Windows.h>
+      9          	#pragma hdrstop
+     10          #endif
+     11          #else
+     12          	#include "RTOS.h"
+     13          #endif
+     14          #include "TSNTimer.h"
+     15          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     16          TSNTimer::TSNTimer(void)
+     17          {
+   \                     ??TSNTimer:
+   \   00000000   ........           LDR      R1,??DataTable1  ;; ??__vtbl
+   \   00000004   1C1080E5           STR      R1,[R0, #+28]
+     18          	SeggerTimerIsCreated = false;
+   \   00000008   0010A0E3           MOV      R1,#+0
+   \   0000000C   0010C0E5           STRB     R1,[R0, #+0]
+     19          }
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     20          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     21          TSNTimer::~TSNTimer(void)
+     22          {
+   \                     `?~TSNTimer`:
+   \   00000000   ........           LDR      R1,??DataTable1  ;; ??__vtbl
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   1C1080E5           STR      R1,[R0, #+28]
+     23          #ifdef WIN32
+     24          	DeleteTimerQueueEx(m_hTimerQueue,0);
+     25          #else
+     26          	OS_DeleteTimer((OS_TIMER*)&m_UserTimer);
+   \   0000000C   040080E2           ADD      R0,R0,#+4
+   \   00000010   ........           _BLF     OS_DeleteTimer,??OS_DeleteTimer??rA
+     27          
+     28          #endif
+     29          
+     30          }
+   \   00000014                      REQUIRE ?Subroutine9
+   \   00000014                      ;; // Fall through to label ?Subroutine9
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine9:
+   \   00000000   0040BDE8           POP      {LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     31          bool TSNTimer::Start(unsigned int timeout)
+     32          {
+   \                     ??Start:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     33          	bool ret;
+     34          	if ( SeggerTimerIsCreated ) {
+   \   00000008   0000D4E5           LDRB     R0,[R4, #+0]
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0200000A           BEQ      ??Start_1
+     35          		ret = ReStart(timeout);
+   \   00000014   0400A0E1           MOV      R0,R4
+   \   00000018   ........           BL       ??ReStart
+   \   0000001C   080000EA           B        ??Start_2
+     36          	} else {
+     37          #ifdef WIN32
+     38          
+     39          		m_hTimerQueue = CreateTimerQueue();
+     40          		// ret = CreateTimerQueueTimer(&m_hTimer,m_hTimerQueue,WinCallback,this,timeout,timeout,0);
+     41          		ret = (bool)CreateTimerQueueTimer(&m_hTimer,m_hTimerQueue,WinCallback,this,timeout,0,0);
+     42          #else
+     43          		m_UserTimer.pObject = this;
+     44          		OS_CreateTimer((OS_TIMER*)&m_UserTimer,SeggerCallback,timeout);
+   \                     ??Start_1:
+   \   00000020   0120A0E1           MOV      R2,R1
+   \   00000024   ........           LDR      R1,??Subroutine10_0  ;; ??SeggerCallback
+   \   00000028   184084E5           STR      R4,[R4, #+24]
+   \   0000002C   040084E2           ADD      R0,R4,#+4
+   \   00000030   ........           _BLF     OS_CreateTimer,??OS_CreateTimer??rA
+     45          		OS_StartTimer((OS_TIMER*)&m_UserTimer);
+   \   00000034   040084E2           ADD      R0,R4,#+4
+   \   00000038   ........           _BLF     OS_StartTimer,??OS_StartTimer??rA
+     46          		SeggerTimerIsCreated = true;
+   \   0000003C   0100A0E3           MOV      R0,#+1
+   \   00000040   0000C4E5           STRB     R0,[R4, #+0]
+     47          		ret = true;
+     48          #endif
+     49          	}
+     50          	return(ret);
+   \                     ??Start_2:
+   \   00000044                      REQUIRE ?Subroutine10
+   \   00000044                      ;; // Fall through to label ?Subroutine10
+     51          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine10:
+   \   00000000   1040BDE8           POP      {R4,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+   \                     ??Subroutine10_0:
+   \   00000008   ........           DC32     ??SeggerCallback
+     52          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     53          bool TSNTimer::ReStart(unsigned int timeout)
+     54          {
+   \                     ??ReStart:
+   \   00000000   00402DE9           PUSH     {LR}
+     55          	bool ret;
+     56          	if ( SeggerTimerIsCreated ) {
+   \   00000004   0020D0E5           LDRB     R2,[R0, #+0]
+   \   00000008   000052E3           CMP      R2,#+0
+   \   0000000C   0400000A           BEQ      ??ReStart_1
+     57          
+     58          #ifdef WIN32
+     59          
+     60          //  m_hTimerQueue = CreateTimerQueue();
+     61          		ret = CreateTimerQueueTimer(&m_hTimer,m_hTimerQueue,WinCallback,this,timeout,0,0);
+     62          #else
+     63          		m_UserTimer.pObject = this;
+   \   00000010   180080E5           STR      R0,[R0, #+24]
+     64          		OS_RetriggerTimer((OS_TIMER*)&m_UserTimer);
+   \   00000014   040080E2           ADD      R0,R0,#+4
+   \   00000018   ........           _BLF     OS_RetriggerTimer,??OS_RetriggerTimer??rA
+     65          		ret = true;
+   \   0000001C   0100A0E3           MOV      R0,#+1
+   \   00000020   000000EA           B        ??ReStart_2
+     66          #endif
+     67          	} else {
+     68          		ret = Start(timeout);
+   \                     ??ReStart_1:
+   \   00000024   ........           BL       ??Start
+     69          	}
+     70          	return(ret);
+   \                     ??ReStart_2:
+   \   00000028   ........           B        ?Subroutine9
+     71          }
+     72          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     73          void TSNTimer::Stop()
+     74          {
+   \                     ??Stop:
+   \   00000000   00402DE9           PUSH     {LR}
+     75          	if ( SeggerTimerIsCreated ) {
+   \   00000004   0010D0E5           LDRB     R1,[R0, #+0]
+   \   00000008   000051E3           CMP      R1,#+0
+   \   0000000C   0200000A           BEQ      ??Stop_1
+     76          		SeggerTimerIsCreated = false;
+   \   00000010   0010A0E3           MOV      R1,#+0
+   \   00000014   ........           STRB     R1,[R0], #+4
+     77          #ifdef WIN32
+     78          		DeleteTimerQueueEx(m_hTimerQueue,0);
+     79          #else
+     80          		OS_DeleteTimer((OS_TIMER*)&m_UserTimer);
+   \   00000018   ........           _BLF     OS_DeleteTimer,??OS_DeleteTimer??rA
+     81          #endif
+     82          	}
+     83          }
+   \                     ??Stop_1:
+   \   0000001C   ........           B        ?Subroutine9
+     84          #ifdef WIN32
+     85          void CALLBACK TSNTimer::WinCallback(PVOID lpParameter,BOOLEAN fired)
+     86          {
+     87          	if ( fired && lpParameter ) {
+     88          		((TSNTimer*)lpParameter)->TimerCallback();
+     89          	}
+     90          
+     91          }
+     92          #else
+
+   \                                 In segment CODE, align 4, keep-with-next
+     93          void TSNTimer::SeggerCallback()
+     94          {
+     95          
+     96          	// EHSMark
+     97          	USER_TIMER *pUserTimer = (USER_TIMER*)OS_GetpCurrentTimer();
+   \                     ??SeggerCallback:
+   \   00000000   28009FE5           LDR      R0,??SeggerCallback_1  ;; OS_pCurrentTimer
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   000090E5           LDR      R0,[R0, #+0]
+     98          	if ( pUserTimer->pObject )
+   \   0000000C   141090E5           LDR      R1,[R0, #+20]
+   \   00000010   000051E3           CMP      R1,#+0
+   \   00000014   0400000A           BEQ      ??SeggerCallback_2
+     99          		((TSNTimer*)pUserTimer->pObject)->TimerCallback();
+   \   00000018   0100A0E1           MOV      R0,R1
+   \   0000001C   1C1091E5           LDR      R1,[R1, #+28]
+   \   00000020   041091E5           LDR      R1,[R1, #+4]
+   \   00000024   0FE0A0E1           MOV      LR,PC
+   \   00000028   11FF2FE1           BX       R1
+    100          	//if(pUserTimer)
+    101          	//OS_DeleteTimer((OS_TIMER*)&pUserTimer);
+    102          
+    103          }
+   \                     ??SeggerCallback_2:
+   \   0000002C   ........           B        ?Subroutine9
+   \                     ??SeggerCallback_1:
+   \   00000030   ........           DC32     OS_pCurrentTimer
+    104          #endif
+
+   \                                 In segment CODE, align 4, keep-with-next
+    105          void TSNTimer::TimerCallback()
+    106          {
+    107          }
+   \                     ??TimerCallback:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs TSNTimer &TSNTimer::new TSNTimer()
+   \                     `??new TSNTimer`:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   2000A0E3           MOV      R0,#+32
+   \   00000008   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0000000A           BEQ      `??new TSNTimer_1`
+   \   00000014   ........           BL       ??TSNTimer
+   \                     `??new TSNTimer_1`:
+   \   00000018   ........           B        ?Subroutine9
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs void TSNTimer::delete ~TSNTimer(TSNTimer *)
+   \                     `??delete ~TSNTimer`:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0200000A           BEQ      `??delete ~TSNTimer_1`
+   \   0000000C   ........           BL       `?~TSNTimer`
+   \   00000010   0400A0E1           MOV      R0,R4
+   \   00000014   ........           _BLF     `??operator delete`,`??operator delete??rA`
+   \                     `??delete ~TSNTimer_1`:
+   \   00000018   ........           B        ?Subroutine10
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable1:
+   \   00000000   ........           DC32     ??__vtbl
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     TSNTimer::ReStart(unsigned int)
+                                        4
+     TSNTimer::SeggerCallback()         4
+     TSNTimer::Start(unsigned int)      8
+     TSNTimer::Stop()                   4
+     TSNTimer::TSNTimer()               0
+     TSNTimer::TimerCallback()          0
+     TSNTimer::delete ~TSNTimer(TSNTimer *)
+                                        8
+     TSNTimer::new TSNTimer()           4
+     TSNTimer::~TSNTimer()              4
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     TSNTimer::TSNTimer()             20
+     TSNTimer::~TSNTimer()            20
+     ?Subroutine9                      8
+     TSNTimer::Start(unsigned int)    68
+     ?Subroutine10                    12
+     TSNTimer::ReStart(unsigned int)
+                                      44
+     TSNTimer::Stop()                 32
+     TSNTimer::SeggerCallback()       52
+     TSNTimer::TimerCallback()         4
+     TSNTimer::new TSNTimer()         28
+     TSNTimer::delete ~TSNTimer(TSNTimer *)
+                                      28
+     ??DataTable1                      4
+      Others                         116
+
+ 
+ 428 bytes in segment CODE
+   8 bytes in segment DATA_C
+ 
+ 320 bytes of CODE  memory (+ 108 bytes shared)
+   8 bytes of CONST memory
+
+Errors: none
+Warnings: none

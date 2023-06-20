@@ -1,0 +1,419 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  14:42:35 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\app\circ_buffer.c       #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\app\circ_buffer.c       #
+#                       --fpu None -D OS_LIBMODE_SP -D CPU_S3C2410 -D        #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\circ_buffer.lst             #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\circ_buffer.r79              #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\app\circ_buffer.c
+      1          ////////////////////////////////////////////////////////////////////////////////////
+      2          //
+      3          // simple circular buffer
+      4          //
+      5          ////////////////////////////////////////////////////////////////////////////////////
+      6          #include <stdio.h>
+      7          #include <string.h>
+      8          #include <stdlib.h>
+      9          #include "circ_buffer.h"
+     10          
+     11          /*
+     12           * initializes circular buffer
+     13           * allocates a circular buffer of size "size"
+     14           *
+     15           * @param cb   circular buffer
+     16           * @param size size of circular buffer
+     17           * @return 0 on success, -1 on fail
+     18           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     19          int
+     20          init_circ_buffer(CircBuffer* cb, int size)
+     21          {
+   \                     init_circ_buffer:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+     22            cb->buffer     = NULL;
+   \   0000000C   0000A0E3           MOV      R0,#+0
+   \   00000010   000084E5           STR      R0,[R4, #+0]
+     23            cb->size       = 0;
+   \   00000014   040084E5           STR      R0,[R4, #+4]
+     24            cb->begin      = 0;
+   \   00000018   0C0084E5           STR      R0,[R4, #+12]
+     25            cb->end        = 0;
+   \   0000001C   100084E5           STR      R0,[R4, #+16]
+     26            cb->data_size  = 0;
+   \   00000020   080084E5           STR      R0,[R4, #+8]
+     27          
+     28            cb->buffer = (char*)malloc(size);
+   \   00000024   0500A0E1           MOV      R0,R5
+   \   00000028   ........           _BLF     __data_malloc,??__data_malloc??rA
+   \   0000002C   000084E5           STR      R0,[R4, #+0]
+     29            if(cb->buffer == NULL)
+   \   00000030   000050E3           CMP      R0,#+0
+     30            {
+     31              return -1;
+     32            }
+     33          
+     34            cb->size       = size;
+   \   00000034   04508415           STRNE    R5,[R4, #+4]
+     35            return 0;
+   \   00000038   3040BDE8           POP      {R4,R5,LR}
+   \   0000003C   0000E003           MVNEQ    R0,#+0
+   \   00000040   0000A013           MOVNE    R0,#+0
+   \   00000044   1EFF2FE1           BX       LR               ;; return
+     36          }
+     37          
+     38          /*
+     39           * de-initializes circular buffer
+     40           * frees buffer used by circular buffer
+     41           *
+     42           * @param cb   circular buffer
+     43           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     44          void
+     45          deinit_circ_buffer(CircBuffer* cb)
+     46          {
+   \                     deinit_circ_buffer:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     47            if(cb->buffer != NULL)
+   \   00000008   000094E5           LDR      R0,[R4, #+0]
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0200000A           BEQ      ??deinit_circ_buffer_0
+     48            {
+     49              free(cb->buffer);
+   \   00000014   ........           _BLF     __data_free,??__data_free??rA
+     50              cb->buffer = NULL;
+   \   00000018   0000A0E3           MOV      R0,#+0
+   \   0000001C   000084E5           STR      R0,[R4, #+0]
+     51            }
+     52          }
+   \                     ??deinit_circ_buffer_0:
+   \   00000020   1040BDE8           POP      {R4,LR}
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+     53          
+     54          /*
+     55           * adds data to circular buffer
+     56           * if the whole size data cannot be added to the circular buffer
+     57           * error is returned
+     58           *
+     59           * @param cb   circular buffer
+     60           * @param buf data buffer
+     61           * @param size size of data
+     62           * @return 0 on success, -1 on error
+     63           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     64          int
+     65          put_circ_buffer(CircBuffer* cb, char* buf, int size)
+     66          {
+   \                     put_circ_buffer:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     67            if(cb->data_size + size > cb->size)
+   \   00000008   080094E5           LDR      R0,[R4, #+8]
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   041094E5           LDR      R1,[R4, #+4]
+   \   00000014   0260A0E1           MOV      R6,R2
+   \   00000018   000086E0           ADD      R0,R6,R0
+   \   0000001C   000051E1           CMP      R1,R0
+     68            {
+     69              return -1;
+   \   00000020   0000E0B3           MVNLT    R0,#+0
+   \   00000024   190000BA           BLT      ??put_circ_buffer_0
+     70            }
+     71          
+     72            if(cb->end + size > cb->size)
+   \   00000028   102094E5           LDR      R2,[R4, #+16]
+   \   0000002C   000094E5           LDR      R0,[R4, #+0]
+   \   00000030   023086E0           ADD      R3,R6,R2
+   \   00000034   000082E0           ADD      R0,R2,R0
+   \   00000038   030051E1           CMP      R1,R3
+   \   0000003C   070000AA           BGE      ??put_circ_buffer_1
+     73            {
+     74              int begin_len = cb->size - cb->end;
+   \   00000040   027041E0           SUB      R7,R1,R2
+     75          
+     76              memcpy(&cb->buffer[cb->end], buf, begin_len);
+   \   00000044   0720A0E1           MOV      R2,R7
+   \   00000048   0510A0E1           MOV      R1,R5
+   \   0000004C   ........           _BLF     memcpy,??memcpy??rA
+     77              memcpy(&cb->buffer[0], &buf[begin_len], size - begin_len);
+   \   00000050   000094E5           LDR      R0,[R4, #+0]
+   \   00000054   072046E0           SUB      R2,R6,R7
+   \   00000058   051087E0           ADD      R1,R7,R5
+   \   0000005C   010000EA           B        ??put_circ_buffer_2
+     78            }
+     79            else
+     80            {
+     81              memcpy(&cb->buffer[cb->end], buf, size);
+   \                     ??put_circ_buffer_1:
+   \   00000060   0620A0E1           MOV      R2,R6
+   \   00000064   0510A0E1           MOV      R1,R5
+   \                     ??put_circ_buffer_2:
+   \   00000068   ........           _BLF     memcpy,??memcpy??rA
+     82            }
+     83          
+     84            cb->end = (cb->end  + size) % cb->size;
+   \   0000006C   100094E5           LDR      R0,[R4, #+16]
+   \   00000070   041094E5           LDR      R1,[R4, #+4]
+   \   00000074   000086E0           ADD      R0,R6,R0
+   \   00000078   ........           _BLF     ??div32_a,??rA??div32_a
+   \   0000007C   100084E5           STR      R0,[R4, #+16]
+     85            cb->data_size += size;
+   \   00000080   080094E5           LDR      R0,[R4, #+8]
+   \   00000084   000086E0           ADD      R0,R6,R0
+   \   00000088   080084E5           STR      R0,[R4, #+8]
+     86            return 0;
+   \   0000008C   0000A0E3           MOV      R0,#+0
+   \                     ??put_circ_buffer_0:
+   \   00000090   F040BDE8           POP      {R4-R7,LR}
+   \   00000094   1EFF2FE1           BX       LR               ;; return
+     87          }
+     88          
+     89          /*
+     90           * removes data from circular buffer
+     91           * if the whole size data cannot be removed from the circular buffer
+     92           * error is returned
+     93           *
+     94           * @param cb   circular buffer
+     95           * @param buf buffer to copy data from circular buffer
+     96           * @param size size of data requested
+     97           * @return 0 on success, -1 on error
+     98           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     99          int
+    100          get_circ_buffer(CircBuffer* cb, char* buf, int size)
+    101          {
+   \                     get_circ_buffer:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    102            if(cb->data_size - size < 0)
+   \   00000008   080094E5           LDR      R0,[R4, #+8]
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   060050E0           SUBS     R0,R0,R6
+    103            {
+    104              return -1;
+   \   00000018   0000E043           MVNMI    R0,#+0
+   \   0000001C   1900004A           BMI      ??get_circ_buffer_0
+    105            }
+    106          
+    107            if(cb->begin + size <= cb->size)
+   \   00000020   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000024   001094E5           LDR      R1,[R4, #+0]
+   \   00000028   042094E5           LDR      R2,[R4, #+4]
+   \   0000002C   011080E0           ADD      R1,R0,R1
+   \   00000030   003086E0           ADD      R3,R6,R0
+   \   00000034   030052E1           CMP      R2,R3
+    108            {
+    109              memcpy(buf, &cb->buffer[cb->begin], size);
+   \   00000038   0620A0A1           MOVGE    R2,R6
+   \   0000003C   0500A0A1           MOVGE    R0,R5
+   \   00000040   060000AA           BGE      ??get_circ_buffer_1
+    110            }
+    111            else
+    112            {
+    113              int begin_len = cb->size - cb->begin;
+   \   00000044   007042E0           SUB      R7,R2,R0
+    114          
+    115              memcpy(buf, &cb->buffer[cb->begin], begin_len);
+   \   00000048   0720A0E1           MOV      R2,R7
+   \   0000004C   0500A0E1           MOV      R0,R5
+   \   00000050   ........           _BLF     memcpy,??memcpy??rA
+    116              memcpy(&buf[begin_len], &cb->buffer[0], size - begin_len);
+   \   00000054   001094E5           LDR      R1,[R4, #+0]
+   \   00000058   072046E0           SUB      R2,R6,R7
+   \   0000005C   050087E0           ADD      R0,R7,R5
+   \                     ??get_circ_buffer_1:
+   \   00000060   ........           _BLF     memcpy,??memcpy??rA
+    117            }
+    118          
+    119            cb->begin = (cb->begin + size) % cb->size;
+   \   00000064   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000068   041094E5           LDR      R1,[R4, #+4]
+   \   0000006C   000086E0           ADD      R0,R6,R0
+   \   00000070   ........           _BLF     ??div32_a,??rA??div32_a
+   \   00000074   0C0084E5           STR      R0,[R4, #+12]
+    120            cb->data_size -= size;
+   \   00000078   080094E5           LDR      R0,[R4, #+8]
+   \   0000007C   060040E0           SUB      R0,R0,R6
+   \   00000080   080084E5           STR      R0,[R4, #+8]
+    121            return 0;
+   \   00000084   0000A0E3           MOV      R0,#+0
+   \                     ??get_circ_buffer_0:
+   \   00000088   F040BDE8           POP      {R4-R7,LR}
+   \   0000008C   1EFF2FE1           BX       LR               ;; return
+    122          }
+    123          
+    124          /*
+    125           * removes data from circular but the data is not copied to
+    126           * user buffer
+    127           * if the whole size data cannot be copied from the circular buffer
+    128           * error is returned
+    129           *
+    130           * @param cb   circular buffer
+    131           * @param size size of data requested
+    132           * @return 0 on success, -1 on error
+    133           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    134          int
+    135          get_circ_buffer_no_copy(CircBuffer* cb, int size)
+    136          {
+   \                     get_circ_buffer_no_copy:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   0020A0E1           MOV      R2,R0
+    137            if(cb->data_size - size < 0)
+   \   00000008   080092E5           LDR      R0,[R2, #+8]
+   \   0000000C   013050E0           SUBS     R3,R0,R1
+    138            {
+    139              return -1;
+   \   00000010   0000E043           MVNMI    R0,#+0
+   \   00000014   0600004A           BMI      ??get_circ_buffer_no_copy_0
+    140            }
+    141          
+    142            cb->begin = (cb->begin + size) % cb->size;
+   \   00000018   0C0092E5           LDR      R0,[R2, #+12]
+   \   0000001C   000081E0           ADD      R0,R1,R0
+   \   00000020   041092E5           LDR      R1,[R2, #+4]
+   \   00000024   ........           _BLF     ??div32_a,??rA??div32_a
+   \   00000028   0C0082E5           STR      R0,[R2, #+12]
+    143            cb->data_size -= size;
+   \   0000002C   083082E5           STR      R3,[R2, #+8]
+    144            return 0;
+   \   00000030   0000A0E3           MOV      R0,#+0
+   \                     ??get_circ_buffer_no_copy_0:
+   \   00000034   0040BDE8           POP      {LR}
+   \   00000038   1EFF2FE1           BX       LR               ;; return
+    145          }
+    146          
+    147          /*
+    148           * gets data from circular but the data still remains in circular buffer
+    149           * if the whole size data cannot be copied from the circular buffer
+    150           * error is returned
+    151           *
+    152           * @param cb circular buffer
+    153           * @param buf user buffer to copy data to
+    154           * @param size size of data requested
+    155           * @return 0 on success, -1 on error
+    156           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    157          int
+    158          peek_circ_buffer(CircBuffer* cb, char* buf, int size)
+    159          {
+   \                     peek_circ_buffer:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    160            if(cb->data_size - size < 0)
+   \   00000008   080094E5           LDR      R0,[R4, #+8]
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   060050E0           SUBS     R0,R0,R6
+    161            {
+    162              return -1;
+   \   00000018   0000E043           MVNMI    R0,#+0
+   \   0000001C   1100004A           BMI      ??peek_circ_buffer_0
+    163            }
+    164          
+    165            if(cb->begin + size <= cb->size)
+   \   00000020   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000024   001094E5           LDR      R1,[R4, #+0]
+   \   00000028   042094E5           LDR      R2,[R4, #+4]
+   \   0000002C   011080E0           ADD      R1,R0,R1
+   \   00000030   003086E0           ADD      R3,R6,R0
+   \   00000034   030052E1           CMP      R2,R3
+    166            {
+    167              memcpy(buf, &cb->buffer[cb->begin], size);
+   \   00000038   0620A0A1           MOVGE    R2,R6
+   \   0000003C   0500A0A1           MOVGE    R0,R5
+   \   00000040   060000AA           BGE      ??peek_circ_buffer_1
+    168            }
+    169            else
+    170            {
+    171              int begin_len = cb->size - cb->begin;
+   \   00000044   007042E0           SUB      R7,R2,R0
+    172          
+    173              memcpy(buf, &cb->buffer[cb->begin], begin_len);
+   \   00000048   0720A0E1           MOV      R2,R7
+   \   0000004C   0500A0E1           MOV      R0,R5
+   \   00000050   ........           _BLF     memcpy,??memcpy??rA
+    174              memcpy(&buf[begin_len], &cb->buffer[0], size - begin_len);
+   \   00000054   001094E5           LDR      R1,[R4, #+0]
+   \   00000058   072046E0           SUB      R2,R6,R7
+   \   0000005C   050087E0           ADD      R0,R7,R5
+   \                     ??peek_circ_buffer_1:
+   \   00000060   ........           _BLF     memcpy,??memcpy??rA
+    175            }
+    176            return 0;
+   \   00000064   0000A0E3           MOV      R0,#+0
+   \                     ??peek_circ_buffer_0:
+   \   00000068   F040BDE8           POP      {R4-R7,LR}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    177          }
+
+   Maximum stack usage in bytes:
+
+     Function                CSTACK
+     --------                ------
+     deinit_circ_buffer          8
+     get_circ_buffer            20
+     get_circ_buffer_no_copy     4
+     init_circ_buffer           12
+     peek_circ_buffer           20
+     put_circ_buffer            20
+
+
+   Segment part sizes:
+
+     Function/Label          Bytes
+     --------------          -----
+     init_circ_buffer          72
+     deinit_circ_buffer        40
+     put_circ_buffer          152
+     get_circ_buffer          144
+     get_circ_buffer_no_copy   60
+     peek_circ_buffer         112
+      Others                   72
+
+ 
+ 652 bytes in segment CODE
+ 
+ 580 bytes of CODE memory (+ 72 bytes shared)
+
+Errors: none
+Warnings: none

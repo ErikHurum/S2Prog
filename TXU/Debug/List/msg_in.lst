@@ -1,0 +1,1505 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:16 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\snmp\msg_in.c      #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\snmp\msg_in.c      #
+#                       --fpu None -D OS_LIBMODE_SP -D CPU_S3C2410 -D        #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\msg_in.lst                  #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\msg_in.r79                   #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\snmp\msg_in.c
+      1          /**
+      2           * @file
+      3           * SNMP input message processing (RFC1157).
+      4           */
+      5          
+      6          /*
+      7           * Copyright (c) 2006 Axon Digital Design B.V., The Netherlands.
+      8           * All rights reserved.
+      9           *
+     10           * Redistribution and use in source and binary forms, with or without modification,
+     11           * are permitted provided that the following conditions are met:
+     12           *
+     13           * 1. Redistributions of source code must retain the above copyright notice,
+     14           *    this list of conditions and the following disclaimer.
+     15           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     16           *    this list of conditions and the following disclaimer in the documentation
+     17           *    and/or other materials provided with the distribution.
+     18           * 3. The name of the author may not be used to endorse or promote products
+     19           *    derived from this software without specific prior written permission.
+     20           *
+     21           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     22           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     23           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     24           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     25           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     26           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     27           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     28           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     29           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     30           * OF SUCH DAMAGE.
+     31           *
+     32           * Author: Christiaan Simons <christiaan.simons@axon.tv>
+     33           */
+     34          
+     35          #include "lwip/opt.h"
+     36          
+     37          #if LWIP_SNMP /* don't build if not configured for use in lwipopts.h */
+     38          
+     39          #include "lwip/snmp.h"
+     40          #include "lwip/snmp_asn1.h"
+     41          #include "lwip/snmp_msg.h"
+     42          #include "lwip/snmp_structs.h"
+     43          #include "lwip/ip_addr.h"
+     44          #include "lwip/memp.h"
+     45          #include "lwip/udp.h"
+     46          #include "lwip/stats.h"
+     47          
+     48          #include <string.h>
+     49          
+     50          /* public (non-static) constants */
+     51          /** SNMP v1 == 0 */
+     52          const s32_t snmp_version = 0;
+     53          /** default SNMP community string */
+     54          const char snmp_publiccommunity[7] = "public";
+     55          
+     56          /* statically allocated buffers for SNMP_CONCURRENT_REQUESTS */
+     57          struct snmp_msg_pstat msg_input_list[SNMP_CONCURRENT_REQUESTS];
+     58          /* UDP Protocol Control Block */
+     59          struct udp_pcb *snmp1_pcb;
+     60          
+     61          static void snmp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t port);
+     62          static err_t snmp_pdu_header_check(struct pbuf *p, u16_t ofs, u16_t pdu_len, u16_t *ofs_ret, struct snmp_msg_pstat *m_stat);
+     63          static err_t snmp_pdu_dec_varbindlist(struct pbuf *p, u16_t ofs, u16_t *ofs_ret, struct snmp_msg_pstat *m_stat);
+     64          
+     65          
+     66          /**
+     67           * Starts SNMP Agent.
+     68           * Allocates UDP pcb and binds it to IP_ADDR_ANY port 161.
+     69           */
+     70          void
+     71          snmp_init(void)
+     72          {
+     73            struct snmp_msg_pstat *msg_ps;
+     74            u8_t i;
+     75          
+     76            snmp1_pcb = udp_new();
+     77            if (snmp1_pcb != NULL)
+     78            {
+     79              udp_recv(snmp1_pcb, snmp_recv, (void *)SNMP_IN_PORT);
+     80              udp_bind(snmp1_pcb, IP_ADDR_ANY, SNMP_IN_PORT);
+     81            }
+     82            msg_ps = &msg_input_list[0];
+     83            for (i=0; i<SNMP_CONCURRENT_REQUESTS; i++)
+     84            {
+     85              msg_ps->state = SNMP_MSG_EMPTY;
+     86              msg_ps->error_index = 0;
+     87              msg_ps->error_status = SNMP_ES_NOERROR;
+     88              msg_ps++;
+     89            }
+     90            trap_msg.pcb = snmp1_pcb;
+     91          
+     92          #ifdef SNMP_PRIVATE_MIB_INIT
+     93            /* If defined, this must be a function-like define to initialize the
+     94             * private MIB after the stack has been initialized.
+     95             * The private MIB can also be initialized in tcpip_callback (or after
+     96             * the stack is initialized), this define is only for convenience. */
+     97            SNMP_PRIVATE_MIB_INIT();
+     98          #endif /* SNMP_PRIVATE_MIB_INIT */
+     99          
+    100            /* The coldstart trap will only be output
+    101               if our outgoing interface is up & configured  */
+    102            snmp_coldstart_trap();
+    103          }
+    104          
+    105          static void
+    106          snmp_error_response(struct snmp_msg_pstat *msg_ps, u8_t error)
+    107          {
+    108            /* move names back from outvb to invb */
+    109            int v;
+    110            struct snmp_varbind *vbi = msg_ps->invb.head;
+    111            struct snmp_varbind *vbo = msg_ps->outvb.head;
+    112            for (v=0; v<msg_ps->vb_idx; v++) {
+    113              vbi->ident_len = vbo->ident_len;
+    114              vbo->ident_len = 0;
+    115              vbi->ident = vbo->ident;
+    116              vbo->ident = NULL;
+    117              vbi = vbi->next;
+    118              vbo = vbo->next;
+    119            }
+    120            /* free outvb */
+    121            snmp_varbind_list_free(&msg_ps->outvb);
+    122            /* we send invb back */
+    123            msg_ps->outvb = msg_ps->invb;
+    124            msg_ps->invb.head = NULL;
+    125            msg_ps->invb.tail = NULL;
+    126            msg_ps->invb.count = 0;
+    127            msg_ps->error_status = error;
+    128            /* error index must be 0 for error too big */
+    129            msg_ps->error_index = (error != SNMP_ES_TOOBIG) ? (1 + msg_ps->vb_idx) : 0;
+    130            snmp_send_response(msg_ps);
+    131            snmp_varbind_list_free(&msg_ps->outvb);
+    132            msg_ps->state = SNMP_MSG_EMPTY;
+    133          }
+    134          
+    135          static void
+    136          snmp_ok_response(struct snmp_msg_pstat *msg_ps)
+    137          {
+    138            err_t err_ret;
+    139          
+    140            err_ret = snmp_send_response(msg_ps);
+    141            if (err_ret == ERR_MEM)
+    142            {
+    143              /* serious memory problem, can't return tooBig */
+    144            }
+    145            else
+    146            {
+    147              LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_event = %"S32_F"\n",msg_ps->error_status));
+    148            }
+    149            /* free varbinds (if available) */
+    150            snmp_varbind_list_free(&msg_ps->invb);
+    151            snmp_varbind_list_free(&msg_ps->outvb);
+    152            msg_ps->state = SNMP_MSG_EMPTY;
+    153          }
+    154          
+    155          /**
+    156           * Service an internal or external event for SNMP GET.
+    157           *
+    158           * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
+    159           * @param msg_ps points to the assosicated message process state
+    160           */
+    161          static void
+    162          snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
+    163          {
+    164            LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_get_event: msg_ps->state==%"U16_F"\n",(u16_t)msg_ps->state));
+    165          
+    166            if (msg_ps->state == SNMP_MSG_EXTERNAL_GET_OBJDEF)
+    167            {
+    168              struct mib_external_node *en;
+    169              struct snmp_name_ptr np;
+    170          
+    171              /* get_object_def() answer*/
+    172              en = msg_ps->ext_mib_node;
+    173              np = msg_ps->ext_name_ptr;
+    174          
+    175              /* translate answer into a known lifeform */
+    176              en->get_object_def_a(request_id, np.ident_len, np.ident, &msg_ps->ext_object_def);
+    177              if ((msg_ps->ext_object_def.instance != MIB_OBJECT_NONE) &&
+    178                  (msg_ps->ext_object_def.access & MIB_ACCESS_READ))
+    179              {
+    180                msg_ps->state = SNMP_MSG_EXTERNAL_GET_VALUE;
+    181                en->get_value_q(request_id, &msg_ps->ext_object_def);
+    182              }
+    183              else
+    184              {
+    185                en->get_object_def_pc(request_id, np.ident_len, np.ident);
+    186                /* search failed, object id points to unknown object (nosuchname) */
+    187                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    188              }
+    189            }
+    190            else if (msg_ps->state == SNMP_MSG_EXTERNAL_GET_VALUE)
+    191            {
+    192              struct mib_external_node *en;
+    193              struct snmp_varbind *vb;
+    194          
+    195              /* get_value() answer */
+    196              en = msg_ps->ext_mib_node;
+    197          
+    198              /* allocate output varbind */
+    199              vb = (struct snmp_varbind *)memp_malloc(MEMP_SNMP_VARBIND);
+    200              if (vb != NULL)
+    201              {
+    202                vb->next = NULL;
+    203                vb->prev = NULL;
+    204          
+    205                /* move name from invb to outvb */
+    206                vb->ident = msg_ps->vb_ptr->ident;
+    207                vb->ident_len = msg_ps->vb_ptr->ident_len;
+    208                /* ensure this memory is refereced once only */
+    209                msg_ps->vb_ptr->ident = NULL;
+    210                msg_ps->vb_ptr->ident_len = 0;
+    211          
+    212                vb->value_type = msg_ps->ext_object_def.asn_type;
+    213                LWIP_ASSERT("invalid length", msg_ps->ext_object_def.v_len <= 0xff);
+    214                vb->value_len = (u8_t)msg_ps->ext_object_def.v_len;
+    215                if (vb->value_len > 0)
+    216                {
+    217                  LWIP_ASSERT("SNMP_MAX_OCTET_STRING_LEN is configured too low", vb->value_len <= SNMP_MAX_VALUE_SIZE);
+    218                  vb->value = memp_malloc(MEMP_SNMP_VALUE);
+    219                  if (vb->value != NULL)
+    220                  {
+    221                    en->get_value_a(request_id, &msg_ps->ext_object_def, vb->value_len, vb->value);
+    222                    snmp_varbind_tail_add(&msg_ps->outvb, vb);
+    223                    /* search again (if vb_idx < msg_ps->invb.count) */
+    224                    msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    225                    msg_ps->vb_idx += 1;
+    226                  }
+    227                  else
+    228                  {
+    229                    en->get_value_pc(request_id, &msg_ps->ext_object_def);
+    230                    LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_event: no variable space\n"));
+    231                    msg_ps->vb_ptr->ident = vb->ident;
+    232                    msg_ps->vb_ptr->ident_len = vb->ident_len;
+    233                    memp_free(MEMP_SNMP_VARBIND, vb);
+    234                    snmp_error_response(msg_ps,SNMP_ES_TOOBIG);
+    235                  }
+    236                }
+    237                else
+    238                {
+    239                  /* vb->value_len == 0, empty value (e.g. empty string) */
+    240                  en->get_value_a(request_id, &msg_ps->ext_object_def, 0, NULL);
+    241                  vb->value = NULL;
+    242                  snmp_varbind_tail_add(&msg_ps->outvb, vb);
+    243                  /* search again (if vb_idx < msg_ps->invb.count) */
+    244                  msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    245                  msg_ps->vb_idx += 1;
+    246                }
+    247              }
+    248              else
+    249              {
+    250                en->get_value_pc(request_id, &msg_ps->ext_object_def);
+    251                LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_event: no outvb space\n"));
+    252                snmp_error_response(msg_ps,SNMP_ES_TOOBIG);
+    253              }
+    254            }
+    255          
+    256            while ((msg_ps->state == SNMP_MSG_SEARCH_OBJ) &&
+    257                   (msg_ps->vb_idx < msg_ps->invb.count))
+    258            {
+    259              struct mib_node *mn;
+    260              struct snmp_name_ptr np;
+    261          
+    262              if (msg_ps->vb_idx == 0)
+    263              {
+    264                msg_ps->vb_ptr = msg_ps->invb.head;
+    265              }
+    266              else
+    267              {
+    268                msg_ps->vb_ptr = msg_ps->vb_ptr->next;
+    269              }
+    270              /** test object identifier for .iso.org.dod.internet prefix */
+    271              if (snmp_iso_prefix_tst(msg_ps->vb_ptr->ident_len,  msg_ps->vb_ptr->ident))
+    272              {
+    273                mn = snmp_search_tree((struct mib_node*)&internet, msg_ps->vb_ptr->ident_len - 4,
+    274                                       msg_ps->vb_ptr->ident + 4, &np);
+    275                if (mn != NULL)
+    276                {
+    277                  if (mn->node_type == MIB_NODE_EX)
+    278                  {
+    279                    /* external object */
+    280                    struct mib_external_node *en = (struct mib_external_node*)mn;
+    281          
+    282                    msg_ps->state = SNMP_MSG_EXTERNAL_GET_OBJDEF;
+    283                    /* save en && args in msg_ps!! */
+    284                    msg_ps->ext_mib_node = en;
+    285                    msg_ps->ext_name_ptr = np;
+    286          
+    287                    en->get_object_def_q(en->addr_inf, request_id, np.ident_len, np.ident);
+    288                  }
+    289                  else
+    290                  {
+    291                    /* internal object */
+    292                    struct obj_def object_def;
+    293          
+    294                    msg_ps->state = SNMP_MSG_INTERNAL_GET_OBJDEF;
+    295                    mn->get_object_def(np.ident_len, np.ident, &object_def);
+    296                    if ((object_def.instance != MIB_OBJECT_NONE) &&
+    297                      (object_def.access & MIB_ACCESS_READ))
+    298                    {
+    299                      mn = mn;
+    300                    }
+    301                    else
+    302                    {
+    303                      /* search failed, object id points to unknown object (nosuchname) */
+    304                      mn =  NULL;
+    305                    }
+    306                    if (mn != NULL)
+    307                    {
+    308                      struct snmp_varbind *vb;
+    309          
+    310                      msg_ps->state = SNMP_MSG_INTERNAL_GET_VALUE;
+    311                      /* allocate output varbind */
+    312                      vb = (struct snmp_varbind *)memp_malloc(MEMP_SNMP_VARBIND);
+    313                      if (vb != NULL)
+    314                      {
+    315                        vb->next = NULL;
+    316                        vb->prev = NULL;
+    317          
+    318                        /* move name from invb to outvb */
+    319                        vb->ident = msg_ps->vb_ptr->ident;
+    320                        vb->ident_len = msg_ps->vb_ptr->ident_len;
+    321                        /* ensure this memory is refereced once only */
+    322                        msg_ps->vb_ptr->ident = NULL;
+    323                        msg_ps->vb_ptr->ident_len = 0;
+    324          
+    325                        vb->value_type = object_def.asn_type;
+    326                        LWIP_ASSERT("invalid length", object_def.v_len <= 0xff);
+    327                        vb->value_len = (u8_t)object_def.v_len;
+    328                        if (vb->value_len > 0)
+    329                        {
+    330                          LWIP_ASSERT("SNMP_MAX_OCTET_STRING_LEN is configured too low",
+    331                            vb->value_len <= SNMP_MAX_VALUE_SIZE);
+    332                          vb->value = memp_malloc(MEMP_SNMP_VALUE);
+    333                          if (vb->value != NULL)
+    334                          {
+    335                            mn->get_value(&object_def, vb->value_len, vb->value);
+    336                            snmp_varbind_tail_add(&msg_ps->outvb, vb);
+    337                            msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    338                            msg_ps->vb_idx += 1;
+    339                          }
+    340                          else
+    341                          {
+    342                            LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_event: couldn't allocate variable space\n"));
+    343                            msg_ps->vb_ptr->ident = vb->ident;
+    344                            msg_ps->vb_ptr->ident_len = vb->ident_len;
+    345                            vb->ident = NULL;
+    346                            vb->ident_len = 0;
+    347                            memp_free(MEMP_SNMP_VARBIND, vb);
+    348                            snmp_error_response(msg_ps,SNMP_ES_TOOBIG);
+    349                          }
+    350                        }
+    351                        else
+    352                        {
+    353                          /* vb->value_len == 0, empty value (e.g. empty string) */
+    354                          vb->value = NULL;
+    355                          snmp_varbind_tail_add(&msg_ps->outvb, vb);
+    356                          msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    357                          msg_ps->vb_idx += 1;
+    358                        }
+    359                      }
+    360                      else
+    361                      {
+    362                        LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_event: couldn't allocate outvb space\n"));
+    363                        snmp_error_response(msg_ps,SNMP_ES_TOOBIG);
+    364                      }
+    365                    }
+    366                  }
+    367                }
+    368              }
+    369              else
+    370              {
+    371                mn = NULL;
+    372              }
+    373              if (mn == NULL)
+    374              {
+    375                /* mn == NULL, noSuchName */
+    376                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    377              }
+    378            }
+    379            if ((msg_ps->state == SNMP_MSG_SEARCH_OBJ) &&
+    380                (msg_ps->vb_idx == msg_ps->invb.count))
+    381            {
+    382              snmp_ok_response(msg_ps);
+    383            }
+    384          }
+    385          
+    386          /**
+    387           * Service an internal or external event for SNMP GETNEXT.
+    388           *
+    389           * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
+    390           * @param msg_ps points to the assosicated message process state
+    391           */
+    392          static void
+    393          snmp_msg_getnext_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
+    394          {
+    395            LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_getnext_event: msg_ps->state==%"U16_F"\n",(u16_t)msg_ps->state));
+    396          
+    397            if (msg_ps->state == SNMP_MSG_EXTERNAL_GET_OBJDEF)
+    398            {
+    399              struct mib_external_node *en;
+    400          
+    401              /* get_object_def() answer*/
+    402              en = msg_ps->ext_mib_node;
+    403          
+    404              /* translate answer into a known lifeform */
+    405              en->get_object_def_a(request_id, 1, &msg_ps->ext_oid.id[msg_ps->ext_oid.len - 1], &msg_ps->ext_object_def);
+    406              if (msg_ps->ext_object_def.instance != MIB_OBJECT_NONE)
+    407              {
+    408                msg_ps->state = SNMP_MSG_EXTERNAL_GET_VALUE;
+    409                en->get_value_q(request_id, &msg_ps->ext_object_def);
+    410              }
+    411              else
+    412              {
+    413                en->get_object_def_pc(request_id, 1, &msg_ps->ext_oid.id[msg_ps->ext_oid.len - 1]);
+    414                /* search failed, object id points to unknown object (nosuchname) */
+    415                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    416              }
+    417            }
+    418            else if (msg_ps->state == SNMP_MSG_EXTERNAL_GET_VALUE)
+    419            {
+    420              struct mib_external_node *en;
+    421              struct snmp_varbind *vb;
+    422          
+    423              /* get_value() answer */
+    424              en = msg_ps->ext_mib_node;
+    425          
+    426              LWIP_ASSERT("invalid length", msg_ps->ext_object_def.v_len <= 0xff);
+    427              vb = snmp_varbind_alloc(&msg_ps->ext_oid,
+    428                                      msg_ps->ext_object_def.asn_type,
+    429                                      (u8_t)msg_ps->ext_object_def.v_len);
+    430              if (vb != NULL)
+    431              {
+    432                en->get_value_a(request_id, &msg_ps->ext_object_def, vb->value_len, vb->value);
+    433                snmp_varbind_tail_add(&msg_ps->outvb, vb);
+    434                msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    435                msg_ps->vb_idx += 1;
+    436              }
+    437              else
+    438              {
+    439                en->get_value_pc(request_id, &msg_ps->ext_object_def);
+    440                LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_getnext_event: couldn't allocate outvb space\n"));
+    441                snmp_error_response(msg_ps,SNMP_ES_TOOBIG);
+    442              }
+    443            }
+    444          
+    445            while ((msg_ps->state == SNMP_MSG_SEARCH_OBJ) &&
+    446                   (msg_ps->vb_idx < msg_ps->invb.count))
+    447            {
+    448              struct mib_node *mn;
+    449              struct snmp_obj_id oid;
+    450          
+    451              if (msg_ps->vb_idx == 0)
+    452              {
+    453                msg_ps->vb_ptr = msg_ps->invb.head;
+    454              }
+    455              else
+    456              {
+    457                msg_ps->vb_ptr = msg_ps->vb_ptr->next;
+    458              }
+    459              if (snmp_iso_prefix_expand(msg_ps->vb_ptr->ident_len, msg_ps->vb_ptr->ident, &oid))
+    460              {
+    461                if (msg_ps->vb_ptr->ident_len > 3)
+    462                {
+    463                  /* can offset ident_len and ident */
+    464                  mn = snmp_expand_tree((struct mib_node*)&internet,
+    465                                        msg_ps->vb_ptr->ident_len - 4,
+    466                                        msg_ps->vb_ptr->ident + 4, &oid);
+    467                }
+    468                else
+    469                {
+    470                  /* can't offset ident_len -4, ident + 4 */
+    471                  mn = snmp_expand_tree((struct mib_node*)&internet, 0, NULL, &oid);
+    472                }
+    473              }
+    474              else
+    475              {
+    476                mn = NULL;
+    477              }
+    478              if (mn != NULL)
+    479              {
+    480                if (mn->node_type == MIB_NODE_EX)
+    481                {
+    482                  /* external object */
+    483                  struct mib_external_node *en = (struct mib_external_node*)mn;
+    484          
+    485                  msg_ps->state = SNMP_MSG_EXTERNAL_GET_OBJDEF;
+    486                  /* save en && args in msg_ps!! */
+    487                  msg_ps->ext_mib_node = en;
+    488                  msg_ps->ext_oid = oid;
+    489          
+    490                  en->get_object_def_q(en->addr_inf, request_id, 1, &oid.id[oid.len - 1]);
+    491                }
+    492                else
+    493                {
+    494                  /* internal object */
+    495                  struct obj_def object_def;
+    496                  struct snmp_varbind *vb;
+    497          
+    498                  msg_ps->state = SNMP_MSG_INTERNAL_GET_OBJDEF;
+    499                  mn->get_object_def(1, &oid.id[oid.len - 1], &object_def);
+    500          
+    501                  LWIP_ASSERT("invalid length", object_def.v_len <= 0xff);
+    502                  vb = snmp_varbind_alloc(&oid, object_def.asn_type, (u8_t)object_def.v_len);
+    503                  if (vb != NULL)
+    504                  {
+    505                    msg_ps->state = SNMP_MSG_INTERNAL_GET_VALUE;
+    506                    mn->get_value(&object_def, object_def.v_len, vb->value);
+    507                    snmp_varbind_tail_add(&msg_ps->outvb, vb);
+    508                    msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    509                    msg_ps->vb_idx += 1;
+    510                  }
+    511                  else
+    512                  {
+    513                    LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_recv couldn't allocate outvb space\n"));
+    514                    snmp_error_response(msg_ps,SNMP_ES_TOOBIG);
+    515                  }
+    516                }
+    517              }
+    518              if (mn == NULL)
+    519              {
+    520                /* mn == NULL, noSuchName */
+    521                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    522              }
+    523            }
+    524            if ((msg_ps->state == SNMP_MSG_SEARCH_OBJ) &&
+    525                (msg_ps->vb_idx == msg_ps->invb.count))
+    526            {
+    527              snmp_ok_response(msg_ps);
+    528            }
+    529          }
+    530          
+    531          /**
+    532           * Service an internal or external event for SNMP SET.
+    533           *
+    534           * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
+    535           * @param msg_ps points to the assosicated message process state
+    536           */
+    537          static void
+    538          snmp_msg_set_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
+    539          {
+    540            LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_msg_set_event: msg_ps->state==%"U16_F"\n",(u16_t)msg_ps->state));
+    541          
+    542            if (msg_ps->state == SNMP_MSG_EXTERNAL_GET_OBJDEF)
+    543            {
+    544              struct mib_external_node *en;
+    545              struct snmp_name_ptr np;
+    546          
+    547              /* get_object_def() answer*/
+    548              en = msg_ps->ext_mib_node;
+    549              np = msg_ps->ext_name_ptr;
+    550          
+    551              /* translate answer into a known lifeform */
+    552              en->get_object_def_a(request_id, np.ident_len, np.ident, &msg_ps->ext_object_def);
+    553              if (msg_ps->ext_object_def.instance != MIB_OBJECT_NONE)
+    554              {
+    555                msg_ps->state = SNMP_MSG_EXTERNAL_SET_TEST;
+    556                en->set_test_q(request_id, &msg_ps->ext_object_def);
+    557              }
+    558              else
+    559              {
+    560                en->get_object_def_pc(request_id, np.ident_len, np.ident);
+    561                /* search failed, object id points to unknown object (nosuchname) */
+    562                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    563              }
+    564            }
+    565            else if (msg_ps->state == SNMP_MSG_EXTERNAL_SET_TEST)
+    566            {
+    567              struct mib_external_node *en;
+    568          
+    569              /* set_test() answer*/
+    570              en = msg_ps->ext_mib_node;
+    571          
+    572              if (msg_ps->ext_object_def.access & MIB_ACCESS_WRITE)
+    573              {
+    574                 if ((msg_ps->ext_object_def.asn_type == msg_ps->vb_ptr->value_type) &&
+    575                     (en->set_test_a(request_id,&msg_ps->ext_object_def,
+    576                                     msg_ps->vb_ptr->value_len,msg_ps->vb_ptr->value) != 0))
+    577                {
+    578                  msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    579                  msg_ps->vb_idx += 1;
+    580                }
+    581                else
+    582                {
+    583                  en->set_test_pc(request_id,&msg_ps->ext_object_def);
+    584                  /* bad value */
+    585                  snmp_error_response(msg_ps,SNMP_ES_BADVALUE);
+    586                }
+    587              }
+    588              else
+    589              {
+    590                en->set_test_pc(request_id,&msg_ps->ext_object_def);
+    591                /* object not available for set */
+    592                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    593              }
+    594            }
+    595            else if (msg_ps->state == SNMP_MSG_EXTERNAL_GET_OBJDEF_S)
+    596            {
+    597              struct mib_external_node *en;
+    598              struct snmp_name_ptr np;
+    599          
+    600              /* get_object_def() answer*/
+    601              en = msg_ps->ext_mib_node;
+    602              np = msg_ps->ext_name_ptr;
+    603          
+    604              /* translate answer into a known lifeform */
+    605              en->get_object_def_a(request_id, np.ident_len, np.ident, &msg_ps->ext_object_def);
+    606              if (msg_ps->ext_object_def.instance != MIB_OBJECT_NONE)
+    607              {
+    608                msg_ps->state = SNMP_MSG_EXTERNAL_SET_VALUE;
+    609                en->set_value_q(request_id, &msg_ps->ext_object_def,
+    610                                msg_ps->vb_ptr->value_len,msg_ps->vb_ptr->value);
+    611              }
+    612              else
+    613              {
+    614                en->get_object_def_pc(request_id, np.ident_len, np.ident);
+    615                /* set_value failed, object has disappeared for some odd reason?? */
+    616                snmp_error_response(msg_ps,SNMP_ES_GENERROR);
+    617              }
+    618            }
+    619            else if (msg_ps->state == SNMP_MSG_EXTERNAL_SET_VALUE)
+    620            {
+    621              struct mib_external_node *en;
+    622          
+    623              /** set_value_a() */
+    624              en = msg_ps->ext_mib_node;
+    625              en->set_value_a(request_id, &msg_ps->ext_object_def,
+    626                msg_ps->vb_ptr->value_len, msg_ps->vb_ptr->value);
+    627          
+    628              /** @todo use set_value_pc() if toobig */
+    629              msg_ps->state = SNMP_MSG_INTERNAL_SET_VALUE;
+    630              msg_ps->vb_idx += 1;
+    631            }
+    632          
+    633            /* test all values before setting */
+    634            while ((msg_ps->state == SNMP_MSG_SEARCH_OBJ) &&
+    635                   (msg_ps->vb_idx < msg_ps->invb.count))
+    636            {
+    637              struct mib_node *mn;
+    638              struct snmp_name_ptr np;
+    639          
+    640              if (msg_ps->vb_idx == 0)
+    641              {
+    642                msg_ps->vb_ptr = msg_ps->invb.head;
+    643              }
+    644              else
+    645              {
+    646                msg_ps->vb_ptr = msg_ps->vb_ptr->next;
+    647              }
+    648              /** test object identifier for .iso.org.dod.internet prefix */
+    649              if (snmp_iso_prefix_tst(msg_ps->vb_ptr->ident_len,  msg_ps->vb_ptr->ident))
+    650              {
+    651                mn = snmp_search_tree((struct mib_node*)&internet, msg_ps->vb_ptr->ident_len - 4,
+    652                                       msg_ps->vb_ptr->ident + 4, &np);
+    653                if (mn != NULL)
+    654                {
+    655                  if (mn->node_type == MIB_NODE_EX)
+    656                  {
+    657                    /* external object */
+    658                    struct mib_external_node *en = (struct mib_external_node*)mn;
+    659          
+    660                    msg_ps->state = SNMP_MSG_EXTERNAL_GET_OBJDEF;
+    661                    /* save en && args in msg_ps!! */
+    662                    msg_ps->ext_mib_node = en;
+    663                    msg_ps->ext_name_ptr = np;
+    664          
+    665                    en->get_object_def_q(en->addr_inf, request_id, np.ident_len, np.ident);
+    666                  }
+    667                  else
+    668                  {
+    669                    /* internal object */
+    670                    struct obj_def object_def;
+    671          
+    672                    msg_ps->state = SNMP_MSG_INTERNAL_GET_OBJDEF;
+    673                    mn->get_object_def(np.ident_len, np.ident, &object_def);
+    674                    if (object_def.instance != MIB_OBJECT_NONE)
+    675                    {
+    676                      mn = mn;
+    677                    }
+    678                    else
+    679                    {
+    680                      /* search failed, object id points to unknown object (nosuchname) */
+    681                      mn = NULL;
+    682                    }
+    683                    if (mn != NULL)
+    684                    {
+    685                      msg_ps->state = SNMP_MSG_INTERNAL_SET_TEST;
+    686          
+    687                      if (object_def.access & MIB_ACCESS_WRITE)
+    688                      {
+    689                        if ((object_def.asn_type == msg_ps->vb_ptr->value_type) &&
+    690                            (mn->set_test(&object_def,msg_ps->vb_ptr->value_len,msg_ps->vb_ptr->value) != 0))
+    691                        {
+    692                          msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    693                          msg_ps->vb_idx += 1;
+    694                        }
+    695                        else
+    696                        {
+    697                          /* bad value */
+    698                          snmp_error_response(msg_ps,SNMP_ES_BADVALUE);
+    699                        }
+    700                      }
+    701                      else
+    702                      {
+    703                        /* object not available for set */
+    704                        snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    705                      }
+    706                    }
+    707                  }
+    708                }
+    709              }
+    710              else
+    711              {
+    712                mn = NULL;
+    713              }
+    714              if (mn == NULL)
+    715              {
+    716                /* mn == NULL, noSuchName */
+    717                snmp_error_response(msg_ps,SNMP_ES_NOSUCHNAME);
+    718              }
+    719            }
+    720          
+    721            if ((msg_ps->state == SNMP_MSG_SEARCH_OBJ) &&
+    722                (msg_ps->vb_idx == msg_ps->invb.count))
+    723            {
+    724              msg_ps->vb_idx = 0;
+    725              msg_ps->state = SNMP_MSG_INTERNAL_SET_VALUE;
+    726            }
+    727          
+    728            /* set all values "atomically" (be as "atomic" as possible) */
+    729            while ((msg_ps->state == SNMP_MSG_INTERNAL_SET_VALUE) &&
+    730                   (msg_ps->vb_idx < msg_ps->invb.count))
+    731            {
+    732              struct mib_node *mn;
+    733              struct snmp_name_ptr np;
+    734          
+    735              if (msg_ps->vb_idx == 0)
+    736              {
+    737                msg_ps->vb_ptr = msg_ps->invb.head;
+    738              }
+    739              else
+    740              {
+    741                msg_ps->vb_ptr = msg_ps->vb_ptr->next;
+    742              }
+    743              /* skip iso prefix test, was done previously while settesting() */
+    744              mn = snmp_search_tree((struct mib_node*)&internet, msg_ps->vb_ptr->ident_len - 4,
+    745                                     msg_ps->vb_ptr->ident + 4, &np);
+    746              /* check if object is still available
+    747                 (e.g. external hot-plug thingy present?) */
+    748              if (mn != NULL)
+    749              {
+    750                if (mn->node_type == MIB_NODE_EX)
+    751                {
+    752                  /* external object */
+    753                  struct mib_external_node *en = (struct mib_external_node*)mn;
+    754          
+    755                  msg_ps->state = SNMP_MSG_EXTERNAL_GET_OBJDEF_S;
+    756                  /* save en && args in msg_ps!! */
+    757                  msg_ps->ext_mib_node = en;
+    758                  msg_ps->ext_name_ptr = np;
+    759          
+    760                  en->get_object_def_q(en->addr_inf, request_id, np.ident_len, np.ident);
+    761                }
+    762                else
+    763                {
+    764                  /* internal object */
+    765                  struct obj_def object_def;
+    766          
+    767                  msg_ps->state = SNMP_MSG_INTERNAL_GET_OBJDEF_S;
+    768                  mn->get_object_def(np.ident_len, np.ident, &object_def);
+    769                  msg_ps->state = SNMP_MSG_INTERNAL_SET_VALUE;
+    770                  mn->set_value(&object_def,msg_ps->vb_ptr->value_len,msg_ps->vb_ptr->value);
+    771                  msg_ps->vb_idx += 1;
+    772                }
+    773              }
+    774            }
+    775            if ((msg_ps->state == SNMP_MSG_INTERNAL_SET_VALUE) &&
+    776                (msg_ps->vb_idx == msg_ps->invb.count))
+    777            {
+    778              /* simply echo the input if we can set it
+    779                 @todo do we need to return the actual value?
+    780                 e.g. if value is silently modified or behaves sticky? */
+    781              msg_ps->outvb = msg_ps->invb;
+    782              msg_ps->invb.head = NULL;
+    783              msg_ps->invb.tail = NULL;
+    784              msg_ps->invb.count = 0;
+    785              snmp_ok_response(msg_ps);
+    786            }
+    787          }
+    788          
+    789          
+    790          /**
+    791           * Handle one internal or external event.
+    792           * Called for one async event. (recv external/private answer)
+    793           *
+    794           * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
+    795           */
+    796          void
+    797          snmp_msg_event(u8_t request_id)
+    798          {
+    799            struct snmp_msg_pstat *msg_ps;
+    800          
+    801            if (request_id < SNMP_CONCURRENT_REQUESTS)
+    802            {
+    803              msg_ps = &msg_input_list[request_id];
+    804              if (msg_ps->rt == SNMP_ASN1_PDU_GET_NEXT_REQ)
+    805              {
+    806                snmp_msg_getnext_event(request_id, msg_ps);
+    807              }
+    808              else if (msg_ps->rt == SNMP_ASN1_PDU_GET_REQ)
+    809              {
+    810                snmp_msg_get_event(request_id, msg_ps);
+    811              }
+    812              else if(msg_ps->rt == SNMP_ASN1_PDU_SET_REQ)
+    813              {
+    814                snmp_msg_set_event(request_id, msg_ps);
+    815              }
+    816            }
+    817          }
+    818          
+    819          
+    820          /* lwIP UDP receive callback function */
+    821          static void
+    822          snmp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t port)
+    823          {
+    824            struct snmp_msg_pstat *msg_ps;
+    825            u8_t req_idx;
+    826            err_t err_ret;
+    827            u16_t payload_len = p->tot_len;
+    828            u16_t payload_ofs = 0;
+    829            u16_t varbind_ofs = 0;
+    830          
+    831            /* suppress unused argument warning */
+    832            LWIP_UNUSED_ARG(arg);
+    833          
+    834            /* traverse input message process list, look for SNMP_MSG_EMPTY */
+    835            msg_ps = &msg_input_list[0];
+    836            req_idx = 0;
+    837            while ((req_idx < SNMP_CONCURRENT_REQUESTS) && (msg_ps->state != SNMP_MSG_EMPTY))
+    838            {
+    839              req_idx++;
+    840              msg_ps++;
+    841            }
+    842            if (req_idx == SNMP_CONCURRENT_REQUESTS)
+    843            {
+    844              /* exceeding number of concurrent requests */
+    845              pbuf_free(p);
+    846              return;
+    847            }
+    848          
+    849            /* accepting request */
+    850            snmp_inc_snmpinpkts();
+    851            /* record used 'protocol control block' */
+    852            msg_ps->pcb = pcb;
+    853            /* source address (network order) */
+    854            msg_ps->sip = *addr;
+    855            /* source port (host order (lwIP oddity)) */
+    856            msg_ps->sp = port;
+    857          
+    858            /* check total length, version, community, pdu type */
+    859            err_ret = snmp_pdu_header_check(p, payload_ofs, payload_len, &varbind_ofs, msg_ps);
+    860            /* Only accept requests and requests without error (be robust) */
+    861            /* Reject response and trap headers or error requests as input! */
+    862            if ((err_ret != ERR_OK) ||
+    863                ((msg_ps->rt != SNMP_ASN1_PDU_GET_REQ) &&
+    864                 (msg_ps->rt != SNMP_ASN1_PDU_GET_NEXT_REQ) &&
+    865                 (msg_ps->rt != SNMP_ASN1_PDU_SET_REQ)) ||
+    866                ((msg_ps->error_status != SNMP_ES_NOERROR) ||
+    867                 (msg_ps->error_index != 0)) )
+    868            {
+    869              /* header check failed drop request silently, do not return error! */
+    870              pbuf_free(p);
+    871              LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_pdu_header_check() failed\n"));
+    872              return;
+    873            }
+    874            LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_recv ok, community %s\n", msg_ps->community));
+    875          
+    876            /* Builds a list of variable bindings. Copy the varbinds from the pbuf
+    877              chain to glue them when these are divided over two or more pbuf's. */
+    878            err_ret = snmp_pdu_dec_varbindlist(p, varbind_ofs, &varbind_ofs, msg_ps);
+    879            /* we've decoded the incoming message, release input msg now */
+    880            pbuf_free(p);
+    881            if ((err_ret != ERR_OK) || (msg_ps->invb.count == 0))
+    882            {
+    883              /* varbind-list decode failed, or varbind list empty.
+    884                 drop request silently, do not return error!
+    885                 (errors are only returned for a specific varbind failure) */
+    886              LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_pdu_dec_varbindlist() failed\n"));
+    887              return;
+    888            }
+    889          
+    890            msg_ps->error_status = SNMP_ES_NOERROR;
+    891            msg_ps->error_index = 0;
+    892            /* find object for each variable binding */
+    893            msg_ps->state = SNMP_MSG_SEARCH_OBJ;
+    894            /* first variable binding from list to inspect */
+    895            msg_ps->vb_idx = 0;
+    896          
+    897            LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_recv varbind cnt=%"U16_F"\n",(u16_t)msg_ps->invb.count));
+    898          
+    899            /* handle input event and as much objects as possible in one go */
+    900            snmp_msg_event(req_idx);
+    901          }
+    902          
+    903          /**
+    904           * Checks and decodes incoming SNMP message header, logs header errors.
+    905           *
+    906           * @param p points to pbuf chain of SNMP message (UDP payload)
+    907           * @param ofs points to first octet of SNMP message
+    908           * @param pdu_len the length of the UDP payload
+    909           * @param ofs_ret returns the ofset of the variable bindings
+    910           * @param m_stat points to the current message request state return
+    911           * @return
+    912           * - ERR_OK SNMP header is sane and accepted
+    913           * - ERR_ARG SNMP header is either malformed or rejected
+    914           */
+    915          static err_t
+    916          snmp_pdu_header_check(struct pbuf *p, u16_t ofs, u16_t pdu_len, u16_t *ofs_ret, struct snmp_msg_pstat *m_stat)
+    917          {
+    918            err_t derr;
+    919            u16_t len, ofs_base;
+    920            u8_t  len_octets;
+    921            u8_t  type;
+    922            s32_t version;
+    923          
+    924            ofs_base = ofs;
+    925            snmp_asn1_dec_type(p, ofs, &type);
+    926            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+    927            if ((derr != ERR_OK) ||
+    928                (pdu_len != (1 + len_octets + len)) ||
+    929                (type != (SNMP_ASN1_UNIV | SNMP_ASN1_CONSTR | SNMP_ASN1_SEQ)))
+    930            {
+    931              snmp_inc_snmpinasnparseerrs();
+    932              return ERR_ARG;
+    933            }
+    934            ofs += (1 + len_octets);
+    935            snmp_asn1_dec_type(p, ofs, &type);
+    936            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+    937            if ((derr != ERR_OK) || (type != (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_INTEG)))
+    938            {
+    939              /* can't decode or no integer (version) */
+    940              snmp_inc_snmpinasnparseerrs();
+    941              return ERR_ARG;
+    942            }
+    943            derr = snmp_asn1_dec_s32t(p, ofs + 1 + len_octets, len, &version);
+    944            if (derr != ERR_OK)
+    945            {
+    946              /* can't decode */
+    947              snmp_inc_snmpinasnparseerrs();
+    948              return ERR_ARG;
+    949            }
+    950            if (version != 0)
+    951            {
+    952              /* not version 1 */
+    953              snmp_inc_snmpinbadversions();
+    954              return ERR_ARG;
+    955            }
+    956            ofs += (1 + len_octets + len);
+    957            snmp_asn1_dec_type(p, ofs, &type);
+    958            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+    959            if ((derr != ERR_OK) || (type != (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_OC_STR)))
+    960            {
+    961              /* can't decode or no octet string (community) */
+    962              snmp_inc_snmpinasnparseerrs();
+    963              return ERR_ARG;
+    964            }
+    965            derr = snmp_asn1_dec_raw(p, ofs + 1 + len_octets, len, SNMP_COMMUNITY_STR_LEN, m_stat->community);
+    966            if (derr != ERR_OK)
+    967            {
+    968              snmp_inc_snmpinasnparseerrs();
+    969              return ERR_ARG;
+    970            }
+    971            /* add zero terminator */
+    972            len = ((len < (SNMP_COMMUNITY_STR_LEN))?(len):(SNMP_COMMUNITY_STR_LEN));
+    973            m_stat->community[len] = 0;
+    974            m_stat->com_strlen = (u8_t)len;
+    975            if (strncmp(snmp_publiccommunity, (const char*)m_stat->community, SNMP_COMMUNITY_STR_LEN) != 0)
+    976            {
+    977              /** @todo: move this if we need to check more names */
+    978              snmp_inc_snmpinbadcommunitynames();
+    979              snmp_authfail_trap();
+    980              return ERR_ARG;
+    981            }
+    982            ofs += (1 + len_octets + len);
+    983            snmp_asn1_dec_type(p, ofs, &type);
+    984            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+    985            if (derr != ERR_OK)
+    986            {
+    987              snmp_inc_snmpinasnparseerrs();
+    988              return ERR_ARG;
+    989            }
+    990            switch(type)
+    991            {
+    992              case (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_GET_REQ):
+    993                /* GetRequest PDU */
+    994                snmp_inc_snmpingetrequests();
+    995                derr = ERR_OK;
+    996                break;
+    997              case (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_GET_NEXT_REQ):
+    998                /* GetNextRequest PDU */
+    999                snmp_inc_snmpingetnexts();
+   1000                derr = ERR_OK;
+   1001                break;
+   1002              case (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_GET_RESP):
+   1003                /* GetResponse PDU */
+   1004                snmp_inc_snmpingetresponses();
+   1005                derr = ERR_ARG;
+   1006                break;
+   1007              case (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_SET_REQ):
+   1008                /* SetRequest PDU */
+   1009                snmp_inc_snmpinsetrequests();
+   1010                derr = ERR_OK;
+   1011                break;
+   1012              case (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_TRAP):
+   1013                /* Trap PDU */
+   1014                snmp_inc_snmpintraps();
+   1015                derr = ERR_ARG;
+   1016                break;
+   1017              default:
+   1018                snmp_inc_snmpinasnparseerrs();
+   1019                derr = ERR_ARG;
+   1020                break;
+   1021            }
+   1022            if (derr != ERR_OK)
+   1023            {
+   1024              /* unsupported input PDU for this agent (no parse error) */
+   1025              return ERR_ARG;
+   1026            }
+   1027            m_stat->rt = type & 0x1F;
+   1028            ofs += (1 + len_octets);
+   1029            if (len != (pdu_len - (ofs - ofs_base)))
+   1030            {
+   1031              /* decoded PDU length does not equal actual payload length */
+   1032              snmp_inc_snmpinasnparseerrs();
+   1033              return ERR_ARG;
+   1034            }
+   1035            snmp_asn1_dec_type(p, ofs, &type);
+   1036            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+   1037            if ((derr != ERR_OK) || (type != (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_INTEG)))
+   1038            {
+   1039              /* can't decode or no integer (request ID) */
+   1040              snmp_inc_snmpinasnparseerrs();
+   1041              return ERR_ARG;
+   1042            }
+   1043            derr = snmp_asn1_dec_s32t(p, ofs + 1 + len_octets, len, &m_stat->rid);
+   1044            if (derr != ERR_OK)
+   1045            {
+   1046              /* can't decode */
+   1047              snmp_inc_snmpinasnparseerrs();
+   1048              return ERR_ARG;
+   1049            }
+   1050            ofs += (1 + len_octets + len);
+   1051            snmp_asn1_dec_type(p, ofs, &type);
+   1052            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+   1053            if ((derr != ERR_OK) || (type != (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_INTEG)))
+   1054            {
+   1055              /* can't decode or no integer (error-status) */
+   1056              snmp_inc_snmpinasnparseerrs();
+   1057              return ERR_ARG;
+   1058            }
+   1059            /* must be noError (0) for incoming requests.
+   1060               log errors for mib-2 completeness and for debug purposes */
+   1061            derr = snmp_asn1_dec_s32t(p, ofs + 1 + len_octets, len, &m_stat->error_status);
+   1062            if (derr != ERR_OK)
+   1063            {
+   1064              /* can't decode */
+   1065              snmp_inc_snmpinasnparseerrs();
+   1066              return ERR_ARG;
+   1067            }
+   1068            switch (m_stat->error_status)
+   1069            {
+   1070              case SNMP_ES_TOOBIG:
+   1071                snmp_inc_snmpintoobigs();
+   1072                break;
+   1073              case SNMP_ES_NOSUCHNAME:
+   1074                snmp_inc_snmpinnosuchnames();
+   1075                break;
+   1076              case SNMP_ES_BADVALUE:
+   1077                snmp_inc_snmpinbadvalues();
+   1078                break;
+   1079              case SNMP_ES_READONLY:
+   1080                snmp_inc_snmpinreadonlys();
+   1081                break;
+   1082              case SNMP_ES_GENERROR:
+   1083                snmp_inc_snmpingenerrs();
+   1084                break;
+   1085            }
+   1086            ofs += (1 + len_octets + len);
+   1087            snmp_asn1_dec_type(p, ofs, &type);
+   1088            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+   1089            if ((derr != ERR_OK) || (type != (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_INTEG)))
+   1090            {
+   1091              /* can't decode or no integer (error-index) */
+   1092              snmp_inc_snmpinasnparseerrs();
+   1093              return ERR_ARG;
+   1094            }
+   1095            /* must be 0 for incoming requests.
+   1096               decode anyway to catch bad integers (and dirty tricks) */
+   1097            derr = snmp_asn1_dec_s32t(p, ofs + 1 + len_octets, len, &m_stat->error_index);
+   1098            if (derr != ERR_OK)
+   1099            {
+   1100              /* can't decode */
+   1101              snmp_inc_snmpinasnparseerrs();
+   1102              return ERR_ARG;
+   1103            }
+   1104            ofs += (1 + len_octets + len);
+   1105            *ofs_ret = ofs;
+   1106            return ERR_OK;
+   1107          }
+   1108          
+   1109          static err_t
+   1110          snmp_pdu_dec_varbindlist(struct pbuf *p, u16_t ofs, u16_t *ofs_ret, struct snmp_msg_pstat *m_stat)
+   1111          {
+   1112            err_t derr;
+   1113            u16_t len, vb_len;
+   1114            u8_t  len_octets;
+   1115            u8_t type;
+   1116          
+   1117            /* variable binding list */
+   1118            snmp_asn1_dec_type(p, ofs, &type);
+   1119            derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &vb_len);
+   1120            if ((derr != ERR_OK) ||
+   1121                (type != (SNMP_ASN1_UNIV | SNMP_ASN1_CONSTR | SNMP_ASN1_SEQ)))
+   1122            {
+   1123              snmp_inc_snmpinasnparseerrs();
+   1124              return ERR_ARG;
+   1125            }
+   1126            ofs += (1 + len_octets);
+   1127          
+   1128            /* start with empty list */
+   1129            m_stat->invb.count = 0;
+   1130            m_stat->invb.head = NULL;
+   1131            m_stat->invb.tail = NULL;
+   1132          
+   1133            while (vb_len > 0)
+   1134            {
+   1135              struct snmp_obj_id oid, oid_value;
+   1136              struct snmp_varbind *vb;
+   1137          
+   1138              snmp_asn1_dec_type(p, ofs, &type);
+   1139              derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+   1140              if ((derr != ERR_OK) ||
+   1141                  (type != (SNMP_ASN1_UNIV | SNMP_ASN1_CONSTR | SNMP_ASN1_SEQ)) ||
+   1142                  (len == 0) || (len > vb_len))
+   1143              {
+   1144                snmp_inc_snmpinasnparseerrs();
+   1145                /* free varbinds (if available) */
+   1146                snmp_varbind_list_free(&m_stat->invb);
+   1147                return ERR_ARG;
+   1148              }
+   1149              ofs += (1 + len_octets);
+   1150              vb_len -= (1 + len_octets);
+   1151          
+   1152              snmp_asn1_dec_type(p, ofs, &type);
+   1153              derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+   1154              if ((derr != ERR_OK) || (type != (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_OBJ_ID)))
+   1155              {
+   1156                /* can't decode object name length */
+   1157                snmp_inc_snmpinasnparseerrs();
+   1158                /* free varbinds (if available) */
+   1159                snmp_varbind_list_free(&m_stat->invb);
+   1160                return ERR_ARG;
+   1161              }
+   1162              derr = snmp_asn1_dec_oid(p, ofs + 1 + len_octets, len, &oid);
+   1163              if (derr != ERR_OK)
+   1164              {
+   1165                /* can't decode object name */
+   1166                snmp_inc_snmpinasnparseerrs();
+   1167                /* free varbinds (if available) */
+   1168                snmp_varbind_list_free(&m_stat->invb);
+   1169                return ERR_ARG;
+   1170              }
+   1171              ofs += (1 + len_octets + len);
+   1172              vb_len -= (1 + len_octets + len);
+   1173          
+   1174              snmp_asn1_dec_type(p, ofs, &type);
+   1175              derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
+   1176              if (derr != ERR_OK)
+   1177              {
+   1178                /* can't decode object value length */
+   1179                snmp_inc_snmpinasnparseerrs();
+   1180                /* free varbinds (if available) */
+   1181                snmp_varbind_list_free(&m_stat->invb);
+   1182                return ERR_ARG;
+   1183              }
+   1184          
+   1185              switch (type)
+   1186              {
+   1187                case (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_INTEG):
+   1188                  vb = snmp_varbind_alloc(&oid, type, sizeof(s32_t));
+   1189                  if (vb != NULL)
+   1190                  {
+   1191                    s32_t *vptr = (s32_t*)vb->value;
+   1192          
+   1193                    derr = snmp_asn1_dec_s32t(p, ofs + 1 + len_octets, len, vptr);
+   1194                    snmp_varbind_tail_add(&m_stat->invb, vb);
+   1195                  }
+   1196                  else
+   1197                  {
+   1198                    derr = ERR_ARG;
+   1199                  }
+   1200                  break;
+   1201                case (SNMP_ASN1_APPLIC | SNMP_ASN1_PRIMIT | SNMP_ASN1_COUNTER):
+   1202                case (SNMP_ASN1_APPLIC | SNMP_ASN1_PRIMIT | SNMP_ASN1_GAUGE):
+   1203                case (SNMP_ASN1_APPLIC | SNMP_ASN1_PRIMIT | SNMP_ASN1_TIMETICKS):
+   1204                  vb = snmp_varbind_alloc(&oid, type, sizeof(u32_t));
+   1205                  if (vb != NULL)
+   1206                  {
+   1207                    u32_t *vptr = (u32_t*)vb->value;
+   1208          
+   1209                    derr = snmp_asn1_dec_u32t(p, ofs + 1 + len_octets, len, vptr);
+   1210                    snmp_varbind_tail_add(&m_stat->invb, vb);
+   1211                  }
+   1212                  else
+   1213                  {
+   1214                    derr = ERR_ARG;
+   1215                  }
+   1216                  break;
+   1217                case (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_OC_STR):
+   1218                case (SNMP_ASN1_APPLIC | SNMP_ASN1_PRIMIT | SNMP_ASN1_OPAQUE):
+   1219                  LWIP_ASSERT("invalid length", len <= 0xff);
+   1220                  vb = snmp_varbind_alloc(&oid, type, (u8_t)len);
+   1221                  if (vb != NULL)
+   1222                  {
+   1223                    derr = snmp_asn1_dec_raw(p, ofs + 1 + len_octets, len, vb->value_len, (u8_t*)vb->value);
+   1224                    snmp_varbind_tail_add(&m_stat->invb, vb);
+   1225                  }
+   1226                  else
+   1227                  {
+   1228                    derr = ERR_ARG;
+   1229                  }
+   1230                  break;
+   1231                case (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_NUL):
+   1232                  vb = snmp_varbind_alloc(&oid, type, 0);
+   1233                  if (vb != NULL)
+   1234                  {
+   1235                    snmp_varbind_tail_add(&m_stat->invb, vb);
+   1236                    derr = ERR_OK;
+   1237                  }
+   1238                  else
+   1239                  {
+   1240                    derr = ERR_ARG;
+   1241                  }
+   1242                  break;
+   1243                case (SNMP_ASN1_UNIV | SNMP_ASN1_PRIMIT | SNMP_ASN1_OBJ_ID):
+   1244                  derr = snmp_asn1_dec_oid(p, ofs + 1 + len_octets, len, &oid_value);
+   1245                  if (derr == ERR_OK)
+   1246                  {
+   1247                    vb = snmp_varbind_alloc(&oid, type, oid_value.len * sizeof(s32_t));
+   1248                    if (vb != NULL)
+   1249                    {
+   1250                      u8_t i = oid_value.len;
+   1251                      s32_t *vptr = (s32_t*)vb->value;
+   1252          
+   1253                      while(i > 0)
+   1254                      {
+   1255                        i--;
+   1256                        vptr[i] = oid_value.id[i];
+   1257                      }
+   1258                      snmp_varbind_tail_add(&m_stat->invb, vb);
+   1259                      derr = ERR_OK;
+   1260                    }
+   1261                    else
+   1262                    {
+   1263                      derr = ERR_ARG;
+   1264                    }
+   1265                  }
+   1266                  break;
+   1267                case (SNMP_ASN1_APPLIC | SNMP_ASN1_PRIMIT | SNMP_ASN1_IPADDR):
+   1268                  if (len == 4)
+   1269                  {
+   1270                    /* must be exactly 4 octets! */
+   1271                    vb = snmp_varbind_alloc(&oid, type, 4);
+   1272                    if (vb != NULL)
+   1273                    {
+   1274                      derr = snmp_asn1_dec_raw(p, ofs + 1 + len_octets, len, vb->value_len, (u8_t*)vb->value);
+   1275                      snmp_varbind_tail_add(&m_stat->invb, vb);
+   1276                    }
+   1277                    else
+   1278                    {
+   1279                      derr = ERR_ARG;
+   1280                    }
+   1281                  }
+   1282                  else
+   1283                  {
+   1284                    derr = ERR_ARG;
+   1285                  }
+   1286                  break;
+   1287                default:
+   1288                  derr = ERR_ARG;
+   1289                  break;
+   1290              }
+   1291              if (derr != ERR_OK)
+   1292              {
+   1293                snmp_inc_snmpinasnparseerrs();
+   1294                /* free varbinds (if available) */
+   1295                snmp_varbind_list_free(&m_stat->invb);
+   1296                return ERR_ARG;
+   1297              }
+   1298              ofs += (1 + len_octets + len);
+   1299              vb_len -= (1 + len_octets + len);
+   1300            }
+   1301          
+   1302            if (m_stat->rt == SNMP_ASN1_PDU_SET_REQ)
+   1303            {
+   1304              snmp_add_snmpintotalsetvars(m_stat->invb.count);
+   1305            }
+   1306            else
+   1307            {
+   1308              snmp_add_snmpintotalreqvars(m_stat->invb.count);
+   1309            }
+   1310          
+   1311            *ofs_ret = ofs;
+   1312            return ERR_OK;
+   1313          }
+   1314          
+   1315          struct snmp_varbind*
+   1316          snmp_varbind_alloc(struct snmp_obj_id *oid, u8_t type, u8_t len)
+   1317          {
+   1318            struct snmp_varbind *vb;
+   1319          
+   1320            vb = (struct snmp_varbind *)memp_malloc(MEMP_SNMP_VARBIND);
+   1321            if (vb != NULL)
+   1322            {
+   1323              u8_t i;
+   1324          
+   1325              vb->next = NULL;
+   1326              vb->prev = NULL;
+   1327              i = oid->len;
+   1328              vb->ident_len = i;
+   1329              if (i > 0)
+   1330              {
+   1331                LWIP_ASSERT("SNMP_MAX_TREE_DEPTH is configured too low", i <= SNMP_MAX_TREE_DEPTH);
+   1332                /* allocate array of s32_t for our object identifier */
+   1333                vb->ident = (s32_t*)memp_malloc(MEMP_SNMP_VALUE);
+   1334                if (vb->ident == NULL)
+   1335                {
+   1336                  LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_varbind_alloc: couldn't allocate ident value space\n"));
+   1337                  memp_free(MEMP_SNMP_VARBIND, vb);
+   1338                  return NULL;
+   1339                }
+   1340                while(i > 0)
+   1341                {
+   1342                  i--;
+   1343                  vb->ident[i] = oid->id[i];
+   1344                }
+   1345              }
+   1346              else
+   1347              {
+   1348                /* i == 0, pass zero length object identifier */
+   1349                vb->ident = NULL;
+   1350              }
+   1351              vb->value_type = type;
+   1352              vb->value_len = len;
+   1353              if (len > 0)
+   1354              {
+   1355                LWIP_ASSERT("SNMP_MAX_OCTET_STRING_LEN is configured too low", vb->value_len <= SNMP_MAX_VALUE_SIZE);
+   1356                /* allocate raw bytes for our object value */
+   1357                vb->value = memp_malloc(MEMP_SNMP_VALUE);
+   1358                if (vb->value == NULL)
+   1359                {
+   1360                  LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_varbind_alloc: couldn't allocate value space\n"));
+   1361                  if (vb->ident != NULL)
+   1362                  {
+   1363                    memp_free(MEMP_SNMP_VALUE, vb->ident);
+   1364                  }
+   1365                  memp_free(MEMP_SNMP_VARBIND, vb);
+   1366                  return NULL;
+   1367                }
+   1368              }
+   1369              else
+   1370              {
+   1371                /* ASN1_NUL type, or zero length ASN1_OC_STR */
+   1372                vb->value = NULL;
+   1373              }
+   1374            }
+   1375            else
+   1376            {
+   1377              LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_varbind_alloc: couldn't allocate varbind space\n"));
+   1378            }
+   1379            return vb;
+   1380          }
+   1381          
+   1382          void
+   1383          snmp_varbind_free(struct snmp_varbind *vb)
+   1384          {
+   1385            if (vb->value != NULL )
+   1386            {
+   1387              memp_free(MEMP_SNMP_VALUE, vb->value);
+   1388            }
+   1389            if (vb->ident != NULL )
+   1390            {
+   1391              memp_free(MEMP_SNMP_VALUE, vb->ident);
+   1392            }
+   1393            memp_free(MEMP_SNMP_VARBIND, vb);
+   1394          }
+   1395          
+   1396          void
+   1397          snmp_varbind_list_free(struct snmp_varbind_root *root)
+   1398          {
+   1399            struct snmp_varbind *vb, *prev;
+   1400          
+   1401            vb = root->tail;
+   1402            while ( vb != NULL )
+   1403            {
+   1404              prev = vb->prev;
+   1405              snmp_varbind_free(vb);
+   1406              vb = prev;
+   1407            }
+   1408            root->count = 0;
+   1409            root->head = NULL;
+   1410            root->tail = NULL;
+   1411          }
+   1412          
+   1413          void
+   1414          snmp_varbind_tail_add(struct snmp_varbind_root *root, struct snmp_varbind *vb)
+   1415          {
+   1416            if (root->count == 0)
+   1417            {
+   1418              /* add first varbind to list */
+   1419              root->head = vb;
+   1420              root->tail = vb;
+   1421            }
+   1422            else
+   1423            {
+   1424              /* add nth varbind to list tail */
+   1425              root->tail->next = vb;
+   1426              vb->prev = root->tail;
+   1427              root->tail = vb;
+   1428            }
+   1429            root->count += 1;
+   1430          }
+   1431          
+   1432          struct snmp_varbind*
+   1433          snmp_varbind_tail_remove(struct snmp_varbind_root *root)
+   1434          {
+   1435            struct snmp_varbind* vb;
+   1436          
+   1437            if (root->count > 0)
+   1438            {
+   1439              /* remove tail varbind */
+   1440              vb = root->tail;
+   1441              root->tail = vb->prev;
+   1442              vb->prev->next = NULL;
+   1443              root->count -= 1;
+   1444            }
+   1445            else
+   1446            {
+   1447              /* nothing to remove */
+   1448              vb = NULL;
+   1449            }
+   1450            return vb;
+   1451          }
+   1452          
+   1453          #endif /* LWIP_SNMP */
+   1454          
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+
+ 
+ 
+ 0 bytes of memory
+
+Errors: none
+Warnings: none

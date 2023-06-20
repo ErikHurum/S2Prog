@@ -1,0 +1,1434 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   02/May/2023  12:40:43
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB_ATmega1281\Src\AD7715.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB_ATmega1281\Release\Obj\Main\AD7715.r90.rsp
+#        (D:\S2Prog\IO\ANZB_ATmega1281\Src\AD7715.c --cpu=m1281 -ms -o
+#        D:\S2Prog\IO\ANZB_ATmega1281\Release\Obj\Main -D OS_LIBMODE_S -D
+#        OS_UART=-1 -D USE_16552_DRIVER_TASK=1 -lCN
+#        D:\S2Prog\IO\ANZB_ATmega1281\Release\List\Main -y
+#        --initializers_in_flash --no_tbaa --enable_external_bus
+#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB_ATmega1281\INC\ -I
+#        D:\S2Prog\IO\ANZB_ATmega1281\..\..\SHARED\INC\ --eeprom_size 4096
+#        --clib -Oh) --dependencies=n
+#        D:\S2Prog\IO\ANZB_ATmega1281\Release\Obj\Main\AD7715.r90.iar_deps
+#    Locale                =  C
+#    List file             =
+#        D:\S2Prog\IO\ANZB_ATmega1281\Release\List\Main\AD7715.lst
+#    Object file           =
+#        D:\S2Prog\IO\ANZB_ATmega1281\Release\Obj\Main\AD7715.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega1281
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB_ATmega1281\Src\AD7715.c
+      1          /****************************************************************************************
+      2          / AD converter handling , AD7715
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include <math.h>
+      7          #include "iom1281.h"
+
+   \                                 In  segment ABSOLUTE, at 0x34
+   \   __no_init union <unnamed>#418 volatile __io _A_PORTG
+   \                     _A_PORTG:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x32
+   \   __no_init union <unnamed>#424 volatile __io _A_PING
+   \                     _A_PING:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2e
+   \   __no_init union <unnamed>#436 volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2b
+   \   __no_init union <unnamed>#445 volatile __io _A_PORTD
+   \                     _A_PORTD:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x28
+   \   __no_init union <unnamed>#454 volatile __io _A_PORTC
+   \                     _A_PORTC:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x25
+   \   __no_init union <unnamed>#463 volatile __io _A_PORTB
+   \                     _A_PORTB:
+   \   00000000                      DS8 1
+      8          #include "stdio.h"
+      9          #include "math.h"
+     10          #include "externals.h"
+     11          #include "version.h"
+     12          
+     13          
+     14          #if USE_MODBUS_PROTOCOL == 1
+     15          #include "common_def.h"
+     16          
+     17          #define EEPROM_OFFSET_ADDR(ch)    ((0x80 | ch) * sizeof(float) * 2)
+     18          #define EEPROM_GAIN_ADDR(ch)      (((0x80 | ch) * sizeof(float) * 2) + sizeof(float))
+     19          
+     20          #define EEPROM_RSP_DELAY_ADDR(port)   (EEPROM_OFFGAIN + 1024 + port * sizeof(uint16_t))
+     21          
+     22          #define ADC_OFFSET_MIN        -2.0f
+     23          #define ADC_OFFSET_MAX        2.0f
+     24          
+     25          #define ADC_GAIN_MIN          0.98f
+     26          #define ADC_GAIN_MAX          1.02f
+     27          
+     28          #define ADC_FILTER_MIN        0.0f
+     29          #define ADC_FILTER_MAX        2.0f
+     30          
+     31          static void load_eeprom_misc(void);
+     32          #endif
+     33          
+     34          static inline signed char
+     35          fcompare(float a, float b)
+     36          {
+     37            //
+     38            // returns -1 when a < b
+     39            //          1 when a > b
+     40            //          0 when equal
+     41            //
+     42            #define FLT_EPSILON 0.000001f
+     43          
+     44            float d = a - b;
+     45          
+     46            if (d >= -FLT_EPSILON && d <= FLT_EPSILON)
+     47            {
+     48              return 0;
+     49            }
+     50          
+     51            if(d < -FLT_EPSILON)
+     52            {
+     53              // a is less than b
+     54              return -1;
+     55            }
+     56          
+     57            // a is bigger than b
+     58            return 1;
+     59          }
+     60          
+     61          /*************************************************************************
+     62          *   (This is a task)
+     63          *  AD7715 task 
+     64          *
+     65          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     66          void AD7715(void) {
+   \                     AD7715:
+   \   00000000   92FA               ST      -Y, R15
+   \   00000002   92EA               ST      -Y, R14
+   \   00000004   92DA               ST      -Y, R13
+   \   00000006   92CA               ST      -Y, R12
+   \   00000008   929A               ST      -Y, R9
+   \   0000000A   928A               ST      -Y, R8
+   \   0000000C   927A               ST      -Y, R7
+   \   0000000E   926A               ST      -Y, R6
+   \   00000010   925A               ST      -Y, R5
+   \   00000012   924A               ST      -Y, R4
+   \   00000014   93BA               ST      -Y, R27
+   \   00000016   93AA               ST      -Y, R26
+   \   00000018   939A               ST      -Y, R25
+   \   0000001A   938A               ST      -Y, R24
+   \   0000001C                      REQUIRE ?Register_R4_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R5_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R6_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R7_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R8_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R9_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R12_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R13_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R14_is_cg_reg
+   \   0000001C                      REQUIRE ?Register_R15_is_cg_reg
+   \   0000001C                      REQUIRE __RSTACK_in_external_ram_new_way
+   \   0000001C   9727               SBIW    R29:R28, 7
+     67              char ch, Rev1 = 0; 
+   \   0000001E   E000               LDI     R16, 0
+   \   00000020   830D               STD     Y+5, R16
+     68              unsigned int addata ;
+     69              float Tempfloat;
+     70          
+     71              for (ch = 0; ch<12; ch++) {
+   \   00000022   ....               LDI     R30, LOW(TData)
+   \   00000024   ....               LDI     R31, (TData) >> 8
+   \   00000026   E01C               LDI     R17, 12
+   \   00000028   E001               LDI     R16, 1
+     72                  TData.Ana.Filter[ch] = 1.0;
+   \                     ??AD7715_0:
+   \   0000002A   8302               STD     Z+2, R16
+     73              }
+   \   0000002C   9631               ADIW    R31:R30, 1
+   \   0000002E   951A               DEC     R17
+   \   00000030   F7E1               BRNE    ??AD7715_0
+     74              TData.Ana.PortUsed = ReadEEPROMByte(EEPROM_PORTSETUP) + (ReadEEPROMByte(EEPROM_PORTSETUP+1) <<8); // Get setup from EEPROM
+   \   00000032   E002               LDI     R16, 2
+   \   00000034   E010               LDI     R17, 0
+   \   00000036   ........           CALL    ReadEEPROMByte
+   \   0000003A   2F80               MOV     R24, R16
+   \   0000003C   E003               LDI     R16, 3
+   \   0000003E   E010               LDI     R17, 0
+   \   00000040   ........           CALL    ReadEEPROMByte
+   \   00000044   9380....           STS     TData, R24
+   \   00000048   9300....           STS     (TData + 1), R16
+     75              SetAnaPort();
+   \   0000004C   ....               RCALL   SetAnaPort
+     76          
+     77              WriteAdByte(0xff) ;             // Write 32 1's to reset
+   \   0000004E   EF0F               LDI     R16, 255
+   \   00000050   ....               RCALL   WriteAdByte
+     78              WriteAdByte(0xff) ;
+   \   00000052   EF0F               LDI     R16, 255
+   \   00000054   ....               RCALL   WriteAdByte
+     79              WriteAdByte(0xff) ;
+   \   00000056   EF0F               LDI     R16, 255
+   \   00000058   ....               RCALL   WriteAdByte
+     80              WriteAdByte(0xff) ;
+   \   0000005A   EF0F               LDI     R16, 255
+   \   0000005C   ....               RCALL   WriteAdByte
+     81              
+     82              // Calibrate and check if the card is layout rev 1?
+     83              WriteAdByte(0x10) ;             // Next write setup reg 
+   \   0000005E   E100               LDI     R16, 16
+   \   00000060   ....               RCALL   WriteAdByte
+     84              WriteAdByte(0x4e) ;             //  Ad setup data, unipolar, calibrate
+   \   00000062   E40E               LDI     R16, 78
+   \   00000064   ....               RCALL   WriteAdByte
+     85              OS_Delay(250);
+   \   00000066   EF0A               LDI     R16, 250
+   \   00000068   E010               LDI     R17, 0
+   \   0000006A   ........           CALL    OS_Delay
+     86              OS_ClearEvents(&TCB_AD7715);
+   \   0000006E   ....               LDI     R16, LOW(TCB_AD7715)
+   \   00000070   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   00000072   ........           CALL    OS_ClearEvents
+     87              OS_WaitEventTimed(1, 1000);
+   \   00000076   EE28               LDI     R18, 232
+   \   00000078   E033               LDI     R19, 3
+   \   0000007A   E001               LDI     R16, 1
+   \   0000007C   ........           CALL    OS_WaitEventTimed
+     88              
+     89              ClrBit(PORTE,0xf0);                 // check channel 14 for 2.5 V
+   \   00000080   94F8               cli
+   \   00000082   B10E               IN      R16, 0x0E
+   \   00000084   700F               ANDI    R16, 0x0F
+   \   00000086   B90E               OUT     0x0E, R16
+   \   00000088   9100....           LDS     R16, (OS_Global + 1)
+   \   0000008C   2300               TST     R16
+   \   0000008E   F409               BRNE    ??AD7715_1
+   \   00000090   9478               sei
+     90              SetBit(PORTE, (14 << 4) & 0xf0);    // check 
+   \                     ??AD7715_1:
+   \   00000092   94F8               cli
+   \   00000094   B10E               IN      R16, 0x0E
+   \   00000096   6E00               ORI     R16, 0xE0
+   \   00000098   B90E               OUT     0x0E, R16
+   \   0000009A   9100....           LDS     R16, (OS_Global + 1)
+   \   0000009E   2300               TST     R16
+   \   000000A0   F409               BRNE    ??AD7715_2
+   \   000000A2   9478               sei
+     91              WriteAdByte(0x10) ;                 // Next write data 
+   \                     ??AD7715_2:
+   \   000000A4   E100               LDI     R16, 16
+   \   000000A6   ....               RCALL   WriteAdByte
+     92              WriteAdByte(0x0e) ;                 // Ad setup data, unipolar
+   \   000000A8   E00E               LDI     R16, 14
+   \   000000AA   ....               RCALL   WriteAdByte
+     93              OS_Delay(85);
+   \   000000AC   E505               LDI     R16, 85
+   \   000000AE   E010               LDI     R17, 0
+   \   000000B0   ........           CALL    OS_Delay
+     94              OS_ClearEvents(&TCB_AD7715);
+   \   000000B4   ....               LDI     R16, LOW(TCB_AD7715)
+   \   000000B6   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   000000B8   ........           CALL    OS_ClearEvents
+     95              OS_WaitEventTimed(1, 250);
+   \   000000BC   EF2A               LDI     R18, 250
+   \   000000BE   E030               LDI     R19, 0
+   \   000000C0   E001               LDI     R16, 1
+   \   000000C2   ........           CALL    OS_WaitEventTimed
+     96              WriteAdByte(0x38) ;                 // Next read data 
+   \   000000C6   E308               LDI     R16, 56
+   \   000000C8   ....               RCALL   WriteAdByte
+     97              addata = ReadAdByte()* 256 ;        // read data 16 bit data from ad 
+   \   000000CA   ....               RCALL   ReadAdByte
+     98              addata += ReadAdByte() ;
+     99              if (addata > 60000){
+   \   000000CC   2F50               MOV     R21, R16
+   \   000000CE   ....               RCALL   ReadAdByte
+   \   000000D0   3601               CPI     R16, 97
+   \   000000D2   4E5A               SBCI    R21, 234
+   \   000000D4   F0D0               BRCS    ??AD7715_3
+    100                  Rev1 = true;
+   \   000000D6   E001               LDI     R16, 1
+   \   000000D8   830D               STD     Y+5, R16
+    101                  for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+   \   000000DA   ....               LDI     R16, LOW(TData)
+   \   000000DC   ....               LDI     R17, (TData) >> 8
+   \   000000DE   E02C               LDI     R18, 12
+   \   000000E0   EB42               LDI     R20, 178
+   \   000000E2   E95D               LDI     R21, 157
+   \   000000E4   E76F               LDI     R22, 127
+   \   000000E6   E37F               LDI     R23, 63
+   \   000000E8   E030               LDI     R19, 0
+    102                     TData.Ana.Offset[ch] = 0.0;
+   \                     ??AD7715_4:
+   \   000000EA   01F8               MOVW    R31:R30, R17:R16
+   \   000000EC   59EE               SUBI    R30, 158
+   \   000000EE   4FFF               SBCI    R31, 255
+   \   000000F0   8330               ST      Z, R19
+   \   000000F2   8331               STD     Z+1, R19
+   \   000000F4   8332               STD     Z+2, R19
+   \   000000F6   8333               STD     Z+3, R19
+    103                     TData.Ana.Gain[ch] = 0.9985;
+   \   000000F8   AB40               STD     Z+48, R20
+   \   000000FA   AB51               STD     Z+49, R21
+   \   000000FC   AB62               STD     Z+50, R22
+   \   000000FE   AB73               STD     Z+51, R23
+    104                 }
+   \   00000100   5F0C               SUBI    R16, 252
+   \   00000102   4F1F               SBCI    R17, 255
+   \   00000104   952A               DEC     R18
+   \   00000106   F0C1               BREQ    ??AD7715_5
+   \   00000108   CFF0               RJMP    ??AD7715_4
+    105              } else {
+    106                  for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+   \                     ??AD7715_3:
+   \   0000010A   ....               LDI     R16, LOW(TData)
+   \   0000010C   ....               LDI     R17, (TData) >> 8
+   \   0000010E   E02C               LDI     R18, 12
+   \   00000110   EA40               LDI     R20, 160
+   \   00000112   E15A               LDI     R21, 26
+   \   00000114   E76F               LDI     R22, 127
+   \   00000116   E37F               LDI     R23, 63
+   \   00000118   E030               LDI     R19, 0
+    107                     TData.Ana.Offset[ch] = 0.0;
+   \                     ??AD7715_6:
+   \   0000011A   01F8               MOVW    R31:R30, R17:R16
+   \   0000011C   59EE               SUBI    R30, 158
+   \   0000011E   4FFF               SBCI    R31, 255
+   \   00000120   8330               ST      Z, R19
+   \   00000122   8331               STD     Z+1, R19
+   \   00000124   8332               STD     Z+2, R19
+   \   00000126   8333               STD     Z+3, R19
+    108                     TData.Ana.Gain[ch] = 0.9965;
+   \   00000128   AB40               STD     Z+48, R20
+   \   0000012A   AB51               STD     Z+49, R21
+   \   0000012C   AB62               STD     Z+50, R22
+   \   0000012E   AB73               STD     Z+51, R23
+    109                 }
+   \   00000130   5F0C               SUBI    R16, 252
+   \   00000132   4F1F               SBCI    R17, 255
+   \   00000134   952A               DEC     R18
+   \   00000136   F789               BRNE    ??AD7715_6
+    110              }
+    111              for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+   \                     ??AD7715_5:
+   \   00000138   2488               CLR     R8
+   \   0000013A   ....               LDI     R26, LOW(TData)
+   \   0000013C   ....               LDI     R27, (TData) >> 8
+   \   0000013E   E00C               LDI     R16, 12
+   \   00000140   E317               LDI     R17, 55
+   \   00000142   2ED1               MOV     R13, R17
+   \   00000144   E816               LDI     R17, 134
+   \   00000146   2EE1               MOV     R14, R17
+   \   00000148   EB1D               LDI     R17, 189
+   \   0000014A   2E41               MOV     R4, R17
+   \   0000014C   2C5D               MOV     R5, R13
+   \   0000014E   2C6E               MOV     R6, R14
+   \   00000150   EB15               LDI     R17, 181
+   \   00000152   2E71               MOV     R7, R17
+   \   00000154   2E90               MOV     R9, R16
+    112                ReadEEPROMBuffer( (ch | 0x80) * sizeof(float)*2, sizeof(float), (char*)&Tempfloat );
+   \                     ??AD7715_7:
+   \   00000156   2D88               MOV     R24, R8
+   \   00000158   6880               ORI     R24, 0x80
+   \   0000015A   0F88               LSL     R24
+   \   0000015C   E091               LDI     R25, 1
+   \   0000015E   0F88               LSL     R24
+   \   00000160   1F99               ROL     R25
+   \   00000162   0F88               LSL     R24
+   \   00000164   1F99               ROL     R25
+   \   00000166   01AE               MOVW    R21:R20, R29:R28
+   \   00000168   E024               LDI     R18, 4
+   \   0000016A   018C               MOVW    R17:R16, R25:R24
+   \   0000016C   ........           CALL    ReadEEPROMBuffer
+    113          
+    114          #if 0 // hkim. you shouldn't do floating point comparison like this
+    115                  if (IsFloat(Tempfloat) && Tempfloat > -2.0 && Tempfloat < 2.0 ) { 
+    116                  *((float*)&TData.Ana.Offset[ch]) = *((float*)&Tempfloat) ;  //offset
+    117                }
+    118                
+    119                ReadEEPROMBuffer( ((ch | 0x80) * sizeof(float)*2) + sizeof(float), sizeof(float), (char*)&Tempfloat );
+    120                
+    121                if (IsFloat(Tempfloat) && Tempfloat > 0.98 && Tempfloat < 1.02)
+    122                  {
+    123                      *((float *)&TData.Ana.Gain[ch]) = *((float *)&Tempfloat); //gain
+    124                  }
+    125          #else
+    126                  if (IsFloat(Tempfloat) && fcompare(Tempfloat, -2.0) > 0 && fcompare(Tempfloat, 2.0) < 0)
+   \   00000170   8108               LD      R16, Y
+   \   00000172   8119               LDD     R17, Y+1
+   \   00000174   812A               LDD     R18, Y+2
+   \   00000176   813B               LDD     R19, Y+3
+   \   00000178   ........           CALL    IsFloat
+   \   0000017C   2300               TST     R16
+   \   0000017E   F1E9               BREQ    ??AD7715_8
+   \   00000180   8108               LD      R16, Y
+   \   00000182   8119               LDD     R17, Y+1
+   \   00000184   812A               LDD     R18, Y+2
+   \   00000186   813B               LDD     R19, Y+3
+   \   00000188   E040               LDI     R20, 0
+   \   0000018A   E050               LDI     R21, 0
+   \   0000018C   E060               LDI     R22, 0
+   \   0000018E   E470               LDI     R23, 64
+   \   00000190   ........           CALL    ?F_ADD_S_L04
+   \   00000194   01A2               MOVW    R21:R20, R5:R4
+   \   00000196   01B3               MOVW    R23:R22, R7:R6
+   \   00000198   ........           CALL    ?F_CMP_GE_S_L04
+   \   0000019C   F428               BRCC    ??AD7715_9
+   \   0000019E   EB4E               LDI     R20, 190
+   \   000001A0   E375               LDI     R23, 53
+   \   000001A2   ........           CALL    ?F_CMP_LT_S_L04
+   \   000001A6   F148               BRCS    ??AD7715_8
+   \                     ??AD7715_9:
+   \   000001A8   EB4D               LDI     R20, 189
+   \   000001AA   EB75               LDI     R23, 181
+   \   000001AC   ........           CALL    ?F_CMP_LT_S_L04
+   \   000001B0   F120               BRCS    ??AD7715_8
+   \   000001B2   8108               LD      R16, Y
+   \   000001B4   8119               LDD     R17, Y+1
+   \   000001B6   812A               LDD     R18, Y+2
+   \   000001B8   813B               LDD     R19, Y+3
+   \   000001BA   E040               LDI     R20, 0
+   \   000001BC   E050               LDI     R21, 0
+   \   000001BE   E060               LDI     R22, 0
+   \   000001C0   EC70               LDI     R23, 192
+   \   000001C2   ........           CALL    ?F_ADD_S_L04
+   \   000001C6   01A2               MOVW    R21:R20, R5:R4
+   \   000001C8   01B3               MOVW    R23:R22, R7:R6
+   \   000001CA   ........           CALL    ?F_CMP_GE_S_L04
+   \   000001CE   F428               BRCC    ??AD7715_10
+   \   000001D0   EB4E               LDI     R20, 190
+   \   000001D2   E375               LDI     R23, 53
+   \   000001D4   ........           CALL    ?F_CMP_LT_S_L04
+   \   000001D8   F080               BRCS    ??AD7715_8
+   \                     ??AD7715_10:
+   \   000001DA   EB4D               LDI     R20, 189
+   \   000001DC   EB75               LDI     R23, 181
+   \   000001DE   ........           CALL    ?F_CMP_LT_S_L04
+   \   000001E2   F458               BRCC    ??AD7715_8
+    127                  {
+    128                      *((float *)&TData.Ana.Offset[ch]) = *((float *)&Tempfloat); //offset
+   \   000001E4   8108               LD      R16, Y
+   \   000001E6   8119               LDD     R17, Y+1
+   \   000001E8   812A               LDD     R18, Y+2
+   \   000001EA   813B               LDD     R19, Y+3
+   \   000001EC   01FD               MOVW    R31:R30, R27:R26
+   \   000001EE   59EE               SUBI    R30, 158
+   \   000001F0   4FFF               SBCI    R31, 255
+   \   000001F2   8300               ST      Z, R16
+   \   000001F4   8311               STD     Z+1, R17
+   \   000001F6   8322               STD     Z+2, R18
+   \   000001F8   8333               STD     Z+3, R19
+    129                  }
+    130          
+    131                  ReadEEPROMBuffer(((ch | 0x80) * sizeof(float) * 2) + sizeof(float), sizeof(float), (char *)&Tempfloat);
+   \                     ??AD7715_8:
+   \   000001FA   01AE               MOVW    R21:R20, R29:R28
+   \   000001FC   E024               LDI     R18, 4
+   \   000001FE   9604               ADIW    R25:R24, 4
+   \   00000200   018C               MOVW    R17:R16, R25:R24
+   \   00000202   ........           CALL    ReadEEPROMBuffer
+    132          
+    133                  if (IsFloat(Tempfloat) && fcompare(Tempfloat, 0.98) > 0 && fcompare(Tempfloat, 1.02) < 0)
+   \   00000206   8108               LD      R16, Y
+   \   00000208   8119               LDD     R17, Y+1
+   \   0000020A   812A               LDD     R18, Y+2
+   \   0000020C   813B               LDD     R19, Y+3
+   \   0000020E   ........           CALL    IsFloat
+   \   00000212   2300               TST     R16
+   \   00000214   F1E9               BREQ    ??AD7715_11
+   \   00000216   8108               LD      R16, Y
+   \   00000218   8119               LDD     R17, Y+1
+   \   0000021A   812A               LDD     R18, Y+2
+   \   0000021C   813B               LDD     R19, Y+3
+   \   0000021E   E448               LDI     R20, 72
+   \   00000220   EE51               LDI     R21, 225
+   \   00000222   E76A               LDI     R22, 122
+   \   00000224   EB7F               LDI     R23, 191
+   \   00000226   ........           CALL    ?F_ADD_S_L04
+   \   0000022A   01A2               MOVW    R21:R20, R5:R4
+   \   0000022C   01B3               MOVW    R23:R22, R7:R6
+   \   0000022E   ........           CALL    ?F_CMP_GE_S_L04
+   \   00000232   F428               BRCC    ??AD7715_12
+   \   00000234   EB4E               LDI     R20, 190
+   \   00000236   E375               LDI     R23, 53
+   \   00000238   ........           CALL    ?F_CMP_LT_S_L04
+   \   0000023C   F148               BRCS    ??AD7715_11
+   \                     ??AD7715_12:
+   \   0000023E   EB4D               LDI     R20, 189
+   \   00000240   EB75               LDI     R23, 181
+   \   00000242   ........           CALL    ?F_CMP_LT_S_L04
+   \   00000246   F120               BRCS    ??AD7715_11
+   \   00000248   8108               LD      R16, Y
+   \   0000024A   8119               LDD     R17, Y+1
+   \   0000024C   812A               LDD     R18, Y+2
+   \   0000024E   813B               LDD     R19, Y+3
+   \   00000250   E54C               LDI     R20, 92
+   \   00000252   E85F               LDI     R21, 143
+   \   00000254   E862               LDI     R22, 130
+   \   00000256   EB7F               LDI     R23, 191
+   \   00000258   ........           CALL    ?F_ADD_S_L04
+   \   0000025C   01A2               MOVW    R21:R20, R5:R4
+   \   0000025E   01B3               MOVW    R23:R22, R7:R6
+   \   00000260   ........           CALL    ?F_CMP_GE_S_L04
+   \   00000264   F428               BRCC    ??AD7715_13
+   \   00000266   EB4E               LDI     R20, 190
+   \   00000268   E375               LDI     R23, 53
+   \   0000026A   ........           CALL    ?F_CMP_LT_S_L04
+   \   0000026E   F080               BRCS    ??AD7715_11
+   \                     ??AD7715_13:
+   \   00000270   EB4D               LDI     R20, 189
+   \   00000272   EB75               LDI     R23, 181
+   \   00000274   ........           CALL    ?F_CMP_LT_S_L04
+   \   00000278   F458               BRCC    ??AD7715_11
+    134                  { 
+    135                  *((float*)&TData.Ana.Gain[ch]) = *((float*)&Tempfloat) ;  //gain
+   \   0000027A   8108               LD      R16, Y
+   \   0000027C   8119               LDD     R17, Y+1
+   \   0000027E   812A               LDD     R18, Y+2
+   \   00000280   813B               LDD     R19, Y+3
+   \   00000282   01FD               MOVW    R31:R30, R27:R26
+   \   00000284   59EE               SUBI    R30, 158
+   \   00000286   4FFF               SBCI    R31, 255
+   \   00000288   AB00               STD     Z+48, R16
+   \   0000028A   AB11               STD     Z+49, R17
+   \   0000028C   AB22               STD     Z+50, R18
+   \   0000028E   AB33               STD     Z+51, R19
+    136                }
+    137          #endif
+    138              }
+   \                     ??AD7715_11:
+   \   00000290   9483               INC     R8
+   \   00000292   9614               ADIW    R27:R26, 4
+   \   00000294   949A               DEC     R9
+   \   00000296   F009               BREQ    $+2+2
+   \   00000298   CF5E               RJMP    ??AD7715_7
+    139          
+    140              //
+    141              // let modbus task that I'm done initializing
+    142              //
+    143          #if USE_MODBUS_PROTOCOL == 1
+    144              load_eeprom_misc();
+    145          
+    146              {
+    147                extern void modbus_rtu_notify_go(void);
+    148                modbus_rtu_notify_go();
+    149              }
+    150          #endif
+    151          
+    152              while (1) {
+    153                  if (Rev1) {
+   \                     ??AD7715_14:
+   \   0000029A   ....               LDI     R16, LOW(OS_Global)
+   \   0000029C   2E80               MOV     R8, R16
+   \   0000029E   ....               LDI     R16, (OS_Global) >> 8
+   \   000002A0   2E90               MOV     R9, R16
+   \   000002A2   810D               LDD     R16, Y+5
+   \   000002A4   2300               TST     R16
+   \   000002A6   F1B9               BREQ    ??AD7715_15
+    154                     
+    155                      ClrBit(PORTE,0xf0); 
+   \   000002A8   94F8               cli
+   \   000002AA   B10E               IN      R16, 0x0E
+   \   000002AC   700F               ANDI    R16, 0x0F
+   \   000002AE   B90E               OUT     0x0E, R16
+   \   000002B0   01F4               MOVW    R31:R30, R9:R8
+   \   000002B2   8101               LDD     R16, Z+1
+   \   000002B4   2300               TST     R16
+   \   000002B6   F409               BRNE    ??AD7715_16
+   \   000002B8   9478               sei
+    156                      SetBit(PORTE, (15 << 4) & 0xf0); // 0V at ch 16
+   \                     ??AD7715_16:
+   \   000002BA   94F8               cli
+   \   000002BC   B10E               IN      R16, 0x0E
+   \   000002BE   6F00               ORI     R16, 0xF0
+   \   000002C0   B90E               OUT     0x0E, R16
+   \   000002C2   8101               LDD     R16, Z+1
+   \   000002C4   2300               TST     R16
+   \   000002C6   F409               BRNE    ??AD7715_17
+   \   000002C8   9478               sei
+    157                      WriteAdByte(0x10) ;             // Next write setup reg 
+   \                     ??AD7715_17:
+   \   000002CA   E100               LDI     R16, 16
+   \   000002CC   ....               RCALL   WriteAdByte
+    158                      WriteAdByte(0x8e) ;             //  AStark test zero scale calibrate
+   \   000002CE   E80E               LDI     R16, 142
+   \   000002D0   ....               RCALL   WriteAdByte
+    159                      OS_Delay(250);
+   \   000002D2   EF0A               LDI     R16, 250
+   \   000002D4   E010               LDI     R17, 0
+   \   000002D6   ........           CALL    OS_Delay
+    160                      OS_ClearEvents(&TCB_AD7715);
+   \   000002DA   ....               LDI     R16, LOW(TCB_AD7715)
+   \   000002DC   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   000002DE   ........           CALL    OS_ClearEvents
+    161                      OS_WaitEventTimed(1, 1000);
+   \   000002E2   EE28               LDI     R18, 232
+   \   000002E4   E033               LDI     R19, 3
+   \   000002E6   E001               LDI     R16, 1
+   \   000002E8   ........           CALL    OS_WaitEventTimed
+    162                      
+    163                      ClrBit(PORTE,0xf0); 
+   \   000002EC   94F8               cli
+   \   000002EE   B10E               IN      R16, 0x0E
+   \   000002F0   700F               ANDI    R16, 0x0F
+   \   000002F2   B90E               OUT     0x0E, R16
+   \   000002F4   01F4               MOVW    R31:R30, R9:R8
+   \   000002F6   8101               LDD     R16, Z+1
+   \   000002F8   2300               TST     R16
+   \   000002FA   F409               BRNE    ??AD7715_18
+   \   000002FC   9478               sei
+    164                      SetBit(PORTE, (14 << 4) & 0xf0); // 2.5V at ch 15
+   \                     ??AD7715_18:
+   \   000002FE   94F8               cli
+   \   00000300   B10E               IN      R16, 0x0E
+   \   00000302   6E00               ORI     R16, 0xE0
+   \   00000304   B90E               OUT     0x0E, R16
+   \   00000306   8101               LDD     R16, Z+1
+   \   00000308   2300               TST     R16
+   \   0000030A   F409               BRNE    ??AD7715_19
+   \   0000030C   9478               sei
+    165                      WriteAdByte(0x10) ;             // Next write setup reg 
+   \                     ??AD7715_19:
+   \   0000030E   E100               LDI     R16, 16
+   \   00000310   ....               RCALL   WriteAdByte
+    166                      WriteAdByte(0xce) ;             //  AStark test full scale calibrate
+   \   00000312   EC0E               LDI     R16, 206
+   \   00000314   C003               RJMP    ??AD7715_20
+    167                      OS_Delay(250);
+    168                      OS_ClearEvents(&TCB_AD7715);
+    169                      OS_WaitEventTimed(1, 1000);
+    170           
+    171                  } else {
+    172                      WriteAdByte(0x10) ;             // Next write setup reg 
+   \                     ??AD7715_15:
+   \   00000316   E100               LDI     R16, 16
+   \   00000318   ....               RCALL   WriteAdByte
+    173                      WriteAdByte(0x4e) ;             //  Internal calibration calibrate
+   \   0000031A   E40E               LDI     R16, 78
+   \                     ??AD7715_20:
+   \   0000031C   ....               RCALL   WriteAdByte
+    174                      OS_Delay(250);
+   \   0000031E   EF0A               LDI     R16, 250
+   \   00000320   E010               LDI     R17, 0
+   \   00000322   ........           CALL    OS_Delay
+    175                      OS_ClearEvents(&TCB_AD7715);
+   \   00000326   ....               LDI     R16, LOW(TCB_AD7715)
+   \   00000328   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   0000032A   ........           CALL    OS_ClearEvents
+    176                      OS_WaitEventTimed(1, 1000);
+   \   0000032E   EE28               LDI     R18, 232
+   \   00000330   E033               LDI     R19, 3
+   \   00000332   E001               LDI     R16, 1
+   \   00000334   ........           CALL    OS_WaitEventTimed
+    177                  }
+    178          
+    179                  for (ch = 0 ; ch < 12 ; ch++) {
+   \   00000338   E020               LDI     R18, 0
+   \   0000033A   ....               LDI     R16, LOW(TData)
+   \   0000033C   2E60               MOV     R6, R16
+   \   0000033E   ....               LDI     R16, (TData) >> 8
+   \   00000340   2E70               MOV     R7, R16
+   \   00000342   ....               LDI     R16, LOW(TData)
+   \   00000344   2E40               MOV     R4, R16
+   \   00000346   ....               LDI     R16, (TData) >> 8
+   \   00000348   2E50               MOV     R5, R16
+   \   0000034A   E00C               LDI     R16, 12
+   \   0000034C   24CC               CLR     R12
+   \   0000034E   EF1F               LDI     R17, 255
+   \   00000350   2ED1               MOV     R13, R17
+   \   00000352   E71F               LDI     R17, 127
+   \   00000354   2EE1               MOV     R14, R17
+   \   00000356   E417               LDI     R17, 71
+   \   00000358   2EF1               MOV     R15, R17
+   \   0000035A   832C               STD     Y+4, R18
+   \   0000035C   830E               STD     Y+6, R16
+    180                      ClrBit(PORTE,0xf0); 
+   \                     ??AD7715_21:
+   \   0000035E   94F8               cli
+   \   00000360   B10E               IN      R16, 0x0E
+   \   00000362   700F               ANDI    R16, 0x0F
+   \   00000364   B90E               OUT     0x0E, R16
+   \   00000366   01F4               MOVW    R31:R30, R9:R8
+   \   00000368   8101               LDD     R16, Z+1
+   \   0000036A   2300               TST     R16
+   \   0000036C   F409               BRNE    ??AD7715_22
+   \   0000036E   9478               sei
+    181                      SetBit(PORTE, (ch << 4) & 0xf0);
+   \                     ??AD7715_22:
+   \   00000370   94F8               cli
+   \   00000372   810C               LDD     R16, Y+4
+   \   00000374   9502               SWAP    R16
+   \   00000376   7F00               ANDI    R16, 0xF0
+   \   00000378   B11E               IN      R17, 0x0E
+   \   0000037A   2B10               OR      R17, R16
+   \   0000037C   B91E               OUT     0x0E, R17
+   \   0000037E   8101               LDD     R16, Z+1
+   \   00000380   2300               TST     R16
+   \   00000382   F409               BRNE    ??AD7715_23
+   \   00000384   9478               sei
+    182                      WriteAdByte(0x10) ;                 // Next write data 
+   \                     ??AD7715_23:
+   \   00000386   E100               LDI     R16, 16
+   \   00000388   ....               RCALL   WriteAdByte
+    183                      WriteAdByte(0x0e) ;                          // Ad setup data, unipolar
+   \   0000038A   E00E               LDI     R16, 14
+   \   0000038C   ....               RCALL   WriteAdByte
+    184                      OS_Delay(85);
+   \   0000038E   E505               LDI     R16, 85
+   \   00000390   E010               LDI     R17, 0
+   \   00000392   ........           CALL    OS_Delay
+    185                      OS_ClearEvents(&TCB_AD7715);
+   \   00000396   ....               LDI     R16, LOW(TCB_AD7715)
+   \   00000398   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   0000039A   ........           CALL    OS_ClearEvents
+    186                      OS_WaitEventTimed(1, 250);
+   \   0000039E   EF2A               LDI     R18, 250
+   \   000003A0   E030               LDI     R19, 0
+   \   000003A2   E001               LDI     R16, 1
+   \   000003A4   ........           CALL    OS_WaitEventTimed
+    187                      WriteAdByte(0x38) ;             // Next read data 
+   \   000003A8   E308               LDI     R16, 56
+   \   000003AA   ....               RCALL   WriteAdByte
+    188                      addata = ReadAdByte()* 256 ;        // read data 16 bit data from ad 
+   \   000003AC   ....               RCALL   ReadAdByte
+   \   000003AE   2F30               MOV     R19, R16
+    189                      addata += ReadAdByte() ;
+   \   000003B0   ....               RCALL   ReadAdByte
+    190          
+    191                      #if USE_MODBUS_PROTOCOL == 1
+    192                      OS_Use(&adc_lock);
+    193                      #endif
+    194          
+    195                      TData.Ana.Status[ch] = 0;                   // Result ok
+   \   000003B2   01F3               MOVW    R31:R30, R7:R6
+   \   000003B4   86C6               STD     Z+14, R12
+    196                      TData.Ana.Result[ch] += ((((((float)addata / 65535.0) * 25.0) * TData.Ana.Gain[ch])-TData.Ana.Offset[ch] - TData.Ana.Result[ch])
+    197                                               / (TData.Ana.Filter[ch]+1.0))  ;             // readed value / 16bit * 2.5 volt range
+   \   000003B6   01D2               MOVW    R27:R26, R5:R4
+   \   000003B8   59AE               SUBI    R26, 158
+   \   000003BA   4FBF               SBCI    R27, 255
+   \   000003BC   2F13               MOV     R17, R19
+   \   000003BE   E020               LDI     R18, 0
+   \   000003C0   E030               LDI     R19, 0
+   \   000003C2   ........           CALL    ?UL2F_S_L04
+   \   000003C6   01A6               MOVW    R21:R20, R13:R12
+   \   000003C8   01B7               MOVW    R23:R22, R15:R14
+   \   000003CA   ........           CALL    ?F_DIV_S_L04
+   \   000003CE   E040               LDI     R20, 0
+   \   000003D0   E050               LDI     R21, 0
+   \   000003D2   EC68               LDI     R22, 200
+   \   000003D4   E471               LDI     R23, 65
+   \   000003D6   ........           CALL    ?F_MUL_S_L04
+   \   000003DA   01FD               MOVW    R31:R30, R27:R26
+   \   000003DC   A940               LDD     R20, Z+48
+   \   000003DE   A951               LDD     R21, Z+49
+   \   000003E0   A962               LDD     R22, Z+50
+   \   000003E2   A973               LDD     R23, Z+51
+   \   000003E4   ........           CALL    ?F_MUL_S_L04
+   \   000003E8   914D               LD      R20, X+
+   \   000003EA   915D               LD      R21, X+
+   \   000003EC   916D               LD      R22, X+
+   \   000003EE   917C               LD      R23, X
+   \   000003F0   ........           CALL    ?F_SUB_S_L04
+   \   000003F4   01F2               MOVW    R31:R30, R5:R4
+   \   000003F6   8D42               LDD     R20, Z+26
+   \   000003F8   8D53               LDD     R21, Z+27
+   \   000003FA   8D64               LDD     R22, Z+28
+   \   000003FC   8D75               LDD     R23, Z+29
+   \   000003FE   ........           CALL    ?F_SUB_S_L04
+   \   00000402   01C8               MOVW    R25:R24, R17:R16
+   \   00000404   01D9               MOVW    R27:R26, R19:R18
+   \   00000406   01F3               MOVW    R31:R30, R7:R6
+   \   00000408   8102               LDD     R16, Z+2
+   \   0000040A   E010               LDI     R17, 0
+   \   0000040C   E020               LDI     R18, 0
+   \   0000040E   E030               LDI     R19, 0
+   \   00000410   ........           CALL    ?UL2F_S_L04
+   \   00000414   E040               LDI     R20, 0
+   \   00000416   E050               LDI     R21, 0
+   \   00000418   E860               LDI     R22, 128
+   \   0000041A   E37F               LDI     R23, 63
+   \   0000041C   ........           CALL    ?F_ADD_S_L04
+   \   00000420   01A8               MOVW    R21:R20, R17:R16
+   \   00000422   01B9               MOVW    R23:R22, R19:R18
+   \   00000424   018C               MOVW    R17:R16, R25:R24
+   \   00000426   019D               MOVW    R19:R18, R27:R26
+   \   00000428   ........           CALL    ?F_DIV_S_L04
+   \   0000042C   01F2               MOVW    R31:R30, R5:R4
+   \   0000042E   8D42               LDD     R20, Z+26
+   \   00000430   8D53               LDD     R21, Z+27
+   \   00000432   8D64               LDD     R22, Z+28
+   \   00000434   8D75               LDD     R23, Z+29
+   \   00000436   ........           CALL    ?F_ADD_S_L04
+   \   0000043A   01F2               MOVW    R31:R30, R5:R4
+   \   0000043C   8F02               STD     Z+26, R16
+   \   0000043E   8F13               STD     Z+27, R17
+   \   00000440   8F24               STD     Z+28, R18
+   \   00000442   8F35               STD     Z+29, R19
+    198          
+    199                      #if USE_MODBUS_PROTOCOL == 1
+    200                      OS_Unuse(&adc_lock);
+    201                      #endif
+    202                  } 
+   \   00000444   810C               LDD     R16, Y+4
+   \   00000446   9503               INC     R16
+   \   00000448   830C               STD     Y+4, R16
+   \   0000044A   E004               LDI     R16, 4
+   \   0000044C   0E40               ADD     R4, R16
+   \   0000044E   1C5C               ADC     R5, R12
+   \   00000450   E001               LDI     R16, 1
+   \   00000452   0E60               ADD     R6, R16
+   \   00000454   1C7C               ADC     R7, R12
+   \   00000456   810E               LDD     R16, Y+6
+   \   00000458   950A               DEC     R16
+   \   0000045A   830E               STD     Y+6, R16
+   \   0000045C   F009               BREQ    $+2+2
+   \   0000045E   CF7F               RJMP    ??AD7715_21
+   \   00000460   CF1C               RJMP    ??AD7715_14
+   \   00000462                      REQUIRE _A_PORTE
+    203              }
+    204          }
+    205          
+    206          /*************************************************************************
+    207          *
+    208          *  Set ports on or off
+    209          *
+    210          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    211          void SetAnaPort(void) {
+   \                     SetAnaPort:
+   \   00000000   019D               MOVW    R19:R18, R27:R26
+   \   00000002                      REQUIRE __RSTACK_in_external_ram_new_way
+    212          
+    213              PORTC = (TData.Ana.PortUsed & 0xff) ;         // Set power on ports 0-7
+   \   00000002   ....               LDI     R26, LOW(TData)
+   \   00000004   ....               LDI     R27, (TData) >> 8
+   \   00000006   910D               LD      R16, X+
+   \   00000008   B908               OUT     0x08, R16
+    214              ClrBit(PORTB, 0xe1);                            // Set power on ports 8-11 off
+   \   0000000A   94F8               cli
+   \   0000000C   B105               IN      R16, 0x05
+   \   0000000E   710E               ANDI    R16, 0x1E
+   \   00000010   B905               OUT     0x05, R16
+   \   00000012   ....               LDI     R30, LOW(OS_Global)
+   \   00000014   ....               LDI     R31, (OS_Global) >> 8
+   \   00000016   8101               LDD     R16, Z+1
+   \   00000018   2300               TST     R16
+   \   0000001A   F409               BRNE    ??SetAnaPort_0
+   \   0000001C   9478               sei
+    215              SetBit(PORTB, TData.Ana.PortUsed>>8 & 0x01);    // Set power on port 8
+   \                     ??SetAnaPort_0:
+   \   0000001E   94F8               cli
+   \   00000020   910C               LD      R16, X
+   \   00000022   9711               SBIW    R27:R26, 1
+   \   00000024   7001               ANDI    R16, 0x01
+   \   00000026   B115               IN      R17, 0x05
+   \   00000028   2B10               OR      R17, R16
+   \   0000002A   B915               OUT     0x05, R17
+   \   0000002C   8101               LDD     R16, Z+1
+   \   0000002E   2300               TST     R16
+   \   00000030   F409               BRNE    ??SetAnaPort_1
+   \   00000032   9478               sei
+    216              SetBit(PORTB, TData.Ana.PortUsed>>4 & 0xe0);      // Set power on ports 9-11
+   \                     ??SetAnaPort_1:
+   \   00000034   94F8               cli
+   \   00000036   910D               LD      R16, X+
+   \   00000038   911C               LD      R17, X
+   \   0000003A   9516               LSR     R17
+   \   0000003C   9507               ROR     R16
+   \   0000003E   9516               LSR     R17
+   \   00000040   9507               ROR     R16
+   \   00000042   9516               LSR     R17
+   \   00000044   9507               ROR     R16
+   \   00000046   9516               LSR     R17
+   \   00000048   9507               ROR     R16
+   \   0000004A   7E00               ANDI    R16, 0xE0
+   \   0000004C   B115               IN      R17, 0x05
+   \   0000004E   2B10               OR      R17, R16
+   \   00000050   B915               OUT     0x05, R17
+   \   00000052   8101               LDD     R16, Z+1
+   \   00000054   2300               TST     R16
+   \   00000056   F409               BRNE    ??SetAnaPort_2
+   \   00000058   9478               sei
+    217          
+    218          }
+   \                     ??SetAnaPort_2:
+   \   0000005A   01D9               MOVW    R27:R26, R19:R18
+   \   0000005C   9508               RET
+   \   0000005E                      REQUIRE _A_PORTC
+   \   0000005E                      REQUIRE _A_PORTB
+    219          
+    220          /*************************************************************************
+    221          *
+    222          *  Read from AD-converter
+    223          *
+    224          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    225          char ReadAdByte(void) {
+   \                     ReadAdByte:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+    226          
+    227              char i, readbyte;
+    228          
+    229              for (i = 0; i <  8; i++) {
+   \   00000000   E018               LDI     R17, 8
+    230                  readbyte <<= 1 ;                    // shift to next bit 
+   \                     ??ReadAdByte_0:
+   \   00000002   0F00               LSL     R16
+    231                  ClrBit(PORTD, ADCLK) ;
+   \   00000004   94F8               cli
+   \   00000006   9859               CBI     0x0B, 0x01
+   \   00000008   9120....           LDS     R18, (OS_Global + 1)
+   \   0000000C   2322               TST     R18
+   \   0000000E   F409               BRNE    ??ReadAdByte_1
+   \   00000010   9478               sei
+    232                  SetBit(PORTD, ADCLK) ;                  // set clock line high 
+   \                     ??ReadAdByte_1:
+   \   00000012   94F8               cli
+   \   00000014   9A59               SBI     0x0B, 0x01
+   \   00000016   9120....           LDS     R18, (OS_Global + 1)
+   \   0000001A   2322               TST     R18
+   \   0000001C   F409               BRNE    ??ReadAdByte_2
+   \   0000001E   9478               sei
+    233                  if (PING & ADDO) {                  // data  = 1?
+   \                     ??ReadAdByte_2:
+   \   00000020   9993               SBIC    0x12, 0x03
+    234                      readbyte |= 0x01 ;                    // set bit high 
+   \   00000022   6001               ORI     R16, 0x01
+    235                  } else {
+    236                      readbyte &= ~0x01 ;                   // set bit low 
+    237                  }
+    238              }
+   \                     ??ReadAdByte_3:
+   \   00000024   951A               DEC     R17
+   \   00000026   F769               BRNE    ??ReadAdByte_0
+    239              return readbyte ;
+   \   00000028   9508               RET
+   \   0000002A                      REQUIRE _A_PORTD
+   \   0000002A                      REQUIRE _A_PING
+    240          }
+    241          
+    242          /*************************************************************************
+    243          *
+    244          *  Write to AD-converter
+    245          *
+    246          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    247          void WriteAdByte(char data) {
+   \                     WriteAdByte:
+   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
+    248          
+    249              char i;
+    250          
+    251              for (i = 0; i <  8; i++) {
+   \   00000000   E018               LDI     R17, 8
+   \   00000002   ....               LDI     R30, LOW(OS_Global)
+   \   00000004   ....               LDI     R31, (OS_Global) >> 8
+    252                  ClrBit(PORTD, ADCLK) ;                  // set clock line low
+   \                     ??WriteAdByte_0:
+   \   00000006   94F8               cli
+   \   00000008   9859               CBI     0x0B, 0x01
+   \   0000000A   8121               LDD     R18, Z+1
+   \   0000000C   2322               TST     R18
+   \   0000000E   F409               BRNE    ??WriteAdByte_1
+   \   00000010   9478               sei
+    253                  if (data & 0x80) {                  // data bit = 1? 
+   \                     ??WriteAdByte_1:
+   \   00000012   FF07               SBRS    R16, 7
+   \   00000014   C006               RJMP    ??WriteAdByte_2
+    254                      SetBit(PORTG,ADDI) ;                  // set data high 
+   \   00000016   94F8               cli
+   \   00000018   9AA4               SBI     0x14, 0x04
+   \   0000001A   8121               LDD     R18, Z+1
+   \   0000001C   2322               TST     R18
+   \   0000001E   F439               BRNE    ??WriteAdByte_3
+   \   00000020   C005               RJMP    ??WriteAdByte_4
+    255                  } else {
+    256                      ClrBit(PORTG, ADDI) ;                 // set data low 
+   \                     ??WriteAdByte_2:
+   \   00000022   94F8               cli
+   \   00000024   98A4               CBI     0x14, 0x04
+   \   00000026   8121               LDD     R18, Z+1
+   \   00000028   2322               TST     R18
+   \   0000002A   F409               BRNE    ??WriteAdByte_3
+   \                     ??WriteAdByte_4:
+   \   0000002C   9478               sei
+    257                  }
+    258                  data <<= 1 ;                        // shift to next bit 
+   \                     ??WriteAdByte_3:
+   \   0000002E   0F00               LSL     R16
+    259                  SetBit(PORTD, ADCLK) ;                  // set clock line high 
+   \   00000030   94F8               cli
+   \   00000032   9A59               SBI     0x0B, 0x01
+   \   00000034   8121               LDD     R18, Z+1
+   \   00000036   2322               TST     R18
+   \   00000038   F409               BRNE    ??WriteAdByte_5
+   \   0000003A   9478               sei
+    260              }           
+   \                     ??WriteAdByte_5:
+   \   0000003C   951A               DEC     R17
+   \   0000003E   F719               BRNE    ??WriteAdByte_0
+    261          }       
+   \   00000040   9508               RET
+   \   00000042                      REQUIRE _A_PORTD
+   \   00000042                      REQUIRE _A_PORTG
+    262          
+    263          /*************************************************************************
+    264          *  
+    265          * public utilities
+    266          *
+    267          *************************************************************************/
+    268          #if USE_MODBUS_PROTOCOL == 1
+    269          static inline float
+    270          u16_to_float_offset(uint16_t offset)
+    271          {
+    272            return ((float)offset - 20000.0f)/10000.0f;
+    273          }
+    274          
+    275          static inline uint16_t
+    276          float_offset_to_u16(float offset)
+    277          {
+    278            return (uint16_t)(floor(offset*10000 + 0.5f)) + 20000;
+    279          }
+    280          
+    281          static inline float
+    282          u16_to_float_gain(uint16_t gain)
+    283          {
+    284            return ((float)gain)/10000.0f;
+    285          }
+    286          
+    287          static inline uint16_t
+    288          float_gain_to_u16(float gain)
+    289          {
+    290            return (uint16_t)(floor(gain * 10000.0f + 0.5f));
+    291          }
+    292          
+    293          static inline float
+    294          u16_to_float_filter(uint16_t filter)
+    295          {
+    296            return filter / 10000.0f;
+    297          }
+    298          
+    299          static inline uint16_t
+    300          float_filter_to_u16(float filter)
+    301          {
+    302            return (uint16_t)(floor(filter * 10000 + 0.5f));
+    303          }
+    304          
+    305          static inline uint16_t
+    306          float_ma_to_u16(float ma)
+    307          {
+    308            return (uint16_t)(floor(ma * 1000.0f + 0.5f));
+    309          }
+    310          
+    311          static void
+    312          load_eeprom_misc(void)
+    313          {
+    314            char ch;
+    315            uint16_t temp;
+    316          
+    317            for (ch = 0; ch < 2; ch++)
+    318            {
+    319              ReadEEPROMBuffer(EEPROM_RSP_DELAY_ADDR(ch), sizeof(uint16_t), (char*)&temp);
+    320          
+    321              if (temp > 0 && temp <= 5000)
+    322              {
+    323                TData.Ana.Rsp_Delay[ch] = temp;
+    324              }
+    325              else
+    326              {
+    327                TData.Ana.Rsp_Delay[ch] = 0;
+    328              }
+    329            }
+    330          }
+    331          
+    332          //
+    333          // gain
+    334          //
+    335          static inline void
+    336          __adc_task_set_gain(uint8_t ch, uint16_t gain)
+    337          {
+    338            float gain_f;
+    339            uint16_t gain_cur = float_gain_to_u16(TData.Ana.Gain[ch]);
+    340          
+    341            if (gain == gain_cur)
+    342            {
+    343              return;
+    344            }
+    345          
+    346            gain_f = u16_to_float_gain(gain);
+    347            if(fcompare(gain_f, ADC_GAIN_MIN) <= 0 || fcompare(gain_f, ADC_GAIN_MAX) >= 0)
+    348            {
+    349              // invalid value just silently ignore
+    350              return;
+    351            }
+    352          
+    353            TData.Ana.Gain[ch] = gain_f;
+    354            WriteEEPROMBufferSync(EEPROM_GAIN_ADDR(ch), sizeof(float), (char*)&gain_f);
+    355          }
+    356          
+    357          void
+    358          adc_task_set_gain(uint8_t ch, uint16_t gain)
+    359          {
+    360            OS_Use(&adc_lock);
+    361            __adc_task_set_gain(ch, gain);
+    362            OS_Unuse(&adc_lock);
+    363          }
+    364          
+    365          uint16_t
+    366          adc_task_get_gain(uint8_t ch)
+    367          {
+    368            uint16_t ret;
+    369          
+    370            OS_Use(&adc_lock);
+    371            ret = float_gain_to_u16(TData.Ana.Gain[ch]);
+    372            OS_Unuse(&adc_lock);
+    373          
+    374            return ret;
+    375          }
+    376          
+    377          //
+    378          // offset
+    379          //
+    380          static void
+    381          __adc_task_set_offset(uint8_t ch, uint16_t offset)
+    382          {
+    383            float offset_f;
+    384            uint16_t offset_cur = float_offset_to_u16(TData.Ana.Offset[ch]);
+    385          
+    386            if(offset == offset_cur)
+    387            {
+    388              return;
+    389            }
+    390          
+    391            offset_f = u16_to_float_offset(offset);
+    392            if (fcompare(offset_f, ADC_OFFSET_MIN) <= 0 || fcompare(offset_f, ADC_OFFSET_MAX) >= 0)
+    393            {
+    394              // invalid value just silently ignore
+    395              return;
+    396            }
+    397          
+    398            TData.Ana.Offset[ch] = offset_f;
+    399          
+    400            WriteEEPROMBufferSync(EEPROM_OFFSET_ADDR(ch), sizeof(float), (char*)&offset_f);
+    401          }
+    402          
+    403          void
+    404          adc_task_set_offset(uint8_t ch, uint16_t offset)
+    405          {
+    406            OS_Use(&adc_lock);
+    407            __adc_task_set_offset(ch, offset);
+    408            OS_Unuse(&adc_lock);
+    409          }
+    410          
+    411          uint16_t
+    412          adc_task_get_offset(uint8_t ch)
+    413          {
+    414            uint16_t ret;
+    415          
+    416            OS_Use(&adc_lock);
+    417            ret =  float_offset_to_u16(TData.Ana.Offset[ch]);
+    418            OS_Unuse(&adc_lock);
+    419          
+    420            return ret;
+    421          }
+    422          
+    423          //
+    424          // filter
+    425          //
+    426          static void
+    427          __adc_task_set_filter(uint8_t ch, uint16_t filter)
+    428          {
+    429            float filter_f;
+    430            uint16_t filter_cur = float_filter_to_u16(TData.Ana.Filter[ch]);
+    431          
+    432            if (filter_cur == filter)
+    433            {
+    434              return;
+    435            }
+    436          
+    437            filter_f = u16_to_float_filter(filter);
+    438            if (fcompare(filter_f, ADC_FILTER_MIN) <= 0 || fcompare(filter_f, ADC_FILTER_MAX) >= 0)
+    439            {
+    440              // invalid value just silently ignore
+    441              return;
+    442            }
+    443          
+    444            TData.Ana.Filter[ch] = filter_f;
+    445          }
+    446          
+    447          void
+    448          adc_task_set_filter(uint8_t ch, uint16_t filter)
+    449          {
+    450            OS_Use(&adc_lock);
+    451            __adc_task_set_filter(ch, filter);
+    452            OS_Unuse(&adc_lock);
+    453          }
+    454          
+    455          uint16_t
+    456          adc_task_get_filter(uint8_t ch)
+    457          {
+    458            uint16_t ret;
+    459          
+    460            OS_Use(&adc_lock);
+    461            ret = float_filter_to_u16(TData.Ana.Filter[ch]);
+    462            OS_Unuse(&adc_lock);
+    463          
+    464            return ret;
+    465          }
+    466          
+    467          //
+    468          // power
+    469          //
+    470          static void
+    471          adc_task_control_port_power(uint8_t ch, uint8_t on)
+    472          {
+    473            switch(ch)
+    474            {
+    475            case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+    476              // PORTC 0-7
+    477              if(on)
+    478              {
+    479                SetBit(PORTC, _BV(ch));
+    480              }
+    481              else
+    482              {
+    483                ClrBit(PORTC, _BV(ch));
+    484              }
+    485              break;
+    486          
+    487            case 8:
+    488              // PORTB 0
+    489              if(on)
+    490              {
+    491                SetBit(PORTB, _BV(0));
+    492              }
+    493              else
+    494              {
+    495                ClrBit(PORTB, _BV(0));
+    496              }
+    497              break;
+    498          
+    499            case 9: case 10: case 11:
+    500              // PORTB 5-7
+    501              if(on)
+    502              {
+    503                SetBit(PORTB, _BV(ch - 4));
+    504              }
+    505              else
+    506              {
+    507                ClrBit(PORTB, _BV(ch - 4));
+    508              }
+    509              break;
+    510            }
+    511          }
+    512          
+    513          static void
+    514          __adc_task_set_power(uint8_t ch, uint8_t on)
+    515          {
+    516            uint8_t current;
+    517          
+    518            current = (TData.Ana.PortUsed >> ch) & 0x01;
+    519          
+    520            if(current == on)
+    521            {
+    522              // no need to waste time
+    523              return;
+    524            }
+    525          
+    526            adc_task_control_port_power(ch, on);
+    527          
+    528            // save to eeprom
+    529            if(on)
+    530            {
+    531              TData.Ana.PortUsed |= (1 << ch);
+    532            }
+    533            else
+    534            {
+    535              TData.Ana.PortUsed &= ~(1 << ch);
+    536            }
+    537          
+    538            WriteEEPROMByte(EEPROM_PORTSETUP + 0, (TData.Ana.PortUsed & 0xff));
+    539            WriteEEPROMByte(EEPROM_PORTSETUP + 1, (TData.Ana.PortUsed >> 8) & 0xff);
+    540          }
+    541          
+    542          void
+    543          adc_task_set_power(uint8_t ch, uint8_t on)
+    544          {
+    545            OS_Use(&adc_lock);
+    546            __adc_task_set_power(ch, on);
+    547            OS_Unuse(&adc_lock);
+    548          }
+    549          
+    550          uint8_t
+    551          adc_task_get_power(uint8_t ch)
+    552          {
+    553            uint8_t status;
+    554          
+    555            OS_Use(&adc_lock);
+    556            status = (TData.Ana.PortUsed >> ch) & 0x01;
+    557            OS_Unuse(&adc_lock);
+    558          
+    559            return status;
+    560          }
+    561          
+    562          //
+    563          // status
+    564          //
+    565          uint8_t
+    566          adc_task_get_status(uint8_t ch)
+    567          {
+    568            uint8_t status;
+    569          
+    570            OS_Use(&adc_lock);
+    571            status = TData.Ana.Status[ch];
+    572            OS_Unuse(&adc_lock);
+    573          
+    574            return status;
+    575          }
+    576          
+    577          //
+    578          // ma
+    579          //
+    580          uint16_t
+    581          adc_task_get_ma(uint8_t ch)
+    582          {
+    583            float ma_f;
+    584          
+    585            OS_Use(&adc_lock);
+    586            ma_f = TData.Ana.Result[ch];
+    587            OS_Unuse(&adc_lock);
+    588          
+    589            return float_ma_to_u16(ma_f);
+    590          }
+    591          
+    592          static void
+    593          __adc_task_set_rsp_delay(char port, uint16_t delay)
+    594          {
+    595            uint16_t cur_delay = TData.Ana.Rsp_Delay[port];
+    596          
+    597            if(cur_delay == delay)
+    598            {
+    599              return;
+    600            }
+    601          
+    602            if (delay > 5000)
+    603            {
+    604              return;
+    605            }
+    606          
+    607            TData.Ana.Rsp_Delay[port] = delay;
+    608          
+    609            WriteEEPROMBufferSync(EEPROM_RSP_DELAY_ADDR(port), sizeof(uint16_t), (char*)&delay);
+    610          }
+    611          
+    612          void
+    613          adc_task_set_rsp_delay(char port, uint16_t delay)
+    614          {
+    615            OS_Use(&adc_lock);
+    616            __adc_task_set_rsp_delay(port, delay);
+    617            OS_Unuse(&adc_lock);
+    618          }
+    619          
+    620          uint16_t
+    621          adc_task_get_rsp_delay(char port)
+    622          {
+    623            uint16_t    ret;
+    624          
+    625            OS_Use(&adc_lock);
+    626            ret = TData.Ana.Rsp_Delay[port];
+    627            OS_Unuse(&adc_lock);
+    628          
+    629            return ret;
+    630          }
+    631          
+    632          #endif /* USE_MODBUS_PROTOCOL == 1 */
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     21      2   AD7715
+       21      2   -> IsFloat
+       21      2   -> OS_ClearEvents
+       21      2   -> OS_Delay
+       21      2   -> OS_WaitEventTimed
+       21      2   -> ReadAdByte
+       21      2   -> ReadEEPROMBuffer
+       21      2   -> ReadEEPROMByte
+       21      2   -> SetAnaPort
+       21      2   -> WriteAdByte
+       21      2 ?F_ADD_S_L04
+       21      2 ?F_CMP_GE_S_L04
+       21      2 ?F_CMP_LT_S_L04
+       21      2 ?F_DIV_S_L04
+       21      2 ?F_MUL_S_L04
+       21      2 ?F_SUB_S_L04
+       21      2 ?UL2F_S_L04
+      0      2   ReadAdByte
+      0      2   SetAnaPort
+      0      2   WriteAdByte
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+   1'122  AD7715
+      42  ReadAdByte
+      94  SetAnaPort
+      66  WriteAdByte
+       1  _A_PING
+       1  _A_PORTB
+       1  _A_PORTC
+       1  _A_PORTD
+       1  _A_PORTE
+       1  _A_PORTG
+
+ 
+     6 bytes in segment ABSOLUTE
+ 1'324 bytes in segment CODE
+ 
+ 1'324 bytes of CODE memory
+     0 bytes of DATA memory (+ 6 bytes shared)
+
+Errors: none
+Warnings: none

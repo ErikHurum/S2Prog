@@ -1,0 +1,583 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       04/May/2023  10:24:01
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file  =  D:\S2Prog\IO\AN-ZBHART\Src\main.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EWA44.tmp
+#        (D:\S2Prog\IO\AN-ZBHART\Src\main.c --cpu=m1280 -ms -o
+#        D:\S2Prog\IO\AN-ZBHART\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\AN-ZBHART\Debug\List -y --initializers_in_flash --no_cse
+#        --no_inline --no_code_motion --no_cross_call --no_clustering --no_tbaa
+#        --debug -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\AN-ZBHART\INC\\ -I
+#        ..\..\..\Shared\Inc\\ --eeprom_size 4096 --clib -On)
+#    Locale       =  English_USA.1252
+#    List file    =  D:\S2Prog\IO\AN-ZBHART\Debug\List\main.lst
+#    Object file  =  D:\S2Prog\IO\AN-ZBHART\Debug\Obj\main.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\AN-ZBHART\Src\main.c
+      1          /**********************************************************
+      2          *  
+      3          *   Main file for AN-ZB* program       
+      4          *  
+      5          ***********************************************************/
+      6          
+      7          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x60
+   \   union <unnamed> volatile __io _A_WDTCSR
+   \                     _A_WDTCSR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2e
+   \   union <unnamed> volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+      8          #include "stdio.h"
+      9          #include "math.h"
+     10          #include "variables.h"
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char UnitID
+   \                     UnitID:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char RestartStatus
+   \                     RestartStatus:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char volatile PortPair
+   \                     PortPair:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   struct <unnamed> My485UART
+   \                     My485UART:
+   \   00000000                      DS8 680
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   AnalogInt ADInt
+   \                     ADInt:
+   \   00000000                      DS8 32
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   TargetData TData
+   \                     TData:
+   \   00000000                      DS8 460
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char WriteCount
+   \                     WriteCount:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char *__near pWriteBuffer
+   \                     pWriteBuffer:
+   \   00000000                      DS8 2
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char EEPWriteOK
+   \                     EEPWriteOK:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \   char volatile hostAddress
+   \                     hostAddress:
+   \   00000000                      DS8 1
+
+   \                                 In  segment FAR_F, align 1, keep-with-next
+   \   char const __farflash crc[256]
+   \                     crc:
+   \   00000000   5E00E2BC3F61       DC8 0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31
+   \              83DD9CC2207E
+   \              FDA31F      
+   \   0000000F   9D4121C3FC7F       DC8 65, 157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96
+   \              40A25F1EE301
+   \              3EBD60      
+   \   0000001E   DC827D23C19F       DC8 130, 220, 35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128
+   \              1C42A0FEBFE1
+   \              035D80      
+   \   0000002D   3CDEBE6202E0       DC8 222, 60, 98, 190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158
+   \              DF5C63817C3D
+   \              C0229E      
+   \   0000003C   431DFFA11846       DC8 29, 67, 161, 255, 70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56
+   \              A4FA7927C59B
+   \              DA8438      
+   \   0000004B   E56659BBDB07       DC8 102, 229, 187, 89, 7, 219, 133, 103, 57, 186, 228, 6, 88, 25, 71
+   \              6785BA3906E4
+   \              195847      
+   \   0000005A   FBA526789AC4       DC8 165, 251, 120, 38, 196, 154, 101, 59, 217, 135, 4, 90, 184, 230
+   \              3B6587D95A04
+   \              E6B8        
+   \   00000068   F9A7451B98C6       DC8 167, 249, 27, 69, 198, 152, 122, 36, 248, 166, 68, 26, 153, 199, 37
+   \              247AA6F81A44
+   \              C79925      
+   \   00000077   3A7B86645BD8       DC8 123, 58, 100, 134, 216, 91, 5, 231, 185, 140, 210, 48, 110, 237
+   \              E7058CB930D2
+   \              ED6E        
+   \   00000085   51B34E0FF210       DC8 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205, 17, 79, 173, 243
+   \              2FAC937111CD
+   \              AD4FF3      
+   \   00000094   2E7092CC8DD3       DC8 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80, 175, 241
+   \              316FECB2500E
+   \              F1AF        
+   \   000000A2   4D1390CE2C72       DC8 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238, 50
+   \              336D8FD1520C
+   \              EEB032      
+   \   000000B1   8E6C53D0EF0D       DC8 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45
+   \              F0B14CAE9112
+   \              2DCF        
+   \   000000BF   CA737694AB28       DC8 115, 202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55
+   \              17F50849B456
+   \              69EA37      
+   \   000000CE   8BD50957B5EB       DC8 213, 139, 87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119
+   \              6836D48ACB95
+   \              7729        
+   \   000000DC   AAF41648B7E9       DC8 244, 170, 72, 22, 233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151
+   \              0B55D6886A34
+   \              752B97      
+   \   000000EB   4AC9F61474A8       DC8 201, 74, 20, 246, 168, 116, 42, 200, 150, 21, 75, 169, 247, 182
+   \              C82A1596A94B
+   \              B6F7        
+   \   000000F9   0AE8D7546B89       DC8 232, 10, 84, 215, 137, 107, 53
+   \              35          
+     11          #include "version.h"
+     12          #include "inavr.h"
+     13          #include "string.h"
+     14          #include <intrinsics.h>
+     15          #include "hart.h"
+     16          #include "hart_diag.h"
+     17          
+     18          extern void InternalADCHandler(void);
+     19          
+     20          /* Task stacks */
+     21          #if defined( OS_LIBMODE_D) || defined( OS_LIBMODE_S )
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     22          char StackTest1[] = {"123456789"};
+   \                     StackTest1:
+   \   00000000                      DS8 10
+   \   0000000A                      REQUIRE `?<Initializer for StackTest1>`
+     23          #endif
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     24          OS_STACKPTR int Stack1[175]; 
+   \                     Stack1:
+   \   00000000                      DS8 350
+     25          #if defined( OS_LIBMODE_D) || defined( OS_LIBMODE_S )
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     26          char StackTest2[] = {"123456789"};
+   \                     StackTest2:
+   \   00000000                      DS8 10
+   \   0000000A                      REQUIRE `?<Initializer for StackTest2>`
+     27          #endif
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     28          OS_STACKPTR int Stack2[100];
+   \                     Stack2:
+   \   00000000                      DS8 200
+     29          #if defined( OS_LIBMODE_D) || defined( OS_LIBMODE_S )
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     30          char StackTest3[] = {"123456789"};
+   \                     StackTest3:
+   \   00000000                      DS8 10
+   \   0000000A                      REQUIRE `?<Initializer for StackTest3>`
+     31          #endif
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     32          OS_STACKPTR int Stack3[150];                
+   \                     Stack3:
+   \   00000000                      DS8 300
+     33          #if defined( OS_LIBMODE_D) || defined( OS_LIBMODE_S )
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     34          char StackTest4[] = {"123456789"};
+   \                     StackTest4:
+   \   00000000                      DS8 10
+   \   0000000A                      REQUIRE `?<Initializer for StackTest4>`
+     35          #endif
+     36            /* Task-control-blocks */
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     37          OS_TASK TCB_USART0; 
+   \                     TCB_USART0:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     38          OS_TASK TCB_WATCHDOG; 
+   \                     TCB_WATCHDOG:
+   \   00000000                      DS8 33
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     39          OS_TASK TCB_INT_ADC;   
+   \                     TCB_INT_ADC:
+   \   00000000                      DS8 33
+     40          
+     41          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     42          unsigned char ReadSignatureRow(unsigned int addr)	
+   \                     ReadSignatureRow:
+     43          {
+   \   00000000   01F8               MOVW    R31:R30, R17:R16
+     44            return (__AddrToZByteToSPMCR_LPM((void __flash*)(addr),(1 <<SPMEN) | (1<<SIGRD)));
+   \   00000002   E201               LDI     R16, 33
+   \   00000004   BF07               OUT     0x37, R16
+   \   00000006   9104               LPM     R16, Z
+   \   00000008   9508               RET
+     45          }
+     46          /**********************************************************
+     47          *
+     48          *       main
+     49          *  
+     50          * CPU signatures:
+     51          * ATmega128 : 0x1E, 0x97, 0x03
+     52          * ATmega1280: 0x1E, 0x97, 0x02
+     53          * 0x1E=Manufactured by Atmel
+     54          * 0x97= Indicates 128Kbyte Flash memory
+     55          * Last digit is type of device.
+     56          * 
+     57          **********************************************************/
+     58          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     59          void main(void)
+   \                     main:
+     60          {
+   \   00000000   ........           CALL    ?PROLOGUE6_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+     61          #if 1
+     62              __disable_interrupt();
+   \   00000004   94F8               CLI
+     63              __watchdog_reset();               //kick the dog
+   \   00000006   95A8               WDR
+     64              //WDTCSR = 0x1f;
+     65              //WDTCSR = 0x0f;
+     66              /* Start timed equence */
+     67              WDTCSR |= (1<<WDCE) | (1<<WDE);
+   \   00000008   9100....           LDS     R16, _A_WDTCSR
+   \   0000000C   6108               ORI     R16, 0x18
+   \   0000000E   9300....           STS     _A_WDTCSR, R16
+     68              /* Set new prescaler(time-out) value = 256K cycles (~2.0 s) */
+     69              WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+   \   00000012   E00F               LDI     R16, 15
+   \   00000014   9300....           STS     _A_WDTCSR, R16
+     70              __watchdog_reset();               //kick the dog
+   \   00000018   95A8               WDR
+     71              __enable_interrupt();
+   \   0000001A   9478               SEI
+     72          #endif
+     73           // SPMCSR |= 1 << 5;
+     74            
+     75            int SByte1 = ReadSignatureRow(0); 
+   \   0000001C   E000               LDI     R16, 0
+   \   0000001E   E010               LDI     R17, 0
+   \   00000020   ....               RCALL   ReadSignatureRow
+   \   00000022   2E40               MOV     R4, R16
+   \   00000024   2455               CLR     R5
+     76            int SByte3 = ReadSignatureRow(2); 
+   \   00000026   E002               LDI     R16, 2
+   \   00000028   E010               LDI     R17, 0
+   \   0000002A   ....               RCALL   ReadSignatureRow
+   \   0000002C   2FA0               MOV     R26, R16
+   \   0000002E   E0B0               LDI     R27, 0
+     77            int SByte5 = ReadSignatureRow(4); 
+   \   00000030   E004               LDI     R16, 4
+   \   00000032   E010               LDI     R17, 0
+   \   00000034   ....               RCALL   ReadSignatureRow
+   \   00000036   2F80               MOV     R24, R16
+   \   00000038   E090               LDI     R25, 0
+     78            OS_InitKern();          /* initialize OS                 */
+   \   0000003A   ........           CALL    OS_InitKern
+     79            OS_InitHW();            /* initialize Hardware for OS    */
+   \   0000003E   ........           CALL    OS_InitHW
+     80            InitSystem();           // init the system according to board
+   \   00000042   ........           CALL    InitSystem
+     81            memset(&TData,sizeof(TData),0);
+   \   00000046   E040               LDI     R20, 0
+   \   00000048   E050               LDI     R21, 0
+   \   0000004A   EC2C               LDI     R18, 204
+   \   0000004C   E031               LDI     R19, 1
+   \   0000004E   ....               LDI     R16, LOW(TData)
+   \   00000050   ....               LDI     R17, (TData) >> 8
+   \   00000052   ........           CALL    memset
+     82            hart_diag_task_start();
+   \   00000056   ........           CALL    hart_diag_task_start
+     83            hart_start();
+   \   0000005A   ........           CALL    hart_start
+     84          
+     85            OS_CreateMB(&My485UART.RxMailBox, 1, MBUF_SIZE, My485UART.MailBuf);
+   \   0000005E   ....               LDI     R22, LOW((My485UART + 24))
+   \   00000060   ....               LDI     R23, HIGH((My485UART + 24))
+   \   00000062   E644               LDI     R20, 100
+   \   00000064   E050               LDI     R21, 0
+   \   00000066   E021               LDI     R18, 1
+   \   00000068   ....               LDI     R16, LOW((My485UART + 10))
+   \   0000006A   ....               LDI     R17, HIGH((My485UART + 10))
+   \   0000006C   ........           CALL    OS_CreateMB
+     86          
+     87            OS_CREATETASK(&TCB_USART0     , "UART0"           , Usart0Handler     , 130, Stack1);
+   \   00000070   E002               LDI     R16, 2
+   \   00000072   E010               LDI     R17, 0
+   \   00000074   931A               ST      -Y, R17
+   \   00000076   930A               ST      -Y, R16
+   \   00000078   E50E               LDI     R16, 94
+   \   0000007A   E011               LDI     R17, 1
+   \   0000007C   931A               ST      -Y, R17
+   \   0000007E   930A               ST      -Y, R16
+   \   00000080   ....               LDI     R16, LOW(Stack1)
+   \   00000082   ....               LDI     R17, (Stack1) >> 8
+   \   00000084   931A               ST      -Y, R17
+   \   00000086   930A               ST      -Y, R16
+   \   00000088   ....               LDI     R22, LOW(Usart0Handler/2)
+   \   0000008A   ....               LDI     R23, (Usart0Handler/2) >> 8
+   \   0000008C   E842               LDI     R20, 130
+   \   0000008E   ....               LDI     R18, LOW(`?<Constant "UART0">`)
+   \   00000090   ....               LDI     R19, (`?<Constant "UART0">`) >> 8
+   \   00000092   ....               LDI     R16, LOW(TCB_USART0)
+   \   00000094   ....               LDI     R17, (TCB_USART0) >> 8
+   \   00000096   ........           CALL    OS_CreateTask_D
+     88            OS_CREATETASK(&TCB_WATCHDOG   , "Watch dog"       , WatchDogHandler   ,  50, Stack3);
+   \   0000009A   E002               LDI     R16, 2
+   \   0000009C   E010               LDI     R17, 0
+   \   0000009E   931A               ST      -Y, R17
+   \   000000A0   930A               ST      -Y, R16
+   \   000000A2   E20C               LDI     R16, 44
+   \   000000A4   E011               LDI     R17, 1
+   \   000000A6   931A               ST      -Y, R17
+   \   000000A8   930A               ST      -Y, R16
+   \   000000AA   ....               LDI     R16, LOW(Stack3)
+   \   000000AC   ....               LDI     R17, (Stack3) >> 8
+   \   000000AE   931A               ST      -Y, R17
+   \   000000B0   930A               ST      -Y, R16
+   \   000000B2   ....               LDI     R22, LOW(WatchDogHandler/2)
+   \   000000B4   ....               LDI     R23, (WatchDogHandler/2) >> 8
+   \   000000B6   E342               LDI     R20, 50
+   \   000000B8   ....               LDI     R18, LOW(`?<Constant "Watch dog">`)
+   \   000000BA   ....               LDI     R19, (`?<Constant "Watch dog">`) >> 8
+   \   000000BC   ....               LDI     R16, LOW(TCB_WATCHDOG)
+   \   000000BE   ....               LDI     R17, (TCB_WATCHDOG) >> 8
+   \   000000C0   ........           CALL    OS_CreateTask_D
+     89            OS_CREATETASK(&TCB_INT_ADC    , "Internal ADC "   , InternalADCHandler,  60, Stack2);
+   \   000000C4   E002               LDI     R16, 2
+   \   000000C6   E010               LDI     R17, 0
+   \   000000C8   931A               ST      -Y, R17
+   \   000000CA   930A               ST      -Y, R16
+   \   000000CC   EC08               LDI     R16, 200
+   \   000000CE   E010               LDI     R17, 0
+   \   000000D0   931A               ST      -Y, R17
+   \   000000D2   930A               ST      -Y, R16
+   \   000000D4   ....               LDI     R16, LOW(Stack2)
+   \   000000D6   ....               LDI     R17, (Stack2) >> 8
+   \   000000D8   931A               ST      -Y, R17
+   \   000000DA   930A               ST      -Y, R16
+   \   000000DC   ....               LDI     R22, LOW(InternalADCHandler/2)
+   \   000000DE   ....               LDI     R23, (InternalADCHandler/2) >> 8
+   \   000000E0   E34C               LDI     R20, 60
+   \   000000E2   ....               LDI     R18, LOW(`?<Constant "Internal ADC ">`)
+   \   000000E4   ....               LDI     R19, (`?<Constant "Internal ADC ">`) >> 8
+   \   000000E6   ....               LDI     R16, LOW(TCB_INT_ADC)
+   \   000000E8   ....               LDI     R17, (TCB_INT_ADC) >> 8
+   \   000000EA   ........           CALL    OS_CreateTask_D
+     90            OS_Start();                            // Start multitasking
+   \   000000EE   E001               LDI     R16, 1
+   \   000000F0   9300....           STS     OS_Running, R16
+   \   000000F4   ........           CALL    OS_StartASM
+     91            OS_Delay(100);
+   \   000000F8   E604               LDI     R16, 100
+   \   000000FA   E010               LDI     R17, 0
+   \   000000FC   ........           CALL    OS_Delay
+     92            My_ClrBit(PORTE, 0x04);                   // TXE0 off
+   \   00000100   9100....           LDS     R16, (OS_Global + 1)
+   \   00000104   7F00               ANDI    R16, 0xF0
+   \   00000106   2300               TST     R16
+   \   00000108   F021               BREQ    ??main_0
+   \   0000010A   E909               LDI     R16, 153
+   \   0000010C   E010               LDI     R17, 0
+   \   0000010E   ........           CALL    OS_Error
+   \                     ??main_0:
+   \   00000112   94F8               cli
+   \   00000114   9100....           LDS     R16, (OS_Global + 1)
+   \   00000118   9503               INC     R16
+   \   0000011A   9300....           STS     (OS_Global + 1), R16
+   \   0000011E   9872               CBI     0x0E, 0x02
+   \   00000120   9100....           LDS     R16, (OS_Global + 1)
+   \   00000124   7F00               ANDI    R16, 0xF0
+   \   00000126   2300               TST     R16
+   \   00000128   F021               BREQ    ??main_1
+   \   0000012A   E909               LDI     R16, 153
+   \   0000012C   E010               LDI     R17, 0
+   \   0000012E   ........           CALL    OS_Error
+   \                     ??main_1:
+   \   00000132   9100....           LDS     R16, (OS_Global + 1)
+   \   00000136   950A               DEC     R16
+   \   00000138   9300....           STS     (OS_Global + 1), R16
+   \   0000013C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000140   2300               TST     R16
+   \   00000142   F409               BRNE    ??main_2
+   \   00000144   9478               sei
+     93          
+     94          }
+   \                     ??main_2:
+   \   00000146   E0E6               LDI     R30, 6
+   \   00000148   ........           JMP     ?EPILOGUE_B6_L09
+   \   0000014C                      REQUIRE _A_WDTCSR
+   \   0000014C                      REQUIRE _A_PORTE
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "UART0">>`:
+   \   00000000   415554520030       DC8 "UART0"
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "Watch dog">>`:
+   \   00000000   615763742068       DC8 "Watch dog"
+   \              6F640067    
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "Internal ADC ">>`:
+   \   00000000   6E4965746E72       DC8 "Internal ADC "
+   \              6C6141204344
+   \              0020        
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for StackTest1>`:
+   \   00000000   323134333635       DC8 "123456789"
+   \              38370039    
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for StackTest2>`:
+   \   00000000   323134333635       DC8 "123456789"
+   \              38370039    
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for StackTest3>`:
+   \   00000000   323134333635       DC8 "123456789"
+   \              38370039    
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for StackTest4>`:
+   \   00000000   323134333635       DC8 "123456789"
+   \              38370039    
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "UART0">`:
+   \   00000000                      DS8 6
+   \   00000006                      REQUIRE `?<Initializer for <Constant "UART0">>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "Watch dog">`:
+   \   00000000                      DS8 10
+   \   0000000A                      REQUIRE `?<Initializer for <Constant "Watch dog">>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "Internal ADC ">`:
+   \   00000000                      DS8 14
+   \   0000000E                      REQUIRE `?<Initializer for <Constant "Internal ADC ">>`
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      0      2   ReadSignatureRow
+     12      2   main
+        6      2   -> InitSystem
+        6      2   -> OS_CreateMB
+        6      2   -> OS_CreateTask_D
+        6      2   -> OS_Delay
+        6      2   -> OS_Error
+        6      2   -> OS_InitHW
+        6      2   -> OS_InitKern
+        6      2   -> OS_StartASM
+        6      2   -> ReadSignatureRow
+        6      2   -> hart_diag_task_start
+        6      2   -> hart_start
+        6      2   -> memset
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      14  ?<Constant "Internal ADC ">
+       6  ?<Constant "UART0">
+      10  ?<Constant "Watch dog">
+      14  ?<Initializer for <Constant "Internal ADC ">>
+       6  ?<Initializer for <Constant "UART0">>
+      10  ?<Initializer for <Constant "Watch dog">>
+      10  ?<Initializer for StackTest1>
+      10  ?<Initializer for StackTest2>
+      10  ?<Initializer for StackTest3>
+      10  ?<Initializer for StackTest4>
+      32  ADInt
+       1  EEPWriteOK
+     680  My485UART
+       1  PortPair
+      10  ReadSignatureRow
+       1  RestartStatus
+     350  Stack1
+     200  Stack2
+     300  Stack3
+      10  StackTest1
+      10  StackTest2
+      10  StackTest3
+      10  StackTest4
+      33  TCB_INT_ADC
+      33  TCB_USART0
+      33  TCB_WATCHDOG
+     460  TData
+       1  UnitID
+       1  WriteCount
+       1  _A_PORTE
+       1  _A_WDTCSR
+     256  crc
+       1  hostAddress
+     332  main
+       2  pWriteBuffer
+      14  -- Other
+
+ 
+     2 bytes in segment ABSOLUTE
+   342 bytes in segment CODE
+   256 bytes in segment FAR_F
+    14 bytes in segment INITTAB
+    70 bytes in segment NEAR_I
+    70 bytes in segment NEAR_ID
+ 2 129 bytes in segment NEAR_Z
+ 
+   668 bytes of CODE memory (+ 14 bytes shared)
+ 2 199 bytes of DATA memory (+  2 bytes shared)
+
+Errors: none
+Warnings: none

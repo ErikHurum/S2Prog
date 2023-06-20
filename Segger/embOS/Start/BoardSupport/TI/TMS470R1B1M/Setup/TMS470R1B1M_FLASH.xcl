@@ -1,0 +1,54 @@
+//*********************************************************************
+//*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+//*        Solutions for real time microcontroller applications       *
+//*********************************************************************
+//*                                                                   *
+//*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+//*                  www.segger.com                                   *
+//*                                                                   *
+//*********************************************************************
+//
+//---------------------------------------------------------------------
+//File   : TMS470R1B1M_FLASH.xcl
+//Purpose: Linker file for TMS470R1B1M and IAR embedded workbench V4
+//-------- END-OF-HEADER ----------------------------------------------
+//
+
+-DROMSTART=00000000
+-DROMEND=000FFFFF
+-DRAMSTART=00400000
+-DRAMEND=0040FFFF
+-D_CSTACK_SIZE=(80*4)
+-D_IRQ_STACK_SIZE=(3*(4*7)+8)  // Nesting level * (Size per interrupt) + margin for alignement
+
+-carm
+
+
+//************************************************
+// Address range for reset and exception
+// vectors (INTVEC).
+// The vector area is 32 bytes,
+// an additional 32 bytes is allocated for the
+// constant table used by ldr PC in cstartup.s79.
+//************************************************
+-Z(CODE)INTVEC=ROMSTART-(ROMSTART+FF)
+
+//************************************************
+// Startup code and exception routines (ICODE).
+//************************************************
+-Z(CODE)ICODE,DIFUNCT,SWITAB,CODE,CODE_ID=ROMSTART-ROMEND
+
+//************************************************
+// Various constants and initializers.
+//************************************************
+-Z(CONST)INITTAB,DATA_ID,DATA_C,CHECKSUM=ROMSTART-ROMEND
+
+
+//************************************************
+// Data segments.
+//************************************************
+-Z(DATA)DATA_I,DATA_Z,DATA_N,CODE_I,CSTACK+_CSTACK_SIZE,IRQ_STACK+_IRQ_STACK_SIZE=RAMSTART-RAMEND
+-QCODE_I=CODE_ID
+
+
+

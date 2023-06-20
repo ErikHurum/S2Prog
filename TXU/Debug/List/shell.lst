@@ -1,0 +1,1436 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:17 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\app\shell.c             #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\app\shell.c --fpu None  #
+#                       -D OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D   #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\shell.lst                   #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\shell.r79                    #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\app\shell.c
+      1          /*
+      2           * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
+      3           * All rights reserved.
+      4           *
+      5           * Redistribution and use in source and binary forms, with or without modification,
+      6           * are permitted provided that the following conditions are met:
+      7           *
+      8           * 1. Redistributions of source code must retain the above copyright notice,
+      9           *    this list of conditions and the following disclaimer.
+     10           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     11           *    this list of conditions and the following disclaimer in the documentation
+     12           *    and/or other materials provided with the distribution.
+     13           * 3. The name of the author may not be used to endorse or promote products
+     14           *    derived from this software without specific prior written permission.
+     15           *
+     16           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     17           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     18           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     19           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     20           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     21           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     22           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     23           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     24           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     25           * OF SUCH DAMAGE.
+     26           *
+     27           * This file is part of the lwIP TCP/IP stack.
+     28           *
+     29           * Author: Adam Dunkels <adam@sics.se>
+     30           *
+     31           */
+     32          
+     33          #include "shell.h"
+     34          
+     35          #include "lwip/opt.h"
+     36          
+     37          #if LWIP_NETCONN
+     38          
+     39          #include <string.h>
+     40          #include <stdio.h>
+     41          #include <time.h>
+     42          
+     43          #include "lwip/mem.h"
+     44          #include "lwip/debug.h"
+     45          #include "lwip/def.h"
+     46          #include "lwip/api.h"
+     47          #include "lwip/stats.h"
+     48          #include "netif/cs8900if.h"
+     49          
+     50          #ifdef WIN32
+     51          #define NEWLINE "\r\n"
+     52          #else /* WIN32 */
+     53          #define NEWLINE "\r\n"
+     54          #endif /* WIN32 */
+     55          
+     56          /** Define this to 1 if you want to echo back all received characters
+     57           * (e.g. so they are displayed on a remote telnet)
+     58           */
+     59          #ifndef SHELL_ECHO
+     60          #define SHELL_ECHO 0
+     61          #endif
+     62          
+     63          #define BUFSIZE             1024
+     64          static unsigned char buffer[BUFSIZE];
+     65          int errno = 0; // hack by hkim. emBOS doesn't provide errno
+     66          struct command {
+     67            struct netconn *conn;
+     68            s8_t (* exec)(struct command *);
+     69            u8_t nargs;
+     70            char *args[10];
+     71          };
+     72          
+     73          #undef IP_HDRINCL
+     74          
+     75          #include <stdio.h>
+     76          #include <stdlib.h>
+     77          #include <limits.h>
+     78          
+     79          #define ESUCCESS 0
+     80          #define ESYNTAX -1
+     81          #define ETOOFEW -2
+     82          #define ETOOMANY -3
+     83          #define ECLOSED -4
+     84          
+     85          #define NCONNS 10
+     86          static struct netconn *conns[NCONNS];
+     87          
+     88          /* help_msg is split into 2 strings to prevent exceeding the C89 maximum length of 509 per string */
+     89          static char help_msg1[] = "Available commands:"NEWLINE"\
+     90          open [IP address] [TCP port]: opens a TCP connection to the specified address."NEWLINE"\
+     91          lstn [TCP port]: sets up a server on the specified port."NEWLINE"\
+     92          acpt [connection #]: waits for an incoming connection request."NEWLINE"\
+     93          send [connection #] [message]: sends a message on a TCP connection."NEWLINE"\
+     94          udpc [local UDP port] [IP address] [remote port]: opens a UDP \"connection\"."NEWLINE"\
+     95          udpl [local UDP port] [IP address] [remote port]: opens a UDP-Lite \"connection\"."NEWLINE"";
+     96          static char help_msg2[] = "udpn [local UDP port] [IP address] [remote port]: opens a UDP \"connection\" without checksums."NEWLINE"\
+     97          udpb [local port] [remote port]: opens a UDP broadcast \"connection\"."NEWLINE"\
+     98          usnd [connection #] [message]: sends a message on a UDP connection."NEWLINE"\
+     99          recv [connection #]: recieves data on a TCP or UDP connection."NEWLINE"\
+    100          clos [connection #]: closes a TCP or UDP connection."NEWLINE"\
+    101          stat: prints out lwIP statistics."NEWLINE"\
+    102          quit: quits."NEWLINE"";
+    103          
+    104          #if LWIP_STATS
+    105          static char padding_10spaces[] = "          ";
+    106          
+    107          #define PROTOCOL_STATS (LINK_STATS && ETHARP_STATS && IPFRAG_STATS && IP_STATS && ICMP_STATS && UDP_STATS && TCP_STATS)
+    108          
+    109          #if PROTOCOL_STATS
+    110          static const char* shell_stat_proto_names[] = {
+    111          #if LINK_STATS
+    112            "LINK      ",
+    113          #endif
+    114          #if ETHARP_STATS
+    115            "ETHARP    ",
+    116          #endif
+    117          #if IPFRAG_STATS
+    118            "IP_FRAG   ",
+    119          #endif
+    120          #if IP_STATS
+    121            "IP        ",
+    122          #endif
+    123          #if ICMP_STATS
+    124            "ICMP      ",
+    125          #endif
+    126          #if UDP_STATS
+    127            "UDP       ",
+    128          #endif
+    129          #if TCP_STATS
+    130            "TCP       ",
+    131          #endif
+    132            "last"
+    133          };
+    134          
+    135          static struct stats_proto* shell_stat_proto_stats[] = {
+    136          #if LINK_STATS
+    137            &lwip_stats.link,
+    138          #endif
+    139          #if ETHARP_STATS
+    140            &lwip_stats.etharp,
+    141          #endif
+    142          #if IPFRAG_STATS
+    143            &lwip_stats.ip_frag,
+    144          #endif
+    145          #if IP_STATS
+    146            &lwip_stats.ip,
+    147          #endif
+    148          #if ICMP_STATS
+    149            &lwip_stats.icmp,
+    150          #endif
+    151          #if UDP_STATS
+    152            &lwip_stats.udp,
+    153          #endif
+    154          #if TCP_STATS
+    155            &lwip_stats.tcp,
+    156          #endif
+    157          };
+    158          const size_t num_protostats = sizeof(shell_stat_proto_stats)/sizeof(struct stats_proto*);
+    159          
+    160          static const char *stat_msgs_proto[] = {
+    161            " * transmitted ",
+    162            "           * received ",
+    163            "             forwarded ",
+    164            "           * dropped ",
+    165            "           * checksum errors ",
+    166            "           * length errors ",
+    167            "           * memory errors ",
+    168            "             routing errors ",
+    169            "             protocol errors ",
+    170            "             option errors ",
+    171            "           * misc errors ",
+    172            "             cache hits "
+    173          };
+    174          #endif /* PROTOCOL_STATS */
+    175          #endif /* LWIP_STATS */
+    176          
+    177          /*-----------------------------------------------------------------------------------*/
+    178          static void
+    179          sendstr(const char *str, struct netconn *conn)
+    180          {
+    181            netconn_write(conn, (void *)str, strlen(str), NETCONN_NOCOPY);
+    182          }
+    183          /*-----------------------------------------------------------------------------------*/
+    184          static s8_t
+    185          com_open(struct command *com)
+    186          {
+    187            ip_addr_t ipaddr;
+    188            u16_t port;
+    189            int i;
+    190            err_t err;
+    191            long tmp;
+    192          
+    193            if (ipaddr_aton(com->args[0], &ipaddr) == -1) {
+    194              sendstr(strerror(errno), com->conn);
+    195              return ESYNTAX;
+    196            }
+    197            tmp = strtol(com->args[1], NULL, 10);
+    198            if((tmp < 0) || (tmp > 0xffff)) {
+    199              sendstr("Invalid port number."NEWLINE, com->conn);
+    200              return ESUCCESS;
+    201            }
+    202            port = (u16_t)tmp;
+    203          
+    204            /* Find the first unused connection in conns. */
+    205            for(i = 0; i < NCONNS && conns[i] != NULL; i++);
+    206          
+    207            if (i == NCONNS) {
+    208              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    209              return ESUCCESS;
+    210            }
+    211          
+    212            sendstr("Opening connection to ", com->conn);
+    213            netconn_write(com->conn, com->args[0], strlen(com->args[0]), NETCONN_COPY);
+    214            sendstr(":", com->conn);
+    215            netconn_write(com->conn, com->args[1], strlen(com->args[1]), NETCONN_COPY);
+    216            sendstr(NEWLINE, com->conn);
+    217          
+    218            conns[i] = netconn_new(NETCONN_TCP);
+    219            if (conns[i] == NULL) {
+    220              sendstr("Could not create connection identifier (out of memory)."NEWLINE, com->conn);
+    221              return ESUCCESS;
+    222            }
+    223            err = netconn_connect(conns[i], &ipaddr, port);
+    224            if (err != ERR_OK) {
+    225              fprintf(stderr, "error %s"NEWLINE, lwip_strerr(err));
+    226              sendstr("Could not connect to remote host: ", com->conn);
+    227          #ifdef LWIP_DEBUG
+    228              sendstr(lwip_strerr(err), com->conn);
+    229          #else
+    230              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    231          #endif /* LWIP_DEBUG */
+    232              sendstr(NEWLINE, com->conn);
+    233              netconn_delete(conns[i]);
+    234              conns[i] = NULL;
+    235              return ESUCCESS;
+    236            }
+    237          
+    238            sendstr("Opened connection, connection identifier is ", com->conn);
+    239            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, i);
+    240            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    241          
+    242            return ESUCCESS;
+    243          }
+    244          /*-----------------------------------------------------------------------------------*/
+    245          static s8_t
+    246          com_lstn(struct command *com)
+    247          {
+    248            u16_t port;
+    249            int i;
+    250            err_t err;
+    251            long tmp;
+    252          
+    253            tmp = strtol(com->args[0], NULL, 10);
+    254            if((tmp < 0) || (tmp > 0xffff)) {
+    255              sendstr("Invalid port number."NEWLINE, com->conn);
+    256              return ESUCCESS;
+    257            }
+    258            port = (u16_t)tmp;
+    259          
+    260            /* Find the first unused connection in conns. */
+    261            for(i = 0; i < NCONNS && conns[i] != NULL; i++);
+    262          
+    263            if (i == NCONNS) {
+    264              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    265              return ESUCCESS;
+    266            }
+    267          
+    268            sendstr("Opening a listening connection on port ", com->conn);
+    269            netconn_write(com->conn, com->args[0], strlen(com->args[0]), NETCONN_COPY);
+    270            sendstr(NEWLINE, com->conn);
+    271          
+    272            conns[i] = netconn_new(NETCONN_TCP);
+    273            if (conns[i] == NULL) {
+    274              sendstr("Could not create connection identifier (out of memory)."NEWLINE, com->conn);
+    275              return ESUCCESS;
+    276            }
+    277          
+    278            err = netconn_bind(conns[i], IP_ADDR_ANY, port);
+    279            if (err != ERR_OK) {
+    280              netconn_delete(conns[i]);
+    281              conns[i] = NULL;
+    282              sendstr("Could not bind: ", com->conn);
+    283          #ifdef LWIP_DEBUG
+    284              sendstr(lwip_strerr(err), com->conn);
+    285          #else
+    286              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    287          #endif /* LWIP_DEBUG */
+    288              sendstr(NEWLINE, com->conn);
+    289              return ESUCCESS;
+    290            }
+    291          
+    292            err = netconn_listen(conns[i]);
+    293            if (err != ERR_OK) {
+    294              netconn_delete(conns[i]);
+    295              conns[i] = NULL;
+    296              sendstr("Could not listen: ", com->conn);
+    297          #ifdef LWIP_DEBUG
+    298              sendstr(lwip_strerr(err), com->conn);
+    299          #else
+    300              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    301          #endif /* LWIP_DEBUG */
+    302              sendstr(NEWLINE, com->conn);
+    303              return ESUCCESS;
+    304            }
+    305          
+    306            sendstr("Opened connection, connection identifier is ", com->conn);
+    307            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, i);
+    308            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    309          
+    310            return ESUCCESS;
+    311          }
+    312          /*-----------------------------------------------------------------------------------*/
+    313          /*-----------------------------------------------------------------------------------*/
+    314          static s8_t
+    315          com_clos(struct command *com)
+    316          {
+    317            int i;
+    318            err_t err;
+    319          
+    320            i = strtol(com->args[0], NULL, 10);
+    321          
+    322            if (i > NCONNS) {
+    323              sendstr("Connection identifier too high."NEWLINE, com->conn);
+    324              return ESUCCESS;
+    325            }
+    326            if (conns[i] == NULL) {
+    327              sendstr("Connection identifier not in use."NEWLINE, com->conn);
+    328              return ESUCCESS;
+    329            }
+    330          
+    331            err = netconn_close(conns[i]);
+    332            if (err != ERR_OK) {
+    333              sendstr("Could not close connection: ", com->conn);
+    334          #ifdef LWIP_DEBUG
+    335              sendstr(lwip_strerr(err), com->conn);
+    336          #else
+    337              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    338          #endif /* LWIP_DEBUG */
+    339              sendstr(NEWLINE, com->conn);
+    340              return ESUCCESS;
+    341            }
+    342          
+    343            sendstr("Connection closed."NEWLINE, com->conn);
+    344            netconn_delete(conns[i]);
+    345            conns[i] = NULL;
+    346            return ESUCCESS;
+    347          }
+    348          /*-----------------------------------------------------------------------------------*/
+    349          static s8_t
+    350          com_acpt(struct command *com)
+    351          {
+    352            int i, j;
+    353            err_t err;
+    354          
+    355            /* Find the first unused connection in conns. */
+    356            for(j = 0; j < NCONNS && conns[j] != NULL; j++);
+    357          
+    358            if (j == NCONNS) {
+    359              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    360              return ESUCCESS;
+    361            }
+    362          
+    363            i = strtol(com->args[0], NULL, 10);
+    364          
+    365            if (i > NCONNS) {
+    366              sendstr("Connection identifier too high."NEWLINE, com->conn);
+    367              return ESUCCESS;
+    368            }
+    369            if (conns[i] == NULL) {
+    370              sendstr("Connection identifier not in use."NEWLINE, com->conn);
+    371              return ESUCCESS;
+    372            }
+    373          
+    374            err = netconn_accept(conns[i], &conns[j]);
+    375          
+    376            if (err != ERR_OK) {
+    377              sendstr("Could not accept connection: ", com->conn);
+    378          #ifdef LWIP_DEBUG
+    379              sendstr(lwip_strerr(err), com->conn);
+    380          #else
+    381              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    382          #endif /* LWIP_DEBUG */
+    383              sendstr(NEWLINE, com->conn);
+    384              return ESUCCESS;
+    385            }
+    386          
+    387            sendstr("Accepted connection, connection identifier for new connection is ", com->conn);
+    388            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, j);
+    389            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    390          
+    391            return ESUCCESS;
+    392          }
+    393          /*-----------------------------------------------------------------------------------*/
+    394          #if LWIP_STATS
+    395          static void
+    396          com_stat_write_mem(struct netconn *conn, struct stats_mem *elem, int i)
+    397          {
+    398            u16_t len;
+    399            char buf[100];
+    400            size_t slen;
+    401          
+    402          #ifdef LWIP_DEBUG
+    403            LWIP_UNUSED_ARG(i);
+    404            slen = strlen(elem->name);
+    405            netconn_write(conn, elem->name, slen, NETCONN_COPY);
+    406          #else /*  LWIP_DEBUG */
+    407            len = (u16_t)sprintf(buf, "%d", i);
+    408            slen = strlen(buf);
+    409            netconn_write(conn, buf, slen, NETCONN_COPY);
+    410          #endif /*  LWIP_DEBUG */
+    411            if(slen < 10) {
+    412              netconn_write(conn, padding_10spaces, 10-slen, NETCONN_COPY);
+    413            }
+    414          
+    415            len = (u16_t)sprintf(buf, " * available %"MEM_SIZE_F NEWLINE, elem->avail);
+    416            netconn_write(conn, buf, len, NETCONN_COPY);
+    417            len = (u16_t)sprintf(buf, "           * used %"MEM_SIZE_F NEWLINE, elem->used);
+    418            netconn_write(conn, buf, len, NETCONN_COPY);
+    419            len = (u16_t)sprintf(buf, "           * high water mark %"MEM_SIZE_F NEWLINE, elem->max);
+    420            netconn_write(conn, buf, len, NETCONN_COPY);
+    421            len = (u16_t)sprintf(buf, "           * errors %"STAT_COUNTER_F NEWLINE, elem->err);
+    422            netconn_write(conn, buf, len, NETCONN_COPY);
+    423            len = (u16_t)sprintf(buf, "           * illegal %"STAT_COUNTER_F NEWLINE, elem->illegal);
+    424            netconn_write(conn, buf, len, NETCONN_COPY);
+    425          }
+    426          
+    427          static void
+    428          com_stat_write_sys(struct netconn *conn, struct stats_syselem *elem, const char *name)
+    429          {
+    430            u16_t len;
+    431            char buf[100];
+    432            size_t slen = strlen(name);
+    433          
+    434            netconn_write(conn, name, slen, NETCONN_COPY);
+    435            if(slen < 10) {
+    436              netconn_write(conn, padding_10spaces, 10-slen, NETCONN_COPY);
+    437            }
+    438          
+    439            len = (u16_t)sprintf(buf, " * used %"STAT_COUNTER_F NEWLINE, elem->used);
+    440            netconn_write(conn, buf, len, NETCONN_COPY);
+    441            len = (u16_t)sprintf(buf, "           * high water mark %"STAT_COUNTER_F NEWLINE, elem->max);
+    442            netconn_write(conn, buf, len, NETCONN_COPY);
+    443            len = (u16_t)sprintf(buf, "           * errors %"STAT_COUNTER_F NEWLINE, elem->err);
+    444            netconn_write(conn, buf, len, NETCONN_COPY);
+    445          }
+    446          static s8_t
+    447          com_stat(struct command *com)
+    448          {
+    449          #if PROTOCOL_STATS || MEMP_STATS
+    450            size_t i;
+    451          #endif /* PROTOCOL_STATS || MEMP_STATS */
+    452          #if PROTOCOL_STATS
+    453            size_t k;
+    454            char buf[100];
+    455            u16_t len;
+    456          
+    457            /* protocol stats, @todo: add IGMP */
+    458            for(i = 0; i < num_protostats; i++) {
+    459              size_t s = sizeof(struct stats_proto)/sizeof(STAT_COUNTER);
+    460              STAT_COUNTER *c = &shell_stat_proto_stats[i]->xmit;
+    461              LWIP_ASSERT("stats not in sync", s == sizeof(stat_msgs_proto)/sizeof(char*));
+    462              netconn_write(com->conn, shell_stat_proto_names[i], strlen(shell_stat_proto_names[i]), NETCONN_COPY);
+    463              for(k = 0; k < s; k++) {
+    464                len = (u16_t)sprintf(buf, "%s%"STAT_COUNTER_F NEWLINE, stat_msgs_proto[k], c[k]);
+    465                netconn_write(com->conn, buf, len, NETCONN_COPY);
+    466              }
+    467            }
+    468          #endif /* PROTOCOL_STATS */
+    469          #if MEM_STATS
+    470            com_stat_write_mem(com->conn, &lwip_stats.mem, -1);
+    471          #endif /* MEM_STATS */
+    472          #if MEMP_STATS
+    473            for(i = 0; i < MEMP_MAX; i++) {
+    474              com_stat_write_mem(com->conn, &lwip_stats.memp[i], -1);
+    475            }
+    476          #endif /* MEMP_STATS */
+    477          #if SYS_STATS
+    478            com_stat_write_sys(com->conn, &lwip_stats.sys.sem,   "SEM       ");
+    479            com_stat_write_sys(com->conn, &lwip_stats.sys.mutex, "MUTEX     ");
+    480            com_stat_write_sys(com->conn, &lwip_stats.sys.sem,   "MBOX      ");
+    481          #endif /* SYS_STATS */
+    482          
+    483            return ESUCCESS;
+    484          }
+    485          #endif
+    486          /*-----------------------------------------------------------------------------------*/
+    487          static s8_t
+    488          com_send(struct command *com)
+    489          {
+    490            int i;
+    491            err_t err;
+    492            size_t len;
+    493          
+    494            i = strtol(com->args[0], NULL, 10);
+    495          
+    496            if (i > NCONNS) {
+    497              sendstr("Connection identifier too high."NEWLINE, com->conn);
+    498              return ESUCCESS;
+    499            }
+    500          
+    501            if (conns[i] == NULL) {
+    502              sendstr("Connection identifier not in use."NEWLINE, com->conn);
+    503              return ESUCCESS;
+    504            }
+    505          
+    506            len = strlen(com->args[1]);
+    507            com->args[1][len] = '\r';
+    508            com->args[1][len + 1] = '\n';
+    509            com->args[1][len + 2] = 0;
+    510          
+    511            err = netconn_write(conns[i], com->args[1], len + 3, NETCONN_COPY);
+    512            if (err != ERR_OK) {
+    513              sendstr("Could not send data: ", com->conn);
+    514          #ifdef LWIP_DEBUG
+    515              sendstr(lwip_strerr(err), com->conn);
+    516          #else
+    517              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    518          #endif /* LWIP_DEBUG */
+    519              sendstr(NEWLINE, com->conn);
+    520              return ESUCCESS;
+    521            }
+    522          
+    523            sendstr("Data enqueued for sending."NEWLINE, com->conn);
+    524            return ESUCCESS;
+    525          }
+    526          /*-----------------------------------------------------------------------------------*/
+    527          static s8_t
+    528          com_recv(struct command *com)
+    529          {
+    530            int i;
+    531            err_t err;
+    532            struct netbuf *buf;
+    533            u16_t len;
+    534          
+    535            i = strtol(com->args[0], NULL, 10);
+    536          
+    537            if (i > NCONNS) {
+    538              sendstr("Connection identifier too high."NEWLINE, com->conn);
+    539              return ESUCCESS;
+    540            }
+    541          
+    542            if (conns[i] == NULL) {
+    543              sendstr("Connection identifier not in use."NEWLINE, com->conn);
+    544              return ESUCCESS;
+    545            }
+    546          
+    547            err = netconn_recv(conns[i], &buf);
+    548            if (err == ERR_OK) {
+    549          
+    550              netbuf_copy(buf, buffer, BUFSIZE);
+    551              len = netbuf_len(buf);
+    552              sendstr("Reading from connection:"NEWLINE, com->conn);
+    553              netconn_write(com->conn, buffer, len, NETCONN_COPY);
+    554              netbuf_delete(buf);
+    555            } else {
+    556              sendstr("EOF."NEWLINE, com->conn);
+    557            }
+    558            err = netconn_err(conns[i]);
+    559            if (err != ERR_OK) {
+    560              sendstr("Could not receive data: ", com->conn);
+    561          #ifdef LWIP_DEBUG
+    562              sendstr(lwip_strerr(err), com->conn);
+    563          #else
+    564              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    565          #endif /* LWIP_DEBUG */
+    566              sendstr(NEWLINE, com->conn);
+    567              return ESUCCESS;
+    568            }
+    569            return ESUCCESS;
+    570          }
+    571          /*-----------------------------------------------------------------------------------*/
+    572          static s8_t
+    573          com_udpc(struct command *com)
+    574          {
+    575            ip_addr_t ipaddr;
+    576            u16_t lport, rport;
+    577            int i;
+    578            err_t err;
+    579            long tmp;
+    580          
+    581            tmp = strtol(com->args[0], NULL, 10);
+    582            if((tmp < 0) || (tmp > 0xffff)) {
+    583              sendstr("Invalid port number."NEWLINE, com->conn);
+    584              return ESUCCESS;
+    585            }
+    586            lport = (u16_t)tmp;
+    587            if (ipaddr_aton(com->args[1], &ipaddr) == -1) {
+    588              sendstr(strerror(errno), com->conn);
+    589              return ESYNTAX;
+    590            }
+    591            tmp = strtol(com->args[2], NULL, 10);
+    592            if((tmp < 0) || (tmp > 0xffff)) {
+    593              sendstr("Invalid port number."NEWLINE, com->conn);
+    594              return ESUCCESS;
+    595            }
+    596            rport = (u16_t)tmp;
+    597          
+    598            /* Find the first unused connection in conns. */
+    599            for(i = 0; i < NCONNS && conns[i] != NULL; i++);
+    600          
+    601            if (i == NCONNS) {
+    602              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    603              return ESUCCESS;
+    604            }
+    605          
+    606            sendstr("Setting up UDP connection from port ", com->conn);
+    607            netconn_write(com->conn, com->args[0], strlen(com->args[0]), NETCONN_COPY);
+    608            sendstr(" to ", com->conn);
+    609            netconn_write(com->conn, com->args[1], strlen(com->args[1]), NETCONN_COPY);
+    610            sendstr(":", com->conn);
+    611            netconn_write(com->conn, com->args[2], strlen(com->args[2]), NETCONN_COPY);
+    612            sendstr(NEWLINE, com->conn);
+    613          
+    614            conns[i] = netconn_new(NETCONN_UDP);
+    615            if (conns[i] == NULL) {
+    616              sendstr("Could not create connection identifier (out of memory)."NEWLINE, com->conn);
+    617              return ESUCCESS;
+    618            }
+    619          
+    620            err = netconn_connect(conns[i], &ipaddr, rport);
+    621            if (err != ERR_OK) {
+    622              netconn_delete(conns[i]);
+    623              conns[i] = NULL;
+    624              sendstr("Could not connect to remote host: ", com->conn);
+    625          #ifdef LWIP_DEBUG
+    626              sendstr(lwip_strerr(err), com->conn);
+    627          #else
+    628              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    629          #endif /* LWIP_DEBUG */
+    630              sendstr(NEWLINE, com->conn);
+    631              return ESUCCESS;
+    632            }
+    633          
+    634            err = netconn_bind(conns[i], IP_ADDR_ANY, lport);
+    635            if (err != ERR_OK) {
+    636              netconn_delete(conns[i]);
+    637              conns[i] = NULL;
+    638              sendstr("Could not bind: ", com->conn);
+    639          #ifdef LWIP_DEBUG
+    640              sendstr(lwip_strerr(err), com->conn);
+    641          #else
+    642              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    643          #endif /* LWIP_DEBUG */
+    644              sendstr(NEWLINE, com->conn);
+    645              return ESUCCESS;
+    646            }
+    647          
+    648            sendstr("Connection set up, connection identifier is ", com->conn);
+    649            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, i);
+    650            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    651          
+    652            return ESUCCESS;
+    653          }
+    654          /*-----------------------------------------------------------------------------------*/
+    655          static s8_t
+    656          com_udpl(struct command *com)
+    657          {
+    658            ip_addr_t ipaddr;
+    659            u16_t lport, rport;
+    660            int i;
+    661            err_t err;
+    662            long tmp;
+    663          
+    664            tmp = strtol(com->args[0], NULL, 10);
+    665            if((tmp < 0) || (tmp > 0xffff)) {
+    666              sendstr("Invalid port number."NEWLINE, com->conn);
+    667              return ESUCCESS;
+    668            }
+    669            lport = (u16_t)tmp;
+    670            if (ipaddr_aton(com->args[1], &ipaddr) == -1) {
+    671              sendstr(strerror(errno), com->conn);
+    672              return ESYNTAX;
+    673            }
+    674            tmp = strtol(com->args[2], NULL, 10);
+    675            if((tmp < 0) || (tmp > 0xffff)) {
+    676              sendstr("Invalid port number."NEWLINE, com->conn);
+    677              return ESUCCESS;
+    678            }
+    679            rport = (u16_t)tmp;
+    680          
+    681            /* Find the first unused connection in conns. */
+    682            for(i = 0; i < NCONNS && conns[i] != NULL; i++);
+    683          
+    684            if (i == NCONNS) {
+    685              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    686              return ESUCCESS;
+    687            }
+    688          
+    689            sendstr("Setting up UDP-Lite connection from port ", com->conn);
+    690            netconn_write(com->conn, com->args[0], strlen(com->args[0]), NETCONN_COPY);
+    691            sendstr(" to ", com->conn);
+    692            netconn_write(com->conn, com->args[1], strlen(com->args[1]), NETCONN_COPY);
+    693            sendstr(":", com->conn);
+    694            netconn_write(com->conn, com->args[2], strlen(com->args[2]), NETCONN_COPY);
+    695            sendstr(NEWLINE, com->conn);
+    696          
+    697            conns[i] = netconn_new(NETCONN_UDPLITE);
+    698            if (conns[i] == NULL) {
+    699              sendstr("Could not create connection identifier (out of memory)."NEWLINE, com->conn);
+    700              return ESUCCESS;
+    701            }
+    702          
+    703            err = netconn_connect(conns[i], &ipaddr, rport);
+    704            if (err != ERR_OK) {
+    705              netconn_delete(conns[i]);
+    706              conns[i] = NULL;
+    707              sendstr("Could not connect to remote host: ", com->conn);
+    708          #ifdef LWIP_DEBUG
+    709              sendstr(lwip_strerr(err), com->conn);
+    710          #else
+    711              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    712          #endif /* LWIP_DEBUG */
+    713              sendstr(NEWLINE, com->conn);
+    714              return ESUCCESS;
+    715            }
+    716          
+    717            err = netconn_bind(conns[i], IP_ADDR_ANY, lport);
+    718            if (err != ERR_OK) {
+    719              netconn_delete(conns[i]);
+    720              conns[i] = NULL;
+    721              sendstr("Could not bind: ", com->conn);
+    722          #ifdef LWIP_DEBUG
+    723              sendstr(lwip_strerr(err), com->conn);
+    724          #else
+    725              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    726          #endif /* LWIP_DEBUG */
+    727              sendstr(NEWLINE, com->conn);
+    728              return ESUCCESS;
+    729            }
+    730          
+    731            sendstr("Connection set up, connection identifier is ", com->conn);
+    732            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, i);
+    733            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    734          
+    735            return ESUCCESS;
+    736          }
+    737          /*-----------------------------------------------------------------------------------*/
+    738          static s8_t
+    739          com_udpn(struct command *com)
+    740          {
+    741            ip_addr_t ipaddr;
+    742            u16_t lport, rport;
+    743            int i;
+    744            err_t err;
+    745            long tmp;
+    746          
+    747            tmp = strtol(com->args[0], NULL, 10);
+    748            if((tmp < 0) || (tmp > 0xffff)) {
+    749              sendstr("Invalid port number."NEWLINE, com->conn);
+    750              return ESUCCESS;
+    751            }
+    752            lport = (u16_t)tmp;
+    753            if (ipaddr_aton(com->args[1], &ipaddr) == -1) {
+    754              sendstr(strerror(errno), com->conn);
+    755              return ESYNTAX;
+    756            }
+    757            tmp = strtol(com->args[2], NULL, 10);
+    758            if((tmp < 0) || (tmp > 0xffff)) {
+    759              sendstr("Invalid port number."NEWLINE, com->conn);
+    760              return ESUCCESS;
+    761            }
+    762            rport = (u16_t)tmp;
+    763          
+    764            /* Find the first unused connection in conns. */
+    765            for(i = 0; i < NCONNS && conns[i] != NULL; i++);
+    766          
+    767            if (i == NCONNS) {
+    768              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    769              return ESUCCESS;
+    770            }
+    771          
+    772            sendstr("Setting up UDP connection without checksums from port ", com->conn);
+    773            netconn_write(com->conn, com->args[0], strlen(com->args[0]), NETCONN_COPY);
+    774            sendstr(" to ", com->conn);
+    775            netconn_write(com->conn, com->args[1], strlen(com->args[1]), NETCONN_COPY);
+    776            sendstr(":", com->conn);
+    777            netconn_write(com->conn, com->args[2], strlen(com->args[2]), NETCONN_COPY);
+    778            sendstr(NEWLINE, com->conn);
+    779          
+    780            conns[i] = netconn_new(NETCONN_UDPNOCHKSUM);
+    781            if (conns[i] == NULL) {
+    782              sendstr("Could not create connection identifier (out of memory)."NEWLINE, com->conn);
+    783              return ESUCCESS;
+    784            }
+    785          
+    786            err = netconn_connect(conns[i], &ipaddr, rport);
+    787            if (err != ERR_OK) {
+    788              netconn_delete(conns[i]);
+    789              conns[i] = NULL;
+    790              sendstr("Could not connect to remote host: ", com->conn);
+    791          #ifdef LWIP_DEBUG
+    792              sendstr(lwip_strerr(err), com->conn);
+    793          #else
+    794              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    795          #endif /* LWIP_DEBUG */
+    796              sendstr(NEWLINE, com->conn);
+    797              return ESUCCESS;
+    798            }
+    799          
+    800            err = netconn_bind(conns[i], IP_ADDR_ANY, lport);
+    801            if (err != ERR_OK) {
+    802              netconn_delete(conns[i]);
+    803              conns[i] = NULL;
+    804              sendstr("Could not bind: ", com->conn);
+    805          #ifdef LWIP_DEBUG
+    806              sendstr(lwip_strerr(err), com->conn);
+    807          #else
+    808              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    809          #endif /* LWIP_DEBUG */
+    810              sendstr(NEWLINE, com->conn);
+    811              return ESUCCESS;
+    812            }
+    813          
+    814            sendstr("Connection set up, connection identifier is ", com->conn);
+    815            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, i);
+    816            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    817          
+    818            return ESUCCESS;
+    819          }
+    820          /*-----------------------------------------------------------------------------------*/
+    821          static s8_t
+    822          com_udpb(struct command *com)
+    823          {
+    824            ip_addr_t ipaddr;
+    825            u16_t lport, rport;
+    826            int i;
+    827            err_t err;
+    828            ip_addr_t bcaddr;
+    829            long tmp;
+    830          
+    831            tmp = strtol(com->args[0], NULL, 10);
+    832            if((tmp < 0) || (tmp > 0xffff)) {
+    833              sendstr("Invalid port number."NEWLINE, com->conn);
+    834              return ESUCCESS;
+    835            }
+    836            lport = (u16_t)tmp;
+    837            if (ipaddr_aton(com->args[1], &ipaddr) == -1) {
+    838              sendstr(strerror(errno), com->conn);
+    839              return ESYNTAX;
+    840            }
+    841            tmp = strtol(com->args[2], NULL, 10);
+    842            if((tmp < 0) || (tmp > 0xffff)) {
+    843              sendstr("Invalid port number."NEWLINE, com->conn);
+    844              return ESUCCESS;
+    845            }
+    846            rport = (u16_t)tmp;
+    847          
+    848            /* Find the first unused connection in conns. */
+    849            for(i = 0; i < NCONNS && conns[i] != NULL; i++);
+    850          
+    851            if (i == NCONNS) {
+    852              sendstr("No more connections available, sorry."NEWLINE, com->conn);
+    853              return ESUCCESS;
+    854            }
+    855          
+    856            sendstr("Setting up UDP broadcast connection from port ", com->conn);
+    857            netconn_write(com->conn, com->args[0], strlen(com->args[0]), NETCONN_COPY);
+    858            sendstr(" to ", com->conn);
+    859            netconn_write(com->conn, com->args[1], strlen(com->args[1]), NETCONN_COPY);
+    860            sendstr(NEWLINE, com->conn);
+    861          
+    862            conns[i] = netconn_new(NETCONN_UDP);
+    863            if (conns[i] == NULL) {
+    864              sendstr("Could not create connection identifier (out of memory)."NEWLINE, com->conn);
+    865              return ESUCCESS;
+    866            }
+    867          
+    868            err = netconn_connect(conns[i], &ipaddr, rport);
+    869            if (err != ERR_OK) {
+    870              netconn_delete(conns[i]);
+    871              conns[i] = NULL;
+    872              sendstr("Could not connect to remote host: ", com->conn);
+    873          #ifdef LWIP_DEBUG
+    874              sendstr(lwip_strerr(err), com->conn);
+    875          #else
+    876              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    877          #endif /* LWIP_DEBUG */
+    878              sendstr(NEWLINE, com->conn);
+    879              return ESUCCESS;
+    880            }
+    881          
+    882            IP4_ADDR(&bcaddr, 255,255,255,255);
+    883            err = netconn_bind(conns[i], &bcaddr, lport);
+    884            if (err != ERR_OK) {
+    885              netconn_delete(conns[i]);
+    886              conns[i] = NULL;
+    887              sendstr("Could not bind: ", com->conn);
+    888          #ifdef LWIP_DEBUG
+    889              sendstr(lwip_strerr(err), com->conn);
+    890          #else
+    891              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    892          #endif /* LWIP_DEBUG */
+    893              sendstr(NEWLINE, com->conn);
+    894              return ESUCCESS;
+    895            }
+    896          
+    897            sendstr("Connection set up, connection identifier is ", com->conn);
+    898            snprintf((char *)buffer, sizeof(buffer), "%d"NEWLINE, i);
+    899            netconn_write(com->conn, buffer, strlen((const char *)buffer), NETCONN_COPY);
+    900          
+    901            return ESUCCESS;
+    902          }
+    903          /*-----------------------------------------------------------------------------------*/
+    904          static s8_t
+    905          com_usnd(struct command *com)
+    906          {
+    907            long i;
+    908            err_t err;
+    909            struct netbuf *buf;
+    910            char *mem;
+    911            u16_t len;
+    912            size_t tmp;
+    913          
+    914            i = strtol(com->args[0], NULL, 10);
+    915          
+    916            if (i > NCONNS) {
+    917              sendstr("Connection identifier too high."NEWLINE, com->conn);
+    918              return ESUCCESS;
+    919            }
+    920          
+    921            if (conns[i] == NULL) {
+    922              sendstr("Connection identifier not in use."NEWLINE, com->conn);
+    923              return ESUCCESS;
+    924            }
+    925            tmp = strlen(com->args[1]) + 1;
+    926            if (tmp > 0xffff) {
+    927              sendstr("Invalid length."NEWLINE, com->conn);
+    928              return ESUCCESS;
+    929            }
+    930            len = (u16_t)tmp;
+    931          
+    932            buf = netbuf_new();
+    933            mem = (char *)netbuf_alloc(buf, len);
+    934            if (mem == NULL) {
+    935              sendstr("Could not allocate memory for sending."NEWLINE, com->conn);
+    936              return ESUCCESS;
+    937            }
+    938            strncpy(mem, com->args[1], len);
+    939            err = netconn_send(conns[i], buf);
+    940            netbuf_delete(buf);
+    941            if (err != ERR_OK) {
+    942              sendstr("Could not send data: ", com->conn);
+    943          #ifdef LWIP_DEBUG
+    944              sendstr(lwip_strerr(err), com->conn);
+    945          #else
+    946              sendstr("(debugging must be turned on for error message to appear)", com->conn);
+    947          #endif /* LWIP_DEBUG */
+    948              sendstr(NEWLINE, com->conn);
+    949              return ESUCCESS;
+    950            }
+    951          
+    952            sendstr("Data sent."NEWLINE, com->conn);
+    953            return ESUCCESS;
+    954          }
+    955          /*-----------------------------------------------------------------------------------*/
+    956          static s8_t
+    957          com_stat_server_list_conn(struct command* com)
+    958          {
+    959            extern void anpro_net_server_debug(char* msg_buf);
+    960            struct netconn*   conn = com->conn;
+    961            static char buf[1024];
+    962          
+    963            sprintf(buf,"list_conn");
+    964          
+    965            anpro_net_server_debug(buf);
+    966          
+    967            netconn_write(conn, buf, strlen(buf), NETCONN_COPY);
+    968          
+    969            return ESUCCESS;
+    970          }
+    971          
+    972          static s8_t
+    973          com_stat_client_list_conn(struct command* com)
+    974          {
+    975            extern void anpro_net_client_debug(char* msg_buf);
+    976          
+    977            struct netconn*   conn = com->conn;
+    978            static char buf[1024];
+    979          
+    980            sprintf(buf,"list_conn");
+    981          
+    982            anpro_net_client_debug(buf);
+    983          
+    984            netconn_write(conn, buf, strlen(buf), NETCONN_COPY);
+    985          
+    986            return ESUCCESS;
+    987          
+    988          }
+    989          
+    990          static s8_t
+    991          com_stat_cs8900(struct command* com)
+    992          {
+    993            extern struct netif eth0;
+    994            extern volatile int _num_pkts_in_tx_queue;
+    995            u16_t len;
+    996            char buf[100];
+    997            struct cs8900if*  cs8900if = (struct cs8900if*)eth0.state;
+    998            struct netconn*   conn = com->conn;
+    999          
+   1000            len = (u16_t)sprintf(buf, "====== cs8900:eth0 =====" NEWLINE);
+   1001            netconn_write(conn, buf, len, NETCONN_COPY);
+   1002          
+   1003            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "interrupts", cs8900if->interrupts);
+   1004            netconn_write(conn, buf, len, NETCONN_COPY);
+   1005          
+   1006            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "missed", cs8900if->missed);
+   1007            netconn_write(conn, buf, len, NETCONN_COPY);
+   1008          
+   1009            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "collisions", cs8900if->collisions);
+   1010            netconn_write(conn, buf, len, NETCONN_COPY);
+   1011          
+   1012            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_packets", cs8900if->tx_packets);
+   1013            netconn_write(conn, buf, len, NETCONN_COPY);
+   1014          
+   1015            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_bytes", cs8900if->tx_bytes);
+   1016            netconn_write(conn, buf, len, NETCONN_COPY);
+   1017          
+   1018            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_packets", cs8900if->rx_packets);
+   1019            netconn_write(conn, buf, len, NETCONN_COPY);
+   1020          
+   1021            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_bytes", cs8900if->rx_bytes);
+   1022            netconn_write(conn, buf, len, NETCONN_COPY);
+   1023          
+   1024            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_len_zero", cs8900if->rx_len_zero);
+   1025            netconn_write(conn, buf, len, NETCONN_COPY);
+   1026          
+   1027            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_pbuf_alloc_fail", cs8900if->rx_pbuf_alloc_fail);
+   1028            netconn_write(conn, buf, len, NETCONN_COPY);
+   1029          
+   1030            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_lwip_input_err", cs8900if->rx_lwip_input_err);
+   1031            netconn_write(conn, buf, len, NETCONN_COPY);
+   1032          
+   1033            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_line_status_err", cs8900if->tx_line_status_err);
+   1034            netconn_write(conn, buf, len, NETCONN_COPY);
+   1035          
+   1036            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_timeout", cs8900if->tx_timeout);
+   1037            netconn_write(conn, buf, len, NETCONN_COPY);
+   1038          
+   1039            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "loop_exit_by_limit", cs8900if->loop_exit_by_limit);
+   1040            netconn_write(conn, buf, len, NETCONN_COPY);
+   1041          
+   1042            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_buffering", cs8900if->tx_buffering);
+   1043            netconn_write(conn, buf, len, NETCONN_COPY);
+   1044          
+   1045            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_errors", cs8900if->tx_errors);
+   1046            netconn_write(conn, buf, len, NETCONN_COPY);
+   1047          
+   1048            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_carrier_errors", cs8900if->tx_carrier_errors);
+   1049            netconn_write(conn, buf, len, NETCONN_COPY);
+   1050          
+   1051            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_heartbeat_errors", cs8900if->tx_heartbeat_errors);
+   1052            netconn_write(conn, buf, len, NETCONN_COPY);
+   1053          
+   1054            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_window_errors", cs8900if->tx_window_errors);
+   1055            netconn_write(conn, buf, len, NETCONN_COPY);
+   1056          
+   1057            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_aborted_errors", cs8900if->tx_aborted_errors);
+   1058            netconn_write(conn, buf, len, NETCONN_COPY);
+   1059          
+   1060            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "tx_underrun", cs8900if->tx_underrun);
+   1061            netconn_write(conn, buf, len, NETCONN_COPY);
+   1062          
+   1063            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_not_ok", cs8900if->rx_not_ok);
+   1064            netconn_write(conn, buf, len, NETCONN_COPY);
+   1065          
+   1066            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_length_errors", cs8900if->rx_length_errors);
+   1067            netconn_write(conn, buf, len, NETCONN_COPY);
+   1068          
+   1069            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_crc_errors", cs8900if->rx_crc_errors);
+   1070            netconn_write(conn, buf, len, NETCONN_COPY);
+   1071          
+   1072            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "rx_frame_errors", cs8900if->rx_frame_errors);
+   1073            netconn_write(conn, buf, len, NETCONN_COPY);
+   1074          
+   1075            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "num pkts in tx queue", _num_pkts_in_tx_queue);
+   1076            netconn_write(conn, buf, len, NETCONN_COPY);
+   1077          
+   1078            return ESUCCESS;
+   1079          }
+   1080          
+   1081          static s8_t
+   1082          show_rtc_time(struct command* com)
+   1083          {
+   1084            extern time_t GetRTC2(void);
+   1085            u16_t len;
+   1086            char buf[200];
+   1087            struct netconn*   conn = com->conn;
+   1088            extern volatile  time_t CurrentTime;
+   1089          
+   1090            time_t rtc_time = GetRTC2();
+   1091          
+   1092            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "RTC time_t", rtc_time);
+   1093            netconn_write(conn, buf, len, NETCONN_COPY);
+   1094          
+   1095            len = (u16_t)sprintf(buf, "%-20s : %u" NEWLINE, "CurrentTime", CurrentTime);
+   1096            netconn_write(conn, buf, len, NETCONN_COPY);
+   1097          
+   1098            return ESUCCESS;
+   1099          }
+   1100          
+   1101          static s8_t
+   1102          test_eventfd(struct command* com)
+   1103          {
+   1104            u16_t len;
+   1105            char buf[100];
+   1106            struct netconn*   conn = com->conn;
+   1107            extern void test_eventfd_for_anpro10_instance1(void);
+   1108          
+   1109            len = (u16_t)sprintf(buf, "Setting eventfd for ANPRO tcp server" NEWLINE);
+   1110            netconn_write(conn, buf, len, NETCONN_COPY);
+   1111          
+   1112            test_eventfd_for_anpro10_instance1();
+   1113          
+   1114            len = (u16_t)sprintf(buf, "Setting eventfd for ANPRO tcp server Done" NEWLINE);
+   1115            netconn_write(conn, buf, len, NETCONN_COPY);
+   1116            return ESUCCESS;
+   1117          }
+   1118          
+   1119          static s8_t
+   1120          test_eventfd2(struct command* com)
+   1121          {
+   1122            u16_t len;
+   1123            char buf[100];
+   1124            struct netconn*   conn = com->conn;
+   1125            extern void test_eventfd_for_anpro10_instance1(void);
+   1126          
+   1127            len = (u16_t)sprintf(buf, "Setting eventfd 2 times for ANPRO tcp server" NEWLINE);
+   1128            netconn_write(conn, buf, len, NETCONN_COPY);
+   1129          
+   1130            test_eventfd_for_anpro10_instance1();
+   1131            test_eventfd_for_anpro10_instance1();
+   1132          
+   1133            len = (u16_t)sprintf(buf, "Setting eventfd 2 times for ANPRO tcp server Done" NEWLINE);
+   1134            netconn_write(conn, buf, len, NETCONN_COPY);
+   1135            return ESUCCESS;
+   1136          }
+   1137          
+   1138          /*-----------------------------------------------------------------------------------*/
+   1139          static s8_t
+   1140          com_help(struct command *com)
+   1141          {
+   1142            sendstr(help_msg1, com->conn);
+   1143            sendstr(help_msg2, com->conn);
+   1144            return ESUCCESS;
+   1145          }
+   1146          /*-----------------------------------------------------------------------------------*/
+   1147          static s8_t
+   1148          parse_command(struct command *com, u32_t len)
+   1149          {
+   1150            u16_t i;
+   1151            u16_t bufp;
+   1152          
+   1153            if (strncmp((const char *)buffer, "open", 4) == 0) {
+   1154              com->exec = com_open;
+   1155              com->nargs = 2;
+   1156            } else if (strncmp((const char *)buffer, "lstn", 4) == 0) {
+   1157              com->exec = com_lstn;
+   1158              com->nargs = 1;
+   1159            } else if (strncmp((const char *)buffer, "acpt", 4) == 0) {
+   1160              com->exec = com_acpt;
+   1161              com->nargs = 1;
+   1162            } else if (strncmp((const char *)buffer, "clos", 4) == 0) {
+   1163              com->exec = com_clos;
+   1164              com->nargs = 1;
+   1165          #if LWIP_STATS
+   1166            } else if (strncmp((const char *)buffer, "stat", 4) == 0) {
+   1167              com->exec = com_stat;
+   1168              com->nargs = 0;
+   1169          #endif
+   1170            } else if (strncmp((const char *)buffer, "cs8900_stat", 11) == 0) {
+   1171              com->exec = com_stat_cs8900;
+   1172              com->nargs = 0;
+   1173            } else if (strncmp((const char *)buffer, "tcp_server_list_conn", 20) == 0) {
+   1174              com->exec = com_stat_server_list_conn;
+   1175              com->nargs = 0;
+   1176            } else if (strncmp((const char *)buffer, "tcp_client_list_conn", 20) == 0) {
+   1177              com->exec = com_stat_client_list_conn;
+   1178              com->nargs = 0;
+   1179            } else if (strncmp((const char*)buffer, "show_rtc_time", 13) == 0) {
+   1180              com->exec = show_rtc_time;
+   1181              com->nargs = 0;
+   1182            } else if (strncmp((const char *)buffer, "test_eventfd2", 13) == 0) {
+   1183              com->exec = test_eventfd2;
+   1184              com->nargs = 0;
+   1185            } else if (strncmp((const char *)buffer, "test_eventfd", 12) == 0) {
+   1186              com->exec = test_eventfd;
+   1187              com->nargs = 0;
+   1188            } else if (strncmp((const char *)buffer, "send", 4) == 0) {
+   1189              com->exec = com_send;
+   1190              com->nargs = 2;
+   1191            } else if (strncmp((const char *)buffer, "recv", 4) == 0) {
+   1192              com->exec = com_recv;
+   1193              com->nargs = 1;
+   1194            } else if (strncmp((const char *)buffer, "udpc", 4) == 0) {
+   1195              com->exec = com_udpc;
+   1196              com->nargs = 3;
+   1197            } else if (strncmp((const char *)buffer, "udpb", 4) == 0) {
+   1198              com->exec = com_udpb;
+   1199              com->nargs = 2;
+   1200            } else if (strncmp((const char *)buffer, "udpl", 4) == 0) {
+   1201              com->exec = com_udpl;
+   1202              com->nargs = 3;
+   1203            } else if (strncmp((const char *)buffer, "udpn", 4) == 0) {
+   1204              com->exec = com_udpn;
+   1205              com->nargs = 3;
+   1206            } else if (strncmp((const char *)buffer, "usnd", 4) == 0) {
+   1207              com->exec = com_usnd;
+   1208              com->nargs = 2;
+   1209            } else if (strncmp((const char *)buffer, "help", 4) == 0) {
+   1210              com->exec = com_help;
+   1211              com->nargs = 0;
+   1212            } else if (strncmp((const char *)buffer, "quit", 4) == 0) {
+   1213              printf("quit"NEWLINE);
+   1214              return ECLOSED;
+   1215            } else {
+   1216              return ESYNTAX;
+   1217            }
+   1218          
+   1219            if (com->nargs == 0) {
+   1220              return ESUCCESS;
+   1221            }
+   1222            bufp = 0;
+   1223            for(; bufp < len && buffer[bufp] != ' '; bufp++);
+   1224            for(i = 0; i < 10; i++) {
+   1225              for(; bufp < len && buffer[bufp] == ' '; bufp++);
+   1226              if (buffer[bufp] == '\r' ||
+   1227                 buffer[bufp] == '\n') {
+   1228                buffer[bufp] = 0;
+   1229                if (i < com->nargs - 1) {
+   1230                  return ETOOFEW;
+   1231                }
+   1232                if (i > com->nargs - 1) {
+   1233                  return ETOOMANY;
+   1234                }
+   1235                break;
+   1236              }
+   1237              if (bufp > len) {
+   1238                return ETOOFEW;
+   1239              }
+   1240              com->args[i] = (char *)&buffer[bufp];
+   1241              for(; bufp < len && buffer[bufp] != ' ' && buffer[bufp] != '\r' &&
+   1242                buffer[bufp] != '\n'; bufp++) {
+   1243                if (buffer[bufp] == '\\') {
+   1244                  buffer[bufp] = ' ';
+   1245                }
+   1246              }
+   1247              if (bufp > len) {
+   1248                return ESYNTAX;
+   1249              }
+   1250              buffer[bufp] = 0;
+   1251              bufp++;
+   1252              if (i == com->nargs - 1) {
+   1253                break;
+   1254              }
+   1255          
+   1256            }
+   1257          
+   1258            return ESUCCESS;
+   1259          }
+   1260          /*-----------------------------------------------------------------------------------*/
+   1261          static void
+   1262          shell_error(s8_t err, struct netconn *conn)
+   1263          {
+   1264            switch (err) {
+   1265            case ESYNTAX:
+   1266              sendstr("## Syntax error"NEWLINE, conn);
+   1267              break;
+   1268            case ETOOFEW:
+   1269              sendstr("## Too few arguments to command given"NEWLINE, conn);
+   1270              break;
+   1271            case ETOOMANY:
+   1272              sendstr("## Too many arguments to command given"NEWLINE, conn);
+   1273              break;
+   1274            case ECLOSED:
+   1275              sendstr("## Connection closed"NEWLINE, conn);
+   1276              break;
+   1277            default:
+   1278              /* unknown error, don't assert here */
+   1279              break;
+   1280            }
+   1281          }
+   1282          /*-----------------------------------------------------------------------------------*/
+   1283          static void
+   1284          prompt(struct netconn *conn)
+   1285          {
+   1286            sendstr("> ", conn);
+   1287          }
+   1288          /*-----------------------------------------------------------------------------------*/
+   1289          static void
+   1290          shell_main(struct netconn *conn)
+   1291          {
+   1292            struct pbuf *p;
+   1293            u16_t len = 0, cur_len;
+   1294            struct command com;
+   1295            s8_t err;
+   1296            int i;
+   1297            err_t ret;
+   1298          #if SHELL_ECHO
+   1299            void *echomem;
+   1300          #endif /* SHELL_ECHO */
+   1301          
+   1302            do {
+   1303              ret = netconn_recv_tcp_pbuf(conn, &p);
+   1304              if (ret == ERR_OK) {
+   1305                pbuf_copy_partial(p, &buffer[len], BUFSIZE - len, 0);
+   1306                cur_len = p->tot_len;
+   1307                len += cur_len;
+   1308          #if SHELL_ECHO
+   1309                echomem = mem_malloc(cur_len);
+   1310                if (echomem != NULL) {
+   1311                  pbuf_copy_partial(p, echomem, cur_len, 0);
+   1312                  netconn_write(conn, echomem, cur_len, NETCONN_COPY);
+   1313                  mem_free(echomem);
+   1314                }
+   1315          #endif /* SHELL_ECHO */
+   1316                pbuf_free(p);
+   1317                if (((len > 0) && ((buffer[len-1] == '\r') || (buffer[len-1] == '\n'))) ||
+   1318                    (len >= BUFSIZE)) {
+   1319                  if (buffer[0] != 0xff &&
+   1320                     buffer[1] != 0xfe) {
+   1321                    err = parse_command(&com, len);
+   1322                    if (err == ESUCCESS) {
+   1323                      com.conn = conn;
+   1324                      err = com.exec(&com);
+   1325                    }
+   1326                    if (err == ECLOSED) {
+   1327                      printf("Closed"NEWLINE);
+   1328                      shell_error(err, conn);
+   1329                      goto close;
+   1330                    }
+   1331                    if (err != ESUCCESS) {
+   1332                      shell_error(err, conn);
+   1333                    }
+   1334                  } else {
+   1335                    sendstr(NEWLINE NEWLINE
+   1336                            "lwIP simple interactive shell."NEWLINE
+   1337                            "(c) Copyright 2001, Swedish Institute of Computer Science."NEWLINE
+   1338                            "Written by Adam Dunkels."NEWLINE
+   1339                            "For help, try the \"help\" command."NEWLINE, conn);
+   1340                  }
+   1341                  if (ret == ERR_OK) {
+   1342                    prompt(conn);
+   1343                  }
+   1344                  len = 0;
+   1345                }
+   1346              }
+   1347            } while (ret == ERR_OK);
+   1348            printf("err %s"NEWLINE, lwip_strerr(ret));
+   1349          
+   1350          close:
+   1351            netconn_close(conn);
+   1352          
+   1353            for(i = 0; i < NCONNS; i++) {
+   1354              if (conns[i] != NULL) {
+   1355                netconn_delete(conns[i]);
+   1356              }
+   1357              conns[i] = NULL;
+   1358            }
+   1359          }
+   1360          /*-----------------------------------------------------------------------------------*/
+   1361          static void
+   1362          shell_thread(void *arg)
+   1363          {
+   1364            struct netconn *conn, *newconn;
+   1365            err_t err;
+   1366            LWIP_UNUSED_ARG(arg);
+   1367          
+   1368            conn = netconn_new(NETCONN_TCP);
+   1369            if(conn == NULL)
+   1370            {
+   1371              while(1)
+   1372              {
+   1373                OS_Delay(1000);
+   1374              }
+   1375            }
+   1376            netconn_bind(conn, NULL, 23);
+   1377            netconn_listen(conn);
+   1378          
+   1379            while (1) {
+   1380              err = netconn_accept(conn, &newconn);
+   1381              if (err == ERR_OK) {
+   1382                netconn_set_recvtimeout(newconn, 60000);   // no message in 60 secs then just close the connection
+   1383                shell_main(newconn);
+   1384                netconn_delete(newconn);
+   1385              }
+   1386            }
+   1387          }
+   1388          /*-----------------------------------------------------------------------------------*/
+   1389          void
+   1390          shell_init(void)
+   1391          {
+   1392            sys_thread_new("shell_thread", shell_thread, NULL, DEFAULT_THREAD_STACKSIZE, DEFAULT_THREAD_PRIO);
+   1393          }
+   1394          
+   1395          #endif /* LWIP_NETCONN */
+
+Errors: 1
+Warnings: 1

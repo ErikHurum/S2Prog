@@ -1,0 +1,216 @@
+#include <vcl.h>
+#include "math.h"
+#pragma hdrstop
+// ---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma link "ChildUnit"
+#pragma resource "*.dfm"
+//#include "TSNIncludes.h"
+#include "ANWinInc.h"
+#include "BargraphUnit.h"
+
+TBarGraphForm *BarGraphForm;
+// ---------------------------------------------------------------------------
+
+__fastcall TBarGraphForm::TBarGraphForm(TComponent* Owner) : TChildForm(Owner, true) {
+	Height = 510;
+	Width = 800;
+}
+// ---------------------------------------------------------------------------
+
+__fastcall TBarGraphForm::TBarGraphForm(TComponent* Owner,
+	vector<PRogramObjectBase*>ObjVector, bool FromTable)
+	: TChildForm(Owner, ObjVector, FromTable) {
+	Height = 510;
+	Width = 800;
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::Timer1Timer(TObject *Sender) {
+    Paint();
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::FormPaint(TObject *Sender) {
+    Series1->Clear();
+    Series2->Clear();
+
+    float Xvalue = 0;
+    float Yvalue = 0;
+    for (unsigned index = 0; index < ObjectVector.size(); index++) {
+        if ((ObjectVector[index]->Type == C_PRO_TANK_SUM) ||
+            (ObjectVector[index]->Type == C_PRO_TANK_EMPTY)) {
+        }
+        else {
+            Xvalue = index;
+			PROTank *TempTankPtr = (PROTank*)ObjectVector[index];
+            if (TempTankPtr) {
+                String tempYvalue = LibGetValue(SVT_VOLPERCENT, TempTankPtr);
+                ConvertToFloat(&Yvalue, tempYvalue);
+				AnsiString NameStr = LibGetValue(SVT_PRO_NAME, TempTankPtr);
+                Series1->AddXY(Xvalue, Yvalue, NameStr, (TColor)clTeeColor);
+
+                if (ValueKey > 0) {
+                    AnsiString TempValue;
+                    AnsiString UnitStr;
+                    int ValStatus;
+                    TempValue = LibGetValue(ValueKey, TempTankPtr, 0, &UnitStr,
+                        &ValStatus);
+                    switch (ValStatus) {
+                    case GETVAL_NOT_AVAILABLE:
+                        TempValue = "NA";
+                        break;
+                    default:
+                        break;
+                    }
+                    Series2->AddXY(Xvalue, (100 - Yvalue), TempValue,
+                        (TColor)clTeeColor);
+					Chart1->Title->Text->Strings[0] = ValueName;
+                    Chart1->Title->Text->Strings[1] = UnitStr;
+                }
+            }
+        }
+    }
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::NextBitBtnClick(TObject *Sender) {
+	Chart1->NextPage();
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::PreviousBitBtnClick(TObject *Sender) {
+    Chart1->PreviousPage();
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::LastBitBtnClick(TObject *Sender) {
+    Chart1->Page = Chart1->NumPages();
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::FirstBitBtnClick(TObject *Sender) {
+    Chart1->Page = 1;
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::SelectValueButtonClick(TObject *Sender) {
+    TButton *BPtr = (TButton*)Sender;
+    BPtr->PopupMenu->Popup(BPtr->ClientOrigin.x + 5, BPtr->ClientOrigin.y + 5);
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::FormClose(TObject *Sender, TCloseAction &Action)
+{
+    RemoveMenuItems(PopupMenuValueType->Items);
+
+    Action = caFree;
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::PopupMenuValueTypeExecute(TObject *Sender) {
+    TMenuItem *TempItem = (TMenuItem*)Sender;
+    if (TempItem) {
+		ValueKey = TempItem->Tag;
+		AnsiString MyNameStr;
+		AnsiString Myunitstr;
+		MyNameStr = LibGetValue( SVT_VALUE_NAME, ValueKey, 0,ObjectVector[0], 0, SVT_FLAG_NORMAL, NULL);
+
+		ValueName = MyNameStr;
+        Paint();
+    }
+}
+
+// ---------------------------------------------------------------------------
+void __fastcall TBarGraphForm::Init(void) {
+	if (!ObjectVector.empty()) {
+		PROTank *Element = (PROTank*)ObjectVector[0];
+		AnsiString TypeStr;
+		Type = Element->Type;
+		Tag = Type;
+		SetPopupMenuValueType(PopupMenuValueType);
+		if (ObjectVector.size() <= 20) {
+			Chart1->MaxPointsPerPage = ObjectVector.size() + 1;
+		}
+		else {
+			Chart1->MaxPointsPerPage = 20;
+		}
+	}
+	ReadRegistry();
+	Paint();
+}
+
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::SetObjectTable(vector<PRogramObjectBase*>CurrTab)
+{
+	TChildForm::SetObjectTable(CurrTab);
+	Init();
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::ReadRegistry(void) {
+	TRegistry *Registry = new TRegistry;
+	try {
+		Registry->RootKey = HKEY_LOCAL_MACHINE;
+		Registry->Access = KEY_READ;
+
+		// False because we do not want to create it if it doesn't exist
+		bool Status = Registry->OpenKey(RegNameKey, false);
+		if ( Status ) {
+			if ( Registry->ValueExists("ValueKey") ) {
+				ValueKey = Registry->ReadInteger("ValueKey");
+			}
+			if ( Registry->ValueExists("ValueName") ) {
+				ValueName = Registry->ReadString("ValueName");
+			}
+			Registry->CloseKey();
+		}
+	}
+	__finally {
+		delete Registry;
+	}
+}
+// ---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::WriteRegistry(void) {
+	TRegistry *Registry = new TRegistry;
+	try {
+		Registry->RootKey = HKEY_LOCAL_MACHINE;
+		Registry->Access = KEY_WRITE;
+
+		// False because we do not want to create it if it doesn't exist
+		bool Status = Registry->OpenKey(RegNameKey, true);
+		if ( Status ) {
+			Registry->WriteInteger("ValueKey", ValueKey);
+			Registry->WriteString("ValueName", ValueName);
+			Registry->CloseKey();
+		}
+	}
+	__finally {
+		delete Registry;
+	}
+}
+
+void __fastcall TBarGraphForm::FormDestroy(TObject *Sender)
+{
+	WriteRegistry();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::FormCreate(TObject *Sender)
+{
+	TChildForm::FormCreate(Sender);
+	Init();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TBarGraphForm::Chart1AllowScroll(TChartAxis *Sender, double &AMin,
+		  double &AMax, bool &AllowScroll)
+{
+   AllowScroll = false;
+}
+//---------------------------------------------------------------------------
+
+
+

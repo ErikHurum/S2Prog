@@ -1,0 +1,74 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:16
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\adc.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\adc.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\adc.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\adc.r90.iar_deps
+#    Locale                =  C
+#    List file             =  D:\S2Prog\IO\ANZB-1281\Debug\List\Main\adc.lst
+#    Object file           =  D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\adc.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\adc.c
+      1          /****************************************************************************************
+      2          / AD converter functions and interrupt
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #ifdef __ATMEGA_1280__
+      7          #include	"iom1280.h"
+      8          #endif
+      9          
+     10          #ifdef __ATMEGA_1281__
+     11          #include	"iom1281.h"
+     12          #endif
+     13          #include "stdio.h"
+     14          #include "math.h"
+     15          #include "externals.h"
+     16          #include "version.h"
+     17          
+     18          #pragma vector=ADC_vect
+     19          __interrupt void IntHandler_AD( void ){
+     20          
+     21              OS_EnterInterrupt();
+     22              OS_EnterIntStack();
+     23              ADInt.Result[ADChannel] = ADC; // Reading ADCL and ADCH in one run
+     24              if (++ADChannel > 0x01 ) {                //set next ADchannel
+     25                    ADChannel = 0x00 ;
+     26              }
+     27              ADMUX &= 0xe0 ;                           // set the channel
+     28              ADMUX |= ADChannel ;
+     29              ADCSR |= 0x40 ;                           //start new convertion
+     30              OS_LeaveIntStack();
+     31              OS_LeaveInterruptNoSwitch();
+     32          }
+
+Errors: 10
+Warnings: 1

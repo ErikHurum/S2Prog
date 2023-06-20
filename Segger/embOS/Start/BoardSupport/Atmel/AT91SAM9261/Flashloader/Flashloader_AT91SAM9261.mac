@@ -1,0 +1,105 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2005   SEGGER Microcontroller Systeme GmbH        *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : Flashloader_AT91SAM9261.mac
+Purpose : Setup file for EWARM flashloader and AT91SAM9261 CPU.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+setup() {
+  //disable WDT
+  __writeMemory32(0x00008000,0xFFFFFD44,"Memory");
+  
+  // Init SPI0 - CS0
+  __writeMemory32(0x00001000,0xFFFFFC10,"Memory");          // Enable SPI0 peripheral clock
+  __writeMemory32(0x00000080,0xFFFC8000,"Memory");          // Reset SPI0
+  __writeMemory32(0x00000011,0xFFFC8004,"Memory");          // Master, Fixed device's CS
+  __writeMemory32(0x0000200A,0xFFFC8030,"Memory");          // CS0 Mode - 0, 8 bits, MCLK/32
+
+  __writeMemory32(0x00000004,0xFFFFFC10,"Memory");          // Enable PORTA peripheral clock
+  __writeMemory32(0x0000000F,0xFFFFF404,"Memory");          // PORTA Peripheral enable
+  __writeMemory32(0x0000000E,0xFFFFF410,"Memory");          // PORTA Peripheral Outputs enable
+  __writeMemory32(0x00000001,0xFFFFF414,"Memory");          // PORTA Peripheral Input enable
+  __writeMemory32(0x0000000F,0xFFFFF470,"Memory");          // PORTA Peripheral A function select
+
+  __writeMemory32(0x00000001,0xFFFC8000,"Memory");          // Enable SPI0
+  //
+  // Init PLL
+  //
+
+  //  _PMC_MOR = ((48/8) << 8) + 0x01; // Startup time = 48 slow clocks, Main oscillator enable
+  __writeMemory32(0x00000601,0xFFFFFC20,"Memory");          // Enable SPI0
+
+
+  //while ((_PMC_SR & _PMC_MOSCS) == 0) {
+  __sleep(100);
+
+  //
+  // Initialize PLL A for Main clock
+  //
+  // _PMC_CKGR_PLLAR = PLLA_Val;
+  __writeMemory32(0x206ca00a,0xFFFFFC28,"Memory");          // Setup PLL A
+  //
+  // Wait until PLLA locks
+  //
+  //  while((_PMC_SR & _PMC_LOCKA) == 0) {
+  __sleep(100);
+
+  //
+  // Wait until the master clock is stable
+  //
+  // while((_PMC_SR & _PMC_MCKRDY) == 0) {
+  __sleep(100);
+
+  //
+  // Initialize PLL B for USB clock
+  //
+  // _PMC_CKGR_PLLBR = PLLB_Val;         // Setup PLL B
+  __writeMemory32(0x1033200a,0xFFFFFC2C,"Memory");          // Setup PLL A
+  //
+  // Wait until PLLB locks
+  //
+  // while((_PMC_SR & _PMC_LOCKB) == 0)  {
+  __sleep(100);
+  //
+  // Wait until the master clock is stable
+  //
+  // while ((_PMC_SR & _PMC_MCKRDY) == 0) {
+  __sleep(100);
+  //
+  // Select PLL A clock as clock source
+  //
+  // _PMC_MCKR = MCKR_Val;
+  __writeMemory32(0x00000102,0xFFFFFC30,"Memory");          // Setup PLL A
+  //
+  // Wait until the master clock is stable */
+  //
+  //  while((_PMC_SR & _PMC_MCKRDY) == 0) {
+  __sleep(100);
+}
+
+execUserFlashInit() {
+  __message("execUserFlashInit");
+//  __hwReset(100);
+  setup();
+}
+
+execUserFlashExit() {
+  __message("execUserFlashExit");
+  __hwReset(0);
+}
+
+execUserPreload() {
+  __message("execUserPreload");
+  setup();
+}

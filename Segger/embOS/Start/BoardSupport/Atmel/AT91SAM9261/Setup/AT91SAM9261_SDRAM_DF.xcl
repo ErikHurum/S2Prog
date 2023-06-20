@@ -1,0 +1,73 @@
+//*********************************************************************
+//*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+//*        Solutions for real time microcontroller applications       *
+//*********************************************************************
+//*                                                                   *
+//*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+//*                  www.segger.com                                   *
+//*                                                                   *
+//*********************************************************************
+//
+//---------------------------------------------------------------------
+//File   : AT91SAM9261_SDRAM_DF.xcl
+//Purpose: Linker file for AT91SAM9261 and IAR embedded workbench V4
+//         Execution in SDRAM, loaded from DataFlash
+//-------- END-OF-HEADER ----------------------------------------------
+//
+
+-DROMSTART=20000000
+-DROM_SIZE=200000
+-DROMEND=(ROMSTART+ROM_SIZE-1)
+
+-DRAMSTART=(ROMEND+1)
+-DRAMEND=23FFFFFF
+
+-DIRAMSTART=300000             // Internal SRAM, NOT remapped
+-DIRAMEND=327FFF               // 
+
+-D_CSTACK_SIZE=(80*4)
+-D_IRQ_STACK_SIZE=(3*(4*7)+8)  // Nesting level * (Size per interrupt) + margin for alignement
+
+//
+// MOVE ROM area down to address 0x8000 for usage with boot-loader
+//
+-MROMSTART-ROMEND=8000-(8000+ROM_SIZE-1)
+
+-carm
+
+//************************************************
+// Address range for reset and exception
+// vectors (INTVEC).
+// The vector area is 32 bytes,
+// an additional 32 bytes is allocated for the
+// constant table used by ldr PC in cstartup.s79.
+//************************************************
+//-Z(CODE)INTVEC=IRAMSTART-IRAMEND
+-Z(CODE)INTVEC=ROMSTART-ROMEND
+
+//************************************************
+// Startup code and exception routines (ICODE).
+//************************************************
+-Z(CODE)ICODE=ROMSTART-ROMEND
+-Z(CODE)DIFUNCT,SWITAB,CODE,CODE_ID=ROMSTART-ROMEND
+
+//************************************************
+// Various constants and initializers.
+//************************************************
+-Z(CONST)INITTAB,DATA_ID,DATA_C,CHECKSUM=ROMSTART-ROMEND
+
+//************************************************
+// PROGRAM_END has to be located behind all code 
+// and const segments by linker
+//************************************************
+-Z(CONST)PROGRAM_END=ROMSTART-ROMEND
+
+//************************************************
+// Data segments.
+//************************************************
+-Z(DATA)DATA_I,DATA_Z,DATA_N,CODE_I=RAMSTART-RAMEND
+-Z(DATA)CSTACK+_CSTACK_SIZE,IRQ_STACK+_IRQ_STACK_SIZE=IRAMSTART-IRAMEND
+-QCODE_I=CODE_ID
+
+
+

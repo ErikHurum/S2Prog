@@ -1,0 +1,1186 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       31/Jan/2023  09:48:36
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\AN-ZBHART\Src\hart_diag.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW8018.tmp
+#        (D:\S2Prog\IO\AN-ZBHART\Src\hart_diag.c --cpu=m1280 -ms -o
+#        D:\S2Prog\IO\AN-ZBHART\Release\Obj -D OS_LIBMODE_R -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\AN-ZBHART\Release\List -y --initializers_in_flash
+#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\AN-ZBHART\INC\\ -I
+#        ..\..\..\Shared\Inc\\ --eeprom_size 4096 --clib -Ohs)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\AN-ZBHART\Release\List\hart_diag.lst
+#    Object file  =  D:\S2Prog\IO\AN-ZBHART\Release\Obj\hart_diag.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\AN-ZBHART\Src\hart_diag.c
+      1          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x10b
+   \   union <unnamed> volatile __ext_io _A_PORTL
+   \                     _A_PORTL:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x109
+   \   union <unnamed> volatile __ext_io _A_PINL
+   \                     _A_PINL:
+   \   00000000                      DS8 1
+      2          #include "version.h"
+      3          #include "inavr.h"
+      4          #include "RTOS.h"
+      5          
+      6          #include "constants.h"
+      7          
+      8          #include "hart_common.h"
+      9          #include "hart.h"
+     10          #include "hart_diag.h"
+     11          #include "hart_gpio.h"
+     12          #include "structs.h"
+     13          #include "externals.h"
+     14          
+     15          static char hasStartedHartDiag = false;
+     16          
+     17          /////////////////////////////////////////////////////////////////////////////////////
+     18          //
+     19          // AD7715 summary.
+     20          // * some people are stupid enough not to write this down in the code. So I do.
+     21          //   -hkim-
+     22          //
+     23          //
+     24          // a. setup communication register
+     25          //
+     26          // 7        6       5       4       3       2       1       0
+     27          // must     must    rs1     rs0     r/w     sdby    g1      g0
+     28          // be 0     be 0                    r=1     1 =
+     29          //                                  w=0     p down  gain setup
+     30          //
+     31          // rs1    rs0
+     32          // ============
+     33          // 0      0       comm reg        8  bit
+     34          // 0      1       setup reg       8  bit
+     35          // 1      0       test reg        8  bit
+     36          // 1      1       data reg        16 bit
+     37          //
+     38          // g1     g0
+     39          // ============
+     40          //  0     0       x1
+     41          //  0     1       x2
+     42          //  1     0       x32
+     43          //  1     1       x128
+     44          //
+     45          // b. setup register (rs1,rs0= 0,1
+     46          //
+     47          // 7        6       5       4       3       2       1       0
+     48          // MD1      MD0     CLK     FS1     FS0     B/U     BUF     FSYNC
+     49          // mode selection   opr     output rate     bi/uni  buf     filter
+     50          //                  freq                    polar   control sync
+     51          //
+     52          // CLK should be set to 0 with 1 Mhz clock
+     53          //
+     54          // MD1    MD0
+     55          // ============
+     56          // 0      0       normal mode
+     57          // 0      1       self calib
+     58          // 1      0       zero scale calib
+     59          // 1      1       full scale calib
+     60          //
+     61          // CLK      FS1     FS0
+     62          // ================================
+     63          // 0        0       0           20 Hz
+     64          // 0        0       1           25 Hz
+     65          // 0        1       0           100 Hz
+     66          // 0        1       1           200 Hz
+     67          // 1        0       0           50 Hz
+     68          // 1        0       1           60 Hz
+     69          // 1        1       0           250 Hz
+     70          // 1        1       1           5600 Hz
+     71          //
+     72          // B/U : 0 bipolar, 1 unipolar
+     73          //
+     74          // c. test register (rs1,rs0 = 1,0
+     75          // just don't use it. chip maker doesn't want you to fuck up with this.
+     76          //
+     77          // d. data register (rs1,rs0 = 1,1)
+     78          //
+     79          /////////////////////////////////////////////////////////////////////////////////////
+     80          
+     81          ////////////////////////////////////////////////////////////////////////////////
+     82          //
+     83          // private defines
+     84          //
+     85          ////////////////////////////////////////////////////////////////////////////////
+     86          #define HART_DIAG_CONVERSION_COMPLETE         0x01
+     87          
+     88          ////////////////////////////////////////////////////////////////////////////////
+     89          //
+     90          // private prototypes
+     91          //
+     92          ////////////////////////////////////////////////////////////////////////////////
+     93          
+     94          ////////////////////////////////////////////////////////////////////////////////
+     95          //
+     96          // hart module privates
+     97          //
+     98          ////////////////////////////////////////////////////////////////////////////////
+     99          #if defined( OS_LIBMODE_D) || defined( OS_LIBMODE_S )
+    100          char StackTest5[] = {"123456789"};
+    101          #endif
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+    102          OS_STACKPTR int  _hart_diag_task_stack[150];
+   \                     _hart_diag_task_stack:
+   \   00000000                      DS8 300
+    103          #if defined( OS_LIBMODE_D) || defined( OS_LIBMODE_S )
+    104          char StackTest6[] = {"123456789"};
+    105          #endif
+    106          OS_TASK          TCB_AD7715;
+    107          uint16_t         _num_adc_fuckups    = 0;
+    108          OS_U32           Last_ADC_FuckUpTime = 0;
+    109          OS_U32           Last_ADC_OK_Time    = 0;
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+    110          char             CriticalADC_Failure = FALSE;
+   \                     CriticalADC_Failure:
+   \   00000000                      DS8 1
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     Last_ADC_FuckUpTime:
+   \   00000000                      DS8 4
+   \   00000004                      REQUIRE `?<Initializer for Last_ADC_FuckUpTime>`
+   \                     Last_ADC_OK_Time:
+   \   00000004                      DS8 4
+   \   00000008                      REQUIRE `?<Initializer for Last_ADC_OK_Time>`
+   \                     _num_adc_fuckups:
+   \   00000008                      DS8 2
+   \   0000000A                      REQUIRE `?<Initializer for _num_adc_fuckups>`
+   \   0000000A                      DS8 1
+   \   0000000B                      REQUIRE `?<Initializer for hasStartedHartDiag>`
+   \   0000000B                      DS8 1
+   \   0000000C                      REQUIRE `?<Initializer for on_off>`
+   \                     TCB_AD7715:
+   \   0000000C                      DS8 20
+   \   00000020                      REQUIRE `?<Initializer for TCB_AD7715>`
+    111          ////////////////////////////////////////////////////////////////////////////////
+    112          //
+    113          // AD7715 related utilities
+    114          //
+    115          ////////////////////////////////////////////////////////////////////////////////
+    116          static void
+    117          ad7715_toggle_debug_led(void) {
+    118              static uint8_t    on_off = 1;
+    119          
+    120              hart_gpio_debug_led(on_off);
+    121              on_off = !on_off;
+    122          }
+    123          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    124          static uint8_t
+    125          ad7715_read_byte(void) {
+   \                     ad7715_read_byte:
+    126              uint8_t readbyte = 0;
+   \   00000000   E000               LDI     R16, 0
+    127              //OS_EnterRegion();
+    128              //OS_IncDI();
+    129              for (uint8_t i = 0; i <  8; i++) {
+   \   00000002   E018               LDI     R17, 8
+    130                  readbyte <<= 1;                      // shift to next bit
+   \                     ??ad7715_read_byte_0:
+   \   00000004   0F00               LSL     R16
+    131                  AD7715_CLK_LO();
+   \   00000006   9120010B           LDS     R18, 267
+   \   0000000A   7F2E               ANDI    R18, 0xFE
+   \   0000000C   9320010B           STS     267, R18
+    132                  AD7715_CLK_HI();
+   \   00000010   9120010B           LDS     R18, 267
+   \   00000014   6021               ORI     R18, 0x01
+   \   00000016   9320010B           STS     267, R18
+    133          
+    134                  if (AD7715_MISO_READ()) {
+   \   0000001A   9120....           LDS     R18, _A_PINL
+   \   0000001E   FD21               SBRC    R18, 1
+    135                      // data high
+    136                      readbyte |= 0x01;                   // set bit high
+   \   00000020   6001               ORI     R16, 0x01
+    137                  }
+    138              }
+   \                     ??ad7715_read_byte_1:
+   \   00000022   951A               DEC     R17
+   \   00000024   F779               BRNE    ??ad7715_read_byte_0
+    139              //OS_LeaveRegion();
+    140              //OS_DecRI();
+    141              return readbyte;
+   \   00000026   9508               RET
+   \   00000028                      REQUIRE _A_PORTL
+   \   00000028                      REQUIRE _A_PINL
+    142          }
+    143          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    144          static void
+    145          ad7715_write_byte(uint8_t data) {
+   \                     ad7715_write_byte:
+    146              //OS_EnterRegion();
+    147              //OS_IncDI();
+    148              for (uint8_t i = 0; i <  8; i++) {
+   \   00000000   E018               LDI     R17, 8
+    149                  AD7715_CLK_LO();
+   \                     ??ad7715_write_byte_0:
+   \   00000002   9120010B           LDS     R18, 267
+   \   00000006   7F2E               ANDI    R18, 0xFE
+   \   00000008   9320010B           STS     267, R18
+    150                  if (data & 0x80) {                        // data bit = 1?
+   \   0000000C   FB07               BST     R16, 7
+   \   0000000E   9120010B           LDS     R18, 267
+   \   00000012   F416               BRTC    ??ad7715_write_byte_1
+    151                      AD7715_MOSI_HI();
+   \   00000014   6024               ORI     R18, 0x04
+   \   00000016   C001               RJMP    ??ad7715_write_byte_2
+    152                  } else {
+    153                      AD7715_MOSI_LO();
+   \                     ??ad7715_write_byte_1:
+   \   00000018   7F2B               ANDI    R18, 0xFB
+   \                     ??ad7715_write_byte_2:
+   \   0000001A   9320010B           STS     267, R18
+    154                  }
+    155                  data <<= 1;                              // shift to next bit
+   \   0000001E   0F00               LSL     R16
+    156                  AD7715_CLK_HI();
+   \   00000020   9120010B           LDS     R18, 267
+   \   00000024   6021               ORI     R18, 0x01
+   \   00000026   9320010B           STS     267, R18
+    157              }
+   \   0000002A   951A               DEC     R17
+   \   0000002C   F751               BRNE    ??ad7715_write_byte_0
+    158              //OS_LeaveRegion();
+    159              //OS_DecRI();
+    160          }
+   \   0000002E   9508               RET
+   \   00000030                      REQUIRE _A_PORTL
+    161          
+    162          static void
+    163          ad7715_hard_reset(void) {
+    164              hart_gpio_adc_reset(1);     // high
+    165              OS_Delay(100);
+    166              hart_gpio_adc_reset(0);     // low
+    167              OS_Delay(500);
+    168              hart_gpio_adc_reset(1);     // high
+    169              OS_Delay(100);
+    170          }
+    171          
+    172          static void
+    173          ad7715_put_on_hold(void) {
+    174              // select setup reg
+    175              ad7715_write_byte(0x10);
+    176          
+    177              // set fsync to put ADC on hold
+    178              ad7715_write_byte(0x0f);
+    179          }
+    180          
+    181          static void
+    182          ad7715_start_next_sample(void) {
+    183              // select setup reg
+    184              ad7715_write_byte(0x10);
+    185          
+    186              // clear fsync bit to start conversion
+    187              ad7715_write_byte(0x0e);
+    188          
+    189              //
+    190              // sample will be available after 3x1/output rate, which is 3x1/25 = 120ms.
+    191              // code will be notified by /DRDY
+    192              //
+    193          }
+    194          
+    195          static uint16_t ad7715_read_sample(void) {
+    196              uint8_t   lo, hi;
+    197              uint16_t  ret;
+    198          
+    199              // select data reg
+    200              ad7715_write_byte(0x38);
+    201          
+    202              hi = ad7715_read_byte();
+    203              lo = ad7715_read_byte();
+    204          
+    205              ret = (uint16_t)(hi << 8 | lo);
+    206          
+    207              return ret;
+    208          }
+    209          
+    210          static uint8_t ad7715_wait_for_drdy(void) {
+    211              char Status = OS_WaitSingleEventTimed(HART_DIAG_CONVERSION_COMPLETE, 1000);
+    212              if (!Status) {
+    213                  Last_ADC_FuckUpTime = OS_Time;
+    214                  _num_adc_fuckups++;
+    215              } else {
+    216                  Last_ADC_OK_Time = OS_Time;
+    217              }
+    218              return Status;
+    219          }
+    220          
+    221          static void ad7715_do_calibration(void) {
+    222              //
+    223              // set current channel to 2.5V reference
+    224              //
+    225              hart_gpio_adc_channel_select((hart_channel_t)14);
+    226          
+    227              //
+    228              // select setup reg (0,1)
+    229              // 7        6         5         4         3         2         1         0
+    230              // 0        0         0         1         0         0         0         0
+    231              //                    setup reg           write     no        gain x1
+    232              //                                                  stby
+    233              ad7715_write_byte(0x10);
+    234          
+    235              //
+    236              // setup reg to perform calib
+    237              //
+    238              // 7        6         5         4         3         2         1         0
+    239              // 0        1         0         0         1         1         1         0
+    240              // seld calib         1 Mhz     25 Hz Rate          Unipolar  buffed    no fsync
+    241              // mode               clk
+    242              //
+    243              ad7715_write_byte(0x4e);
+    244          
+    245              //
+    246              // calibration will be complete after 6 x 1/outpur rate
+    247              // which is 6 * 1/25 = roughly 240ms and /DRDY will be asserted.
+    248              //
+    249              ad7715_wait_for_drdy();
+    250          
+    251              //
+    252              // read dummy sample. /DRDY will go hi again after this
+    253              //
+    254              ad7715_read_sample();
+    255          
+    256              ad7715_put_on_hold();
+    257          
+    258              // back to 0
+    259              hart_gpio_adc_channel_select(hart_channel_0);
+    260          }
+    261          
+    262          
+    263          ////////////////////////////////////////////////////////////////////////////////
+    264          //
+    265          // ADC interrupt handler
+    266          //
+    267          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    268          void INT_Handler_INT0(void) {
+   \                     INT_Handler_INT0:
+    269              if (hasStartedHartDiag) {
+   \   00000000   9100....           LDS     R16, (Last_ADC_FuckUpTime + 10)
+   \   00000004   2300               TST     R16
+   \   00000006   F029               BREQ    ??INT_Handler_INT0_0
+    270                  OS_SignalEvent(HART_DIAG_CONVERSION_COMPLETE, &TCB_AD7715);
+   \   00000008   ....               LDI     R18, LOW((Last_ADC_FuckUpTime + 12))
+   \   0000000A   ....               LDI     R19, HIGH((Last_ADC_FuckUpTime + 12))
+   \   0000000C   E001               LDI     R16, 1
+   \   0000000E   ........           CALL    OS_SignalEvent
+    271              }
+    272          }
+   \                     ??INT_Handler_INT0_0:
+   \   00000012   9508               RET
+    273          
+    274          #pragma vector=INT0_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    275          __interrupt void IntHandler_INT0(void) {
+   \                     IntHandler_INT0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+    276              OS_CallISR(INT_Handler_INT0);
+   \   00000024   ....               LDI     R16, LOW(INT_Handler_INT0/2)
+   \   00000026   ....               LDI     R17, (INT_Handler_INT0/2) >> 8
+   \   00000028   ........           CALL    OS_CallISR
+    277          }
+   \   0000002C   BF9B               OUT     0x3B, R25
+   \   0000002E   BF8F               OUT     0x3F, R24
+   \   00000030   9109               LD      R16, Y+
+   \   00000032   9119               LD      R17, Y+
+   \   00000034   9129               LD      R18, Y+
+   \   00000036   9139               LD      R19, Y+
+   \   00000038   9149               LD      R20, Y+
+   \   0000003A   9159               LD      R21, Y+
+   \   0000003C   9169               LD      R22, Y+
+   \   0000003E   9179               LD      R23, Y+
+   \   00000040   9009               LD      R0, Y+
+   \   00000042   9019               LD      R1, Y+
+   \   00000044   9029               LD      R2, Y+
+   \   00000046   9039               LD      R3, Y+
+   \   00000048   91E9               LD      R30, Y+
+   \   0000004A   91F9               LD      R31, Y+
+   \   0000004C   9189               LD      R24, Y+
+   \   0000004E   9199               LD      R25, Y+
+   \   00000050   9518               RETI
+    278          
+    279          
+    280          
+    281          ////////////////////////////////////////////////////////////////////////////////
+    282          //
+    283          // private utilities
+    284          //
+    285          ////////////////////////////////////////////////////////////////////////////////
+    286          static void hart_diag_configure_adc(void) {
+    287              ad7715_hard_reset();
+    288              OS_Delay(10);
+    289              ad7715_do_calibration();
+    290              OS_Delay(10);
+    291          }
+    292          
+    293          ////////////////////////////////////////////////////////////////////////////////
+    294          //
+    295          // ADC raw to mA
+    296          //
+    297          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    298          static void hart_diag_set_diag_value(hart_channel_t chnl, uint16_t raw_adc) {
+   \                     hart_diag_set_diag_value:
+   \   00000000   927A               ST      -Y, R7
+   \   00000002   926A               ST      -Y, R6
+   \   00000004   925A               ST      -Y, R5
+   \   00000006   924A               ST      -Y, R4
+   \   00000008   93BA               ST      -Y, R27
+   \   0000000A   93AA               ST      -Y, R26
+   \   0000000C   939A               ST      -Y, R25
+   \   0000000E   938A               ST      -Y, R24
+   \   00000010                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000010                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000010                      REQUIRE ?Register_R6_is_cg_reg
+   \   00000010                      REQUIRE ?Register_R7_is_cg_reg
+   \   00000010   2F80               MOV     R24, R16
+    299              // the H/W circuit is created using INA138 current shunt and 5 ohm resistor.
+    300              //
+    301              // The input current is between 0 and 20mA. So voltage drop across the 5 Ohm
+    302              // resistor will be between 0 and 0.1V. This voltage difference is fed into
+    303              // INA138 and with 100K RL resistor, the voltage is amplied by 20 times.
+    304              //
+    305              // So the measured voltage to the ADC is in the range of 0V and 2V, where
+    306              // 0V corresponds to 0mA and 2V corresponds to 20mA.
+    307              //
+    308              // Additionally ADC ref voltage is 2.5V, which means 0xffff corresponds 2.5V
+    309              //
+    310              // hkim is kind enough to analyze this freaking circuit himself and leave a
+    311              // record here. Appreciate him.
+    312              //
+    313              // -hkim-
+    314              //
+    315              //float   voltage = 2.5f * ((float)(raw_adc)) / 65535.0;
+    316              //float   current = voltage / 10.0 * 100.0f * TData.Hart.Gain[chnl]-TData.Hart.Offset[chnl];
+    317              float   current = ((2.5f * ((float)(raw_adc)) / 65535.0) / 10.0 * 100.0f);// *(1.0 / 1.0028280); // * TData.Hart.Gain[chnl] - TData.Hart.Offset[chnl];
+   \   00000012   0189               MOVW    R17:R16, R19:R18
+   \   00000014   E020               LDI     R18, 0
+   \   00000016   E030               LDI     R19, 0
+   \   00000018   ........           CALL    ?UL2F_S_L04
+   \   0000001C   E040               LDI     R20, 0
+   \   0000001E   E050               LDI     R21, 0
+   \   00000020   E260               LDI     R22, 32
+   \   00000022   E470               LDI     R23, 64
+   \   00000024   ........           CALL    ?F_MUL_S_L04
+   \   00000028   E040               LDI     R20, 0
+   \   0000002A   EF5F               LDI     R21, 255
+   \   0000002C   E76F               LDI     R22, 127
+   \   0000002E   E477               LDI     R23, 71
+   \   00000030   ........           CALL    ?F_DIV_S_L04
+   \   00000034   E040               LDI     R20, 0
+   \   00000036   E050               LDI     R21, 0
+   \   00000038   E260               LDI     R22, 32
+   \   0000003A   E471               LDI     R23, 65
+   \   0000003C   ........           CALL    ?F_DIV_S_L04
+   \   00000040   E040               LDI     R20, 0
+   \   00000042   E050               LDI     R21, 0
+   \   00000044   EC68               LDI     R22, 200
+   \   00000046   E472               LDI     R23, 66
+   \   00000048   ........           CALL    ?F_MUL_S_L04
+    318              // EHSMarkuint16_t    current_final = (uint16_t)(current * 10);       // 10 = 1mA, 1 = 0.1mA
+    319          
+    320              switch (chnl) {
+   \   0000004C   2F48               MOV     R20, R24
+   \   0000004E   504C               SUBI    R20, 12
+   \   00000050   F038               BRCS    ??hart_diag_set_diag_value_0
+   \   00000052   5042               SUBI    R20, 2
+   \   00000054   F409               BRNE    $+2+2
+   \   00000056   C04D               RJMP    ??hart_diag_set_diag_value_1
+   \   00000058   954A               DEC     R20
+   \   0000005A   F409               BRNE    $+2+2
+   \   0000005C   C061               RJMP    ??hart_diag_set_diag_value_2
+   \   0000005E   C06D               RJMP    ??hart_diag_set_diag_value_3
+    321              case hart_channel_0 :
+    322              case hart_channel_1 :
+    323              case hart_channel_2 :
+    324              case hart_channel_3 :
+    325              case hart_channel_4 :
+    326              case hart_channel_5 :
+    327              case hart_channel_6 :
+    328              case hart_channel_7 :
+    329              case hart_channel_8 :
+    330              case hart_channel_9 :
+    331              case hart_channel_10:
+    332              case hart_channel_11:
+    333                  {
+    334                      current = current * TData.Hart.Gain[chnl] - TData.Hart.Offset[chnl];
+    335                      TData.Hart.ADCurrent[chnl] += (current - TData.Hart.ADCurrent[chnl]) / ((float)TData.Hart.Filter[chnl] + 1.0);
+   \                     ??hart_diag_set_diag_value_0:
+   \   00000060   E044               LDI     R20, 4
+   \   00000062   9F84               MUL     R24, R20
+   \   00000064   ....               LDI     R20, LOW(TData)
+   \   00000066   2E44               MOV     R4, R20
+   \   00000068   ....               LDI     R20, (TData) >> 8
+   \   0000006A   0C40               ADD     R4, R0
+   \   0000006C   1D41               ADC     R20, R1
+   \   0000006E   2E54               MOV     R5, R20
+   \   00000070   2DA4               MOV     R26, R4
+   \   00000072   55A4               SUBI    R26, 84
+   \   00000074   4F4F               SBCI    R20, 255
+   \   00000076   2FB4               MOV     R27, R20
+   \   00000078   E64C               LDI     R20, 108
+   \   0000007A   0E44               ADD     R4, R20
+   \   0000007C   E041               LDI     R20, 1
+   \   0000007E   1E54               ADC     R5, R20
+   \   00000080   01F2               MOVW    R31:R30, R5:R4
+   \   00000082   A940               LDD     R20, Z+48
+   \   00000084   A951               LDD     R21, Z+49
+   \   00000086   A962               LDD     R22, Z+50
+   \   00000088   A973               LDD     R23, Z+51
+   \   0000008A   ........           CALL    ?F_MUL_S_L04
+   \   0000008E   01F2               MOVW    R31:R30, R5:R4
+   \   00000090   8140               LD      R20, Z
+   \   00000092   8151               LDD     R21, Z+1
+   \   00000094   8162               LDD     R22, Z+2
+   \   00000096   8173               LDD     R23, Z+3
+   \   00000098   ........           CALL    ?F_SUB_S_L04
+   \   0000009C   914D               LD      R20, X+
+   \   0000009E   915D               LD      R21, X+
+   \   000000A0   916D               LD      R22, X+
+   \   000000A2   917C               LD      R23, X
+   \   000000A4   9713               SBIW    R27:R26, 3
+   \   000000A6   ........           CALL    ?F_SUB_S_L04
+   \   000000AA   0128               MOVW    R5:R4, R17:R16
+   \   000000AC   0139               MOVW    R7:R6, R19:R18
+   \   000000AE   E0F0               LDI     R31, 0
+   \   000000B0   2FE8               MOV     R30, R24
+   \   000000B2   ....               SUBI    R30, LOW((-(TData + 160) & 0xFFFF))
+   \   000000B4   ....               SBCI    R31, HIGH((-(TData + 160) & 0xFFFF))
+   \   000000B6   8100               LD      R16, Z
+   \   000000B8   E010               LDI     R17, 0
+   \   000000BA   E020               LDI     R18, 0
+   \   000000BC   E030               LDI     R19, 0
+   \   000000BE   ........           CALL    ?UL2F_S_L04
+   \   000000C2   E040               LDI     R20, 0
+   \   000000C4   E050               LDI     R21, 0
+   \   000000C6   E860               LDI     R22, 128
+   \   000000C8   E37F               LDI     R23, 63
+   \   000000CA   ........           CALL    ?F_ADD_S_L04
+   \   000000CE   01A8               MOVW    R21:R20, R17:R16
+   \   000000D0   01B9               MOVW    R23:R22, R19:R18
+   \   000000D2   0182               MOVW    R17:R16, R5:R4
+   \   000000D4   0193               MOVW    R19:R18, R7:R6
+   \   000000D6   ........           CALL    ?F_DIV_S_L04
+   \   000000DA   914D               LD      R20, X+
+   \   000000DC   915D               LD      R21, X+
+   \   000000DE   916D               LD      R22, X+
+   \   000000E0   917C               LD      R23, X
+   \   000000E2   9713               SBIW    R27:R26, 3
+   \   000000E4   ........           CALL    ?F_ADD_S_L04
+   \   000000E8   930D               ST      X+, R16
+   \   000000EA   931D               ST      X+, R17
+   \   000000EC   932D               ST      X+, R18
+   \   000000EE   933C               ST      X, R19
+    336                  }
+    337                  break;
+   \   000000F0   C024               RJMP    ??hart_diag_set_diag_value_3
+    338              case 12:
+    339              case 13:
+    340                  // Not connected
+    341                  break;
+    342              case 14:
+    343                  {
+    344                      float Gain = 2.5 / current; 
+   \                     ??hart_diag_set_diag_value_1:
+   \   000000F2   01A8               MOVW    R21:R20, R17:R16
+   \   000000F4   01B9               MOVW    R23:R22, R19:R18
+   \   000000F6   E000               LDI     R16, 0
+   \   000000F8   E010               LDI     R17, 0
+   \   000000FA   E220               LDI     R18, 32
+   \   000000FC   E430               LDI     R19, 64
+   \   000000FE   ........           CALL    ?F_DIV_S_L04
+   \   00000102   2F40               MOV     R20, R16
+    345                      for (char ch = 0; ch < 12; ch++) {
+   \   00000104   ....               LDI     R24, LOW(TData)
+   \   00000106   ....               LDI     R25, (TData) >> 8
+   \   00000108   E00C               LDI     R16, 12
+    346                          TData.Hart.Gain[ch]         = Gain; // Original gain on AN-ZBANA is 0.9985 or 0.9965
+   \                     ??hart_diag_set_diag_value_4:
+   \   0000010A   01FC               MOVW    R31:R30, R25:R24
+   \   0000010C   56E4               SUBI    R30, 100
+   \   0000010E   4FFE               SBCI    R31, 254
+   \   00000110   8340               ST      Z, R20
+   \   00000112   8311               STD     Z+1, R17
+   \   00000114   8322               STD     Z+2, R18
+   \   00000116   8333               STD     Z+3, R19
+    347                      }
+   \   00000118   9604               ADIW    R25:R24, 4
+   \   0000011A   950A               DEC     R16
+   \   0000011C   F071               BREQ    ??hart_diag_set_diag_value_3
+   \   0000011E   CFF5               RJMP    ??hart_diag_set_diag_value_4
+    348                  }
+    349                  break;
+    350              case 15:
+    351                  {
+    352                      float Offset = current; 
+    353                      for (char ch = 0; ch < 12; ch++) {
+   \                     ??hart_diag_set_diag_value_2:
+   \   00000120   ....               LDI     R24, LOW(TData)
+   \   00000122   ....               LDI     R25, (TData) >> 8
+   \   00000124   E04C               LDI     R20, 12
+    354                          TData.Hart.Offset[ch] = Offset; // Original gain on AN-ZBANA is 0.9985 or 0.9965
+   \                     ??hart_diag_set_diag_value_5:
+   \   00000126   01FC               MOVW    R31:R30, R25:R24
+   \   00000128   59E4               SUBI    R30, 148
+   \   0000012A   4FFE               SBCI    R31, 254
+   \   0000012C   8300               ST      Z, R16
+   \   0000012E   8311               STD     Z+1, R17
+   \   00000130   8322               STD     Z+2, R18
+   \   00000132   8333               STD     Z+3, R19
+    355                      }
+   \   00000134   9604               ADIW    R25:R24, 4
+   \   00000136   954A               DEC     R20
+   \   00000138   F7B1               BRNE    ??hart_diag_set_diag_value_5
+    356                  }
+    357                  break;
+    358          
+    359              }
+    360          }
+   \                     ??hart_diag_set_diag_value_3:
+   \   0000013A   9189               LD      R24, Y+
+   \   0000013C   9199               LD      R25, Y+
+   \   0000013E   91A9               LD      R26, Y+
+   \   00000140   91B9               LD      R27, Y+
+   \   00000142   9049               LD      R4, Y+
+   \   00000144   9059               LD      R5, Y+
+   \   00000146   9069               LD      R6, Y+
+   \   00000148   9079               LD      R7, Y+
+   \   0000014A   9508               RET
+    361          
+    362          ////////////////////////////////////////////////////////////////////////////////
+    363          //
+    364          // HART Diagnostic Task
+    365          //
+    366          ////////////////////////////////////////////////////////////////////////////////
+    367          static void ad7715_read_diag_adc(hart_channel_t chnl) {
+    368          
+    369              hart_gpio_adc_channel_select(chnl);
+    370              OS_Delay(10);
+    371              ad7715_start_next_sample();
+    372              if (ad7715_wait_for_drdy()) {
+    373                  uint16_t raw_adc = ad7715_read_sample();
+    374                  ad7715_put_on_hold();
+    375                  hart_diag_set_diag_value(chnl, raw_adc);
+    376              }
+    377          }
+    378          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    379          static void HARTDiag_Task(void) {
+   \                     HARTDiag_Task:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+    380              hart_channel_t      current;
+    381              hasStartedHartDiag = true;
+   \   00000004   E001               LDI     R16, 1
+   \   00000006   9300....           STS     (Last_ADC_FuckUpTime + 10), R16
+    382              hart_diag_init();
+   \   0000000A   ....               RCALL   hart_diag_init
+    383          
+    384              //ad7715_hard_reset();
+    385              while (1) {
+    386                  hart_for_each_channel(current) {
+   \                     ??HARTDiag_Task_0:
+   \   0000000C   E090               LDI     R25, 0
+   \   0000000E   E08C               LDI     R24, 12
+    387                      ad7715_read_diag_adc(current);
+   \                     ??HARTDiag_Task_1:
+   \   00000010   2F09               MOV     R16, R25
+   \   00000012   ........           CALL    hart_gpio_adc_channel_select
+   \   00000016   E00A               LDI     R16, 10
+   \   00000018   E010               LDI     R17, 0
+   \   0000001A   ........           CALL    OS_Delay
+   \   0000001E   E100               LDI     R16, 16
+   \   00000020   ....               RCALL   ad7715_write_byte
+   \   00000022   E00E               LDI     R16, 14
+   \   00000024   ....               RCALL   ad7715_write_byte
+   \   00000026   EE28               LDI     R18, 232
+   \   00000028   E033               LDI     R19, 3
+   \   0000002A   E001               LDI     R16, 1
+   \   0000002C   ........           CALL    OS_WaitSingleEventTimed
+   \   00000030   2300               TST     R16
+   \   00000032   9100....           LDS     R16, (OS_Global + 18)
+   \   00000036   9110....           LDS     R17, (OS_Global + 19)
+   \   0000003A   9120....           LDS     R18, (OS_Global + 20)
+   \   0000003E   9130....           LDS     R19, (OS_Global + 21)
+   \   00000042   F499               BRNE    ??HARTDiag_Task_2
+   \   00000044   9300....           STS     Last_ADC_FuckUpTime, R16
+   \   00000048   9310....           STS     (Last_ADC_FuckUpTime + 1), R17
+   \   0000004C   9320....           STS     (Last_ADC_FuckUpTime + 2), R18
+   \   00000050   9330....           STS     (Last_ADC_FuckUpTime + 3), R19
+   \   00000054   9100....           LDS     R16, (Last_ADC_FuckUpTime + 8)
+   \   00000058   9110....           LDS     R17, (Last_ADC_FuckUpTime + 9)
+   \   0000005C   5F0F               SUBI    R16, 255
+   \   0000005E   4F1F               SBCI    R17, 255
+   \   00000060   9300....           STS     (Last_ADC_FuckUpTime + 8), R16
+   \   00000064   9310....           STS     (Last_ADC_FuckUpTime + 9), R17
+   \   00000068   C02B               RJMP    ??HARTDiag_Task_3
+   \                     ??HARTDiag_Task_2:
+   \   0000006A   9300....           STS     (Last_ADC_FuckUpTime + 4), R16
+   \   0000006E   9310....           STS     (Last_ADC_FuckUpTime + 5), R17
+   \   00000072   9320....           STS     (Last_ADC_FuckUpTime + 6), R18
+   \   00000076   9330....           STS     (Last_ADC_FuckUpTime + 7), R19
+   \   0000007A   E328               LDI     R18, 56
+   \   0000007C   E008               LDI     R16, 8
+   \                     ??HARTDiag_Task_4:
+   \   0000007E   9110010B           LDS     R17, 267
+   \   00000082   7F1E               ANDI    R17, 0xFE
+   \   00000084   9310010B           STS     267, R17
+   \   00000088   FB27               BST     R18, 7
+   \   0000008A   9110010B           LDS     R17, 267
+   \   0000008E   F416               BRTC    ??HARTDiag_Task_5
+   \   00000090   6014               ORI     R17, 0x04
+   \   00000092   C001               RJMP    ??HARTDiag_Task_6
+   \                     ??HARTDiag_Task_5:
+   \   00000094   7F1B               ANDI    R17, 0xFB
+   \                     ??HARTDiag_Task_6:
+   \   00000096   9310010B           STS     267, R17
+   \   0000009A   0F22               LSL     R18
+   \   0000009C   9110010B           LDS     R17, 267
+   \   000000A0   6011               ORI     R17, 0x01
+   \   000000A2   9310010B           STS     267, R17
+   \   000000A6   950A               DEC     R16
+   \   000000A8   F751               BRNE    ??HARTDiag_Task_4
+   \   000000AA   ....               RCALL   ad7715_read_byte
+   \   000000AC   2F50               MOV     R21, R16
+   \   000000AE   ....               RCALL   ad7715_read_byte
+   \   000000B0   2F40               MOV     R20, R16
+   \   000000B2   E100               LDI     R16, 16
+   \   000000B4   ....               RCALL   ad7715_write_byte
+   \   000000B6   E00F               LDI     R16, 15
+   \   000000B8   ....               RCALL   ad7715_write_byte
+   \   000000BA   019A               MOVW    R19:R18, R21:R20
+   \   000000BC   2F09               MOV     R16, R25
+   \   000000BE   ....               RCALL   hart_diag_set_diag_value
+    388                      ad7715_toggle_debug_led();
+   \                     ??HARTDiag_Task_3:
+   \   000000C0   9100....           LDS     R16, (Last_ADC_FuckUpTime + 11)
+   \   000000C4   ........           CALL    hart_gpio_debug_led
+   \   000000C8   9100....           LDS     R16, (Last_ADC_FuckUpTime + 11)
+   \   000000CC   2300               TST     R16
+   \   000000CE   F411               BRNE    ??HARTDiag_Task_7
+   \   000000D0   E001               LDI     R16, 1
+   \   000000D2   C001               RJMP    ??HARTDiag_Task_8
+   \                     ??HARTDiag_Task_7:
+   \   000000D4   E000               LDI     R16, 0
+   \                     ??HARTDiag_Task_8:
+   \   000000D6   9300....           STS     (Last_ADC_FuckUpTime + 11), R16
+    389                      OS_Delay(200);
+   \   000000DA   EC08               LDI     R16, 200
+   \   000000DC   E010               LDI     R17, 0
+   \   000000DE   ........           CALL    OS_Delay
+    390                  }
+   \   000000E2   9593               INC     R25
+   \   000000E4   958A               DEC     R24
+   \   000000E6   F409               BRNE    $+2+2
+   \   000000E8   CF91               RJMP    ??HARTDiag_Task_0
+   \   000000EA   CF92               RJMP    ??HARTDiag_Task_1
+   \   000000EC                      REQUIRE _A_PORTL
+    391          #if 0 // for ADC debugging only
+    392                  //ad7715_read_diag_adc((hart_channel_t)12);
+    393                  //ad7715_read_diag_adc((hart_channel_t)13);
+    394                  //
+    395                  // 2.5V reference check for debugging
+    396                  //
+    397                  ad7715_read_diag_adc((hart_channel_t)14);
+    398          
+    399                  //
+    400                  // 0V ground
+    401                  //
+    402                  ad7715_read_diag_adc((hart_channel_t)15);
+    403          #endif
+    404              }
+    405          }
+    406          
+    407          ////////////////////////////////////////////////////////////////////////////////
+    408          //
+    409          // public interfaces
+    410          //
+    411          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    412          void hart_diag_init(void) {
+   \                     hart_diag_init:
+   \   00000000   927A               ST      -Y, R7
+   \   00000002   926A               ST      -Y, R6
+   \   00000004   924A               ST      -Y, R4
+   \   00000006   93BA               ST      -Y, R27
+   \   00000008   93AA               ST      -Y, R26
+   \   0000000A   939A               ST      -Y, R25
+   \   0000000C   938A               ST      -Y, R24
+   \   0000000E                      REQUIRE ?Register_R4_is_cg_reg
+   \   0000000E                      REQUIRE ?Register_R6_is_cg_reg
+   \   0000000E                      REQUIRE ?Register_R7_is_cg_reg
+    413              hart_diag_configure_adc();
+   \   0000000E   E001               LDI     R16, 1
+   \   00000010   ........           CALL    hart_gpio_adc_reset
+   \   00000014   E604               LDI     R16, 100
+   \   00000016   E010               LDI     R17, 0
+   \   00000018   ........           CALL    OS_Delay
+   \   0000001C   E000               LDI     R16, 0
+   \   0000001E   ........           CALL    hart_gpio_adc_reset
+   \   00000022   EF04               LDI     R16, 244
+   \   00000024   E011               LDI     R17, 1
+   \   00000026   ........           CALL    OS_Delay
+   \   0000002A   E001               LDI     R16, 1
+   \   0000002C   ........           CALL    hart_gpio_adc_reset
+   \   00000030   E604               LDI     R16, 100
+   \   00000032   E010               LDI     R17, 0
+   \   00000034   ........           CALL    OS_Delay
+   \   00000038   E00A               LDI     R16, 10
+   \   0000003A   E010               LDI     R17, 0
+   \   0000003C   ........           CALL    OS_Delay
+   \   00000040   E00E               LDI     R16, 14
+   \   00000042   ........           CALL    hart_gpio_adc_channel_select
+   \   00000046   E120               LDI     R18, 16
+   \   00000048   E008               LDI     R16, 8
+   \                     ??hart_diag_init_0:
+   \   0000004A   9110010B           LDS     R17, 267
+   \   0000004E   7F1E               ANDI    R17, 0xFE
+   \   00000050   9310010B           STS     267, R17
+   \   00000054   FB27               BST     R18, 7
+   \   00000056   9110010B           LDS     R17, 267
+   \   0000005A   F416               BRTC    ??hart_diag_init_1
+   \   0000005C   6014               ORI     R17, 0x04
+   \   0000005E   C001               RJMP    ??hart_diag_init_2
+   \                     ??hart_diag_init_1:
+   \   00000060   7F1B               ANDI    R17, 0xFB
+   \                     ??hart_diag_init_2:
+   \   00000062   9310010B           STS     267, R17
+   \   00000066   0F22               LSL     R18
+   \   00000068   9110010B           LDS     R17, 267
+   \   0000006C   6011               ORI     R17, 0x01
+   \   0000006E   9310010B           STS     267, R17
+   \   00000072   950A               DEC     R16
+   \   00000074   F751               BRNE    ??hart_diag_init_0
+   \   00000076   E42E               LDI     R18, 78
+   \   00000078   E008               LDI     R16, 8
+   \                     ??hart_diag_init_3:
+   \   0000007A   9110010B           LDS     R17, 267
+   \   0000007E   7F1E               ANDI    R17, 0xFE
+   \   00000080   9310010B           STS     267, R17
+   \   00000084   FB27               BST     R18, 7
+   \   00000086   9110010B           LDS     R17, 267
+   \   0000008A   F416               BRTC    ??hart_diag_init_4
+   \   0000008C   6014               ORI     R17, 0x04
+   \   0000008E   C001               RJMP    ??hart_diag_init_5
+   \                     ??hart_diag_init_4:
+   \   00000090   7F1B               ANDI    R17, 0xFB
+   \                     ??hart_diag_init_5:
+   \   00000092   9310010B           STS     267, R17
+   \   00000096   0F22               LSL     R18
+   \   00000098   9110010B           LDS     R17, 267
+   \   0000009C   6011               ORI     R17, 0x01
+   \   0000009E   9310010B           STS     267, R17
+   \   000000A2   950A               DEC     R16
+   \   000000A4   F751               BRNE    ??hart_diag_init_3
+   \   000000A6   EE28               LDI     R18, 232
+   \   000000A8   E033               LDI     R19, 3
+   \   000000AA   E001               LDI     R16, 1
+   \   000000AC   ........           CALL    OS_WaitSingleEventTimed
+   \   000000B0   2300               TST     R16
+   \   000000B2   9100....           LDS     R16, (OS_Global + 18)
+   \   000000B6   9110....           LDS     R17, (OS_Global + 19)
+   \   000000BA   9120....           LDS     R18, (OS_Global + 20)
+   \   000000BE   9130....           LDS     R19, (OS_Global + 21)
+   \   000000C2   F499               BRNE    ??hart_diag_init_6
+   \   000000C4   9300....           STS     Last_ADC_FuckUpTime, R16
+   \   000000C8   9310....           STS     (Last_ADC_FuckUpTime + 1), R17
+   \   000000CC   9320....           STS     (Last_ADC_FuckUpTime + 2), R18
+   \   000000D0   9330....           STS     (Last_ADC_FuckUpTime + 3), R19
+   \   000000D4   9100....           LDS     R16, (Last_ADC_FuckUpTime + 8)
+   \   000000D8   9110....           LDS     R17, (Last_ADC_FuckUpTime + 9)
+   \   000000DC   5F0F               SUBI    R16, 255
+   \   000000DE   4F1F               SBCI    R17, 255
+   \   000000E0   9300....           STS     (Last_ADC_FuckUpTime + 8), R16
+   \   000000E4   9310....           STS     (Last_ADC_FuckUpTime + 9), R17
+   \   000000E8   C008               RJMP    ??hart_diag_init_7
+   \                     ??hart_diag_init_6:
+   \   000000EA   9300....           STS     (Last_ADC_FuckUpTime + 4), R16
+   \   000000EE   9310....           STS     (Last_ADC_FuckUpTime + 5), R17
+   \   000000F2   9320....           STS     (Last_ADC_FuckUpTime + 6), R18
+   \   000000F6   9330....           STS     (Last_ADC_FuckUpTime + 7), R19
+   \                     ??hart_diag_init_7:
+   \   000000FA   E328               LDI     R18, 56
+   \   000000FC   E008               LDI     R16, 8
+   \                     ??hart_diag_init_8:
+   \   000000FE   9110010B           LDS     R17, 267
+   \   00000102   7F1E               ANDI    R17, 0xFE
+   \   00000104   9310010B           STS     267, R17
+   \   00000108   FB27               BST     R18, 7
+   \   0000010A   9110010B           LDS     R17, 267
+   \   0000010E   F416               BRTC    ??hart_diag_init_9
+   \   00000110   6014               ORI     R17, 0x04
+   \   00000112   C001               RJMP    ??hart_diag_init_10
+   \                     ??hart_diag_init_9:
+   \   00000114   7F1B               ANDI    R17, 0xFB
+   \                     ??hart_diag_init_10:
+   \   00000116   9310010B           STS     267, R17
+   \   0000011A   0F22               LSL     R18
+   \   0000011C   9110010B           LDS     R17, 267
+   \   00000120   6011               ORI     R17, 0x01
+   \   00000122   9310010B           STS     267, R17
+   \   00000126   950A               DEC     R16
+   \   00000128   F751               BRNE    ??hart_diag_init_8
+   \   0000012A   ....               RCALL   ad7715_read_byte
+   \   0000012C   ....               RCALL   ad7715_read_byte
+   \   0000012E   E100               LDI     R16, 16
+   \   00000130   ....               RCALL   ad7715_write_byte
+   \   00000132   E00F               LDI     R16, 15
+   \   00000134   ....               RCALL   ad7715_write_byte
+   \   00000136   E000               LDI     R16, 0
+   \   00000138   ........           CALL    hart_gpio_adc_channel_select
+   \   0000013C   E00A               LDI     R16, 10
+   \   0000013E   E010               LDI     R17, 0
+   \   00000140   ........           CALL    OS_Delay
+    414              TData.Hart.PortUsed   = 0;
+   \   00000144   ....               LDI     R30, LOW((TData + 144))
+   \   00000146   ....               LDI     R31, HIGH((TData + 144))
+   \   00000148   E000               LDI     R16, 0
+   \   0000014A   8300               ST      Z, R16
+   \   0000014C   8301               STD     Z+1, R16
+    415              TData.Hart.HartSensor = 0;
+   \   0000014E   8302               STD     Z+2, R16
+   \   00000150   8303               STD     Z+3, R16
+    416              for (char ch = 0; ch < 12; ch++) {
+   \   00000152   2400               CLR     R0
+   \   00000154   ....               LDI     R24, LOW(TData)
+   \   00000156   ....               LDI     R25, (TData) >> 8
+   \   00000158   E0AC               LDI     R26, 12
+   \   0000015A   2444               CLR     R4
+   \   0000015C   E800               LDI     R16, 128
+   \   0000015E   E410               LDI     R17, 64
+   \   00000160   0138               MOVW    R7:R6, R17:R16
+   \   00000162   E300               LDI     R16, 48
+   \   00000164   E417               LDI     R17, 71
+   \   00000166   E72F               LDI     R18, 127
+   \   00000168   E33F               LDI     R19, 63
+   \   0000016A   E0E3               LDI     R30, 3
+   \   0000016C   2E1E               MOV     R1, R30
+   \   0000016E   E0B1               LDI     R27, 1
+    417                  TData.Hart.Filter[ch]       = 3;
+   \                     ??hart_diag_init_11:
+   \   00000170   ....               LDI     R30, LOW((TData + 148))
+   \   00000172   ....               LDI     R31, HIGH((TData + 148))
+   \   00000174   011F               MOVW    R3:R2, R31:R30
+   \   00000176   0C20               ADD     R2, R0
+   \   00000178   1C34               ADC     R3, R4
+   \   0000017A   01F1               MOVW    R31:R30, R3:R2
+   \   0000017C   8614               STD     Z+12, R1
+    418                  TData.Hart.Gain[ch]         = 1.0 / 1.0028280; // Original gain on AN-ZBANA is 0.9985 or 0.9965
+   \   0000017E   01FC               MOVW    R31:R30, R25:R24
+   \   00000180   59E4               SUBI    R30, 148
+   \   00000182   4FFE               SBCI    R31, 254
+   \   00000184   AB00               STD     Z+48, R16
+   \   00000186   AB11               STD     Z+49, R17
+   \   00000188   AB22               STD     Z+50, R18
+   \   0000018A   AB33               STD     Z+51, R19
+    419                  TData.Hart.Offset[ch]       = 0.0;
+   \   0000018C   8240               ST      Z, R4
+   \   0000018E   8241               STD     Z+1, R4
+   \   00000190   8242               STD     Z+2, R4
+   \   00000192   8243               STD     Z+3, R4
+    420                  TData.Hart.ADCurrent[ch]    = 4.0;
+   \   00000194   01FC               MOVW    R31:R30, R25:R24
+   \   00000196   55E4               SUBI    R30, 84
+   \   00000198   4FFF               SBCI    R31, 255
+   \   0000019A   8240               ST      Z, R4
+   \   0000019C   8241               STD     Z+1, R4
+   \   0000019E   8262               STD     Z+2, R6
+   \   000001A0   8273               STD     Z+3, R7
+    421                  TData.Hart.HartCmd[ch]      = 1;
+   \   000001A2   01F1               MOVW    R31:R30, R3:R2
+   \   000001A4   83B0               ST      Z, R27
+    422              }
+   \   000001A6   9403               INC     R0
+   \   000001A8   9604               ADIW    R25:R24, 4
+   \   000001AA   95AA               DEC     R26
+   \   000001AC   F709               BRNE    ??hart_diag_init_11
+    423          }
+   \   000001AE   9189               LD      R24, Y+
+   \   000001B0   9199               LD      R25, Y+
+   \   000001B2   91A9               LD      R26, Y+
+   \   000001B4   91B9               LD      R27, Y+
+   \   000001B6   9049               LD      R4, Y+
+   \   000001B8   9069               LD      R6, Y+
+   \   000001BA   9079               LD      R7, Y+
+   \   000001BC   9508               RET
+   \   000001BE                      REQUIRE _A_PORTL
+    424          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    425          void hart_diag_task_start(void) {
+   \                     hart_diag_task_start:
+    426              OS_CREATETASK(&TCB_AD7715, "HARTDiag", HARTDiag_Task, 135, _hart_diag_task_stack);
+   \   00000000   E002               LDI     R16, 2
+   \   00000002   E010               LDI     R17, 0
+   \   00000004   931A               ST      -Y, R17
+   \   00000006   930A               ST      -Y, R16
+   \   00000008   E20C               LDI     R16, 44
+   \   0000000A   E011               LDI     R17, 1
+   \   0000000C   931A               ST      -Y, R17
+   \   0000000E   930A               ST      -Y, R16
+   \   00000010   ....               LDI     R16, LOW(_hart_diag_task_stack)
+   \   00000012   ....               LDI     R17, (_hart_diag_task_stack) >> 8
+   \   00000014   931A               ST      -Y, R17
+   \   00000016   930A               ST      -Y, R16
+   \   00000018   ....               LDI     R22, LOW(HARTDiag_Task/2)
+   \   0000001A   ....               LDI     R23, (HARTDiag_Task/2) >> 8
+   \   0000001C   E847               LDI     R20, 135
+   \   0000001E   ....               LDI     R18, LOW(`?<Constant "HARTDiag">`)
+   \   00000020   ....               LDI     R19, (`?<Constant "HARTDiag">`) >> 8
+   \   00000022   ....               LDI     R16, LOW((Last_ADC_FuckUpTime + 12))
+   \   00000024   ....               LDI     R17, HIGH((Last_ADC_FuckUpTime + 12))
+   \   00000026   ........           JMP     OS_CreateTask_R
+    427          }
+
+   \                                 In  segment INTVEC, offset 0x4, root
+   \                     `??IntHandler_INT0::??INTVEC 4`:
+   \   00000004   ........           JMP     IntHandler_INT0
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for <Constant "HARTDiag">>`:
+   \   00000000   414854526944       DC8 "HARTDiag"
+   \              676100      
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for Last_ADC_FuckUpTime>`:
+   \   00000000   00000000           DD 0
+   \                     `?<Initializer for Last_ADC_OK_Time>`:
+   \   00000004   00000000           DD 0
+   \                     `?<Initializer for _num_adc_fuckups>`:
+   \   00000008   0000               DC16 0
+   \                     `?<Initializer for hasStartedHartDiag>`:
+   \   0000000A   00                 DC8 0
+   \                     `?<Initializer for on_off>`:
+   \   0000000B   01                 DC8 1
+   \                     `?<Initializer for TCB_AD7715>`:
+   \   0000000C   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              000000000000
+   \              0000        
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+   \                     `?<Constant "HARTDiag">`:
+   \   00000000                      DS8 9
+   \   00000009                      REQUIRE `?<Initializer for <Constant "HARTDiag">>`
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      2      2   HARTDiag_Task
+        2      2   -> OS_Delay
+        2      2   -> OS_WaitSingleEventTimed
+        2      2   -> ad7715_read_byte
+        2      2   -> ad7715_write_byte
+        2      2   -> hart_diag_init
+        2      2   -> hart_diag_set_diag_value
+        2      2   -> hart_gpio_adc_channel_select
+        2      2   -> hart_gpio_debug_led
+      0      2   INT_Handler_INT0
+        0      2   -> OS_SignalEvent
+     16      2   IntHandler_INT0
+       16      2   -> OS_CallISR
+      0      2   ad7715_read_byte
+      0      2   ad7715_write_byte
+      7      2   hart_diag_init
+        7      2   -> OS_Delay
+        7      2   -> OS_WaitSingleEventTimed
+        7      2   -> ad7715_read_byte
+        7      2   -> ad7715_write_byte
+        7      2   -> hart_gpio_adc_channel_select
+        7      2   -> hart_gpio_adc_reset
+      8      2   hart_diag_set_diag_value
+        8      2 ?F_ADD_S_L04
+        8      2 ?F_DIV_S_L04
+        8      2 ?F_MUL_S_L04
+        8      2 ?F_SUB_S_L04
+        8      2 ?UL2F_S_L04
+      6      2   hart_diag_task_start
+        0      2   -> OS_CreateTask_R
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       9  ?<Constant "HARTDiag">
+       9  ?<Initializer for <Constant "HARTDiag">>
+      32  ?<Initializer for Last_ADC_FuckUpTime>
+       1  CriticalADC_Failure
+     236  HARTDiag_Task
+      20  INT_Handler_INT0
+      82  IntHandler_INT0
+       4  IntHandler_INT0::??INTVEC 4
+      32  Last_ADC_FuckUpTime
+          Last_ADC_OK_Time
+          _num_adc_fuckups
+          hasStartedHartDiag
+          on_off
+          TCB_AD7715
+       1  _A_PINL
+       1  _A_PORTL
+     300  _hart_diag_task_stack
+      40  ad7715_read_byte
+      48  ad7715_write_byte
+     446  hart_diag_init
+     332  hart_diag_set_diag_value
+      42  hart_diag_task_start
+      14  -- Other
+
+ 
+     2 bytes in segment ABSOLUTE
+ 1 246 bytes in segment CODE
+    14 bytes in segment INITTAB
+     4 bytes in segment INTVEC
+    41 bytes in segment NEAR_I
+    41 bytes in segment NEAR_ID
+   301 bytes in segment NEAR_Z
+ 
+ 1 287 bytes of CODE memory (+ 18 bytes shared)
+   342 bytes of DATA memory (+  2 bytes shared)
+
+Errors: none
+Warnings: none

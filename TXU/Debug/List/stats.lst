@@ -1,0 +1,284 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:18 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\stats.c            #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\stats.c --fpu      #
+#                       None -D OS_LIBMODE_SP -D CPU_S3C2410 -D              #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\stats.lst                   #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\stats.r79                    #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\stats.c
+      1          /**
+      2           * @file
+      3           * Statistics module
+      4           *
+      5           */
+      6          
+      7          /*
+      8           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+      9           * All rights reserved. 
+     10           * 
+     11           * Redistribution and use in source and binary forms, with or without modification, 
+     12           * are permitted provided that the following conditions are met:
+     13           *
+     14           * 1. Redistributions of source code must retain the above copyright notice,
+     15           *    this list of conditions and the following disclaimer.
+     16           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     17           *    this list of conditions and the following disclaimer in the documentation
+     18           *    and/or other materials provided with the distribution.
+     19           * 3. The name of the author may not be used to endorse or promote products
+     20           *    derived from this software without specific prior written permission. 
+     21           *
+     22           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED 
+     23           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+     24           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+     25           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+     26           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+     27           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+     28           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+     29           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
+     30           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+     31           * OF SUCH DAMAGE.
+     32           *
+     33           * This file is part of the lwIP TCP/IP stack.
+     34           * 
+     35           * Author: Adam Dunkels <adam@sics.se>
+     36           *
+     37           */
+     38          
+     39          #include "lwip/opt.h"
+     40          
+     41          #if LWIP_STATS /* don't build if not configured for use in lwipopts.h */
+     42          
+     43          #include "lwip/def.h"
+     44          #include "lwip/stats.h"
+     45          #include "lwip/mem.h"
+     46          
+     47          #include <string.h>
+     48          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     49          struct stats_ lwip_stats;
+   \                     lwip_stats:
+   \   00000000                      DS8 428
+     50          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     51          void stats_init(void)
+     52          {
+     53          #ifdef LWIP_DEBUG
+     54          #if MEMP_STATS
+     55            const char * memp_names[] = {
+     56          #define LWIP_MEMPOOL(name,num,size,desc) desc,
+     57          #include "lwip/memp_std.h"
+     58            };
+     59            int i;
+     60            for (i = 0; i < MEMP_MAX; i++) {
+     61              lwip_stats.memp[i].name = memp_names[i];
+     62            }
+     63          #endif /* MEMP_STATS */
+     64          #if MEM_STATS
+     65            lwip_stats.mem.name = "MEM";
+     66          #endif /* MEM_STATS */
+     67          #endif /* LWIP_DEBUG */
+     68          }
+   \                     stats_init:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     69          
+     70          #if LWIP_STATS_DISPLAY
+
+   \                                 In segment CODE, align 4, keep-with-next
+     71          void
+     72          stats_display_proto(struct stats_proto *proto, const char *name)
+     73          {
+     74            LWIP_PLATFORM_DIAG(("\n%s\n\t", name));
+     75            LWIP_PLATFORM_DIAG(("xmit: %"STAT_COUNTER_F"\n\t", proto->xmit)); 
+     76            LWIP_PLATFORM_DIAG(("recv: %"STAT_COUNTER_F"\n\t", proto->recv)); 
+     77            LWIP_PLATFORM_DIAG(("fw: %"STAT_COUNTER_F"\n\t", proto->fw)); 
+     78            LWIP_PLATFORM_DIAG(("drop: %"STAT_COUNTER_F"\n\t", proto->drop)); 
+     79            LWIP_PLATFORM_DIAG(("chkerr: %"STAT_COUNTER_F"\n\t", proto->chkerr)); 
+     80            LWIP_PLATFORM_DIAG(("lenerr: %"STAT_COUNTER_F"\n\t", proto->lenerr)); 
+     81            LWIP_PLATFORM_DIAG(("memerr: %"STAT_COUNTER_F"\n\t", proto->memerr)); 
+     82            LWIP_PLATFORM_DIAG(("rterr: %"STAT_COUNTER_F"\n\t", proto->rterr)); 
+     83            LWIP_PLATFORM_DIAG(("proterr: %"STAT_COUNTER_F"\n\t", proto->proterr)); 
+     84            LWIP_PLATFORM_DIAG(("opterr: %"STAT_COUNTER_F"\n\t", proto->opterr)); 
+     85            LWIP_PLATFORM_DIAG(("err: %"STAT_COUNTER_F"\n\t", proto->err)); 
+     86            LWIP_PLATFORM_DIAG(("cachehit: %"STAT_COUNTER_F"\n", proto->cachehit)); 
+     87          }
+   \                     stats_display_proto:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     88          
+     89          #if IGMP_STATS
+     90          void
+     91          stats_display_igmp(struct stats_igmp *igmp)
+     92          {
+     93            LWIP_PLATFORM_DIAG(("\nIGMP\n\t"));
+     94            LWIP_PLATFORM_DIAG(("xmit: %"STAT_COUNTER_F"\n\t", igmp->xmit)); 
+     95            LWIP_PLATFORM_DIAG(("recv: %"STAT_COUNTER_F"\n\t", igmp->recv)); 
+     96            LWIP_PLATFORM_DIAG(("drop: %"STAT_COUNTER_F"\n\t", igmp->drop)); 
+     97            LWIP_PLATFORM_DIAG(("chkerr: %"STAT_COUNTER_F"\n\t", igmp->chkerr)); 
+     98            LWIP_PLATFORM_DIAG(("lenerr: %"STAT_COUNTER_F"\n\t", igmp->lenerr)); 
+     99            LWIP_PLATFORM_DIAG(("memerr: %"STAT_COUNTER_F"\n\t", igmp->memerr)); 
+    100            LWIP_PLATFORM_DIAG(("proterr: %"STAT_COUNTER_F"\n\t", igmp->proterr)); 
+    101            LWIP_PLATFORM_DIAG(("rx_v1: %"STAT_COUNTER_F"\n\t", igmp->rx_v1)); 
+    102            LWIP_PLATFORM_DIAG(("rx_group: %"STAT_COUNTER_F"\n", igmp->rx_group));
+    103            LWIP_PLATFORM_DIAG(("rx_general: %"STAT_COUNTER_F"\n", igmp->rx_general));
+    104            LWIP_PLATFORM_DIAG(("rx_report: %"STAT_COUNTER_F"\n\t", igmp->rx_report)); 
+    105            LWIP_PLATFORM_DIAG(("tx_join: %"STAT_COUNTER_F"\n\t", igmp->tx_join)); 
+    106            LWIP_PLATFORM_DIAG(("tx_leave: %"STAT_COUNTER_F"\n\t", igmp->tx_leave)); 
+    107            LWIP_PLATFORM_DIAG(("tx_report: %"STAT_COUNTER_F"\n\t", igmp->tx_report)); 
+    108          }
+    109          #endif /* IGMP_STATS */
+    110          
+    111          #if MEM_STATS || MEMP_STATS
+
+   \                                 In segment CODE, align 4, keep-with-next
+    112          void
+    113          stats_display_mem(struct stats_mem *mem, const char *name)
+    114          {
+    115            LWIP_PLATFORM_DIAG(("\nMEM %s\n\t", name));
+    116            LWIP_PLATFORM_DIAG(("avail: %"U32_F"\n\t", (u32_t)mem->avail)); 
+    117            LWIP_PLATFORM_DIAG(("used: %"U32_F"\n\t", (u32_t)mem->used)); 
+    118            LWIP_PLATFORM_DIAG(("max: %"U32_F"\n\t", (u32_t)mem->max)); 
+    119            LWIP_PLATFORM_DIAG(("err: %"U32_F"\n", (u32_t)mem->err));
+    120          }
+   \                     stats_display_mem:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    121          
+    122          #if MEMP_STATS
+
+   \                                 In segment CODE, align 4, keep-with-next
+    123          void
+    124          stats_display_memp(struct stats_mem *mem, int index)
+    125          {
+    126            char * memp_names[] = {
+    127          #define LWIP_MEMPOOL(name,num,size,desc) desc,
+    128          #include "lwip/memp_std.h"
+    129            };
+    130            if(index < MEMP_MAX) {
+    131              stats_display_mem(mem, memp_names[index]);
+    132            }
+    133          }
+   \                     stats_display_memp:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    134          #endif /* MEMP_STATS */
+    135          #endif /* MEM_STATS || MEMP_STATS */
+    136          
+    137          #if SYS_STATS
+
+   \                                 In segment CODE, align 4, keep-with-next
+    138          void
+    139          stats_display_sys(struct stats_sys *sys)
+    140          {
+    141            LWIP_PLATFORM_DIAG(("\nSYS\n\t"));
+    142            LWIP_PLATFORM_DIAG(("sem.used:  %"U32_F"\n\t", (u32_t)sys->sem.used)); 
+    143            LWIP_PLATFORM_DIAG(("sem.max:   %"U32_F"\n\t", (u32_t)sys->sem.max)); 
+    144            LWIP_PLATFORM_DIAG(("sem.err:   %"U32_F"\n\t", (u32_t)sys->sem.err)); 
+    145            LWIP_PLATFORM_DIAG(("mutex.used: %"U32_F"\n\t", (u32_t)sys->mutex.used)); 
+    146            LWIP_PLATFORM_DIAG(("mutex.max:  %"U32_F"\n\t", (u32_t)sys->mutex.max)); 
+    147            LWIP_PLATFORM_DIAG(("mutex.err:  %"U32_F"\n\t", (u32_t)sys->mutex.err)); 
+    148            LWIP_PLATFORM_DIAG(("mbox.used:  %"U32_F"\n\t", (u32_t)sys->mbox.used)); 
+    149            LWIP_PLATFORM_DIAG(("mbox.max:   %"U32_F"\n\t", (u32_t)sys->mbox.max)); 
+    150            LWIP_PLATFORM_DIAG(("mbox.err:   %"U32_F"\n\t", (u32_t)sys->mbox.err)); 
+    151          }
+   \                     stats_display_sys:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    152          #endif /* SYS_STATS */
+    153          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    154          void
+    155          stats_display(void)
+    156          {
+    157            s16_t i;
+    158          
+    159            LINK_STATS_DISPLAY();
+    160            ETHARP_STATS_DISPLAY();
+    161            IPFRAG_STATS_DISPLAY();
+    162            IP_STATS_DISPLAY();
+    163            IGMP_STATS_DISPLAY();
+    164            ICMP_STATS_DISPLAY();
+    165            UDP_STATS_DISPLAY();
+    166            TCP_STATS_DISPLAY();
+    167            MEM_STATS_DISPLAY();
+    168            for (i = 0; i < MEMP_MAX; i++) {
+   \                     stats_display:
+   \   00000000   0000A0E3           MOV      R0,#+0
+    169              MEMP_STATS_DISPLAY(i);
+   \                     ??stats_display_0:
+   \   00000004   010080E2           ADD      R0,R0,#+1
+   \   00000008   0E0050E3           CMP      R0,#+14
+   \   0000000C   FCFFFFBA           BLT      ??stats_display_0
+    170            }
+    171            SYS_STATS_DISPLAY();
+    172          }
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    173          #endif /* LWIP_STATS_DISPLAY */
+    174          
+    175          #endif /* LWIP_STATS */
+    176          
+    177          
+
+   Maximum stack usage in bytes:
+
+     Function            CSTACK
+     --------            ------
+     stats_display           0
+     stats_display_mem       0
+     stats_display_memp      0
+     stats_display_proto     0
+     stats_display_sys       0
+     stats_init              0
+
+
+   Segment part sizes:
+
+     Function/Label      Bytes
+     --------------      -----
+     lwip_stats           428
+     stats_init             4
+     stats_display_proto    4
+     stats_display_mem      4
+     stats_display_memp     4
+     stats_display_sys      4
+     stats_display         20
+      Others               36
+
+ 
+  64 bytes in segment CODE
+ 428 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+  40 bytes of CODE memory (+ 36 bytes shared)
+ 428 bytes of DATA memory
+
+Errors: none
+Warnings: none

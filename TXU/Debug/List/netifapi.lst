@@ -1,0 +1,212 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:16 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\api\netifapi.c          #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\api\netifapi.c --fpu    #
+#                       None -D OS_LIBMODE_SP -D CPU_S3C2410 -D              #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\netifapi.lst                #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\netifapi.r79                 #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\api\netifapi.c
+      1          /**
+      2           * @file
+      3           * Network Interface Sequential API module
+      4           *
+      5           */
+      6          
+      7          /*
+      8           * Redistribution and use in source and binary forms, with or without modification, 
+      9           * are permitted provided that the following conditions are met:
+     10           *
+     11           * 1. Redistributions of source code must retain the above copyright notice,
+     12           *    this list of conditions and the following disclaimer.
+     13           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     14           *    this list of conditions and the following disclaimer in the documentation
+     15           *    and/or other materials provided with the distribution.
+     16           * 3. The name of the author may not be used to endorse or promote products
+     17           *    derived from this software without specific prior written permission. 
+     18           *
+     19           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED 
+     20           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+     21           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+     22           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+     23           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+     24           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+     25           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+     26           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
+     27           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+     28           * OF SUCH DAMAGE.
+     29           *
+     30           * This file is part of the lwIP TCP/IP stack.
+     31           * 
+     32           */
+     33          
+     34          #include "lwip/opt.h"
+     35          
+     36          #if LWIP_NETIF_API /* don't build if not configured for use in lwipopts.h */
+     37          
+     38          #include "lwip/netifapi.h"
+     39          #include "lwip/tcpip.h"
+     40          
+     41          /**
+     42           * Call netif_add() inside the tcpip_thread context.
+     43           */
+     44          void
+     45          do_netifapi_netif_add(struct netifapi_msg_msg *msg)
+     46          {
+     47            if (!netif_add( msg->netif,
+     48                            msg->msg.add.ipaddr,
+     49                            msg->msg.add.netmask,
+     50                            msg->msg.add.gw,
+     51                            msg->msg.add.state,
+     52                            msg->msg.add.init,
+     53                            msg->msg.add.input)) {
+     54              msg->err = ERR_IF;
+     55            } else {
+     56              msg->err = ERR_OK;
+     57            }
+     58            TCPIP_NETIFAPI_ACK(msg);
+     59          }
+     60          
+     61          /**
+     62           * Call netif_set_addr() inside the tcpip_thread context.
+     63           */
+     64          void
+     65          do_netifapi_netif_set_addr(struct netifapi_msg_msg *msg)
+     66          {
+     67            netif_set_addr( msg->netif,
+     68                            msg->msg.add.ipaddr,
+     69                            msg->msg.add.netmask,
+     70                            msg->msg.add.gw);
+     71            msg->err = ERR_OK;
+     72            TCPIP_NETIFAPI_ACK(msg);
+     73          }
+     74          
+     75          /**
+     76           * Call the "errtfunc" (or the "voidfunc" if "errtfunc" is NULL) inside the
+     77           * tcpip_thread context.
+     78           */
+     79          void
+     80          do_netifapi_netif_common(struct netifapi_msg_msg *msg)
+     81          {
+     82            if (msg->msg.common.errtfunc != NULL) {
+     83              msg->err = msg->msg.common.errtfunc(msg->netif);
+     84            } else {
+     85              msg->err = ERR_OK;
+     86              msg->msg.common.voidfunc(msg->netif);
+     87            }
+     88            TCPIP_NETIFAPI_ACK(msg);
+     89          }
+     90          
+     91          /**
+     92           * Call netif_add() in a thread-safe way by running that function inside the
+     93           * tcpip_thread context.
+     94           *
+     95           * @note for params @see netif_add()
+     96           */
+     97          err_t
+     98          netifapi_netif_add(struct netif *netif,
+     99                             ip_addr_t *ipaddr,
+    100                             ip_addr_t *netmask,
+    101                             ip_addr_t *gw,
+    102                             void *state,
+    103                             netif_init_fn init,
+    104                             netif_input_fn input)
+    105          {
+    106            struct netifapi_msg msg;
+    107            msg.function = do_netifapi_netif_add;
+    108            msg.msg.netif = netif;
+    109            msg.msg.msg.add.ipaddr  = ipaddr;
+    110            msg.msg.msg.add.netmask = netmask;
+    111            msg.msg.msg.add.gw      = gw;
+    112            msg.msg.msg.add.state   = state;
+    113            msg.msg.msg.add.init    = init;
+    114            msg.msg.msg.add.input   = input;
+    115            TCPIP_NETIFAPI(&msg);
+    116            return msg.msg.err;
+    117          }
+    118          
+    119          /**
+    120           * Call netif_set_addr() in a thread-safe way by running that function inside the
+    121           * tcpip_thread context.
+    122           *
+    123           * @note for params @see netif_set_addr()
+    124           */
+    125          err_t
+    126          netifapi_netif_set_addr(struct netif *netif,
+    127                                  ip_addr_t *ipaddr,
+    128                                  ip_addr_t *netmask,
+    129                                  ip_addr_t *gw)
+    130          {
+    131            struct netifapi_msg msg;
+    132            msg.function = do_netifapi_netif_set_addr;
+    133            msg.msg.netif = netif;
+    134            msg.msg.msg.add.ipaddr  = ipaddr;
+    135            msg.msg.msg.add.netmask = netmask;
+    136            msg.msg.msg.add.gw      = gw;
+    137            TCPIP_NETIFAPI(&msg);
+    138            return msg.msg.err;
+    139          }
+    140          
+    141          /**
+    142           * call the "errtfunc" (or the "voidfunc" if "errtfunc" is NULL) in a thread-safe
+    143           * way by running that function inside the tcpip_thread context.
+    144           *
+    145           * @note use only for functions where there is only "netif" parameter.
+    146           */
+    147          err_t
+    148          netifapi_netif_common(struct netif *netif, netifapi_void_fn voidfunc,
+    149                                 netifapi_errt_fn errtfunc)
+    150          {
+    151            struct netifapi_msg msg;
+    152            msg.function = do_netifapi_netif_common;
+    153            msg.msg.netif = netif;
+    154            msg.msg.msg.common.voidfunc = voidfunc;
+    155            msg.msg.msg.common.errtfunc = errtfunc;
+    156            TCPIP_NETIFAPI(&msg);
+    157            return msg.msg.err;
+    158          }
+    159          
+    160          #endif /* LWIP_NETIF_API */
+    161          
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+
+ 
+ 
+ 0 bytes of memory
+
+Errors: none
+Warnings: none

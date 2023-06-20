@@ -1,0 +1,226 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:16
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\AD7715.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\AD7715.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\AD7715.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\AD7715.r90.iar_deps
+#    Locale                =  C
+#    List file             =  D:\S2Prog\IO\ANZB-1281\Debug\List\Main\AD7715.lst
+#    Object file           =  D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\AD7715.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\AD7715.c
+      1          /****************************************************************************************
+      2          / AD converter handling , AD7715
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #ifdef __ATMEGA_1280__
+      7          #include	"iom1280.h"
+      8          #endif
+      9          
+     10          #ifdef __ATMEGA_1281__
+     11          #include	"iom1281.h"
+     12          #endif
+     13          #include "stdio.h"
+     14          #include "math.h"
+     15          #include "externals.h"
+     16          #include "version.h"
+     17          
+     18          /*************************************************************************
+     19          *   (This is a task)
+     20          *  AD7715 task 
+     21          *
+     22          *************************************************************************/
+     23          void AD7715(void) {
+     24              char ch, Rev1 = 0; 
+     25              unsigned int addata ;
+     26              float Tempfloat;
+     27          
+     28              for (ch = 0; ch<12; ch++) {
+     29                  TData.Ana.Filter[ch] = 1.0;
+     30              }
+     31              TData.Ana.PortUsed = ReadEEPROMByte(EEPROM_PORTSETUP) + (ReadEEPROMByte(EEPROM_PORTSETUP+1) <<8); // Get setup from EEPROM
+     32              SetRS4Port();                                           // and set power on ports
+     33          
+     34               
+     35              WriteAdByte(0xff) ;             // Write 32 1's to reset
+     36              WriteAdByte(0xff) ;
+     37              WriteAdByte(0xff) ;
+     38              WriteAdByte(0xff) ;
+     39              
+     40              // Calibrate and check if the card is layout rev 1?
+     41              WriteAdByte(0x10) ;             // Next write setup reg 
+     42              WriteAdByte(0x4e) ;             //  Ad setup data, unipolar, calibrate
+     43              OS_Delay(250);
+     44              OS_ClearEvents(&TCB_AD7715);
+     45              OS_WaitEventTimed(1, 1000);
+     46              
+     47              ClrBit(PORTE,0xf0);                 // check channel 14 for 2.5 V
+     48              SetBit(PORTE, (14 << 4) & 0xf0);    // check 
+     49              WriteAdByte(0x10) ;                 // Next write data 
+     50              WriteAdByte(0x0e) ;                 // Ad setup data, unipolar
+     51              OS_Delay(85);
+     52              OS_ClearEvents(&TCB_AD7715);
+     53              OS_WaitEventTimed(1, 250);
+     54              WriteAdByte(0x38) ;                 // Next read data 
+     55              addata = ReadAdByte()* 256 ;        // read data 16 bit data from ad 
+     56              addata += ReadAdByte() ;
+     57              if (addata > 60000){
+     58                  Rev1 = true;
+     59                  for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+     60                     TData.Ana.Offset[ch] = 0.0;
+     61                     TData.Ana.Gain[ch] = 0.9985;
+     62                 }
+     63              } else {
+     64                  for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+     65                     TData.Ana.Offset[ch] = 0.0;
+     66                     TData.Ana.Gain[ch] = 0.9965;
+     67                 }
+     68              }
+     69              for (ch = 0 ; ch < 12 ; ch++) {       // Get the gain and offset from the EEPROM
+     70                ReadEEPROMBuffer( (ch | 0x80) * sizeof(float)*2, sizeof(float), (char*)&Tempfloat );
+     71                
+     72                if (IsFloat(Tempfloat) && Tempfloat > -2.0 && Tempfloat < 2.0 ) { 
+     73                  *((float*)&TData.Ana.Offset[ch]) = *((float*)&Tempfloat) ;  //offset
+     74                }
+     75                
+     76                ReadEEPROMBuffer( ((ch | 0x80) * sizeof(float)*2) + sizeof(float), sizeof(float), (char*)&Tempfloat );
+     77                
+     78                if (IsFloat(Tempfloat) && Tempfloat > 0.98 && Tempfloat < 1.02) { 
+     79                  *((float*)&TData.Ana.Gain[ch]) = *((float*)&Tempfloat) ;  //gain
+     80                }
+     81             }
+     82             
+     83              while (1) {
+     84                  if (Rev1) {
+     85                     
+     86                      ClrBit(PORTE,0xf0); 
+     87                      SetBit(PORTE, (15 << 4) & 0xf0); // 0V at ch 16
+     88                      WriteAdByte(0x10) ;             // Next write setup reg 
+     89                      WriteAdByte(0x8e) ;             //  AStark test zero scale calibrate
+     90                      OS_Delay(250);
+     91                      OS_ClearEvents(&TCB_AD7715);
+     92                      OS_WaitEventTimed(1, 1000);
+     93                      
+     94                      ClrBit(PORTE,0xf0); 
+     95                      SetBit(PORTE, (14 << 4) & 0xf0); // 2.5V at ch 15
+     96                      WriteAdByte(0x10) ;             // Next write setup reg 
+     97                      WriteAdByte(0xce) ;             //  AStark test full scale calibrate
+     98                      OS_Delay(250);
+     99                      OS_ClearEvents(&TCB_AD7715);
+    100                      OS_WaitEventTimed(1, 1000);
+    101           
+    102                  } else {
+    103                      WriteAdByte(0x10) ;             // Next write setup reg 
+    104                      WriteAdByte(0x4e) ;             //  Internal calibration calibrate
+    105                      OS_Delay(250);
+    106                      OS_ClearEvents(&TCB_AD7715);
+    107                      OS_WaitEventTimed(1, 1000);
+    108                  }
+    109          
+    110                  for (ch = 0 ; ch < 12 ; ch++) {
+    111                      ClrBit(PORTE,0xf0); 
+    112                      SetBit(PORTE, (ch << 4) & 0xf0);
+    113                      WriteAdByte(0x10) ;                 // Next write data 
+    114                      WriteAdByte(0x0e) ;                          // Ad setup data, unipolar
+    115                      OS_Delay(85);
+    116                      OS_ClearEvents(&TCB_AD7715);
+    117                      OS_WaitEventTimed(1, 250);
+    118                      WriteAdByte(0x38) ;             // Next read data 
+    119                      addata = ReadAdByte()* 256 ;        // read data 16 bit data from ad 
+    120                      addata += ReadAdByte() ;
+    121                      TData.Ana.Status[ch] = 0;                   // Result ok
+    122                      TData.Ana.Result[ch] += ((((((float)addata / 65535.0) * 25.0) * TData.Ana.Gain[ch])-TData.Ana.Offset[ch] - TData.Ana.Result[ch])
+    123                                               / (TData.Ana.Filter[ch]+1.0))  ;             // readed value / 16bit * 2.5 volt range
+    124                  } 
+    125              }
+    126          }
+    127          
+    128          /*************************************************************************
+    129          *
+    130          *  Set ports on or off
+    131          *
+    132          *************************************************************************/
+    133          void SetAnaPort(void) {
+    134          
+    135              PORTC = (TData.Ana.PortUsed & 0xff) ;         // Set power on ports 0-7
+    136              ClrBit(PORTB, 0xe1);                            // Set power on ports 8-11 off
+    137              SetBit(PORTB, TData.Ana.PortUsed>>8 & 0x01);    // Set power on port 8
+    138              SetBit(PORTB, TData.Ana.PortUsed>>4 & 0xe0);      // Set power on ports 9-11
+    139          
+    140          }
+    141          
+    142          /*************************************************************************
+    143          *
+    144          *  Read from AD-converter
+    145          *
+    146          *************************************************************************/
+    147          char ReadAdByte(void) {
+    148          
+    149              char i, readbyte;
+    150          
+    151              for (i = 0; i <  8; i++) {
+    152                  readbyte <<= 1 ;                    // shift to next bit 
+    153                  ClrBit(PORTD, ADCLK) ;
+    154                  SetBit(PORTD, ADCLK) ;                  // set clock line high 
+    155                  if (PING & ADDO) {                  // data  = 1?
+    156                      readbyte |= 0x01 ;                    // set bit high 
+    157                  } else {
+    158                      readbyte &= ~0x01 ;                   // set bit low 
+    159                  }
+    160              }
+    161              return readbyte ;
+    162          }
+    163          
+    164          /*************************************************************************
+    165          *
+    166          *  Write to AD-converter
+    167          *
+    168          *************************************************************************/
+    169          void WriteAdByte(char data) {
+    170          
+    171              char i;
+    172          
+    173              for (i = 0; i <  8; i++) {
+    174                  ClrBit(PORTD, ADCLK) ;                  // set clock line low
+    175                  if (data & 0x80) {                  // data bit = 1? 
+    176                      SetBit(PORTG,ADDI) ;                  // set data high 
+    177                  } else {
+    178                      ClrBit(PORTG, ADDI) ;                 // set data low 
+    179                  }
+    180                  data <<= 1 ;                        // shift to next bit 
+    181                  SetBit(PORTD, ADCLK) ;                  // set clock line high 
+    182              }           
+    183          }       
+    184          
+
+Errors: 13
+Warnings: none

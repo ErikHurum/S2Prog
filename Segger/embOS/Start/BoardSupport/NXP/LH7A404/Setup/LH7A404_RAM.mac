@@ -1,0 +1,106 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2005   SEGGER Microcontroller Systeme GmbH               *
+*                                                                    *
+*       www.segger.com     Support: support@segger.com               *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : JTAG_LH7A404_RAM.mac
+Purpose : Setup CPU for JTAG from IAR CSpy (Sample for LogicPD LH7A404 board)
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+
+/*********************************************************************
+*
+*       _InitSDRAMController()
+*
+* Function description
+*   Initializes SDRAM controller and SDRAM
+*/
+
+_InitSDRAMController() {
+  __writeMemory32(0x01320028,0x80002410,"Memory"); // Setup SDRAM Controller (Domain CS Configuration)
+  __writeMemory32(0x00000014,0x80002408,"Memory"); // Setup SDRAM Controller (Refresh Timer)
+  __writeMemory32(0x80000003,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __sleep(600);                                    // Wait for SDRAM controller
+  __writeMemory32(0x80000001,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __sleep(600);                                    // Wait for SDRAM controller
+  __writeMemory32(0x000005dc,0x80002408,"Memory"); // Setup SDRAM Controller (Refresh Timer)
+  __writeMemory32(0x80000002,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __readMemory32(0xc000c800, "Memory");
+  __sleep(200);                                    // Wait for SDRAM controller
+  __writeMemory32(0x01320028,0x80002410,"Memory"); // Setup SDRAM Controller (Domain CS Configuration)
+  __sleep(200);                                    // Wait for SDRAM controller
+  __writeMemory32(0x80000000,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __sleep(10);                                     // Wait for SDRAM controller
+}
+
+/*********************************************************************
+*
+*       _InitClock()
+*
+* Function description
+*   Initializes CPU clock to 200MHz
+*/
+_InitClock() {
+  __writeMemory32(0x0004EE39,0x80000420,"Memory"); // GCLK = FCLK = 200 MHz
+                                                   // HCLK = FCLK / 2
+                                                   // Predivisor for PLL1 = 14 (01110b)
+                                                   // Main Divisor1   for PLL1 = 12  (1100b)
+                                                   // Main Divisor2   for PLL1 = 29 (11101b)
+                                                   // PCLK = HCLK / 2
+                                                   // PS Divisor = 1
+                                                   // Static memory controller is clocked
+                                                   // Use the 33 MHz Clock to boot.
+  __sleep(16000);                                  // wait 16 ms to setup
+}
+
+
+/*********************************************************************
+*
+*       _Init()
+*
+* Function description
+*   Initializes PLL and external bus interface
+*/
+_Init() {
+  __writeMemory32(0x00000003,0x80002040,"Memory");  // Set PCMCIA Controller -> 2 Cards @ 0x40000000 & 0x50000000
+  __sleep(100);                                     // wait 1 ms to setup
+  _InitSDRAMController();
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*
+* Function description
+*   Called once before the target application is downloaded.
+*/
+execUserPreload() {
+  __message "execUserPreload: Setup LH7A404";
+  __emulatorSpeed(30000);    // Slow JTAG speed to be on the safe side
+  __hwReset(1500);
+  _InitClock();
+  __emulatorSpeed(4000000);  // Use full JTAG speed
+  _Init();
+}
+
+/*********************************************************************
+*
+*       execUserReset()
+*
+* Function description
+*   Called each time the reset command is issued.
+*/
+execUserReset() {
+  __message "execUserReset: Setup LH7A404";
+  __emulatorSpeed(4000000);  // Use full JTAG speed
+}
+
+/**************** End of file ***************************************/

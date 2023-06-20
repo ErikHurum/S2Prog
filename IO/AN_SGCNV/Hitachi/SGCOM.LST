@@ -1,0 +1,3148 @@
+####################################################################################################
+#                                                                                                  #
+#     Micro Series H8/300 C-Compiler V2.20C/DXT                            27/May/115  04:39:43     #
+#                                                                                                  #
+#           Memory model  =  large                                                                 #
+#           Source file   =  sgcom.c                                                               #
+#           List file     =  sgcom.lst                                                             #
+#           Object file   =  sgcom.r20                                                             #
+#           Command line  =  -C -IC:\h8\ -e -q -L -P -ml -s -K sgcom                               #
+#                                                                                                  #
+#                                                     (c) Copyright IAR Systems, Hitachi Ltd. 1992 #
+####################################################################################################
+
+
+; Function name: CheckAction
+; Used stack   : 56
+
+; Function name: BuildHeader
+; Used stack   : 2
+
+; Function name: BuildMPData
+; Used stack   : 14
+
+; Function name: BuildMTData
+; Used stack   : 14
+
+; Function name: BuildMOData
+; Used stack   : 14
+
+; Function name: BuildWHData
+; Used stack   : 10
+
+; Function name: BuildRPData
+; Used stack   : 12
+
+; Function name: BuildRTData
+; Used stack   : 12
+
+; Function name: BuildROData
+; Used stack   : 12
+
+; Function name: BuildCalData
+; Used stack   : 12
+
+; Function name: BuildConfData
+; Used stack   : 6
+
+; Function name: BuildEepData
+; Used stack   : 8
+
+; Function name: BuildCSData
+; Used stack   : 10
+
+; Function name: BuildTail
+; Used stack   : 6
+
+; Function name: RecEepData
+; Used stack   : 58
+
+; Function name: RecOGData
+; Used stack   : 14
+
+; Function name: RecSetupData
+; Used stack   : 54
+
+; Function name: CalcTxChecksum
+; Used stack   : 8
+
+   \   0000                    NAME    sgcom(16)
+   \   0000                    RSEG    CODE(1)
+   \   0000                    PUBLIC  BuildCSData
+   \   0000                    PUBLIC  BuildCalData
+   \   0000                    PUBLIC  BuildConfData
+   \   0000                    PUBLIC  BuildEepData
+   \   0000                    PUBLIC  BuildHeader
+   \   0000                    PUBLIC  BuildMOData
+   \   0000                    PUBLIC  BuildMPData
+   \   0000                    PUBLIC  BuildMTData
+   \   0000                    PUBLIC  BuildROData
+   \   0000                    PUBLIC  BuildRPData
+   \   0000                    PUBLIC  BuildRTData
+   \   0000                    PUBLIC  BuildTail
+   \   0000                    PUBLIC  BuildWHData
+   \   0000                    PUBLIC  CalcTxChecksum
+   \   0000                    EXTERN  CheckADData
+   \   0000                    PUBLIC  CheckAction
+   \   0000                    EXTERN  CheckEepData
+   \   0000                    EXTERN  Eeprom
+   \   0000                    EXTERN  GetMyAddress
+   \   0000                    EXTERN  Led
+   \   0000                    EXTERN  MakeEepChksum
+   \   0000                    PUBLIC  RecEepData
+   \   0000                    PUBLIC  RecOGData
+   \   0000                    PUBLIC  RecSetupData
+   \   0000                    EXTERN  TxDriver
+   \   0000                    EXTERN  ad_mode
+   \   0000                    EXTERN  ad_state
+   \   0000                    EXTERN  cal_data
+   \   0000                    EXTERN  cal_gain
+   \   0000                    EXTERN  cal_zero
+   \   0000                    EXTERN  ch_stat
+   \   0000                    EXTERN  crc
+   \   0000                    EXTERN  curr_ad_ch
+   \   0000                    EXTERN  eep_status
+   \   0000                    EXTERN  eep_type
+   \   0000                    EXTERN  gain
+   \   0000                    EXTERN  highlevel
+   \   0000                    EXTERN  mes_data
+   \   0000                    EXTERN  ms_cnt
+   \   0000                    EXTERN  my_address
+   \   0000                    EXTERN  not_cal_data
+   \   0000                    EXTERN  not_mes_data
+   \   0000                    EXTERN  not_raw_data
+   \   0000                    EXTERN  o_filter
+   \   0000                    EXTERN  offset
+   \   0000                    EXTERN  p_filter
+   \   0000                    EXTERN  packed_data
+   \   0000                    EXTERN  raw_data
+   \   0000                    EXTERN  rx_buff
+   \   0000                    EXTERN  rx_start
+   \   0000                    EXTERN  sendtail
+   \   0000                    EXTERN  t_filter
+   \   0000                    EXTERN  time_b_cnt
+   \   0000                    EXTERN  time_b_temp
+   \   0000                    EXTERN  tx_buff
+   \   0000                    EXTERN  tx_bytes
+   \   0000                    EXTERN  tx_complete
+   \   0000                    EXTERN  tx_indx
+   \   0000                    EXTERN  wait_for_pc
+   \   0000                    EXTERN  washtrac
+   \   0000                    EXTERN  ?SS_MUL_L02
+   \   0000                    EXTERN  ?F_ADD_L04
+   \   0000                    EXTERN  ?F_MUL_L04
+   \   0000                    EXTERN  ?F_DIV_L04
+   \   0000                    EXTERN  ?UL_TO_FLT_L04
+   \   0000                    EXTERN  ?CLH83L_2_20_L00
+   \   0000                    RSEG    CODE
+      1          /***** SGCOM.C *************************************************************
+      2          *
+      3          *     Program for signal convertion card, AN-SGCNV
+      4          *
+      5          *     Company: ARISTON Norway as
+      6          *
+      7          *     Author: Asle Straume
+      8          *
+      9          *     Date: 1-aug-96.
+     10          *
+     11          *************************************************************************/
+     12          
+     13          
+     14          #include "math.h"
+     15          #include "float.h"
+     16          #include "stdio.h"
+     17          #include "ioh8325.h"
+     18          #include "inth8325.h"
+     19          
+     20          #include "sg.h"
+     21          #include "sgext.h"
+     22          
+     23          
+     24          /*************************************************************************
+     25          *
+     26          *  Check action on received data
+     27          *
+     28          *************************************************************************/
+     29          short CheckAction(short pointer)
+     30          {
+   \   0000            CheckAction:
+   \   0000  6DF4              PUSH    R4
+   \   0002  6DF5              PUSH    R5
+   \   0004  6DF6              PUSH    R6
+   \   0006  7902002E          MOV.W   #46,R2
+   \   000A  1927              SUB.W   R2,SP
+   \   000C  0D15              MOV.W   R1,R5
+     31              short i, test, ret_val = TRUE ;
+   \   000E  79010001          MOV.W   #1,R1
+   \   0012  6FF10004          MOV.W   R1,@(4,SP)
+     32              unsigned char d_buff[PACKED_DATA_SIZE] ;
+     33          
+     34              switch ( rx_buff[pointer] ) {                      /* check action */
+   \   0016  6E590000          MOV.B   @(rx_buff,R5),R1L
+   \   001A  FB11              MOV.B   #17,R3L
+   \   001C  7902005A          MOV.W   #$+62,R2
+   \   0020  6C28              MOV.B   @R2+,R0L
+   \   0022  1C89              CMP.B   R0L,R1L
+   \   0024  4706              BEQ     $+8
+   \   0026  1A0B              DEC.B   R3L
+   \   0028  46F6              BNE     $-8
+   \   002A  0B02              ADDS.W  #1,R2
+   \   002C  F300              MOV.B   #0,R3H
+   \   002E  0933              ADD.W   R3,R3
+   \   0030  6F320036          MOV.W   @($+6,R3),R2
+   \   0034  5920              JMP     @R2
+   \   0036  080C              DC.W    ?0183
+   \   0038  06F4              DC.W    ?0162
+   \   003A  06D2              DC.W    ?0157
+   \   003C  06B6              DC.W    ?0156
+   \   003E  05FA              DC.W    ?0145
+   \   0040  05B6              DC.W    ?0137
+   \   0042  03EC              DC.W    ?0094
+   \   0044  02CA              DC.W    ?0068
+   \   0046  02BA              DC.W    ?0067
+   \   0048  02AE              DC.W    ?0066
+   \   004A  02A4              DC.W    ?0065
+   \   004C  0298              DC.W    ?0064
+   \   004E  025A              DC.W    ?0056
+   \   0050  01F8              DC.W    ?0046
+   \   0052  0146              DC.W    ?0026
+   \   0054  006C              DC.W    ?0001
+   \   0056  07D4              DC.W    ?0177
+   \   0058  07D4              DC.W    ?0177
+   \   005A  00                DC.B    0
+   \   005B  01                DC.B    1
+   \   005C  0A                DC.B    10
+   \   005D  0D                DC.B    13
+   \   005E  10                DC.B    16
+   \   005F  11                DC.B    17
+   \   0060  12                DC.B    18
+   \   0061  13                DC.B    19
+   \   0062  14                DC.B    20
+   \   0063  15                DC.B    21
+   \   0064  16                DC.B    22
+   \   0065  17                DC.B    23
+   \   0066  18                DC.B    24
+   \   0067  19                DC.B    25
+   \   0068  1A                DC.B    26
+   \   0069  1B                DC.B    27
+   \   006A  1C                DC.B    28
+   \   006B  00                DC.B    0
+   \   006C            ?0001:
+     35              case SEND_M_DATA :
+     36                  not_mes_data = rx_buff[pointer+2] ;     /* number of transmissions */
+   \   006C  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0070  6A890000          MOV.B   R1L,@not_mes_data:16
+     37                  not_raw_data = 0 ;
+   \   0074  F900              MOV.B   #0,R1L
+   \   0076  6A890000          MOV.B   R1L,@not_raw_data:16
+     38                  not_cal_data = 0 ;
+   \   007A  F900              MOV.B   #0,R1L
+   \   007C  6A890000          MOV.B   R1L,@not_cal_data:16
+     39                  if ( not_mes_data ) {                         /* check if not 0 and send one */
+   \   0080  6A090000          MOV.B   @not_mes_data:16,R1L
+   \   0084  470A              BEQ     ?0003
+   \   0086            ?0002:
+     40                      not_mes_data-- ;
+   \   0086  6A090000          MOV.B   @not_mes_data:16,R1L
+   \   008A  89FF              ADD.B   #-1,R1L
+   \   008C  6A890000          MOV.B   R1L,@not_mes_data:16
+   \   0090            ?0003:
+     41                  }
+     42                  if ( !sendtail ) {                            /* make header ? */
+   \   0090  6A090000          MOV.B   @sendtail:16,R1L
+   \   0094  460C              BNE     ?0005
+   \   0096            ?0004:
+     43                      BuildHeader() ;                             /* Build send packet header */
+   \   0096  5E00081E          JSR     @BuildHeader:16
+     44                      sendtail |= MAKE ;              /* build tail*/
+   \   009A  79010000          MOV.W   #sendtail,R1
+   \   009E  7D107000          BSET    #0,@R1
+   \   00A2            ?0005:
+     45                  }
+     46                  if ( (sendtail & TX_ERR) || ((TX_SIZE - tx_indx) < 10 ) ) {
+   \   00A2  6A090000          MOV.B   @sendtail:16,R1L
+   \   00A6  E902              AND.B   #2,R1L
+   \   00A8  4612              BNE     ?0006
+   \   00AA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   00AE  F100              MOV.B   #0,R1H
+   \   00B0  79030076          MOV.W   #118,R3
+   \   00B4  1913              SUB.W   R1,R3
+   \   00B6  AB0A              CMP.B   #10,R3L
+   \   00B8  B300              SUBX.B  #0,R3H
+   \   00BA  4C0A              BGE     ?0007
+   \   00BC            ?0008:
+   \   00BC            ?0009:
+   \   00BC            ?0006:
+     47                      sendtail |= TX_ERR ;
+   \   00BC  79010000          MOV.W   #sendtail,R1
+   \   00C0  7D107010          BSET    #1,@R1
+     48                  } else {
+   \   00C4  4004              BRA     ?0010
+   \   00C6            ?0007:
+     49                      BuildMTData() ;                     /* Build data p. for temp. */
+   \   00C6  5E0009AA          JSR     @BuildMTData:16
+   \   00CA            ?0010:
+     50                  }
+     51                  if ( (sendtail & TX_ERR) || ((TX_SIZE - tx_indx) < 10 ) ) {
+   \   00CA  6A090000          MOV.B   @sendtail:16,R1L
+   \   00CE  E902              AND.B   #2,R1L
+   \   00D0  4612              BNE     ?0011
+   \   00D2  6A090000          MOV.B   @tx_indx:16,R1L
+   \   00D6  F100              MOV.B   #0,R1H
+   \   00D8  79030076          MOV.W   #118,R3
+   \   00DC  1913              SUB.W   R1,R3
+   \   00DE  AB0A              CMP.B   #10,R3L
+   \   00E0  B300              SUBX.B  #0,R3H
+   \   00E2  4C0A              BGE     ?0012
+   \   00E4            ?0013:
+   \   00E4            ?0014:
+   \   00E4            ?0011:
+     52                      sendtail |= TX_ERR ;
+   \   00E4  79010000          MOV.W   #sendtail,R1
+   \   00E8  7D107010          BSET    #1,@R1
+     53                  } else {
+   \   00EC  4004              BRA     ?0015
+   \   00EE            ?0012:
+     54                      BuildMPData();                          /* Build data p. for pressure */
+   \   00EE  5E0008A8          JSR     @BuildMPData:16
+   \   00F2            ?0015:
+     55                  }
+     56                  if ( (sendtail & TX_ERR) || ((TX_SIZE - tx_indx) < 10 ) ) {
+   \   00F2  6A090000          MOV.B   @sendtail:16,R1L
+   \   00F6  E902              AND.B   #2,R1L
+   \   00F8  4612              BNE     ?0016
+   \   00FA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   00FE  F100              MOV.B   #0,R1H
+   \   0100  79030076          MOV.W   #118,R3
+   \   0104  1913              SUB.W   R1,R3
+   \   0106  AB0A              CMP.B   #10,R3L
+   \   0108  B300              SUBX.B  #0,R3H
+   \   010A  4C0A              BGE     ?0017
+   \   010C            ?0018:
+   \   010C            ?0019:
+   \   010C            ?0016:
+     57                      sendtail |= TX_ERR ;
+   \   010C  79010000          MOV.W   #sendtail,R1
+   \   0110  7D107010          BSET    #1,@R1
+     58                  } else {
+   \   0114  4004              BRA     ?0020
+   \   0116            ?0017:
+     59                      BuildMOData() ;                         /* Build data p. for other */
+   \   0116  5E000AAC          JSR     @BuildMOData:16
+   \   011A            ?0020:
+     60                  }
+     61                  if ( (sendtail & TX_ERR) || ((TX_SIZE - tx_indx) < 10 ) ) {
+   \   011A  6A090000          MOV.B   @sendtail:16,R1L
+   \   011E  E902              AND.B   #2,R1L
+   \   0120  4612              BNE     ?0021
+   \   0122  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0126  F100              MOV.B   #0,R1H
+   \   0128  79030076          MOV.W   #118,R3
+   \   012C  1913              SUB.W   R1,R3
+   \   012E  AB0A              CMP.B   #10,R3L
+   \   0130  B300              SUBX.B  #0,R3H
+   \   0132  4C0A              BGE     ?0022
+   \   0134            ?0023:
+   \   0134            ?0024:
+   \   0134            ?0021:
+     62                      sendtail |= TX_ERR ;
+   \   0134  79010000          MOV.W   #sendtail,R1
+   \   0138  7D107010          BSET    #1,@R1
+     63                  } else {
+   \   013C  4004              BRA     ?0025
+   \   013E            ?0022:
+     64                      BuildWHData();                        // Send high level and washtrac     
+   \   013E  5E000BAE          JSR     @BuildWHData:16
+   \   0142            ?0025:
+     65                  }
+     66                  break ;
+   \   0142  5A00080C          JMP     @?0000:16
+   \   0146            ?0026:
+     67              case SEND_R_DATA :
+     68                  not_raw_data = rx_buff[pointer+2] ;     /* number of transmissions */
+   \   0146  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   014A  6A890000          MOV.B   R1L,@not_raw_data:16
+     69                  not_mes_data = 0 ;
+   \   014E  F900              MOV.B   #0,R1L
+   \   0150  6A890000          MOV.B   R1L,@not_mes_data:16
+     70                  not_cal_data = 0 ;
+   \   0154  F900              MOV.B   #0,R1L
+   \   0156  6A890000          MOV.B   R1L,@not_cal_data:16
+     71                  if ( not_raw_data ) {                         /* check if not 0 and send one */
+   \   015A  6A090000          MOV.B   @not_raw_data:16,R1L
+   \   015E  470A              BEQ     ?0028
+   \   0160            ?0027:
+     72                      not_raw_data-- ;
+   \   0160  6A090000          MOV.B   @not_raw_data:16,R1L
+   \   0164  89FF              ADD.B   #-1,R1L
+   \   0166  6A890000          MOV.B   R1L,@not_raw_data:16
+   \   016A            ?0028:
+     73                  }
+     74                  if ( !sendtail ) {                            /* make header ? */
+   \   016A  6A090000          MOV.B   @sendtail:16,R1L
+   \   016E  460C              BNE     ?0030
+   \   0170            ?0029:
+     75                      BuildHeader() ;                             /* Build send packet header */
+   \   0170  5E00081E          JSR     @BuildHeader:16
+     76                      sendtail |= MAKE ;              /* build tail*/
+   \   0174  79010000          MOV.W   #sendtail,R1
+   \   0178  7D107000          BSET    #0,@R1
+   \   017C            ?0030:
+     77                  }
+     78                  if ( (sendtail & TX_ERR) ||
+     79                       ((TX_SIZE - tx_indx) < 56 ) ) {
+   \   017C  6A090000          MOV.B   @sendtail:16,R1L
+   \   0180  E902              AND.B   #2,R1L
+   \   0182  4612              BNE     ?0031
+   \   0184  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0188  F100              MOV.B   #0,R1H
+   \   018A  79030076          MOV.W   #118,R3
+   \   018E  1913              SUB.W   R1,R3
+   \   0190  AB38              CMP.B   #56,R3L
+   \   0192  B300              SUBX.B  #0,R3H
+   \   0194  4C0A              BGE     ?0032
+   \   0196            ?0033:
+   \   0196            ?0034:
+   \   0196            ?0031:
+     80                      sendtail |= TX_ERR ;
+   \   0196  79010000          MOV.W   #sendtail,R1
+   \   019A  7D107010          BSET    #1,@R1
+     81                  } else {
+   \   019E  4004              BRA     ?0035
+   \   01A0            ?0032:
+     82                      BuildRTData() ;                         /* Build data p. for temp. */
+   \   01A0  5E000D5A          JSR     @BuildRTData:16
+   \   01A4            ?0035:
+     83                  }
+     84                  if ( (sendtail & TX_ERR) ||
+     85                       ((TX_SIZE - tx_indx) < 28 ) ) {
+   \   01A4  6A090000          MOV.B   @sendtail:16,R1L
+   \   01A8  E902              AND.B   #2,R1L
+   \   01AA  4612              BNE     ?0036
+   \   01AC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   01B0  F100              MOV.B   #0,R1H
+   \   01B2  79030076          MOV.W   #118,R3
+   \   01B6  1913              SUB.W   R1,R3
+   \   01B8  AB1C              CMP.B   #28,R3L
+   \   01BA  B300              SUBX.B  #0,R3H
+   \   01BC  4C0A              BGE     ?0037
+   \   01BE            ?0038:
+   \   01BE            ?0039:
+   \   01BE            ?0036:
+     86                      sendtail |= TX_ERR ;
+   \   01BE  79010000          MOV.W   #sendtail,R1
+   \   01C2  7D107010          BSET    #1,@R1
+     87                  } else {
+   \   01C6  4004              BRA     ?0040
+   \   01C8            ?0037:
+     88                      BuildRPData() ;                             /* Build data p. for pressure */
+   \   01C8  5E000C98          JSR     @BuildRPData:16
+   \   01CC            ?0040:
+     89                  }
+     90                  if ( (sendtail & TX_ERR) ||
+     91                       ((TX_SIZE - tx_indx) < 28 ) ) {
+   \   01CC  6A090000          MOV.B   @sendtail:16,R1L
+   \   01D0  E902              AND.B   #2,R1L
+   \   01D2  4612              BNE     ?0041
+   \   01D4  6A090000          MOV.B   @tx_indx:16,R1L
+   \   01D8  F100              MOV.B   #0,R1H
+   \   01DA  79030076          MOV.W   #118,R3
+   \   01DE  1913              SUB.W   R1,R3
+   \   01E0  AB1C              CMP.B   #28,R3L
+   \   01E2  B300              SUBX.B  #0,R3H
+   \   01E4  4C0A              BGE     ?0042
+   \   01E6            ?0043:
+   \   01E6            ?0044:
+   \   01E6            ?0041:
+     92                      sendtail |= TX_ERR ;
+   \   01E6  79010000          MOV.W   #sendtail,R1
+   \   01EA  7D107010          BSET    #1,@R1
+     93                  } else {
+   \   01EE  4004              BRA     ?0045
+   \   01F0            ?0042:
+     94                      BuildROData() ;                     /* Build data p. for other */
+   \   01F0  5E000E1C          JSR     @BuildROData:16
+   \   01F4            ?0045:
+     95                  }
+     96                  break ;
+   \   01F4  5A00080C          JMP     @?0000:16
+   \   01F8            ?0046:
+     97              case SEND_C_DATA :
+     98                  not_cal_data = rx_buff[pointer+2] ;     /* number of transmissions */
+   \   01F8  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   01FC  6A890000          MOV.B   R1L,@not_cal_data:16
+     99                  not_raw_data = 0 ;
+   \   0200  F900              MOV.B   #0,R1L
+   \   0202  6A890000          MOV.B   R1L,@not_raw_data:16
+    100                  not_mes_data = 0 ;
+   \   0206  F900              MOV.B   #0,R1L
+   \   0208  6A890000          MOV.B   R1L,@not_mes_data:16
+    101                  if ( not_cal_data ) {                         /* check if not 0 and send one */
+   \   020C  6A090000          MOV.B   @not_cal_data:16,R1L
+   \   0210  470A              BEQ     ?0048
+   \   0212            ?0047:
+    102                      not_cal_data-- ;
+   \   0212  6A090000          MOV.B   @not_cal_data:16,R1L
+   \   0216  89FF              ADD.B   #-1,R1L
+   \   0218  6A890000          MOV.B   R1L,@not_cal_data:16
+   \   021C            ?0048:
+    103                  }
+    104                  if ( !sendtail ) {                            /* make header ? */
+   \   021C  6A090000          MOV.B   @sendtail:16,R1L
+   \   0220  460C              BNE     ?0050
+   \   0222            ?0049:
+    105                      BuildHeader() ;                             /* Build send packet header */
+   \   0222  5E00081E          JSR     @BuildHeader:16
+    106                      sendtail |= MAKE ;              /* build tail*/
+   \   0226  79010000          MOV.W   #sendtail,R1
+   \   022A  7D107000          BSET    #0,@R1
+   \   022E            ?0050:
+    107                  }
+    108                  if ( (sendtail & TX_ERR) ||
+    109                       ((TX_SIZE - tx_indx) < 56 ) ) {
+   \   022E  6A090000          MOV.B   @sendtail:16,R1L
+   \   0232  E902              AND.B   #2,R1L
+   \   0234  4612              BNE     ?0051
+   \   0236  6A090000          MOV.B   @tx_indx:16,R1L
+   \   023A  F100              MOV.B   #0,R1H
+   \   023C  79030076          MOV.W   #118,R3
+   \   0240  1913              SUB.W   R1,R3
+   \   0242  AB38              CMP.B   #56,R3L
+   \   0244  B300              SUBX.B  #0,R3H
+   \   0246  4C0A              BGE     ?0052
+   \   0248            ?0053:
+   \   0248            ?0054:
+   \   0248            ?0051:
+    110                      sendtail |= TX_ERR ;
+   \   0248  79010000          MOV.W   #sendtail,R1
+   \   024C  7D107010          BSET    #1,@R1
+    111                  } else {
+   \   0250  4004              BRA     ?0055
+   \   0252            ?0052:
+    112                      BuildCalData() ;                        /* Build calibration data */
+   \   0252  5E000EDE          JSR     @BuildCalData:16
+   \   0256            ?0055:
+    113                  }
+    114                  break ;
+   \   0256  5A00080C          JMP     @?0000:16
+   \   025A            ?0056:
+    115              case SEND_CONFIG :
+    116                  if ( !sendtail ) {                            /* make header ? */
+   \   025A  6A090000          MOV.B   @sendtail:16,R1L
+   \   025E  460C              BNE     ?0058
+   \   0260            ?0057:
+    117                      BuildHeader() ;                             /* Build send packet header */
+   \   0260  5E00081E          JSR     @BuildHeader:16
+    118                      sendtail |= MAKE ;              /* build tail*/
+   \   0264  79010000          MOV.W   #sendtail,R1
+   \   0268  7D107000          BSET    #0,@R1
+   \   026C            ?0058:
+    119                  }
+    120                  if ( (sendtail & TX_ERR) ||
+    121                       ((TX_SIZE - tx_indx) < 42 ) ) {
+   \   026C  6A090000          MOV.B   @sendtail:16,R1L
+   \   0270  E902              AND.B   #2,R1L
+   \   0272  4612              BNE     ?0059
+   \   0274  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0278  F100              MOV.B   #0,R1H
+   \   027A  79030076          MOV.W   #118,R3
+   \   027E  1913              SUB.W   R1,R3
+   \   0280  AB2A              CMP.B   #42,R3L
+   \   0282  B300              SUBX.B  #0,R3H
+   \   0284  4C0A              BGE     ?0060
+   \   0286            ?0061:
+   \   0286            ?0062:
+   \   0286            ?0059:
+    122                      sendtail |= TX_ERR ;
+   \   0286  79010000          MOV.W   #sendtail,R1
+   \   028A  7D107010          BSET    #1,@R1
+    123                  } else {
+   \   028E  4004              BRA     ?0063
+   \   0290            ?0060:
+    124                      BuildConfData() ;                           /* Build config data */
+   \   0290  5E000F96          JSR     @BuildConfData:16
+   \   0294            ?0063:
+    125                  }
+    126                  break ;
+   \   0294  5A00080C          JMP     @?0000:16
+   \   0298            ?0064:
+    127              case REC_EEP_DATA :
+    128                  RecEepData(pointer+2) ;                     /* new eeprom data for a channel*/
+   \   0298  0D51              MOV.W   R5,R1
+   \   029A  0B81              ADDS.W  #2,R1
+   \   029C  5E0012B0          JSR     @RecEepData:16
+    129                  break ;
+   \   02A0  5A00080C          JMP     @?0000:16
+   \   02A4            ?0065:
+    130              case REC_OFF_GAIN :
+    131                  RecOGData(pointer) ;                            /* offset and gain from PC */
+   \   02A4  0CD9              MOV.B   R5L,R1L
+   \   02A6  5E001364          JSR     @RecOGData:16
+    132                  break ;
+   \   02AA  5A00080C          JMP     @?0000:16
+   \   02AE            ?0066:
+    133              case REC_SET_UP :
+    134                  RecSetupData(pointer + 2) ;             /* setup for channels */
+   \   02AE  0CD9              MOV.B   R5L,R1L
+   \   02B0  8902              ADD.B   #2,R1L
+   \   02B2  5E001448          JSR     @RecSetupData:16
+    135                  break ;
+   \   02B6  5A00080C          JMP     @?0000:16
+   \   02BA            ?0067:
+    136              case REC_TBTR :
+    137                  time_b_temp = rx_buff[pointer+2]  ;     /* seconds between temp reading*/
+    138                  time_b_cnt = time_b_temp ;                  /* reload counter */
+   \   02BA  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   02BE  6A890000          MOV.B   R1L,@time_b_temp:16
+   \   02C2  6A890000          MOV.B   R1L,@time_b_cnt:16
+    139                  break ;
+   \   02C6  5A00080C          JMP     @?0000:16
+   \   02CA            ?0068:
+    140              case CMD_WRITE_EEP :
+    141                  test = TRUE ;
+   \   02CA  79040001          MOV.W   #1,R4
+    142                  if ( eep_type[rx_buff[pointer+2]>>1] & 0x09 ) {
+   \   02CE  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   02D2  1109              SHLR.B  R1L
+   \   02D4  F100              MOV.B   #0,R1H
+   \   02D6  6E1B0000          MOV.B   @(eep_type,R1),R3L
+   \   02DA  EB09              AND.B   #9,R3L
+   \   02DC  4604              BNE     $+6
+   \   02DE  5A000366          JMP     @?0070:16
+   \   02E2            ?0069:
+    143                      for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   02E2  1966              SUB.W   R6,R6
+   \   02E4            ?0072:
+   \   02E4  79010028          MOV.W   #40,R1
+   \   02E8  1D16              CMP.W   R1,R6
+   \   02EA  4C1E              BGE     ?0071
+   \   02EC            ?0073:
+    144                          d_buff[i] = packed_data[rx_buff[pointer+2]>>1][i] ; /*copy buffer */
+   \   02EC  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   02F0  1109              SHLR.B  R1L
+   \   02F2  FB28              MOV.B   #40,R3L
+   \   02F4  5093              MULXU   R1L,R3
+   \   02F6  0D61              MOV.W   R6,R1
+   \   02F8  0931              ADD.W   R3,R1
+   \   02FA  0D63              MOV.W   R6,R3
+   \   02FC  0973              ADD.W   SP,R3
+   \   02FE  6E180000          MOV.B   @(packed_data,R1),R0L
+   \   0302  6EB80006          MOV.B   R0L,@(6,R3)
+   \   0306  0B06              ADDS.W  #1,R6
+    145                      }
+    146                      if ( !Eeprom(rx_buff[pointer+2]>>1, WRITE_SP) ) {
+   \   0308  40DA              BRA     ?0072
+   \   030A            ?0071:
+   \   030A  F90F              MOV.B   #15,R1L
+   \   030C  6DF1              MOV.W   R1,@-SP
+   \   030E  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0312  1109              SHLR.B  R1L
+   \   0314  5E000000          JSR     @Eeprom:16
+   \   0318  0B87              ADDS.W  #2,SP
+   \   031A  0D11              MOV.W   R1,R1
+   \   031C  4602              BNE     ?0076
+   \   031E            ?0075:
+    147                          test= FALSE ;                               /* write data to scratchpad */
+   \   031E  1944              SUB.W   R4,R4
+   \   0320            ?0076:
+    148                      }
+    149                      if ( !Eeprom(rx_buff[pointer+2]>>1, READ_SP) ) {
+   \   0320  F9AA              MOV.B   #170,R1L
+   \   0322  6DF1              MOV.W   R1,@-SP
+   \   0324  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0328  1109              SHLR.B  R1L
+   \   032A  5E000000          JSR     @Eeprom:16
+   \   032E  0B87              ADDS.W  #2,SP
+   \   0330  0D11              MOV.W   R1,R1
+   \   0332  4602              BNE     ?0078
+   \   0334            ?0077:
+    150                          test = FALSE ;                          /* Read data from scratchpad */
+   \   0334  1944              SUB.W   R4,R4
+   \   0336            ?0078:
+    151                      }
+    152                      for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   0336  1966              SUB.W   R6,R6
+   \   0338            ?0080:
+   \   0338  79010028          MOV.W   #40,R1
+   \   033C  1D16              CMP.W   R1,R6
+   \   033E  4C24              BGE     ?0079
+   \   0340            ?0081:
+    153                          if ( d_buff[i] != packed_data[rx_buff[pointer+2]>>1][i] ) {
+   \   0340  0D61              MOV.W   R6,R1
+   \   0342  0971              ADD.W   SP,R1
+   \   0344  6E5B0002          MOV.B   @(rx_buff+2,R5),R3L
+   \   0348  110B              SHLR.B  R3L
+   \   034A  F828              MOV.B   #40,R0L
+   \   034C  50B0              MULXU   R3L,R0
+   \   034E  0D63              MOV.W   R6,R3
+   \   0350  0903              ADD.W   R0,R3
+   \   0352  6E380000          MOV.B   @(packed_data,R3),R0L
+   \   0356  6E1B0006          MOV.B   @(6,R1),R3L
+   \   035A  1C8B              CMP.B   R0L,R3L
+   \   035C  4702              BEQ     ?0084
+   \   035E            ?0083:
+    154                              test = FALSE;                                  /*compare buffer */
+   \   035E  1944              SUB.W   R4,R4
+   \   0360            ?0084:
+   \   0360  0B06              ADDS.W  #1,R6
+    155                          }
+    156                      }
+    157                  } else {
+   \   0362  40D4              BRA     ?0080
+   \   0364            ?0079:
+   \   0364  4002              BRA     ?0085
+   \   0366            ?0070:
+    158                      test = FALSE ;
+   \   0366  1944              SUB.W   R4,R4
+   \   0368            ?0085:
+    159                  }
+    160                  if ( !sendtail ) {                                /* make header ? */
+   \   0368  6A090000          MOV.B   @sendtail:16,R1L
+   \   036C  460C              BNE     ?0087
+   \   036E            ?0086:
+    161                      BuildHeader() ;                             /* Build send packet header */
+   \   036E  5E00081E          JSR     @BuildHeader:16
+    162                      sendtail |= MAKE ;                      /* build tail*/
+   \   0372  79010000          MOV.W   #sendtail,R1
+   \   0376  7D107000          BSET    #0,@R1
+   \   037A            ?0087:
+    163                  }
+    164                  if ( !(sendtail & TX_ERR) ) {
+   \   037A  6A090000          MOV.B   @sendtail:16,R1L
+   \   037E  E902              AND.B   #2,R1L
+   \   0380  4666              BNE     ?0089
+   \   0382            ?0088:
+    165                      tx_buff[tx_indx++] = TX_WRITE_EEP ;     /* Command  */
+   \   0382  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0386  0A09              INC.B   R1L
+   \   0388  6A890000          MOV.B   R1L,@tx_indx:16
+   \   038C  1A09              DEC.B   R1L
+   \   038E  F100              MOV.B   #0,R1H
+   \   0390  FB2A              MOV.B   #42,R3L
+   \   0392  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    166                      tx_buff[tx_indx++] = 1 ;                    /* One byte data  */
+   \   0396  6A090000          MOV.B   @tx_indx:16,R1L
+   \   039A  0A09              INC.B   R1L
+   \   039C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   03A0  1A09              DEC.B   R1L
+   \   03A2  F100              MOV.B   #0,R1H
+   \   03A4  FB01              MOV.B   #1,R3L
+   \   03A6  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    167                      tx_buff[tx_indx] = 1 ;              /* Write status code FAIL */
+   \   03AA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   03AE  F100              MOV.B   #0,R1H
+   \   03B0  FB01              MOV.B   #1,R3L
+   \   03B2  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    168                      if ( test == TRUE ) {                             /* write to eep OK */
+   \   03B6  79010001          MOV.W   #1,R1
+   \   03BA  1D14              CMP.W   R1,R4
+   \   03BC  4620              BNE     ?0091
+   \   03BE            ?0090:
+    169                          if ( Eeprom(rx_buff[pointer+2]>>1, COPY_SP_NV) ) {    /* copy data to NV-ram */
+   \   03BE  F955              MOV.B   #85,R1L
+   \   03C0  6DF1              MOV.W   R1,@-SP
+   \   03C2  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   03C6  1109              SHLR.B  R1L
+   \   03C8  5E000000          JSR     @Eeprom:16
+   \   03CC  0B87              ADDS.W  #2,SP
+   \   03CE  0D11              MOV.W   R1,R1
+   \   03D0  470C              BEQ     ?0093
+   \   03D2            ?0092:
+    170                              tx_buff[tx_indx] = 0 ;              /* Write status code OK*/
+   \   03D2  6A090000          MOV.B   @tx_indx:16,R1L
+   \   03D6  F100              MOV.B   #0,R1H
+   \   03D8  FB00              MOV.B   #0,R3L
+   \   03DA  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   03DE            ?0093:
+   \   03DE            ?0091:
+    171                          }
+    172                      }
+    173                      tx_indx++ ;                                     /* Write status code FAIL */
+   \   03DE  6A090000          MOV.B   @tx_indx:16,R1L
+   \   03E2  8901              ADD.B   #1,R1L
+   \   03E4  6A890000          MOV.B   R1L,@tx_indx:16
+   \   03E8            ?0089:
+    174                  }
+    175                  break ;
+   \   03E8  5A00080C          JMP     @?0000:16
+   \   03EC            ?0094:
+    176              case CMD_WRITE_ADR :
+    177                  test = TRUE ;
+   \   03EC  79040001          MOV.W   #1,R4
+    178                  if ( eep_type[rx_buff[pointer+2]>>1] & 0x09 ) {
+   \   03F0  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   03F4  1109              SHLR.B  R1L
+   \   03F6  F100              MOV.B   #0,R1H
+   \   03F8  6E1B0000          MOV.B   @(eep_type,R1),R3L
+   \   03FC  EB09              AND.B   #9,R3L
+   \   03FE  4604              BNE     $+6
+   \   0400  5A000488          JMP     @?0096:16
+   \   0404            ?0095:
+    179                      for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   0404  1966              SUB.W   R6,R6
+   \   0406            ?0098:
+   \   0406  79010028          MOV.W   #40,R1
+   \   040A  1D16              CMP.W   R1,R6
+   \   040C  4C1E              BGE     ?0097
+   \   040E            ?0099:
+    180                          d_buff[i] = packed_data[rx_buff[pointer+2]>>1][i] ; /*copy buffer */
+   \   040E  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0412  1109              SHLR.B  R1L
+   \   0414  FB28              MOV.B   #40,R3L
+   \   0416  5093              MULXU   R1L,R3
+   \   0418  0D61              MOV.W   R6,R1
+   \   041A  0931              ADD.W   R3,R1
+   \   041C  0D63              MOV.W   R6,R3
+   \   041E  0973              ADD.W   SP,R3
+   \   0420  6E180000          MOV.B   @(packed_data,R1),R0L
+   \   0424  6EB80006          MOV.B   R0L,@(6,R3)
+   \   0428  0B06              ADDS.W  #1,R6
+    181                      }
+    182                      if ( !Eeprom(rx_buff[pointer+2]>>1, WRITE_APPREG) ) {
+   \   042A  40DA              BRA     ?0098
+   \   042C            ?0097:
+   \   042C  F999              MOV.B   #153,R1L
+   \   042E  6DF1              MOV.W   R1,@-SP
+   \   0430  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0434  1109              SHLR.B  R1L
+   \   0436  5E000000          JSR     @Eeprom:16
+   \   043A  0B87              ADDS.W  #2,SP
+   \   043C  0D11              MOV.W   R1,R1
+   \   043E  4602              BNE     ?0102
+   \   0440            ?0101:
+    183                          test = FALSE ;                      /* write data to adreg */
+   \   0440  1944              SUB.W   R4,R4
+   \   0442            ?0102:
+    184                      }
+    185                      if ( !Eeprom(rx_buff[pointer+2]>>1, READ_APPREG) ) {
+   \   0442  F9C3              MOV.B   #195,R1L
+   \   0444  6DF1              MOV.W   R1,@-SP
+   \   0446  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   044A  1109              SHLR.B  R1L
+   \   044C  5E000000          JSR     @Eeprom:16
+   \   0450  0B87              ADDS.W  #2,SP
+   \   0452  0D11              MOV.W   R1,R1
+   \   0454  4602              BNE     ?0104
+   \   0456            ?0103:
+    186                          test = FALSE ;                          /* Read data from adreg */
+   \   0456  1944              SUB.W   R4,R4
+   \   0458            ?0104:
+    187                      }
+    188                      for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   0458  1966              SUB.W   R6,R6
+   \   045A            ?0106:
+   \   045A  79010028          MOV.W   #40,R1
+   \   045E  1D16              CMP.W   R1,R6
+   \   0460  4C24              BGE     ?0105
+   \   0462            ?0107:
+    189                          if ( d_buff[i] != packed_data[rx_buff[pointer+2]>>1][i] ) {
+   \   0462  0D61              MOV.W   R6,R1
+   \   0464  0971              ADD.W   SP,R1
+   \   0466  6E5B0002          MOV.B   @(rx_buff+2,R5),R3L
+   \   046A  110B              SHLR.B  R3L
+   \   046C  F828              MOV.B   #40,R0L
+   \   046E  50B0              MULXU   R3L,R0
+   \   0470  0D63              MOV.W   R6,R3
+   \   0472  0903              ADD.W   R0,R3
+   \   0474  6E380000          MOV.B   @(packed_data,R3),R0L
+   \   0478  6E1B0006          MOV.B   @(6,R1),R3L
+   \   047C  1C8B              CMP.B   R0L,R3L
+   \   047E  4702              BEQ     ?0110
+   \   0480            ?0109:
+    190                              test = FALSE;                                  /*compare buffer */
+   \   0480  1944              SUB.W   R4,R4
+   \   0482            ?0110:
+   \   0482  0B06              ADDS.W  #1,R6
+    191                          }
+    192                      }
+    193                  } else {
+   \   0484  40D4              BRA     ?0106
+   \   0486            ?0105:
+   \   0486  4002              BRA     ?0111
+   \   0488            ?0096:
+    194                      test = FALSE ;
+   \   0488  1944              SUB.W   R4,R4
+   \   048A            ?0111:
+    195                  }
+    196                  if ( !sendtail ) {                                /* make header ? */
+   \   048A  6A090000          MOV.B   @sendtail:16,R1L
+   \   048E  460C              BNE     ?0113
+   \   0490            ?0112:
+    197                      BuildHeader() ;                             /* Build send packet header */
+   \   0490  5E00081E          JSR     @BuildHeader:16
+    198                      sendtail |= MAKE ;                      /* build tail*/
+   \   0494  79010000          MOV.W   #sendtail,R1
+   \   0498  7D107000          BSET    #0,@R1
+   \   049C            ?0113:
+    199                  }
+    200                  if ( !(sendtail & TX_ERR) ) {
+   \   049C  6A090000          MOV.B   @sendtail:16,R1L
+   \   04A0  E902              AND.B   #2,R1L
+   \   04A2  4704              BEQ     $+6
+   \   04A4  5A0005B2          JMP     @?0115:16
+   \   04A8            ?0114:
+    201                      tx_buff[tx_indx++] = TX_WRITE_ADR ;     /* Command  */
+   \   04A8  6A090000          MOV.B   @tx_indx:16,R1L
+   \   04AC  0A09              INC.B   R1L
+   \   04AE  6A890000          MOV.B   R1L,@tx_indx:16
+   \   04B2  1A09              DEC.B   R1L
+   \   04B4  F100              MOV.B   #0,R1H
+   \   04B6  FB2B              MOV.B   #43,R3L
+   \   04B8  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    202                      tx_buff[tx_indx++] = 1 ;                    /* One data byte  */
+   \   04BC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   04C0  0A09              INC.B   R1L
+   \   04C2  6A890000          MOV.B   R1L,@tx_indx:16
+   \   04C6  1A09              DEC.B   R1L
+   \   04C8  F100              MOV.B   #0,R1H
+   \   04CA  FB01              MOV.B   #1,R3L
+   \   04CC  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    203                      if ( test == TRUE ) {
+   \   04D0  79010001          MOV.W   #1,R1
+   \   04D4  1D14              CMP.W   R1,R4
+   \   04D6  4704              BEQ     $+6
+   \   04D8  5A00059E          JMP     @?0117:16
+   \   04DC            ?0116:
+    204                          if ( (rx_buff[pointer+3] == 'L')
+    205                               && (rx_buff[pointer+4] == 'O')
+    206                               && (rx_buff[pointer+5] == 'C')
+    207                               && (rx_buff[pointer+6] == 'K') ) {     /* LOCK AP? */
+   \   04DC  6E590003          MOV.B   @(rx_buff+3,R5),R1L
+   \   04E0  A94C              CMP.B   #76,R1L
+   \   04E2  4704              BEQ     $+6
+   \   04E4  5A000588          JMP     @?0119:16
+   \   04E8  6E590004          MOV.B   @(rx_buff+4,R5),R1L
+   \   04EC  A94F              CMP.B   #79,R1L
+   \   04EE  4704              BEQ     $+6
+   \   04F0  5A000588          JMP     @?0119:16
+   \   04F4  6E590005          MOV.B   @(rx_buff+5,R5),R1L
+   \   04F8  A943              CMP.B   #67,R1L
+   \   04FA  4704              BEQ     $+6
+   \   04FC  5A000588          JMP     @?0119:16
+   \   0500  6E590006          MOV.B   @(rx_buff+6,R5),R1L
+   \   0504  A94B              CMP.B   #75,R1L
+   \   0506  4704              BEQ     $+6
+   \   0508  5A000588          JMP     @?0119:16
+   \   050C            ?0121:
+   \   050C            ?0120:
+   \   050C            ?0118:
+    208                              test = FALSE ;
+   \   050C  1944              SUB.W   R4,R4
+    209                              if ( Eeprom(rx_buff[pointer+2]>>1, LOCK_APP) ) {   /* LOCK APP REG. */
+   \   050E  F95A              MOV.B   #90,R1L
+   \   0510  6DF1              MOV.W   R1,@-SP
+   \   0512  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0516  1109              SHLR.B  R1L
+   \   0518  5E000000          JSR     @Eeprom:16
+   \   051C  0B87              ADDS.W  #2,SP
+   \   051E  0D11              MOV.W   R1,R1
+   \   0520  4732              BEQ     ?0123
+   \   0522            ?0122:
+    210                                  for ( i = 0; i < 300; i++ ) {
+   \   0522  1966              SUB.W   R6,R6
+   \   0524            ?0125:
+   \   0524  7901012C          MOV.W   #300,R1
+   \   0528  1D16              CMP.W   R1,R6
+   \   052A  4C28              BGE     ?0124
+   \   052C            ?0126:
+    211                                      if ( Eeprom(rx_buff[pointer+2]>>1, READ_STATUS) ) {   /* read status register */
+   \   052C  F966              MOV.B   #102,R1L
+   \   052E  6DF1              MOV.W   R1,@-SP
+   \   0530  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0534  1109              SHLR.B  R1L
+   \   0536  5E000000          JSR     @Eeprom:16
+   \   053A  0B87              ADDS.W  #2,SP
+   \   053C  0D11              MOV.W   R1,R1
+   \   053E  4710              BEQ     ?0129
+   \   0540            ?0128:
+    212                                          if ( !(eep_status & 0x03) ) {
+   \   0540  6A090000          MOV.B   @eep_status:16,R1L
+   \   0544  E903              AND.B   #3,R1L
+   \   0546  4608              BNE     ?0131
+   \   0548            ?0130:
+    213                                              test = TRUE ;
+   \   0548  79040001          MOV.W   #1,R4
+    214                                              i = 300 ;                                   /* exit loop */
+   \   054C  7906012C          MOV.W   #300,R6
+   \   0550            ?0131:
+   \   0550            ?0129:
+   \   0550  0B06              ADDS.W  #1,R6
+    215                                          }
+    216                                      }
+    217                                  }
+    218                              }
+   \   0552  40D0              BRA     ?0125
+   \   0554            ?0124:
+   \   0554            ?0123:
+    219                              if ( test == TRUE ) {
+   \   0554  79010001          MOV.W   #1,R1
+   \   0558  1D14              CMP.W   R1,R4
+   \   055A  4616              BNE     ?0133
+   \   055C            ?0132:
+    220                                  tx_buff[tx_indx++] = 0 ;                /* Write status code OK*/
+   \   055C  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0560  0A09              INC.B   R1L
+   \   0562  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0566  1A09              DEC.B   R1L
+   \   0568  F100              MOV.B   #0,R1H
+   \   056A  FB00              MOV.B   #0,R3L
+   \   056C  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    221                              } else {
+   \   0570  4014              BRA     ?0134
+   \   0572            ?0133:
+    222                                  tx_buff[tx_indx++] = 1 ;                /* Write status code FAIL*/
+   \   0572  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0576  0A09              INC.B   R1L
+   \   0578  6A890000          MOV.B   R1L,@tx_indx:16
+   \   057C  1A09              DEC.B   R1L
+   \   057E  F100              MOV.B   #0,R1H
+   \   0580  FB01              MOV.B   #1,R3L
+   \   0582  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0586            ?0134:
+    223                              }
+    224                          } else {
+   \   0586  4014              BRA     ?0135
+   \   0588            ?0119:
+    225                              tx_buff[tx_indx++] = 1 ;                /* Write status code FAIL */
+   \   0588  6A090000          MOV.B   @tx_indx:16,R1L
+   \   058C  0A09              INC.B   R1L
+   \   058E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0592  1A09              DEC.B   R1L
+   \   0594  F100              MOV.B   #0,R1H
+   \   0596  FB01              MOV.B   #1,R3L
+   \   0598  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   059C            ?0135:
+    226                          }
+    227                      } else {
+   \   059C  4014              BRA     ?0136
+   \   059E            ?0117:
+    228                          tx_buff[tx_indx++] = 1 ;                /* Write status code FAIL */
+   \   059E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   05A2  0A09              INC.B   R1L
+   \   05A4  6A890000          MOV.B   R1L,@tx_indx:16
+   \   05A8  1A09              DEC.B   R1L
+   \   05AA  F100              MOV.B   #0,R1H
+   \   05AC  FB01              MOV.B   #1,R3L
+   \   05AE  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   05B2            ?0136:
+   \   05B2            ?0115:
+    229                      }
+    230                  }
+    231                  break ;
+   \   05B2  5A00080C          JMP     @?0000:16
+   \   05B6            ?0137:
+    232              case SEND_EEP_DATA :
+    233                  if ( !sendtail ) {                                /* make header ? */
+   \   05B6  6A090000          MOV.B   @sendtail:16,R1L
+   \   05BA  460C              BNE     ?0139
+   \   05BC            ?0138:
+    234                      BuildHeader() ;                             /* Build send packet header */
+   \   05BC  5E00081E          JSR     @BuildHeader:16
+    235                      sendtail |= MAKE ;                      /* build tail*/
+   \   05C0  79010000          MOV.W   #sendtail,R1
+   \   05C4  7D107000          BSET    #0,@R1
+   \   05C8            ?0139:
+    236                  }
+    237                  if ( (sendtail & TX_ERR) ||
+    238                       ((TX_SIZE - tx_indx) < PACKED_DATA_SIZE ) ) {
+   \   05C8  6A090000          MOV.B   @sendtail:16,R1L
+   \   05CC  E902              AND.B   #2,R1L
+   \   05CE  4612              BNE     ?0140
+   \   05D0  6A090000          MOV.B   @tx_indx:16,R1L
+   \   05D4  F100              MOV.B   #0,R1H
+   \   05D6  79030076          MOV.W   #118,R3
+   \   05DA  1913              SUB.W   R1,R3
+   \   05DC  AB28              CMP.B   #40,R3L
+   \   05DE  B300              SUBX.B  #0,R3H
+   \   05E0  4C0A              BGE     ?0141
+   \   05E2            ?0142:
+   \   05E2            ?0143:
+   \   05E2            ?0140:
+    239                      sendtail |= TX_ERR ;
+   \   05E2  79010000          MOV.W   #sendtail,R1
+   \   05E6  7D107010          BSET    #1,@R1
+    240                  } else {
+   \   05EA  400A              BRA     ?0144
+   \   05EC            ?0141:
+    241                      BuildEepData(rx_buff[pointer+2]) ;  /* Build eeprom data for a channel*/
+   \   05EC  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   05F0  F100              MOV.B   #0,R1H
+   \   05F2  5E001026          JSR     @BuildEepData:16
+   \   05F6            ?0144:
+    242                  }
+    243                  break ;
+   \   05F6  5A00080C          JMP     @?0000:16
+   \   05FA            ?0145:
+    244              case CMD_READ_EEP :
+    245                  eep_type[rx_buff[pointer+2]>>1] |= 0x20 ;     /* Error before read */
+   \   05FA  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   05FE  1109              SHLR.B  R1L
+   \   0600  F100              MOV.B   #0,R1H
+   \   0602  6E1B0000          MOV.B   @(eep_type,R1),R3L
+   \   0606  CB20              OR.B    #32,R3L
+   \   0608  6E9B0000          MOV.B   R3L,@(eep_type,R1)
+    246                  eep_type[rx_buff[pointer+2]>>1] &= ~0x10 ;
+   \   060C  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0610  1109              SHLR.B  R1L
+   \   0612  F100              MOV.B   #0,R1H
+   \   0614  6E1B0000          MOV.B   @(eep_type,R1),R3L
+   \   0618  EBEF              AND.B   #239,R3L
+   \   061A  6E9B0000          MOV.B   R3L,@(eep_type,R1)
+    247                  if ( Eeprom(rx_buff[pointer+2]>>1, COPY_NV_SP) ) {
+   \   061E  F9F0              MOV.B   #240,R1L
+   \   0620  6DF1              MOV.W   R1,@-SP
+   \   0622  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0626  1109              SHLR.B  R1L
+   \   0628  5E000000          JSR     @Eeprom:16
+   \   062C  0B87              ADDS.W  #2,SP
+   \   062E  0D11              MOV.W   R1,R1
+   \   0630  4604              BNE     $+6
+   \   0632  5A0006B2          JMP     @?0147:16
+   \   0636            ?0146:
+    248                      if ( Eeprom(rx_buff[pointer+2]>>1, READ_SP) ) {
+   \   0636  F9AA              MOV.B   #170,R1L
+   \   0638  6DF1              MOV.W   R1,@-SP
+   \   063A  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   063E  1109              SHLR.B  R1L
+   \   0640  5E000000          JSR     @Eeprom:16
+   \   0644  0B87              ADDS.W  #2,SP
+   \   0646  0D11              MOV.W   R1,R1
+   \   0648  4768              BEQ     ?0149
+   \   064A            ?0148:
+    249                          if ( Eeprom(rx_buff[pointer+2]>>1, READ_APPREG) ) {
+   \   064A  F9C3              MOV.B   #195,R1L
+   \   064C  6DF1              MOV.W   R1,@-SP
+   \   064E  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0652  1109              SHLR.B  R1L
+   \   0654  5E000000          JSR     @Eeprom:16
+   \   0658  0B87              ADDS.W  #2,SP
+   \   065A  0D11              MOV.W   R1,R1
+   \   065C  4754              BEQ     ?0151
+   \   065E            ?0150:
+    250                              if ( CheckADData(&packed_data[rx_buff[pointer+2]>>1][0]) &&
+    251                                   CheckEepData(&packed_data[rx_buff[pointer+2]>>1][8]) ) { /*check checksum */
+   \   065E  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0662  1109              SHLR.B  R1L
+   \   0664  FB28              MOV.B   #40,R3L
+   \   0666  5093              MULXU   R1L,R3
+   \   0668  8B00              ADD.B   #LOW(packed_data),R3L
+   \   066A  9300              ADDX.B  #HIGH(packed_data),R3H
+   \   066C  0D31              MOV.W   R3,R1
+   \   066E  5E000000          JSR     @CheckADData:16
+   \   0672  0C99              MOV.B   R1L,R1L
+   \   0674  473C              BEQ     ?0153
+   \   0676  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   067A  1109              SHLR.B  R1L
+   \   067C  FB28              MOV.B   #40,R3L
+   \   067E  5093              MULXU   R1L,R3
+   \   0680  8B08              ADD.B   #LOW(packed_data+8),R3L
+   \   0682  9300              ADDX.B  #HIGH(packed_data+8),R3H
+   \   0684  0D31              MOV.W   R3,R1
+   \   0686  5E000000          JSR     @CheckEepData:16
+   \   068A  0C99              MOV.B   R1L,R1L
+   \   068C  4724              BEQ     ?0153
+   \   068E            ?0155:
+   \   068E            ?0154:
+   \   068E            ?0152:
+    252                                  eep_type[rx_buff[pointer+2]>>1] |= 0x10 ;     /* OK from eeprom */
+   \   068E  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0692  1109              SHLR.B  R1L
+   \   0694  F100              MOV.B   #0,R1H
+   \   0696  6E1B0000          MOV.B   @(eep_type,R1),R3L
+   \   069A  CB10              OR.B    #16,R3L
+   \   069C  6E9B0000          MOV.B   R3L,@(eep_type,R1)
+    253                                  eep_type[rx_buff[pointer+2]>>1] &= ~0x20 ;     /* Error from eeprom */
+   \   06A0  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   06A4  1109              SHLR.B  R1L
+   \   06A6  F100              MOV.B   #0,R1H
+   \   06A8  6E1B0000          MOV.B   @(eep_type,R1),R3L
+   \   06AC  EBDF              AND.B   #223,R3L
+   \   06AE  6E9B0000          MOV.B   R3L,@(eep_type,R1)
+   \   06B2            ?0153:
+   \   06B2            ?0151:
+   \   06B2            ?0149:
+   \   06B2            ?0147:
+    254                              }
+    255                          }
+    256                      }
+    257                  }
+    258                  break ;
+   \   06B2  5A00080C          JMP     @?0000:16
+   \   06B6            ?0156:
+    259              case REC_FILTER :
+    260                  p_filter = rx_buff[pointer+2] ;
+   \   06B6  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   06BA  6A890000          MOV.B   R1L,@p_filter:16
+    261                  t_filter = rx_buff[pointer+3] ;
+   \   06BE  6E590003          MOV.B   @(rx_buff+3,R5),R1L
+   \   06C2  6A890000          MOV.B   R1L,@t_filter:16
+    262                  o_filter = rx_buff[pointer+4] ;                     /* set new filter */
+   \   06C6  6E590004          MOV.B   @(rx_buff+4,R5),R1L
+   \   06CA  6A890000          MOV.B   R1L,@o_filter:16
+    263                  break ;                    /* press, temp, other */
+   \   06CE  5A00080C          JMP     @?0000:16
+   \   06D2            ?0157:
+    264              case SEND_CARD_STAT :
+    265                  if ( !sendtail ) {                                /* make header ? */
+   \   06D2  6A090000          MOV.B   @sendtail:16,R1L
+   \   06D6  460C              BNE     ?0159
+   \   06D8            ?0158:
+    266                      BuildHeader() ;                             /* Build send packet header */
+   \   06D8  5E00081E          JSR     @BuildHeader:16
+    267                      sendtail |= MAKE ;                      /* build tail*/
+   \   06DC  79010000          MOV.W   #sendtail,R1
+   \   06E0  7D107000          BSET    #0,@R1
+   \   06E4            ?0159:
+    268                  }
+    269                  if ( !(sendtail & TX_ERR) ) {
+   \   06E4  6A090000          MOV.B   @sendtail:16,R1L
+   \   06E8  E902              AND.B   #2,R1L
+   \   06EA  4604              BNE     ?0161
+   \   06EC            ?0160:
+    270                      BuildCSData() ;                             /* Build datablock for status */
+   \   06EC  5E0010C0          JSR     @BuildCSData:16
+   \   06F0            ?0161:
+    271                  }
+    272                  break ;
+   \   06F0  5A00080C          JMP     @?0000:16
+   \   06F4            ?0162:
+    273              case SEND_SER_NO :                              /* Serial no from eeprom */
+    274                  if ( !sendtail ) {                                /* make header ? */
+   \   06F4  6A090000          MOV.B   @sendtail:16,R1L
+   \   06F8  460C              BNE     ?0164
+   \   06FA            ?0163:
+    275                      BuildHeader() ;                             /* Build send packet header */
+   \   06FA  5E00081E          JSR     @BuildHeader:16
+    276                      sendtail |= MAKE ;                      /* build tail*/
+   \   06FE  79010000          MOV.W   #sendtail,R1
+   \   0702  7D107000          BSET    #0,@R1
+   \   0706            ?0164:
+    277                  }
+    278                  if ( !(sendtail & TX_ERR) ) {
+   \   0706  6A090000          MOV.B   @sendtail:16,R1L
+   \   070A  E902              AND.B   #2,R1L
+   \   070C  4704              BEQ     $+6
+   \   070E  5A0007D2          JMP     @?0166:16
+   \   0712            ?0165:
+    279                      tx_buff[tx_indx++] = TX_SER_NO ;
+   \   0712  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0716  0A09              INC.B   R1L
+   \   0718  6A890000          MOV.B   R1L,@tx_indx:16
+   \   071C  1A09              DEC.B   R1L
+   \   071E  F100              MOV.B   #0,R1H
+   \   0720  FB30              MOV.B   #48,R3L
+   \   0722  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    280                      tx_buff[tx_indx++] = 10 ;
+   \   0726  6A090000          MOV.B   @tx_indx:16,R1L
+   \   072A  0A09              INC.B   R1L
+   \   072C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0730  1A09              DEC.B   R1L
+   \   0732  F100              MOV.B   #0,R1H
+   \   0734  FB0A              MOV.B   #10,R3L
+   \   0736  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    281                      tx_buff[tx_indx++] = rx_buff[pointer+2] ; /*channel no */
+   \   073A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   073E  0A09              INC.B   R1L
+   \   0740  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0744  1A09              DEC.B   R1L
+   \   0746  F100              MOV.B   #0,R1H
+   \   0748  6E5B0002          MOV.B   @(rx_buff+2,R5),R3L
+   \   074C  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    282                      if ( Eeprom(rx_buff[pointer+2]>>1, READ_ROM) ) {  /* EEP serial number */
+   \   0750  F933              MOV.B   #51,R1L
+   \   0752  6DF1              MOV.W   R1,@-SP
+   \   0754  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0758  1109              SHLR.B  R1L
+   \   075A  5E000000          JSR     @Eeprom:16
+   \   075E  0B87              ADDS.W  #2,SP
+   \   0760  0D11              MOV.W   R1,R1
+   \   0762  474C              BEQ     ?0168
+   \   0764            ?0167:
+    283                          tx_indx += 8 ;
+   \   0764  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0768  8908              ADD.B   #8,R1L
+   \   076A  6A890000          MOV.B   R1L,@tx_indx:16
+    284                          if ( Eeprom(rx_buff[pointer+2]>>1, READ_STATUS) ) { /* EEP status register */
+   \   076E  F966              MOV.B   #102,R1L
+   \   0770  6DF1              MOV.W   R1,@-SP
+   \   0772  6E590002          MOV.B   @(rx_buff+2,R5),R1L
+   \   0776  1109              SHLR.B  R1L
+   \   0778  5E000000          JSR     @Eeprom:16
+   \   077C  0B87              ADDS.W  #2,SP
+   \   077E  0D11              MOV.W   R1,R1
+   \   0780  4718              BEQ     ?0170
+   \   0782            ?0169:
+    285                              tx_buff[tx_indx++] = eep_status ;    /* status */
+   \   0782  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0786  0A09              INC.B   R1L
+   \   0788  6A890000          MOV.B   R1L,@tx_indx:16
+   \   078C  1A09              DEC.B   R1L
+   \   078E  F100              MOV.B   #0,R1H
+   \   0790  6A0B0000          MOV.B   @eep_status:16,R3L
+   \   0794  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    286                          } else {
+   \   0798  4014              BRA     ?0171
+   \   079A            ?0170:
+    287                              tx_buff[tx_indx++] = 0x0f ;          /* status */
+   \   079A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   079E  0A09              INC.B   R1L
+   \   07A0  6A890000          MOV.B   R1L,@tx_indx:16
+   \   07A4  1A09              DEC.B   R1L
+   \   07A6  F100              MOV.B   #0,R1H
+   \   07A8  FB0F              MOV.B   #15,R3L
+   \   07AA  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   07AE            ?0171:
+    288                          }
+    289                      } else {
+   \   07AE  4022              BRA     ?0172
+   \   07B0            ?0168:
+    290                          for ( i = 0; i < 9; i++ ) {
+   \   07B0  1966              SUB.W   R6,R6
+   \   07B2            ?0174:
+   \   07B2  79010009          MOV.W   #9,R1
+   \   07B6  1D16              CMP.W   R1,R6
+   \   07B8  4C18              BGE     ?0173
+   \   07BA            ?0175:
+    291                              tx_buff[tx_indx++] = 0x00 ;             /*  send 0's when error */
+   \   07BA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   07BE  0A09              INC.B   R1L
+   \   07C0  6A890000          MOV.B   R1L,@tx_indx:16
+   \   07C4  1A09              DEC.B   R1L
+   \   07C6  F100              MOV.B   #0,R1H
+   \   07C8  FB00              MOV.B   #0,R3L
+   \   07CA  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   07CE  0B06              ADDS.W  #1,R6
+    292                          }
+    293                      }
+   \   07D0  40E0              BRA     ?0174
+   \   07D2            ?0173:
+   \   07D2            ?0172:
+   \   07D2            ?0166:
+    294                  }
+    295                  break ;
+   \   07D2  4038              BRA     ?0000
+   \   07D4            ?0177:
+    296              case SEND_ACK :                                     /* No more data, send ack. */
+    297              case NO_MORE_DATA :                             /* No more data */
+    298                  if ( sendtail ) {
+   \   07D4  6A090000          MOV.B   @sendtail:16,R1L
+   \   07D8  472A              BEQ     ?0179
+   \   07DA            ?0178:
+    299                      if ( rx_buff[pointer] == SEND_ACK ) {
+   \   07DA  6E590000          MOV.B   @(rx_buff,R5),R1L
+   \   07DE  A901              CMP.B   #1,R1L
+   \   07E0  4612              BNE     ?0181
+   \   07E2            ?0180:
+    300                          BuildTail(TX_ACK, sendtail & TX_ERR) ;  /* Build t. w/ err code */
+   \   07E2  6A090000          MOV.B   @sendtail:16,R1L
+   \   07E6  E902              AND.B   #2,R1L
+   \   07E8  6DF1              MOV.W   R1,@-SP
+   \   07EA  F905              MOV.B   #5,R1L
+   \   07EC  5E00120E          JSR     @BuildTail:16
+   \   07F0  0B87              ADDS.W  #2,SP
+    301                      } else {
+   \   07F2  4010              BRA     ?0182
+   \   07F4            ?0181:
+    302                          BuildTail(NO_MORE_DATA,  sendtail & TX_ERR) ;/* Build tail */
+   \   07F4  6A090000          MOV.B   @sendtail:16,R1L
+   \   07F8  E902              AND.B   #2,R1L
+   \   07FA  6DF1              MOV.W   R1,@-SP
+   \   07FC  F900              MOV.B   #0,R1L
+   \   07FE  5E00120E          JSR     @BuildTail:16
+   \   0802  0B87              ADDS.W  #2,SP
+   \   0804            ?0182:
+   \   0804            ?0179:
+    303                      }
+    304                  }
+    305                  ret_val = FALSE ;
+   \   0804  1911              SUB.W   R1,R1
+   \   0806  6FF10004          MOV.W   R1,@(4,SP)
+    306                  break ;
+   \   080A  4000              BRA     ?0000
+   \   080C            ?0183:
+    307              default:                                                /* I don't understand this */
+    308                  break ;
+   \   080C            ?0000:
+    309              }
+    310              return ret_val ;
+   \   080C  6F710004          MOV.W   @(4,SP),R1
+    311          }
+   \   0810  7902002E          MOV.W   #46,R2
+   \   0814  0927              ADD.W   R2,SP
+   \   0816  6D76              POP     R6
+   \   0818  6D75              POP     R5
+   \   081A  6D74              POP     R4
+   \   081C  5470              RTS
+    312          
+    313          
+    314          /*************************************************************************
+    315          *
+    316          * Build send packet header
+    317          *
+    318          *************************************************************************/
+    319          void BuildHeader(void)
+    320          {
+   \   081E            BuildHeader:
+    321              tx_indx = 0;
+   \   081E  F900              MOV.B   #0,R1L
+   \   0820  6A890000          MOV.B   R1L,@tx_indx:16
+    322          
+    323              tx_buff[tx_indx++] = STX ;                  /* STX */
+   \   0824  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0828  0A09              INC.B   R1L
+   \   082A  6A890000          MOV.B   R1L,@tx_indx:16
+   \   082E  1A09              DEC.B   R1L
+   \   0830  F100              MOV.B   #0,R1H
+   \   0832  FB02              MOV.B   #2,R3L
+   \   0834  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    324              tx_buff[tx_indx++] = STX ;                  /* STX */
+   \   0838  6A090000          MOV.B   @tx_indx:16,R1L
+   \   083C  0A09              INC.B   R1L
+   \   083E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0842  1A09              DEC.B   R1L
+   \   0844  F100              MOV.B   #0,R1H
+   \   0846  FB02              MOV.B   #2,R3L
+   \   0848  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    325              tx_buff[tx_indx++] = rx_buff[rx_start+1] ; /* Rx address */
+   \   084C  6A090000          MOV.B   @rx_start:16,R1L
+   \   0850  F100              MOV.B   #0,R1H
+   \   0852  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0856  0A0B              INC.B   R3L
+   \   0858  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   085C  1A0B              DEC.B   R3L
+   \   085E  F300              MOV.B   #0,R3H
+   \   0860  6E180001          MOV.B   @(rx_buff+1,R1),R0L
+   \   0864  6EB80000          MOV.B   R0L,@(tx_buff,R3)
+    326              tx_buff[tx_indx++] = my_address ;           /* Tx address */
+   \   0868  6A090000          MOV.B   @tx_indx:16,R1L
+   \   086C  0A09              INC.B   R1L
+   \   086E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0872  1A09              DEC.B   R1L
+   \   0874  F100              MOV.B   #0,R1H
+   \   0876  6A0B0000          MOV.B   @my_address:16,R3L
+   \   087A  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    327              tx_buff[tx_indx++] = 0 ;                          /* packlen HB, dont know yet */
+   \   087E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0882  0A09              INC.B   R1L
+   \   0884  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0888  1A09              DEC.B   R1L
+   \   088A  F100              MOV.B   #0,R1H
+   \   088C  FB00              MOV.B   #0,R3L
+   \   088E  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    328              tx_buff[tx_indx++] = 0 ;                     /* packlen LB, dont know yet */
+   \   0892  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0896  0A09              INC.B   R1L
+   \   0898  6A890000          MOV.B   R1L,@tx_indx:16
+   \   089C  1A09              DEC.B   R1L
+   \   089E  F100              MOV.B   #0,R1H
+   \   08A0  FB00              MOV.B   #0,R3L
+   \   08A2  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    329          }
+   \   08A6  5470              RTS
+    330          
+    331          /*************************************************************************
+    332          *
+    333          * Build datablock for measured pressure data
+    334          *
+    335          *************************************************************************/
+    336          void BuildMPData(void)
+    337          {
+   \   08A8            BuildMPData:
+   \   08A8  6DF5              PUSH    R5
+   \   08AA  6DF6              PUSH    R6
+   \   08AC  79020008          MOV.W   #8,R2
+   \   08B0  1927              SUB.W   R2,SP
+    338          
+    339              short i, ntna;
+    340              char senddata[4] ;
+    341          
+    342              tx_buff[tx_indx++] = TX_MP_DATA ;           /* action */
+   \   08B2  6A090000          MOV.B   @tx_indx:16,R1L
+   \   08B6  0A09              INC.B   R1L
+   \   08B8  6A890000          MOV.B   R1L,@tx_indx:16
+   \   08BC  1A09              DEC.B   R1L
+   \   08BE  F100              MOV.B   #0,R1H
+   \   08C0  FB1E              MOV.B   #30,R3L
+   \   08C2  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    343              ntna = tx_indx++ ;                                  /* remember index */
+   \   08C6  6A090000          MOV.B   @tx_indx:16,R1L
+   \   08CA  0A09              INC.B   R1L
+   \   08CC  6A890000          MOV.B   R1L,@tx_indx:16
+   \   08D0  1A09              DEC.B   R1L
+   \   08D2  F100              MOV.B   #0,R1H
+   \   08D4  0D15              MOV.W   R1,R5
+    344              for ( i = 0; i < NOIOCH; i++ ) {
+   \   08D6  1966              SUB.W   R6,R6
+   \   08D8            ?0185:
+   \   08D8  7901000E          MOV.W   #14,R1
+   \   08DC  1D16              CMP.W   R1,R6
+   \   08DE  4D04              BLT     $+6
+   \   08E0  5A000990          JMP     @?0184:16
+   \   08E4            ?0186:
+    345                  if ( (ch_stat[i] & 0x0c) == 0x0c ) {    /* find pressure sensors */
+   \   08E4  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   08E8  E90C              AND.B   #12,R1L
+   \   08EA  A90C              CMP.B   #12,R1L
+   \   08EC  4704              BEQ     $+6
+   \   08EE  5A00098A          JMP     @?0189:16
+   \   08F2            ?0188:
+    346                      *((float*)&senddata[0]) = mes_data[i] ;       /* data */
+   \   08F2  0D61              MOV.W   R6,R1
+   \   08F4  0911              ADD.W   R1,R1
+   \   08F6  0911              ADD.W   R1,R1
+   \   08F8  6F100002          MOV.W   @(mes_data+2,R1),R0
+   \   08FC  6F110000          MOV.W   @(mes_data,R1),R1
+   \   0900  6FF00006          MOV.W   R0,@(6,SP)
+   \   0904  6FF10004          MOV.W   R1,@(4,SP)
+    347                      tx_buff[tx_indx++] = i ;                /* channel number */
+   \   0908  0CE9              MOV.B   R6L,R1L
+   \   090A  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   090E  0A0B              INC.B   R3L
+   \   0910  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0914  1A0B              DEC.B   R3L
+   \   0916  F300              MOV.B   #0,R3H
+   \   0918  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    348                      tx_buff[tx_indx++] = ch_stat[i] ;     /* cal/conv status */
+   \   091C  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0920  0A09              INC.B   R1L
+   \   0922  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0926  1A09              DEC.B   R1L
+   \   0928  F100              MOV.B   #0,R1H
+   \   092A  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   092E  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    349                      tx_buff[tx_indx++] = senddata[3] ;
+   \   0932  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0936  0A09              INC.B   R1L
+   \   0938  6A890000          MOV.B   R1L,@tx_indx:16
+   \   093C  1A09              DEC.B   R1L
+   \   093E  F100              MOV.B   #0,R1H
+   \   0940  6E7B0007          MOV.B   @(7,SP),R3L
+   \   0944  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    350                      tx_buff[tx_indx++] = senddata[2] ;
+   \   0948  6A090000          MOV.B   @tx_indx:16,R1L
+   \   094C  0A09              INC.B   R1L
+   \   094E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0952  1A09              DEC.B   R1L
+   \   0954  F100              MOV.B   #0,R1H
+   \   0956  6E7B0006          MOV.B   @(6,SP),R3L
+   \   095A  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    351                      tx_buff[tx_indx++] = senddata[1] ;
+   \   095E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0962  0A09              INC.B   R1L
+   \   0964  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0968  1A09              DEC.B   R1L
+   \   096A  F100              MOV.B   #0,R1H
+   \   096C  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0970  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    352                      tx_buff[tx_indx++] = senddata[0] ;
+   \   0974  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0978  0A09              INC.B   R1L
+   \   097A  6A890000          MOV.B   R1L,@tx_indx:16
+   \   097E  1A09              DEC.B   R1L
+   \   0980  F100              MOV.B   #0,R1H
+   \   0982  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0986  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   098A            ?0189:
+   \   098A  0B06              ADDS.W  #1,R6
+    353                  }
+    354              }
+    355              tx_buff[ntna] = tx_indx - ntna - 1  ;                /* length of data block */
+   \   098C  5A0008D8          JMP     @?0185:16
+   \   0990            ?0184:
+   \   0990  0CD9              MOV.B   R5L,R1L
+   \   0992  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0996  189B              SUB.B   R1L,R3L
+   \   0998  8BFF              ADD.B   #255,R3L
+   \   099A  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    356          }
+   \   099E  79020008          MOV.W   #8,R2
+   \   09A2  0927              ADD.W   R2,SP
+   \   09A4  6D76              POP     R6
+   \   09A6  6D75              POP     R5
+   \   09A8  5470              RTS
+    357          
+    358          /*************************************************************************
+    359          *
+    360          * Build datablock for measured temperature data
+    361          *
+    362          *************************************************************************/
+    363          void BuildMTData(void)
+    364          {
+   \   09AA            BuildMTData:
+   \   09AA  6DF5              PUSH    R5
+   \   09AC  6DF6              PUSH    R6
+   \   09AE  79020008          MOV.W   #8,R2
+   \   09B2  1927              SUB.W   R2,SP
+    365          
+    366              short i, ntna;
+    367              char senddata[4];
+    368          
+    369              tx_buff[tx_indx++] = TX_MT_DATA ;           /* action */
+   \   09B4  6A090000          MOV.B   @tx_indx:16,R1L
+   \   09B8  0A09              INC.B   R1L
+   \   09BA  6A890000          MOV.B   R1L,@tx_indx:16
+   \   09BE  1A09              DEC.B   R1L
+   \   09C0  F100              MOV.B   #0,R1H
+   \   09C2  FB1F              MOV.B   #31,R3L
+   \   09C4  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    370              ntna = tx_indx++ ;                                  /* remember index */
+   \   09C8  6A090000          MOV.B   @tx_indx:16,R1L
+   \   09CC  0A09              INC.B   R1L
+   \   09CE  6A890000          MOV.B   R1L,@tx_indx:16
+   \   09D2  1A09              DEC.B   R1L
+   \   09D4  F100              MOV.B   #0,R1H
+   \   09D6  0D15              MOV.W   R1,R5
+    371              for ( i = 0; i < NOIOCH; i++ ) {
+   \   09D8  1966              SUB.W   R6,R6
+   \   09DA            ?0191:
+   \   09DA  7901000E          MOV.W   #14,R1
+   \   09DE  1D16              CMP.W   R1,R6
+   \   09E0  4D04              BLT     $+6
+   \   09E2  5A000A92          JMP     @?0190:16
+   \   09E6            ?0192:
+    372                  if ( (ch_stat[i] & 0x0c)  == 0x04 ) {    /* find temperature sensors */
+   \   09E6  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   09EA  E90C              AND.B   #12,R1L
+   \   09EC  A904              CMP.B   #4,R1L
+   \   09EE  4704              BEQ     $+6
+   \   09F0  5A000A8C          JMP     @?0195:16
+   \   09F4            ?0194:
+    373                      *((float*)&senddata[0]) = mes_data[i] ;      /* data */
+   \   09F4  0D61              MOV.W   R6,R1
+   \   09F6  0911              ADD.W   R1,R1
+   \   09F8  0911              ADD.W   R1,R1
+   \   09FA  6F100002          MOV.W   @(mes_data+2,R1),R0
+   \   09FE  6F110000          MOV.W   @(mes_data,R1),R1
+   \   0A02  6FF00006          MOV.W   R0,@(6,SP)
+   \   0A06  6FF10004          MOV.W   R1,@(4,SP)
+    374                      tx_buff[tx_indx++] = i ;                /* channel number */
+   \   0A0A  0CE9              MOV.B   R6L,R1L
+   \   0A0C  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0A10  0A0B              INC.B   R3L
+   \   0A12  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0A16  1A0B              DEC.B   R3L
+   \   0A18  F300              MOV.B   #0,R3H
+   \   0A1A  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    375                      tx_buff[tx_indx++] = ch_stat[i] ;     /* cal/conv status */
+   \   0A1E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0A22  0A09              INC.B   R1L
+   \   0A24  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0A28  1A09              DEC.B   R1L
+   \   0A2A  F100              MOV.B   #0,R1H
+   \   0A2C  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0A30  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    376                      tx_buff[tx_indx++] = senddata[3] ;
+   \   0A34  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0A38  0A09              INC.B   R1L
+   \   0A3A  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0A3E  1A09              DEC.B   R1L
+   \   0A40  F100              MOV.B   #0,R1H
+   \   0A42  6E7B0007          MOV.B   @(7,SP),R3L
+   \   0A46  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    377                      tx_buff[tx_indx++] = senddata[2] ;
+   \   0A4A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0A4E  0A09              INC.B   R1L
+   \   0A50  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0A54  1A09              DEC.B   R1L
+   \   0A56  F100              MOV.B   #0,R1H
+   \   0A58  6E7B0006          MOV.B   @(6,SP),R3L
+   \   0A5C  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    378                      tx_buff[tx_indx++] = senddata[1] ;
+   \   0A60  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0A64  0A09              INC.B   R1L
+   \   0A66  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0A6A  1A09              DEC.B   R1L
+   \   0A6C  F100              MOV.B   #0,R1H
+   \   0A6E  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0A72  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    379                      tx_buff[tx_indx++] = senddata[0] ;
+   \   0A76  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0A7A  0A09              INC.B   R1L
+   \   0A7C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0A80  1A09              DEC.B   R1L
+   \   0A82  F100              MOV.B   #0,R1H
+   \   0A84  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0A88  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0A8C            ?0195:
+   \   0A8C  0B06              ADDS.W  #1,R6
+    380                  }
+    381              }
+    382              tx_buff[ntna] = tx_indx - ntna - 1 ;                /* length of data block */
+   \   0A8E  5A0009DA          JMP     @?0191:16
+   \   0A92            ?0190:
+   \   0A92  0CD9              MOV.B   R5L,R1L
+   \   0A94  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0A98  189B              SUB.B   R1L,R3L
+   \   0A9A  8BFF              ADD.B   #255,R3L
+   \   0A9C  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    383          }
+   \   0AA0  79020008          MOV.W   #8,R2
+   \   0AA4  0927              ADD.W   R2,SP
+   \   0AA6  6D76              POP     R6
+   \   0AA8  6D75              POP     R5
+   \   0AAA  5470              RTS
+    384          
+    385          /*************************************************************************
+    386          *
+    387          * Build datablock for other measured data
+    388          *
+    389          *************************************************************************/
+    390          void BuildMOData(void)
+    391          {
+   \   0AAC            BuildMOData:
+   \   0AAC  6DF5              PUSH    R5
+   \   0AAE  6DF6              PUSH    R6
+   \   0AB0  79020008          MOV.W   #8,R2
+   \   0AB4  1927              SUB.W   R2,SP
+    392          
+    393              short i, ntna;
+    394              char senddata[4] ;
+    395          
+    396              tx_buff[tx_indx++] = TX_MO_DATA ;           /* action */
+   \   0AB6  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0ABA  0A09              INC.B   R1L
+   \   0ABC  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0AC0  1A09              DEC.B   R1L
+   \   0AC2  F100              MOV.B   #0,R1H
+   \   0AC4  FB20              MOV.B   #32,R3L
+   \   0AC6  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    397              ntna = tx_indx++ ;                                  /* remember index */
+   \   0ACA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0ACE  0A09              INC.B   R1L
+   \   0AD0  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0AD4  1A09              DEC.B   R1L
+   \   0AD6  F100              MOV.B   #0,R1H
+   \   0AD8  0D15              MOV.W   R1,R5
+    398              for ( i = 0; i < NOIOCH; i++ ) {
+   \   0ADA  1966              SUB.W   R6,R6
+   \   0ADC            ?0197:
+   \   0ADC  7901000E          MOV.W   #14,R1
+   \   0AE0  1D16              CMP.W   R1,R6
+   \   0AE2  4D04              BLT     $+6
+   \   0AE4  5A000B94          JMP     @?0196:16
+   \   0AE8            ?0198:
+    399                  if ( (ch_stat[i] & 0x0c)  == 0x08 ) {    /* find other sensors */
+   \   0AE8  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   0AEC  E90C              AND.B   #12,R1L
+   \   0AEE  A908              CMP.B   #8,R1L
+   \   0AF0  4704              BEQ     $+6
+   \   0AF2  5A000B8E          JMP     @?0201:16
+   \   0AF6            ?0200:
+    400                      *((float*)&senddata[0]) = mes_data[i] ;                               /* data */
+   \   0AF6  0D61              MOV.W   R6,R1
+   \   0AF8  0911              ADD.W   R1,R1
+   \   0AFA  0911              ADD.W   R1,R1
+   \   0AFC  6F100002          MOV.W   @(mes_data+2,R1),R0
+   \   0B00  6F110000          MOV.W   @(mes_data,R1),R1
+   \   0B04  6FF00006          MOV.W   R0,@(6,SP)
+   \   0B08  6FF10004          MOV.W   R1,@(4,SP)
+    401                      tx_buff[tx_indx++] = i ;                /* channel number */
+   \   0B0C  0CE9              MOV.B   R6L,R1L
+   \   0B0E  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0B12  0A0B              INC.B   R3L
+   \   0B14  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0B18  1A0B              DEC.B   R3L
+   \   0B1A  F300              MOV.B   #0,R3H
+   \   0B1C  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    402                      tx_buff[tx_indx++] = ch_stat[i] ;     /* cal/conv status */
+   \   0B20  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0B24  0A09              INC.B   R1L
+   \   0B26  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0B2A  1A09              DEC.B   R1L
+   \   0B2C  F100              MOV.B   #0,R1H
+   \   0B2E  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0B32  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    403                      tx_buff[tx_indx++] = senddata[3] ;
+   \   0B36  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0B3A  0A09              INC.B   R1L
+   \   0B3C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0B40  1A09              DEC.B   R1L
+   \   0B42  F100              MOV.B   #0,R1H
+   \   0B44  6E7B0007          MOV.B   @(7,SP),R3L
+   \   0B48  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    404                      tx_buff[tx_indx++] = senddata[2] ;
+   \   0B4C  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0B50  0A09              INC.B   R1L
+   \   0B52  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0B56  1A09              DEC.B   R1L
+   \   0B58  F100              MOV.B   #0,R1H
+   \   0B5A  6E7B0006          MOV.B   @(6,SP),R3L
+   \   0B5E  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    405                      tx_buff[tx_indx++] = senddata[1] ;
+   \   0B62  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0B66  0A09              INC.B   R1L
+   \   0B68  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0B6C  1A09              DEC.B   R1L
+   \   0B6E  F100              MOV.B   #0,R1H
+   \   0B70  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0B74  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    406                      tx_buff[tx_indx++] = senddata[0] ;
+   \   0B78  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0B7C  0A09              INC.B   R1L
+   \   0B7E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0B82  1A09              DEC.B   R1L
+   \   0B84  F100              MOV.B   #0,R1H
+   \   0B86  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0B8A  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0B8E            ?0201:
+   \   0B8E  0B06              ADDS.W  #1,R6
+    407                  }
+    408              }
+    409              tx_buff[ntna] = tx_indx - ntna - 1  ;               /* length of data block */
+   \   0B90  5A000ADC          JMP     @?0197:16
+   \   0B94            ?0196:
+   \   0B94  0CD9              MOV.B   R5L,R1L
+   \   0B96  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0B9A  189B              SUB.B   R1L,R3L
+   \   0B9C  8BFF              ADD.B   #255,R3L
+   \   0B9E  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    410          }
+   \   0BA2  79020008          MOV.W   #8,R2
+   \   0BA6  0927              ADD.W   R2,SP
+   \   0BA8  6D76              POP     R6
+   \   0BAA  6D75              POP     R5
+   \   0BAC  5470              RTS
+    411          
+    412          /*************************************************************************
+    413          *
+    414          * Build datablock for highlevel and washtrac
+    415          *
+    416          *************************************************************************/
+    417          void BuildWHData(void)
+    418          {
+   \   0BAE            BuildWHData:
+   \   0BAE  6DF4              PUSH    R4
+   \   0BB0  6DF5              PUSH    R5
+   \   0BB2  6DF6              PUSH    R6
+   \   0BB4  1B87              SUBS.W  #2,SP
+    419              short ntna, i ;
+    420          
+    421              if ( P7DR & 0x80 ) {
+   \   0BB6  29BE              MOV.B   @190:8,R1L
+   \   0BB8  E980              AND.B   #128,R1L
+   \   0BBA  4704              BEQ     ?0203
+   \   0BBC            ?0202:
+    422                  return;
+    423              } else {
+   \   0BBC  5A000C8E          JMP     @?0208:16
+   \   0BC0            ?0203:
+    424                  tx_buff[tx_indx++] = TX_WH_DATA ;               // action 
+   \   0BC0  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0BC4  0A09              INC.B   R1L
+   \   0BC6  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0BCA  1A09              DEC.B   R1L
+   \   0BCC  F100              MOV.B   #0,R1H
+   \   0BCE  FB31              MOV.B   #49,R3L
+   \   0BD0  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    425                  ntna = tx_indx++ ;                              // remember index
+   \   0BD4  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0BD8  0A09              INC.B   R1L
+   \   0BDA  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0BDE  1A09              DEC.B   R1L
+   \   0BE0  F100              MOV.B   #0,R1H
+   \   0BE2  69F1              MOV.W   R1,@SP
+    426                  for ( i = 0; i< NOWT; i++ ) {
+   \   0BE4  1966              SUB.W   R6,R6
+   \   0BE6            ?0205:
+   \   0BE6  79010004          MOV.W   #4,R1
+   \   0BEA  1D16              CMP.W   R1,R6
+   \   0BEC  4C42              BGE     ?0204
+   \   0BEE            ?0206:
+    427                      unsigned short WTCnt = washtrac[i];
+   \   0BEE  0D61              MOV.W   R6,R1
+   \   0BF0  0911              ADD.W   R1,R1
+   \   0BF2  6F150000          MOV.W   @(washtrac,R1),R5
+    428                      washtrac[i] = 0;
+   \   0BF6  0D61              MOV.W   R6,R1
+   \   0BF8  0911              ADD.W   R1,R1
+   \   0BFA  1933              SUB.W   R3,R3
+   \   0BFC  6F930000          MOV.W   R3,@(washtrac,R1)
+    429                      tx_buff[tx_indx++] = WTCnt & 0xff;         // add washtrack
+   \   0C00  0CD9              MOV.B   R5L,R1L
+   \   0C02  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0C06  0A0B              INC.B   R3L
+   \   0C08  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0C0C  1A0B              DEC.B   R3L
+   \   0C0E  F300              MOV.B   #0,R3H
+   \   0C10  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    430                      tx_buff[tx_indx++] = (WTCnt >> 8) & 0xff;         // add washtrack
+   \   0C14  0D51              MOV.W   R5,R1
+   \   0C16  0C19              MOV.B   R1H,R1L
+   \   0C18  F100              MOV.B   #0,R1H
+   \   0C1A  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0C1E  0A0B              INC.B   R3L
+   \   0C20  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0C24  1A0B              DEC.B   R3L
+   \   0C26  F300              MOV.B   #0,R3H
+   \   0C28  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+   \   0C2C  0B06              ADDS.W  #1,R6
+    431                  }
+    432                  tx_buff[tx_indx++] = highlevel;                 // add highlevel
+   \   0C2E  40B6              BRA     ?0205
+   \   0C30            ?0204:
+   \   0C30  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0C34  0A09              INC.B   R1L
+   \   0C36  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0C3A  1A09              DEC.B   R1L
+   \   0C3C  F100              MOV.B   #0,R1H
+   \   0C3E  6A0B0000          MOV.B   @highlevel:16,R3L
+   \   0C42  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    433                  {
+    434                      unsigned short TNow = ms_cnt;
+   \   0C46  6B040000          MOV.W   @ms_cnt:16,R4
+    435                      ms_cnt = 0;
+   \   0C4A  1911              SUB.W   R1,R1
+   \   0C4C  6B810000          MOV.W   R1,@ms_cnt:16
+    436                      tx_buff[tx_indx++] = TNow & 0xff;               // add washtrack
+   \   0C50  0CC9              MOV.B   R4L,R1L
+   \   0C52  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0C56  0A0B              INC.B   R3L
+   \   0C58  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0C5C  1A0B              DEC.B   R3L
+   \   0C5E  F300              MOV.B   #0,R3H
+   \   0C60  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    437                      tx_buff[tx_indx++] = (TNow >> 8) & 0xff;        // add washtrack
+   \   0C64  0D41              MOV.W   R4,R1
+   \   0C66  0C19              MOV.B   R1H,R1L
+   \   0C68  F100              MOV.B   #0,R1H
+   \   0C6A  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0C6E  0A0B              INC.B   R3L
+   \   0C70  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0C74  1A0B              DEC.B   R3L
+   \   0C76  F300              MOV.B   #0,R3H
+   \   0C78  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    438                  }
+    439                  tx_buff[ntna] = tx_indx - ntna - 1 ;            // length of data block
+   \   0C7C  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0C80  6E7B0001          MOV.B   @(1,SP),R3L
+   \   0C84  18B9              SUB.B   R3L,R1L
+   \   0C86  89FF              ADD.B   #255,R1L
+   \   0C88  6973              MOV.W   @SP,R3
+   \   0C8A  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    440              }
+    441          }
+   \   0C8E            ?0208:
+   \   0C8E  0B87              ADDS.W  #2,SP
+   \   0C90  6D76              POP     R6
+   \   0C92  6D75              POP     R5
+   \   0C94  6D74              POP     R4
+   \   0C96  5470              RTS
+    442          
+    443          /*************************************************************************
+    444          *
+    445          * Build datablock for raw pressure data
+    446          *
+    447          *************************************************************************/
+    448          void BuildRPData(void)
+    449          {
+   \   0C98            BuildRPData:
+   \   0C98  6DF5              PUSH    R5
+   \   0C9A  6DF6              PUSH    R6
+   \   0C9C  79020006          MOV.W   #6,R2
+   \   0CA0  1927              SUB.W   R2,SP
+    450          
+    451              short i, ntna ;
+    452              char senddata[2];
+    453          
+    454              tx_buff[tx_indx++] = TX_RP_DATA ;           /* action */
+   \   0CA2  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0CA6  0A09              INC.B   R1L
+   \   0CA8  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0CAC  1A09              DEC.B   R1L
+   \   0CAE  F100              MOV.B   #0,R1H
+   \   0CB0  FB21              MOV.B   #33,R3L
+   \   0CB2  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    455              ntna = tx_indx++ ;                                  /* remember index */
+   \   0CB6  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0CBA  0A09              INC.B   R1L
+   \   0CBC  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0CC0  1A09              DEC.B   R1L
+   \   0CC2  F100              MOV.B   #0,R1H
+   \   0CC4  0D15              MOV.W   R1,R5
+    456              for ( i = 0; i < NOIOCH; i++ ) {
+   \   0CC6  1966              SUB.W   R6,R6
+   \   0CC8            ?0210:
+   \   0CC8  7901000E          MOV.W   #14,R1
+   \   0CCC  1D16              CMP.W   R1,R6
+   \   0CCE  4C70              BGE     ?0209
+   \   0CD0            ?0211:
+    457                  if ( (ch_stat[i] & 0x0c) == 0x0c ) {    /* find pressure sensors */
+   \   0CD0  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   0CD4  E90C              AND.B   #12,R1L
+   \   0CD6  A90C              CMP.B   #12,R1L
+   \   0CD8  4662              BNE     ?0214
+   \   0CDA            ?0213:
+    458                      *((short*)&senddata[0]) = raw_data[i] ;                           /* data */
+   \   0CDA  0D61              MOV.W   R6,R1
+   \   0CDC  0911              ADD.W   R1,R1
+   \   0CDE  6F110000          MOV.W   @(raw_data,R1),R1
+   \   0CE2  6FF10004          MOV.W   R1,@(4,SP)
+    459                      tx_buff[tx_indx++] = i ;                /* channel number */
+   \   0CE6  0CE9              MOV.B   R6L,R1L
+   \   0CE8  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0CEC  0A0B              INC.B   R3L
+   \   0CEE  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0CF2  1A0B              DEC.B   R3L
+   \   0CF4  F300              MOV.B   #0,R3H
+   \   0CF6  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    460                      tx_buff[tx_indx++] = ch_stat[i] ;     /* cal/conv status */
+   \   0CFA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0CFE  0A09              INC.B   R1L
+   \   0D00  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0D04  1A09              DEC.B   R1L
+   \   0D06  F100              MOV.B   #0,R1H
+   \   0D08  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0D0C  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    461                      tx_buff[tx_indx++] = senddata[1] ;            /* data  LB */
+   \   0D10  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0D14  0A09              INC.B   R1L
+   \   0D16  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0D1A  1A09              DEC.B   R1L
+   \   0D1C  F100              MOV.B   #0,R1H
+   \   0D1E  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0D22  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    462                      tx_buff[tx_indx++] = senddata[0] ;            /* data  HB */
+   \   0D26  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0D2A  0A09              INC.B   R1L
+   \   0D2C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0D30  1A09              DEC.B   R1L
+   \   0D32  F100              MOV.B   #0,R1H
+   \   0D34  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0D38  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0D3C            ?0214:
+   \   0D3C  0B06              ADDS.W  #1,R6
+    463                  }
+    464              }
+    465              tx_buff[ntna] = tx_indx - ntna - 1  ;               /* length of data block */
+   \   0D3E  4088              BRA     ?0210
+   \   0D40            ?0209:
+   \   0D40  0CD9              MOV.B   R5L,R1L
+   \   0D42  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0D46  189B              SUB.B   R1L,R3L
+   \   0D48  8BFF              ADD.B   #255,R3L
+   \   0D4A  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    466          }
+   \   0D4E  79020006          MOV.W   #6,R2
+   \   0D52  0927              ADD.W   R2,SP
+   \   0D54  6D76              POP     R6
+   \   0D56  6D75              POP     R5
+   \   0D58  5470              RTS
+    467          
+    468          /*************************************************************************
+    469          *
+    470          * Build datablock for raw temperature data
+    471          *
+    472          *************************************************************************/
+    473          void BuildRTData(void)
+    474          {
+   \   0D5A            BuildRTData:
+   \   0D5A  6DF5              PUSH    R5
+   \   0D5C  6DF6              PUSH    R6
+   \   0D5E  79020006          MOV.W   #6,R2
+   \   0D62  1927              SUB.W   R2,SP
+    475          
+    476              short i, ntna ;
+    477              char senddata[2];
+    478          
+    479              tx_buff[tx_indx++] = TX_RT_DATA ;           /* action */
+   \   0D64  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0D68  0A09              INC.B   R1L
+   \   0D6A  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0D6E  1A09              DEC.B   R1L
+   \   0D70  F100              MOV.B   #0,R1H
+   \   0D72  FB22              MOV.B   #34,R3L
+   \   0D74  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    480              ntna = tx_indx++ ;                                  /* remember index */
+   \   0D78  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0D7C  0A09              INC.B   R1L
+   \   0D7E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0D82  1A09              DEC.B   R1L
+   \   0D84  F100              MOV.B   #0,R1H
+   \   0D86  0D15              MOV.W   R1,R5
+    481              for ( i = 0; i < NOIOCH; i++ ) {
+   \   0D88  1966              SUB.W   R6,R6
+   \   0D8A            ?0216:
+   \   0D8A  7901000E          MOV.W   #14,R1
+   \   0D8E  1D16              CMP.W   R1,R6
+   \   0D90  4C70              BGE     ?0215
+   \   0D92            ?0217:
+    482                  if ( (ch_stat[i] & 0x0c)  == 0x04 ) {    /* find temperature sensors */
+   \   0D92  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   0D96  E90C              AND.B   #12,R1L
+   \   0D98  A904              CMP.B   #4,R1L
+   \   0D9A  4662              BNE     ?0220
+   \   0D9C            ?0219:
+    483                      *((short*)&senddata[0]) = raw_data[i] ;                           /* data */
+   \   0D9C  0D61              MOV.W   R6,R1
+   \   0D9E  0911              ADD.W   R1,R1
+   \   0DA0  6F110000          MOV.W   @(raw_data,R1),R1
+   \   0DA4  6FF10004          MOV.W   R1,@(4,SP)
+    484                      tx_buff[tx_indx++] = i ;                /* channel number */
+   \   0DA8  0CE9              MOV.B   R6L,R1L
+   \   0DAA  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0DAE  0A0B              INC.B   R3L
+   \   0DB0  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0DB4  1A0B              DEC.B   R3L
+   \   0DB6  F300              MOV.B   #0,R3H
+   \   0DB8  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    485                      tx_buff[tx_indx++] = ch_stat[i] ;     /* cal/conv status */
+   \   0DBC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0DC0  0A09              INC.B   R1L
+   \   0DC2  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0DC6  1A09              DEC.B   R1L
+   \   0DC8  F100              MOV.B   #0,R1H
+   \   0DCA  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0DCE  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    486                      tx_buff[tx_indx++] = senddata[1] ;            /* data  LB */
+   \   0DD2  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0DD6  0A09              INC.B   R1L
+   \   0DD8  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0DDC  1A09              DEC.B   R1L
+   \   0DDE  F100              MOV.B   #0,R1H
+   \   0DE0  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0DE4  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    487                      tx_buff[tx_indx++] = senddata[0] ;            /* data  HB */
+   \   0DE8  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0DEC  0A09              INC.B   R1L
+   \   0DEE  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0DF2  1A09              DEC.B   R1L
+   \   0DF4  F100              MOV.B   #0,R1H
+   \   0DF6  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0DFA  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0DFE            ?0220:
+   \   0DFE  0B06              ADDS.W  #1,R6
+    488                  }
+    489              }
+    490              tx_buff[ntna] = tx_indx - ntna - 1  ;               /* length of data block */
+   \   0E00  4088              BRA     ?0216
+   \   0E02            ?0215:
+   \   0E02  0CD9              MOV.B   R5L,R1L
+   \   0E04  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0E08  189B              SUB.B   R1L,R3L
+   \   0E0A  8BFF              ADD.B   #255,R3L
+   \   0E0C  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    491          }
+   \   0E10  79020006          MOV.W   #6,R2
+   \   0E14  0927              ADD.W   R2,SP
+   \   0E16  6D76              POP     R6
+   \   0E18  6D75              POP     R5
+   \   0E1A  5470              RTS
+    492          
+    493          /*************************************************************************
+    494          *
+    495          * Build datablock for other raw data
+    496          *
+    497          *************************************************************************/
+    498          void BuildROData(void)
+    499          {
+   \   0E1C            BuildROData:
+   \   0E1C  6DF5              PUSH    R5
+   \   0E1E  6DF6              PUSH    R6
+   \   0E20  79020006          MOV.W   #6,R2
+   \   0E24  1927              SUB.W   R2,SP
+    500          
+    501              short i, ntna ;
+    502              char senddata[2];
+    503          
+    504              tx_buff[tx_indx++] = TX_RO_DATA ;           /* action */
+   \   0E26  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0E2A  0A09              INC.B   R1L
+   \   0E2C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0E30  1A09              DEC.B   R1L
+   \   0E32  F100              MOV.B   #0,R1H
+   \   0E34  FB23              MOV.B   #35,R3L
+   \   0E36  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    505              ntna = tx_indx++ ;                                  /* remember index */
+   \   0E3A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0E3E  0A09              INC.B   R1L
+   \   0E40  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0E44  1A09              DEC.B   R1L
+   \   0E46  F100              MOV.B   #0,R1H
+   \   0E48  0D15              MOV.W   R1,R5
+    506              for ( i = 0; i < NOIOCH; i++ ) {
+   \   0E4A  1966              SUB.W   R6,R6
+   \   0E4C            ?0222:
+   \   0E4C  7901000E          MOV.W   #14,R1
+   \   0E50  1D16              CMP.W   R1,R6
+   \   0E52  4C70              BGE     ?0221
+   \   0E54            ?0223:
+    507                  if ( (ch_stat[i] & 0x0c)  == 0x08 ) {    /* find other sensors */
+   \   0E54  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   0E58  E90C              AND.B   #12,R1L
+   \   0E5A  A908              CMP.B   #8,R1L
+   \   0E5C  4662              BNE     ?0226
+   \   0E5E            ?0225:
+    508                      *((short*)&senddata[0]) = raw_data[i] ;                           /* data */
+   \   0E5E  0D61              MOV.W   R6,R1
+   \   0E60  0911              ADD.W   R1,R1
+   \   0E62  6F110000          MOV.W   @(raw_data,R1),R1
+   \   0E66  6FF10004          MOV.W   R1,@(4,SP)
+    509                      tx_buff[tx_indx++] = i ;                /* channel number */
+   \   0E6A  0CE9              MOV.B   R6L,R1L
+   \   0E6C  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0E70  0A0B              INC.B   R3L
+   \   0E72  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0E76  1A0B              DEC.B   R3L
+   \   0E78  F300              MOV.B   #0,R3H
+   \   0E7A  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    510                      tx_buff[tx_indx++] = ch_stat[i] ;     /* cal/conv status */
+   \   0E7E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0E82  0A09              INC.B   R1L
+   \   0E84  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0E88  1A09              DEC.B   R1L
+   \   0E8A  F100              MOV.B   #0,R1H
+   \   0E8C  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0E90  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    511                      tx_buff[tx_indx++] = senddata[1] ;            /* data  LB */
+   \   0E94  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0E98  0A09              INC.B   R1L
+   \   0E9A  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0E9E  1A09              DEC.B   R1L
+   \   0EA0  F100              MOV.B   #0,R1H
+   \   0EA2  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0EA6  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    512                      tx_buff[tx_indx++] = senddata[0] ;            /* data  HB */
+   \   0EAA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0EAE  0A09              INC.B   R1L
+   \   0EB0  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0EB4  1A09              DEC.B   R1L
+   \   0EB6  F100              MOV.B   #0,R1H
+   \   0EB8  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0EBC  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0EC0            ?0226:
+   \   0EC0  0B06              ADDS.W  #1,R6
+    513                  }
+    514              }
+    515              tx_buff[ntna] = tx_indx - ntna - 1  ;               /* length of data block */
+   \   0EC2  4088              BRA     ?0222
+   \   0EC4            ?0221:
+   \   0EC4  0CD9              MOV.B   R5L,R1L
+   \   0EC6  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0ECA  189B              SUB.B   R1L,R3L
+   \   0ECC  8BFF              ADD.B   #255,R3L
+   \   0ECE  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    516          }
+   \   0ED2  79020006          MOV.W   #6,R2
+   \   0ED6  0927              ADD.W   R2,SP
+   \   0ED8  6D76              POP     R6
+   \   0EDA  6D75              POP     R5
+   \   0EDC  5470              RTS
+    517          
+    518          /*************************************************************************
+    519          *
+    520          * Build datablock for calibration data
+    521          *
+    522          *************************************************************************/
+    523          void BuildCalData(void)
+    524          {
+   \   0EDE            BuildCalData:
+   \   0EDE  6DF5              PUSH    R5
+   \   0EE0  6DF6              PUSH    R6
+   \   0EE2  79020006          MOV.W   #6,R2
+   \   0EE6  1927              SUB.W   R2,SP
+    525          
+    526              short i, ntna ;
+    527              char  senddata[2];
+    528          
+    529              tx_buff[tx_indx++] = TX_CAL_DATA ;              /* action */
+   \   0EE8  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0EEC  0A09              INC.B   R1L
+   \   0EEE  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0EF2  1A09              DEC.B   R1L
+   \   0EF4  F100              MOV.B   #0,R1H
+   \   0EF6  FB24              MOV.B   #36,R3L
+   \   0EF8  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    530              ntna = tx_indx++ ;                                  /* remember index */
+   \   0EFC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0F00  0A09              INC.B   R1L
+   \   0F02  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0F06  1A09              DEC.B   R1L
+   \   0F08  F100              MOV.B   #0,R1H
+   \   0F0A  0D15              MOV.W   R1,R5
+    531              for ( i = 0; i < NOIOCH; i++ ) {
+   \   0F0C  1966              SUB.W   R6,R6
+   \   0F0E            ?0228:
+   \   0F0E  7901000E          MOV.W   #14,R1
+   \   0F12  1D16              CMP.W   R1,R6
+   \   0F14  4C66              BGE     ?0227
+   \   0F16            ?0229:
+    532                  *((short*)&senddata[0]) = cal_data[i] ;   /* data */
+   \   0F16  0D61              MOV.W   R6,R1
+   \   0F18  0911              ADD.W   R1,R1
+   \   0F1A  6F110000          MOV.W   @(cal_data,R1),R1
+   \   0F1E  6FF10004          MOV.W   R1,@(4,SP)
+    533                  tx_buff[tx_indx++] = i ;                        /* channel number */
+   \   0F22  0CE9              MOV.B   R6L,R1L
+   \   0F24  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0F28  0A0B              INC.B   R3L
+   \   0F2A  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0F2E  1A0B              DEC.B   R3L
+   \   0F30  F300              MOV.B   #0,R3H
+   \   0F32  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    534                  tx_buff[tx_indx++] = ch_stat[i] ;             /* cal status */
+   \   0F36  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0F3A  0A09              INC.B   R1L
+   \   0F3C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0F40  1A09              DEC.B   R1L
+   \   0F42  F100              MOV.B   #0,R1H
+   \   0F44  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0F48  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    535                  tx_buff[tx_indx++] = senddata[1] ;            /* data  LB */
+   \   0F4C  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0F50  0A09              INC.B   R1L
+   \   0F52  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0F56  1A09              DEC.B   R1L
+   \   0F58  F100              MOV.B   #0,R1H
+   \   0F5A  6E7B0005          MOV.B   @(5,SP),R3L
+   \   0F5E  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    536                  tx_buff[tx_indx++] = senddata[0] ;            /* data  HB */
+   \   0F62  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0F66  0A09              INC.B   R1L
+   \   0F68  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0F6C  1A09              DEC.B   R1L
+   \   0F6E  F100              MOV.B   #0,R1H
+   \   0F70  6E7B0004          MOV.B   @(4,SP),R3L
+   \   0F74  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   0F78  0B06              ADDS.W  #1,R6
+    537              }
+    538              tx_buff[ntna] = tx_indx - ntna - 1  ;             /* length of data block */
+   \   0F7A  4092              BRA     ?0228
+   \   0F7C            ?0227:
+   \   0F7C  0CD9              MOV.B   R5L,R1L
+   \   0F7E  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0F82  189B              SUB.B   R1L,R3L
+   \   0F84  8BFF              ADD.B   #255,R3L
+   \   0F86  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    539          }
+   \   0F8A  79020006          MOV.W   #6,R2
+   \   0F8E  0927              ADD.W   R2,SP
+   \   0F90  6D76              POP     R6
+   \   0F92  6D75              POP     R5
+   \   0F94  5470              RTS
+    540          
+    541          /*************************************************************************
+    542          *
+    543          * Build datablock for configuration data
+    544          *
+    545          *************************************************************************/
+    546          void BuildConfData(void)
+    547          {
+   \   0F96            BuildConfData:
+   \   0F96  6DF5              PUSH    R5
+   \   0F98  6DF6              PUSH    R6
+    548          
+    549              short i, ntna ;
+    550          
+    551              tx_buff[tx_indx++] = TX_CONFIG ;                  /* action */
+   \   0F9A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0F9E  0A09              INC.B   R1L
+   \   0FA0  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0FA4  1A09              DEC.B   R1L
+   \   0FA6  F100              MOV.B   #0,R1H
+   \   0FA8  FB25              MOV.B   #37,R3L
+   \   0FAA  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    552              ntna = tx_indx++ ;                                /* remember index */
+   \   0FAE  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0FB2  0A09              INC.B   R1L
+   \   0FB4  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0FB8  1A09              DEC.B   R1L
+   \   0FBA  F100              MOV.B   #0,R1H
+   \   0FBC  0D15              MOV.W   R1,R5
+    553              for ( i = 0; i < NOIOCH; i++ ) {
+   \   0FBE  1966              SUB.W   R6,R6
+   \   0FC0            ?0232:
+   \   0FC0  7901000E          MOV.W   #14,R1
+   \   0FC4  1D16              CMP.W   R1,R6
+   \   0FC6  4C4A              BGE     ?0231
+   \   0FC8            ?0233:
+    554                  tx_buff[tx_indx++] = i ;                      /* channel number */
+   \   0FC8  0CE9              MOV.B   R6L,R1L
+   \   0FCA  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0FCE  0A0B              INC.B   R3L
+   \   0FD0  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   0FD4  1A0B              DEC.B   R3L
+   \   0FD6  F300              MOV.B   #0,R3H
+   \   0FD8  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    555                  tx_buff[tx_indx++] = ch_stat[i] ;             /* channel setup */
+   \   0FDC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   0FE0  0A09              INC.B   R1L
+   \   0FE2  6A890000          MOV.B   R1L,@tx_indx:16
+   \   0FE6  1A09              DEC.B   R1L
+   \   0FE8  F100              MOV.B   #0,R1H
+   \   0FEA  6E6B0000          MOV.B   @(ch_stat,R6),R3L
+   \   0FEE  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    556                  tx_buff[tx_indx++] = eep_type[i >> 1] ;           /* eeprom setup */
+   \   0FF2  0D61              MOV.W   R6,R1
+   \   0FF4  1181              SHAR.B  R1H
+   \   0FF6  1309              ROTXR.B R1L
+   \   0FF8  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   0FFC  0A0B              INC.B   R3L
+   \   0FFE  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   1002  1A0B              DEC.B   R3L
+   \   1004  F300              MOV.B   #0,R3H
+   \   1006  6E180000          MOV.B   @(eep_type,R1),R0L
+   \   100A  6EB80000          MOV.B   R0L,@(tx_buff,R3)
+   \   100E  0B06              ADDS.W  #1,R6
+    557              }
+    558              tx_buff[ntna] = tx_indx - ntna - 1  ;               /* length of data block */
+   \   1010  40AE              BRA     ?0232
+   \   1012            ?0231:
+   \   1012  0CD9              MOV.B   R5L,R1L
+   \   1014  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   1018  189B              SUB.B   R1L,R3L
+   \   101A  8BFF              ADD.B   #255,R3L
+   \   101C  6EDB0000          MOV.B   R3L,@(tx_buff,R5)
+    559          }
+   \   1020  6D76              POP     R6
+   \   1022  6D75              POP     R5
+   \   1024  5470              RTS
+    560          
+    561          /*************************************************************************
+    562          *
+    563          * Build datablock for eeprom data
+    564          *
+    565          *************************************************************************/
+    566          void BuildEepData(short channel)
+    567          {
+   \   1026            BuildEepData:
+   \   1026  6DF4              PUSH    R4
+   \   1028  6DF5              PUSH    R5
+   \   102A  6DF6              PUSH    R6
+   \   102C  0D15              MOV.W   R1,R5
+    568          
+    569              short i, ntna;
+    570              tx_buff[tx_indx++] = TX_EEP_DATA ;              /* action */
+   \   102E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   1032  0A09              INC.B   R1L
+   \   1034  6A890000          MOV.B   R1L,@tx_indx:16
+   \   1038  1A09              DEC.B   R1L
+   \   103A  F100              MOV.B   #0,R1H
+   \   103C  FB2C              MOV.B   #44,R3L
+   \   103E  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    571              ntna = tx_indx++ ;                                  /* remember index */
+   \   1042  6A090000          MOV.B   @tx_indx:16,R1L
+   \   1046  0A09              INC.B   R1L
+   \   1048  6A890000          MOV.B   R1L,@tx_indx:16
+   \   104C  1A09              DEC.B   R1L
+   \   104E  F100              MOV.B   #0,R1H
+   \   1050  0D14              MOV.W   R1,R4
+    572              tx_buff[tx_indx++] = channel ;          /* channel number */
+   \   1052  0CD9              MOV.B   R5L,R1L
+   \   1054  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   1058  0A0B              INC.B   R3L
+   \   105A  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   105E  1A0B              DEC.B   R3L
+   \   1060  F300              MOV.B   #0,R3H
+   \   1062  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    573              channel >>= 1 ;
+   \   1066  1185              SHAR.B  R5H
+   \   1068  130D              ROTXR.B R5L
+    574              for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   106A  1966              SUB.W   R6,R6
+   \   106C            ?0236:
+   \   106C  79010028          MOV.W   #40,R1
+   \   1070  1D16              CMP.W   R1,R6
+   \   1072  4C28              BGE     ?0235
+   \   1074            ?0237:
+    575                  tx_buff[tx_indx++] = packed_data[channel][i]; /* data */
+   \   1074  0D51              MOV.W   R5,R1
+   \   1076  79030028          MOV.W   #40,R3
+   \   107A  5E000000          JSR     @?SS_MUL_L02
+   \   107E  0D63              MOV.W   R6,R3
+   \   1080  0913              ADD.W   R1,R3
+   \   1082  6A090000          MOV.B   @tx_indx:16,R1L
+   \   1086  0A09              INC.B   R1L
+   \   1088  6A890000          MOV.B   R1L,@tx_indx:16
+   \   108C  1A09              DEC.B   R1L
+   \   108E  F100              MOV.B   #0,R1H
+   \   1090  6E380000          MOV.B   @(packed_data,R3),R0L
+   \   1094  6E980000          MOV.B   R0L,@(tx_buff,R1)
+   \   1098  0B06              ADDS.W  #1,R6
+    576              }
+    577              tx_buff[ntna] = tx_indx - ntna - 1  ;      /* length of data block */
+   \   109A  40D0              BRA     ?0236
+   \   109C            ?0235:
+   \   109C  0CC9              MOV.B   R4L,R1L
+   \   109E  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   10A2  189B              SUB.B   R1L,R3L
+   \   10A4  8BFF              ADD.B   #255,R3L
+   \   10A6  6ECB0000          MOV.B   R3L,@(tx_buff,R4)
+    578              ch_stat[channel << 1]  &= ~0x80 ;                  /* Release new sensor flag */
+   \   10AA  0D51              MOV.W   R5,R1
+   \   10AC  0911              ADD.W   R1,R1
+   \   10AE  6E1B0000          MOV.B   @(ch_stat,R1),R3L
+   \   10B2  EB7F              AND.B   #127,R3L
+   \   10B4  6E9B0000          MOV.B   R3L,@(ch_stat,R1)
+    579          }
+   \   10B8  6D76              POP     R6
+   \   10BA  6D75              POP     R5
+   \   10BC  6D74              POP     R4
+   \   10BE  5470              RTS
+    580          
+    581          /*************************************************************************
+    582          *
+    583          * Build datablock for card status
+    584          *
+    585          *************************************************************************/
+    586          void BuildCSData(void)
+    587          {
+   \   10C0            BuildCSData:
+   \   10C0  6DF6              PUSH    R6
+   \   10C2  79020006          MOV.W   #6,R2
+   \   10C6  1927              SUB.W   R2,SP
+    588          
+    589              short ntna ;
+    590              char senddata[4] ;
+    591          
+    592              tx_buff[tx_indx++] = TX_CARD_STAT ;         /* action */
+   \   10C8  6A090000          MOV.B   @tx_indx:16,R1L
+   \   10CC  0A09              INC.B   R1L
+   \   10CE  6A890000          MOV.B   R1L,@tx_indx:16
+   \   10D2  1A09              DEC.B   R1L
+   \   10D4  F100              MOV.B   #0,R1H
+   \   10D6  FB2F              MOV.B   #47,R3L
+   \   10D8  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    593              ntna = tx_indx++ ;                                  /* remember index */
+   \   10DC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   10E0  0A09              INC.B   R1L
+   \   10E2  6A890000          MOV.B   R1L,@tx_indx:16
+   \   10E6  1A09              DEC.B   R1L
+   \   10E8  F100              MOV.B   #0,R1H
+   \   10EA  0D16              MOV.W   R1,R6
+    594              tx_buff[tx_indx++] = (unsigned char) VERSION; /* software version */
+   \   10EC  6A090000          MOV.B   @tx_indx:16,R1L
+   \   10F0  0A09              INC.B   R1L
+   \   10F2  6A890000          MOV.B   R1L,@tx_indx:16
+   \   10F6  1A09              DEC.B   R1L
+   \   10F8  F100              MOV.B   #0,R1H
+   \   10FA  FB0C              MOV.B   #12,R3L
+   \   10FC  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    595              tx_buff[tx_indx] = GetMyAddress();        /* get the address */
+   \   1100  5E000000          JSR     @GetMyAddress:16
+   \   1104  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   1108  F300              MOV.B   #0,R3H
+   \   110A  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    596              if ( ad_mode & 0x10 ) {
+   \   110E  6A090000          MOV.B   @ad_mode:16,R1L
+   \   1112  E910              AND.B   #16,R1L
+   \   1114  4710              BEQ     ?0240
+   \   1116            ?0239:
+    597                  tx_buff[tx_indx] |= 0x80 ;                   /* restart flag */
+   \   1116  6A090000          MOV.B   @tx_indx:16,R1L
+   \   111A  F100              MOV.B   #0,R1H
+   \   111C  6E1B0000          MOV.B   @(tx_buff,R1),R3L
+   \   1120  CB80              OR.B    #128,R3L
+   \   1122  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+   \   1126            ?0240:
+    598              }
+    599              tx_indx++  ;
+   \   1126  6A090000          MOV.B   @tx_indx:16,R1L
+   \   112A  8901              ADD.B   #1,R1L
+   \   112C  6A890000          MOV.B   R1L,@tx_indx:16
+    600              ad_mode &= ~0x10 ;                                   /* reset restart flag */
+   \   1130  79010000          MOV.W   #ad_mode,R1
+   \   1134  7D107240          BCLR    #4,@R1
+    601              tx_buff[tx_indx++] = (unsigned char) RX_SIZE; /* rx buffer size */
+   \   1138  6A090000          MOV.B   @tx_indx:16,R1L
+   \   113C  0A09              INC.B   R1L
+   \   113E  6A890000          MOV.B   R1L,@tx_indx:16
+   \   1142  1A09              DEC.B   R1L
+   \   1144  F100              MOV.B   #0,R1H
+   \   1146  FB68              MOV.B   #104,R3L
+   \   1148  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    602              tx_buff[tx_indx++] = (unsigned char) TX_SIZE; /* tx buffer size */
+   \   114C  6A090000          MOV.B   @tx_indx:16,R1L
+   \   1150  0A09              INC.B   R1L
+   \   1152  6A890000          MOV.B   R1L,@tx_indx:16
+   \   1156  1A09              DEC.B   R1L
+   \   1158  F100              MOV.B   #0,R1H
+   \   115A  FB76              MOV.B   #118,R3L
+   \   115C  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    603              tx_buff[tx_indx++] = (unsigned char) cal_zero ;     /* cal zero */
+   \   1160  6A090000          MOV.B   @tx_indx:16,R1L
+   \   1164  0A09              INC.B   R1L
+   \   1166  6A890000          MOV.B   R1L,@tx_indx:16
+   \   116A  1A09              DEC.B   R1L
+   \   116C  F100              MOV.B   #0,R1H
+   \   116E  6A0B0001          MOV.B   @cal_zero+1:16,R3L
+   \   1172  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    604              tx_buff[tx_indx++] = (unsigned char) cal_zero >> 8 ;
+   \   1176  6A090001          MOV.B   @cal_zero+1:16,R1L
+   \   117A  F900              MOV.B   #0,R1L
+   \   117C  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   1180  0A0B              INC.B   R3L
+   \   1182  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   1186  1A0B              DEC.B   R3L
+   \   1188  F300              MOV.B   #0,R3H
+   \   118A  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    605              *((float*)&senddata[0]) = cal_gain ;              /* calibration gain */
+   \   118E  6B010002          MOV.W   @cal_gain+2:16,R1
+   \   1192  6B000000          MOV.W   @cal_gain:16,R0
+   \   1196  6FF10004          MOV.W   R1,@(4,SP)
+   \   119A  6FF00002          MOV.W   R0,@(2,SP)
+    606              tx_buff[tx_indx++] = senddata[3] ;
+   \   119E  6A090000          MOV.B   @tx_indx:16,R1L
+   \   11A2  0A09              INC.B   R1L
+   \   11A4  6A890000          MOV.B   R1L,@tx_indx:16
+   \   11A8  1A09              DEC.B   R1L
+   \   11AA  F100              MOV.B   #0,R1H
+   \   11AC  6E7B0005          MOV.B   @(5,SP),R3L
+   \   11B0  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    607              tx_buff[tx_indx++] = senddata[2] ;
+   \   11B4  6A090000          MOV.B   @tx_indx:16,R1L
+   \   11B8  0A09              INC.B   R1L
+   \   11BA  6A890000          MOV.B   R1L,@tx_indx:16
+   \   11BE  1A09              DEC.B   R1L
+   \   11C0  F100              MOV.B   #0,R1H
+   \   11C2  6E7B0004          MOV.B   @(4,SP),R3L
+   \   11C6  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    608              tx_buff[tx_indx++] = senddata[1] ;
+   \   11CA  6A090000          MOV.B   @tx_indx:16,R1L
+   \   11CE  0A09              INC.B   R1L
+   \   11D0  6A890000          MOV.B   R1L,@tx_indx:16
+   \   11D4  1A09              DEC.B   R1L
+   \   11D6  F100              MOV.B   #0,R1H
+   \   11D8  6E7B0003          MOV.B   @(3,SP),R3L
+   \   11DC  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    609              tx_buff[tx_indx++] = senddata[0] ;
+   \   11E0  6A090000          MOV.B   @tx_indx:16,R1L
+   \   11E4  0A09              INC.B   R1L
+   \   11E6  6A890000          MOV.B   R1L,@tx_indx:16
+   \   11EA  1A09              DEC.B   R1L
+   \   11EC  F100              MOV.B   #0,R1H
+   \   11EE  6E7B0002          MOV.B   @(2,SP),R3L
+   \   11F2  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    610              tx_buff[ntna] = tx_indx - ntna - 1 ;                /* length of data block */
+   \   11F6  0CE9              MOV.B   R6L,R1L
+   \   11F8  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   11FC  189B              SUB.B   R1L,R3L
+   \   11FE  8BFF              ADD.B   #255,R3L
+   \   1200  6EEB0000          MOV.B   R3L,@(tx_buff,R6)
+    611          }
+   \   1204  79020006          MOV.W   #6,R2
+   \   1208  0927              ADD.W   R2,SP
+   \   120A  6D76              POP     R6
+   \   120C  5470              RTS
+    612          
+    613          /*************************************************************************
+    614          *
+    615          * Build  packet tail
+    616          *
+    617          *************************************************************************/
+    618          void BuildTail(unsigned char type, unsigned char error)
+    619          {
+   \   120E            BuildTail:
+   \   120E  6DF6              PUSH    R6
+   \   1210  6E7E0005          MOV.B   @(5,SP),R6L
+    620          
+    621              tx_buff[tx_indx++] = type ;                 /* action end */
+   \   1214  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   1218  0A0B              INC.B   R3L
+   \   121A  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   121E  1A0B              DEC.B   R3L
+   \   1220  F300              MOV.B   #0,R3H
+   \   1222  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    622              tx_buff[tx_indx++] = error ;                /* error code */
+   \   1226  6A090000          MOV.B   @tx_indx:16,R1L
+   \   122A  0A09              INC.B   R1L
+   \   122C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   1230  1A09              DEC.B   R1L
+   \   1232  F100              MOV.B   #0,R1H
+   \   1234  6E9E0000          MOV.B   R6L,@(tx_buff,R1)
+    623          
+    624              tx_buff[4] = tx_indx >> 8 ;                /* packet len high */
+   \   1238  6A090000          MOV.B   @tx_indx:16,R1L
+   \   123C  F900              MOV.B   #0,R1L
+   \   123E  6A890004          MOV.B   R1L,@tx_buff+4:16
+    625              tx_buff[5] = tx_indx ;                          /* correct length because stx's*/
+   \   1242  6A090000          MOV.B   @tx_indx:16,R1L
+   \   1246  6A890005          MOV.B   R1L,@tx_buff+5:16
+    626          
+    627              tx_buff[tx_indx++] = CalcTxChecksum(tx_indx) ; /* Get checksum */
+   \   124A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   124E  F100              MOV.B   #0,R1H
+   \   1250  5E00154C          JSR     @CalcTxChecksum:16
+   \   1254  6A0B0000          MOV.B   @tx_indx:16,R3L
+   \   1258  0A0B              INC.B   R3L
+   \   125A  6A8B0000          MOV.B   R3L,@tx_indx:16
+   \   125E  1A0B              DEC.B   R3L
+   \   1260  F300              MOV.B   #0,R3H
+   \   1262  6EB90000          MOV.B   R1L,@(tx_buff,R3)
+    628          
+    629              tx_buff[tx_indx++] = ETX ;                  /* ETX */
+   \   1266  6A090000          MOV.B   @tx_indx:16,R1L
+   \   126A  0A09              INC.B   R1L
+   \   126C  6A890000          MOV.B   R1L,@tx_indx:16
+   \   1270  1A09              DEC.B   R1L
+   \   1272  F100              MOV.B   #0,R1H
+   \   1274  FB03              MOV.B   #3,R3L
+   \   1276  6E9B0000          MOV.B   R3L,@(tx_buff,R1)
+    630          
+    631              tx_bytes = tx_indx;                         /*bytes to send */
+   \   127A  6A090000          MOV.B   @tx_indx:16,R1L
+   \   127E  6A890000          MOV.B   R1L,@tx_bytes:16
+    632              tx_indx = 0;                                    /* reset cunter */
+   \   1282  F900              MOV.B   #0,R1L
+   \   1284  6A890000          MOV.B   R1L,@tx_indx:16
+    633              tx_complete = FALSE;
+   \   1288  F900              MOV.B   #0,R1L
+   \   128A  6A890000          MOV.B   R1L,@tx_complete:16
+    634              wait_for_pc = PC_SLOW;                      /* delay before send */
+   \   128E  F914              MOV.B   #20,R1L
+   \   1290  6A890000          MOV.B   R1L,@wait_for_pc:16
+    635              TxDriver(ON);                                   /* driver on */
+   \   1294  79010001          MOV.W   #1,R1
+   \   1298  5E000000          JSR     @TxDriver:16
+    636              Led(1, ON) ;
+   \   129C  79010001          MOV.W   #1,R1
+   \   12A0  6DF1              MOV.W   R1,@-SP
+   \   12A2  79010001          MOV.W   #1,R1
+   \   12A6  5E000000          JSR     @Led:16
+   \   12AA  0B87              ADDS.W  #2,SP
+    637          }
+   \   12AC  6D76              POP     R6
+   \   12AE  5470              RTS
+    638          
+    639          /*************************************************************************
+    640          *
+    641          * Receive eeprom data
+    642          *
+    643          *************************************************************************/
+    644          void RecEepData(short pointer)
+    645          {
+   \   12B0            RecEepData:
+   \   12B0  6DF4              PUSH    R4
+   \   12B2  6DF5              PUSH    R5
+   \   12B4  6DF6              PUSH    R6
+   \   12B6  79020030          MOV.W   #48,R2
+   \   12BA  1927              SUB.W   R2,SP
+   \   12BC  0D14              MOV.W   R1,R4
+    646          
+    647              short i, ch ;
+    648              unsigned char temp_data[PACKED_DATA_SIZE] ;
+    649              unsigned char   *e_data, *a_data ;
+    650          
+    651              ch = (rx_buff[pointer++] >> 1 ) ;                               /* get channel */
+   \   12BE  0D41              MOV.W   R4,R1
+   \   12C0  0B04              ADDS.W  #1,R4
+   \   12C2  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   12C6  110B              SHLR.B  R3L
+   \   12C8  F300              MOV.B   #0,R3H
+   \   12CA  0D35              MOV.W   R3,R5
+    652              a_data = &rx_buff[pointer] ;
+   \   12CC  79010000          MOV.W   #rx_buff,R1
+   \   12D0  0941              ADD.W   R4,R1
+   \   12D2  6FF1002E          MOV.W   R1,@(46,SP)
+    653              e_data = &rx_buff[pointer + 8] ;
+   \   12D6  79010008          MOV.W   #rx_buff+8,R1
+   \   12DA  0941              ADD.W   R4,R1
+   \   12DC  6FF1002C          MOV.W   R1,@(44,SP)
+    654          
+    655              if ( CheckEepData(e_data) && CheckADData(a_data) &&
+    656                   (rx_buff[pointer + PACKED_DATA_SIZE] & 0x01) ) { /* check legale packet */
+   \   12E0  6F71002C          MOV.W   @(44,SP),R1
+   \   12E4  5E000000          JSR     @CheckEepData:16
+   \   12E8  0C99              MOV.B   R1L,R1L
+   \   12EA  4756              BEQ     ?0242
+   \   12EC  6F71002E          MOV.W   @(46,SP),R1
+   \   12F0  5E000000          JSR     @CheckADData:16
+   \   12F4  0C99              MOV.B   R1L,R1L
+   \   12F6  474A              BEQ     ?0242
+   \   12F8  6E490028          MOV.B   @(rx_buff+40,R4),R1L
+   \   12FC  E901              AND.B   #1,R1L
+   \   12FE  4742              BEQ     ?0242
+   \   1300            ?0244:
+   \   1300            ?0243:
+   \   1300            ?0241:
+    657                  for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   1300  1966              SUB.W   R6,R6
+   \   1302            ?0246:
+   \   1302  79010028          MOV.W   #40,R1
+   \   1306  1D16              CMP.W   R1,R6
+   \   1308  4C22              BGE     ?0245
+   \   130A            ?0247:
+    658                      packed_data[ch][i] = rx_buff[pointer++];            /* copy data */
+   \   130A  0D41              MOV.W   R4,R1
+   \   130C  0B04              ADDS.W  #1,R4
+   \   130E  6DF1              MOV.W   R1,@-SP
+   \   1310  0D51              MOV.W   R5,R1
+   \   1312  79030028          MOV.W   #40,R3
+   \   1316  5E000000          JSR     @?SS_MUL_L02
+   \   131A  0D63              MOV.W   R6,R3
+   \   131C  0913              ADD.W   R1,R3
+   \   131E  6D71              MOV.W   @SP+,R1
+   \   1320  6E180000          MOV.B   @(rx_buff,R1),R0L
+   \   1324  6EB80000          MOV.B   R0L,@(packed_data,R3)
+   \   1328  0B06              ADDS.W  #1,R6
+    659                  }
+    660                  eep_type[ch] &= ~0x0f ;
+   \   132A  40D6              BRA     ?0246
+   \   132C            ?0245:
+   \   132C  6E590000          MOV.B   @(eep_type,R5),R1L
+   \   1330  E9F0              AND.B   #240,R1L
+   \   1332  6ED90000          MOV.B   R1L,@(eep_type,R5)
+    661                  eep_type[ch] |= 0x09 ;               /* use PC data */
+   \   1336  6E590000          MOV.B   @(eep_type,R5),R1L
+   \   133A  C909              OR.B    #9,R1L
+   \   133C  6ED90000          MOV.B   R1L,@(eep_type,R5)
+    662              } else {
+   \   1340  4014              BRA     ?0249
+   \   1342            ?0242:
+    663                  eep_type[ch] &= ~0x0f ;
+   \   1342  6E590000          MOV.B   @(eep_type,R5),R1L
+   \   1346  E9F0              AND.B   #240,R1L
+   \   1348  6ED90000          MOV.B   R1L,@(eep_type,R5)
+    664                  eep_type[ch] |= 0x02 ;                          /* fail from pc */
+   \   134C  6E590000          MOV.B   @(eep_type,R5),R1L
+   \   1350  C902              OR.B    #2,R1L
+   \   1352  6ED90000          MOV.B   R1L,@(eep_type,R5)
+   \   1356            ?0249:
+    665              }
+    666          }
+   \   1356  79020030          MOV.W   #48,R2
+   \   135A  0927              ADD.W   R2,SP
+   \   135C  6D76              POP     R6
+   \   135E  6D75              POP     R5
+   \   1360  6D74              POP     R4
+   \   1362  5470              RTS
+    667          
+    668          
+    669          /*************************************************************************
+    670          *
+    671          * Receive offset and gain
+    672          *
+    673          *************************************************************************/
+    674          void RecOGData(unsigned char pointer)
+    675          {
+   \   1364            RecOGData:
+   \   1364  6DF4              PUSH    R4
+   \   1366  6DF5              PUSH    R5
+   \   1368  6DF6              PUSH    R6
+   \   136A  79020006          MOV.W   #6,R2
+   \   136E  1927              SUB.W   R2,SP
+   \   1370  0C9E              MOV.B   R1L,R6L
+    676          
+    677              short i, number, channel ;
+    678              float gai;
+    679          
+    680              number = rx_buff[++pointer] / 5 ;   /* number of channels (5 bytes each ch) */
+   \   1372  8E01              ADD.B   #1,R6L
+   \   1374  0CE9              MOV.B   R6L,R1L
+   \   1376  F100              MOV.B   #0,R1H
+   \   1378  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   137C  F905              MOV.B   #5,R1L
+   \   137E  F300              MOV.B   #0,R3H
+   \   1380  5193              DIVXU   R1L,R3
+   \   1382  F300              MOV.B   #0,R3H
+   \   1384  6FF30004          MOV.W   R3,@(4,SP)
+    681              for ( i = 0; i < number; i++ ) {
+   \   1388  1944              SUB.W   R4,R4
+   \   138A            ?0251:
+   \   138A  6F710004          MOV.W   @(4,SP),R1
+   \   138E  1D14              CMP.W   R1,R4
+   \   1390  4D04              BLT     $+6
+   \   1392  5A00143A          JMP     @?0250:16
+   \   1396            ?0252:
+    682                  channel = rx_buff[++pointer] ;         /* Remember channel */
+   \   1396  8E01              ADD.B   #1,R6L
+   \   1398  0CE9              MOV.B   R6L,R1L
+   \   139A  F100              MOV.B   #0,R1H
+   \   139C  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   13A0  F300              MOV.B   #0,R3H
+   \   13A2  0D35              MOV.W   R3,R5
+    683                  /* Must be like this due to error in compiler, compiles from right to left!!! */
+    684                  offset[channel] = (rx_buff[++pointer] * 256) ;
+   \   13A4  8E01              ADD.B   #1,R6L
+   \   13A6  0CE9              MOV.B   R6L,R1L
+   \   13A8  F100              MOV.B   #0,R1H
+   \   13AA  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   13AE  F300              MOV.B   #0,R3H
+   \   13B0  0CB3              MOV.B   R3L,R3H
+   \   13B2  FB00              MOV.B   #0,R3L
+   \   13B4  0D51              MOV.W   R5,R1
+   \   13B6  0911              ADD.W   R1,R1
+   \   13B8  6F930000          MOV.W   R3,@(offset,R1)
+    685                  offset[channel] += rx_buff[++pointer] ;
+   \   13BC  8E01              ADD.B   #1,R6L
+   \   13BE  0CE9              MOV.B   R6L,R1L
+   \   13C0  F100              MOV.B   #0,R1H
+   \   13C2  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   13C6  F300              MOV.B   #0,R3H
+   \   13C8  0D51              MOV.W   R5,R1
+   \   13CA  0911              ADD.W   R1,R1
+   \   13CC  6F100000          MOV.W   @(offset,R1),R0
+   \   13D0  0930              ADD.W   R3,R0
+   \   13D2  6F900000          MOV.W   R0,@(offset,R1)
+    686                  /* Must be like this due to error in compiler, compiles from right to left!!! */
+    687                  gai = (float)(rx_buff[++pointer]) * 256.0 ;
+   \   13D6  8E01              ADD.B   #1,R6L
+   \   13D8  0CE9              MOV.B   R6L,R1L
+   \   13DA  F100              MOV.B   #0,R1H
+   \   13DC  6E190000          MOV.B   @(rx_buff,R1),R1L
+   \   13E0  F100              MOV.B   #0,R1H
+   \   13E2  1900              SUB.W   R0,R0
+   \   13E4  5E000000          JSR     @?UL_TO_FLT_L04
+   \   13E8  1933              SUB.W   R3,R3
+   \   13EA  79024380          MOV.W   #17280,R2
+   \   13EE  5E000000          JSR     @?F_MUL_L04
+   \   13F2  6FF10002          MOV.W   R1,@(2,SP)
+   \   13F6  69F0              MOV.W   R0,@SP
+    688                  gai = (float)(rx_buff[++pointer]) ;
+    689                  gain[channel] = 1.0 + (gai / 100000.0) ;   /*gain*/
+   \   13F8  8E01              ADD.B   #1,R6L
+   \   13FA  0CE9              MOV.B   R6L,R1L
+   \   13FC  F100              MOV.B   #0,R1H
+   \   13FE  6E190000          MOV.B   @(rx_buff,R1),R1L
+   \   1402  F100              MOV.B   #0,R1H
+   \   1404  1900              SUB.W   R0,R0
+   \   1406  5E000000          JSR     @?UL_TO_FLT_L04
+   \   140A  6FF10002          MOV.W   R1,@(2,SP)
+   \   140E  69F0              MOV.W   R0,@SP
+   \   1410  79035000          MOV.W   #20480,R3
+   \   1414  790247C3          MOV.W   #18371,R2
+   \   1418  5E000000          JSR     @?F_DIV_L04
+   \   141C  1933              SUB.W   R3,R3
+   \   141E  79023F80          MOV.W   #16256,R2
+   \   1422  5E000000          JSR     @?F_ADD_L04
+   \   1426  0D53              MOV.W   R5,R3
+   \   1428  0933              ADD.W   R3,R3
+   \   142A  0933              ADD.W   R3,R3
+   \   142C  6FB10002          MOV.W   R1,@(gain+2,R3)
+   \   1430  6FB00000          MOV.W   R0,@(gain,R3)
+   \   1434  0B04              ADDS.W  #1,R4
+    690              }
+    691          }
+   \   1436  5A00138A          JMP     @?0251:16
+   \   143A            ?0250:
+   \   143A  79020006          MOV.W   #6,R2
+   \   143E  0927              ADD.W   R2,SP
+   \   1440  6D76              POP     R6
+   \   1442  6D75              POP     R5
+   \   1444  6D74              POP     R4
+   \   1446  5470              RTS
+    692          
+    693          
+    694          /*************************************************************************
+    695          *
+    696          * Receive setup
+    697          *
+    698          *************************************************************************/
+    699          void RecSetupData(unsigned char pointer)
+    700          {
+   \   1448            RecSetupData:
+   \   1448  6DF4              PUSH    R4
+   \   144A  6DF5              PUSH    R5
+   \   144C  6DF6              PUSH    R6
+   \   144E  7902002C          MOV.W   #44,R2
+   \   1452  1927              SUB.W   R2,SP
+   \   1454  0C9C              MOV.B   R1L,R4L
+    701          
+    702              short i, test ;
+    703              unsigned char d_buff[PACKED_DATA_SIZE] ;
+    704          
+    705              for ( i = 0; i < NOIOCH; i++ ) {
+   \   1456  1966              SUB.W   R6,R6
+   \   1458            ?0255:
+   \   1458  7901000E          MOV.W   #14,R1
+   \   145C  1D16              CMP.W   R1,R6
+   \   145E  4C24              BGE     ?0254
+   \   1460            ?0256:
+    706                  ch_stat[i] &= ~0x1c ;
+   \   1460  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   1464  E9E3              AND.B   #227,R1L
+   \   1466  6EE90000          MOV.B   R1L,@(ch_stat,R6)
+    707                  ch_stat[i] |= (rx_buff[pointer++] & 0x1c);  /* Setup for channel */
+   \   146A  0CC9              MOV.B   R4L,R1L
+   \   146C  0A0C              INC.B   R4L
+   \   146E  F100              MOV.B   #0,R1H
+   \   1470  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   1474  EB1C              AND.B   #28,R3L
+   \   1476  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   147A  14B9              OR.B    R3L,R1L
+   \   147C  6EE90000          MOV.B   R1L,@(ch_stat,R6)
+   \   1480  0B06              ADDS.W  #1,R6
+    708              }
+    709              if ( rx_buff[pointer] ) {
+   \   1482  40D4              BRA     ?0255
+   \   1484            ?0254:
+   \   1484  0CC9              MOV.B   R4L,R1L
+   \   1486  F100              MOV.B   #0,R1H
+   \   1488  6E1B0000          MOV.B   @(rx_buff,R1),R3L
+   \   148C  4604              BNE     $+6
+   \   148E  5A00152C          JMP     @?0259:16
+   \   1492            ?0258:
+    710                  for ( i = 0; i < NOIOCH; i++ ) {
+   \   1492  1966              SUB.W   R6,R6
+   \   1494            ?0261:
+   \   1494  7901000E          MOV.W   #14,R1
+   \   1498  1D16              CMP.W   R1,R6
+   \   149A  4C0E              BGE     ?0260
+   \   149C            ?0262:
+    711                      packed_data[7][i+8] = (ch_stat[i] & 0x0c) ; /* copy setup to eeprom */
+   \   149C  6E690000          MOV.B   @(ch_stat,R6),R1L
+   \   14A0  E90C              AND.B   #12,R1L
+   \   14A2  6EE90120          MOV.B   R1L,@(packed_data+288,R6)
+   \   14A6  0B06              ADDS.W  #1,R6
+    712                  }
+    713                  MakeEepChksum(&packed_data[7][8]) ;
+   \   14A8  40EA              BRA     ?0261
+   \   14AA            ?0260:
+   \   14AA  79010120          MOV.W   #packed_data+288,R1
+   \   14AE  5E000000          JSR     @MakeEepChksum:16
+    714          
+    715                  for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   14B2  1966              SUB.W   R6,R6
+   \   14B4            ?0265:
+   \   14B4  79010028          MOV.W   #40,R1
+   \   14B8  1D16              CMP.W   R1,R6
+   \   14BA  4C10              BGE     ?0264
+   \   14BC            ?0266:
+    716                      d_buff[i] = packed_data[7][i] ;                 /*copy buffer */
+   \   14BC  0D61              MOV.W   R6,R1
+   \   14BE  0971              ADD.W   SP,R1
+   \   14C0  6E6B0118          MOV.B   @(packed_data+280,R6),R3L
+   \   14C4  6E9B0004          MOV.B   R3L,@(4,R1)
+   \   14C8  0B06              ADDS.W  #1,R6
+    717                  }
+    718                  test = TRUE ;
+   \   14CA  40E8              BRA     ?0265
+   \   14CC            ?0264:
+   \   14CC  79050001          MOV.W   #1,R5
+    719                  if ( !Eeprom(7, WRITE_SP) ) {
+   \   14D0  F90F              MOV.B   #15,R1L
+   \   14D2  6DF1              MOV.W   R1,@-SP
+   \   14D4  F907              MOV.B   #7,R1L
+   \   14D6  5E000000          JSR     @Eeprom:16
+   \   14DA  0B87              ADDS.W  #2,SP
+   \   14DC  0D11              MOV.W   R1,R1
+   \   14DE  4602              BNE     ?0269
+   \   14E0            ?0268:
+    720                      test= FALSE ;                               /* write data to scratchpad */
+   \   14E0  1955              SUB.W   R5,R5
+   \   14E2            ?0269:
+    721                  }
+    722                  if ( !Eeprom(7, READ_SP) ) {
+   \   14E2  F9AA              MOV.B   #170,R1L
+   \   14E4  6DF1              MOV.W   R1,@-SP
+   \   14E6  F907              MOV.B   #7,R1L
+   \   14E8  5E000000          JSR     @Eeprom:16
+   \   14EC  0B87              ADDS.W  #2,SP
+   \   14EE  0D11              MOV.W   R1,R1
+   \   14F0  4602              BNE     ?0271
+   \   14F2            ?0270:
+    723                      test = FALSE ;                          /* Read data from scratchpad */
+   \   14F2  1955              SUB.W   R5,R5
+   \   14F4            ?0271:
+    724                  }
+    725                  for ( i = 0; i < PACKED_DATA_SIZE; i++ ) {
+   \   14F4  1966              SUB.W   R6,R6
+   \   14F6            ?0273:
+   \   14F6  79010028          MOV.W   #40,R1
+   \   14FA  1D16              CMP.W   R1,R6
+   \   14FC  4C16              BGE     ?0272
+   \   14FE            ?0274:
+    726                      if ( d_buff[i] != packed_data[7][i] ) {
+   \   14FE  0D61              MOV.W   R6,R1
+   \   1500  0971              ADD.W   SP,R1
+   \   1502  6E6B0118          MOV.B   @(packed_data+280,R6),R3L
+   \   1506  6E180004          MOV.B   @(4,R1),R0L
+   \   150A  1CB8              CMP.B   R3L,R0L
+   \   150C  4702              BEQ     ?0277
+   \   150E            ?0276:
+    727                          test = FALSE;                                  /*compare buffer */
+   \   150E  1955              SUB.W   R5,R5
+   \   1510            ?0277:
+   \   1510  0B06              ADDS.W  #1,R6
+    728                      }
+    729                  }
+    730                  if ( test == TRUE ) {                             /* write to eep OK */
+   \   1512  40E2              BRA     ?0273
+   \   1514            ?0272:
+   \   1514  79010001          MOV.W   #1,R1
+   \   1518  1D15              CMP.W   R1,R5
+   \   151A  4610              BNE     ?0279
+   \   151C            ?0278:
+    731                      if ( Eeprom(7, COPY_SP_NV) ) {    /* copy data to NV-ram */
+   \   151C  F955              MOV.B   #85,R1L
+   \   151E  6DF1              MOV.W   R1,@-SP
+   \   1520  F907              MOV.B   #7,R1L
+   \   1522  5E000000          JSR     @Eeprom:16
+   \   1526  0B87              ADDS.W  #2,SP
+   \   1528  0D11              MOV.W   R1,R1
+   \   152A  4700              BEQ     ?0281
+   \   152C            ?0280:
+   \   152C            ?0281:
+   \   152C            ?0279:
+   \   152C            ?0259:
+    732                      }
+    733                  }
+    734              }
+    735              ad_state = IDLE ;                               /* Restart convertion */
+   \   152C  F907              MOV.B   #7,R1L
+   \   152E  6A890000          MOV.B   R1L,@ad_state:16
+    736              curr_ad_ch = NOIOCH  ;
+   \   1532  F90E              MOV.B   #14,R1L
+   \   1534  6A890000          MOV.B   R1L,@curr_ad_ch:16
+    737              ad_mode = 0x04 ;                            /* start with press.*/
+   \   1538  F904              MOV.B   #4,R1L
+   \   153A  6A890000          MOV.B   R1L,@ad_mode:16
+    738          
+    739          }
+   \   153E  7902002C          MOV.W   #44,R2
+   \   1542  0927              ADD.W   R2,SP
+   \   1544  6D76              POP     R6
+   \   1546  6D75              POP     R5
+   \   1548  6D74              POP     R4
+   \   154A  5470              RTS
+    740          
+    741          /*************************************************************************
+    742          *
+    743          * Calculate tx checksum
+    744          *
+    745          *************************************************************************/
+    746          unsigned char CalcTxChecksum(short pack_len)
+    747          {
+   \   154C            CalcTxChecksum:
+   \   154C  6DF4              PUSH    R4
+   \   154E  6DF5              PUSH    R5
+   \   1550  6DF6              PUSH    R6
+   \   1552  0D14              MOV.W   R1,R4
+    748          
+    749              int             cnt ;
+    750              unsigned char   csum ;
+    751          
+    752              csum = 0 ;
+   \   1554  FD00              MOV.B   #0,R5L
+    753              for ( cnt = 2 ; cnt < (pack_len) ; cnt++ ) {
+   \   1556  79060002          MOV.W   #2,R6
+   \   155A            ?0283:
+   \   155A  1D46              CMP.W   R4,R6
+   \   155C  4C12              BGE     ?0282
+   \   155E            ?0284:
+    754                  csum = crc[csum ^ tx_buff[cnt]] ;
+   \   155E  6E690000          MOV.B   @(tx_buff,R6),R1L
+   \   1562  15D9              XOR.B   R5L,R1L
+   \   1564  F100              MOV.B   #0,R1H
+   \   1566  0911              ADD.W   R1,R1
+   \   1568  6E1D0001          MOV.B   @(crc+1,R1),R5L
+   \   156C  0B06              ADDS.W  #1,R6
+    755              }
+    756              return csum ;
+   \   156E  40EA              BRA     ?0283
+   \   1570            ?0282:
+   \   1570  0CD9              MOV.B   R5L,R1L
+    757          }
+   \   1572  6D76              POP     R6
+   \   1574  6D75              POP     R5
+   \   1576  6D74              POP     R4
+   \   1578  5470              RTS
+    758          
+    759          
+   \   157A                    END
+
+Errors: none
+Warnings: none
+Code size: 5498
+Constant size: 0
+Static variable size: Data(0) Iram(0)
+

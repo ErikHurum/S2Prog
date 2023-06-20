@@ -1,0 +1,1694 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:16 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\mx29LV160TB.cpp                    #
+#    Command line    =  D:\S2Prog\TXU\src\mx29LV160TB.cpp --fpu None -D      #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\mx29LV160TB.lst             #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\mx29LV160TB.r79              #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\mx29LV160TB.cpp
+      1          #include <string.h>
+      2          #include "def.h"
+      3          #include "option.h"
+      4          #include "2410addr.h"
+      5          #include "2410lib.h"
+      6          #include "2410slib.h"
+      7          #include "rtos.h"
+      8          #include "mmu.h"
+      9          #include "ANPRO10Const.h"
+     10          #include "TSNConstants.h"
+     11          #pragma diag_suppress=Pa082
+     12          extern short CurrentDeviceId;
+     13          
+
+   \                                 In segment DATA_I, align 4, align-sorted
+     14          OS_RSEMA FlashSema;
+     15          
+     16          
+     17          bool MX29LV_ProgFlash(U32 realAddr, U32 data);
+     18          bool MX29LV_EraseSector(int targetAddr);
+     19          bool MX29LV_EraseSectors(int FirstSector, int LastSector);
+     20          
+     21          bool MX29LV_EraseChip(void);
+     22          bool MX29LV_CheckId(void);
+     23          bool BlankCheck(int targetAddr, int targetSize);
+     24          bool WaitForFlash(void);
+     25          
+     26          
+     27          #define FLASH_READY_MASK	0x600
+     28          #define FLASH_MASK_Q7		0x800080
+     29          #define FLASH_MASK_Q6		0x400040
+     30          #define FLASH_MASK_Q5		0x200020
+     31          #define FLASH_MASK_Q4		0x100010
+     32          #define FLASH_MASK_Q3		0x080008
+     33          #define FLASH_MASK_Q2		0x040004
+     34          #define FLASH_MASK_Q1		0x020002
+     35          #define FIRST_CMD		  	0xaa00aa
+     36          #define SECOND_CMD			0x550055
+     37          #define PROGRAM_CMD			0xa000a0
+     38          #define ERASE_CMD		  	0x800080
+     39          #define ERASE_ALL_CMD		0x100010
+     40          #define ERASE_SEC_CMD		0x300030
+     41          #define ID_CMD			 	0x900090
+     42          #define RESET_CMD			0xf000f0
+     43          
+     44          U32 FlashBaseAddress = 0x04000000;
+   \                     FlashBaseAddress:
+   \   00000000                      DS8 4
+   \   00000004                      REQUIRE `?<Initializer for FlashBaseAddress>`
+     45          
+     46          // Because KS32C41000_A1 is connected to AM29LV800_A0,
+     47          // the addr parameter has to be a WORD address, so called in AMD specification.
+     48          
+     49          #define _WR(addr,data)  *((volatile U32*)(FlashBaseAddress+addr))=(U32)data
+     50          #define _RD(addr)       ( *((volatile U32*)(FlashBaseAddress+addr)) )
+     51          //#define _WR(addr,data)  *((U32 *)(addr))=(U32)data
+     52          //#define _RD(addr)       ( *((U32 *)(addr)) )
+     53          #define _RESET()	_WR(0x0,0x00f000f0)
+     54          
+     55          
+     56          volatile U32 *firstAddr = (volatile U32 *)(FlashBaseAddress + (0x555 << 2)); //(ulong *)(FlashBaseAddress+0x1554);
+   \                     firstAddr:
+   \   00000004                      DS8 4
+   \   00000008                      REQUIRE `?<Initializer for firstAddr>`
+     57          volatile U32 *secondAddr = (volatile U32 *)(FlashBaseAddress + (0x2aa << 2)); //	(ulong *)(FlashBaseAddress+0xaa8);
+   \                     secondAddr:
+   \   00000008                      DS8 4
+   \   0000000C                      REQUIRE `?<Initializer for secondAddr>`
+     58          
+     59          //static U32 downloadProgramSize  = 500000;
+     60          
+     61          #ifdef ANBOOTLOADER
+     62          extern "C"
+     63          {
+     64          //extern char ProgramData[];
+     65          //extern int ProgramDataSize;
+     66          }
+     67          #endif
+     68          
+     69          U32 SectorTable1[] = {  // MX29LVB 32bit satt opp i byte mode
+     70              0x00000000 << 1,
+     71              0x00004000 << 1,
+     72              0x00006000 << 1,
+     73              0x00008000 << 1,
+     74              0x00010000 << 1, // First program sector 5
+     75              0x00020000 << 1,
+     76              0x00030000 << 1,
+     77              0x00040000 << 1,
+     78              0x00050000 << 1,
+     79              0x00060000 << 1,
+     80              0x00070000 << 1,
+     81              0x00080000 << 1,
+     82              0x00090000 << 1,
+     83              0x000a0000 << 1,
+     84              0x000b0000 << 1,
+     85              0x000c0000 << 1,
+     86              0x000d0000 << 1,
+     87              0x000e0000 << 1,
+     88              0x000f0000 << 1,
+     89              0x00100000 << 1,
+     90              0x00110000 << 1,
+     91              0x00120000 << 1,
+     92              0x00130000 << 1, // Last program sector 22
+     93              0x00140000 << 1, // First config sector 23
+     94              0x00150000 << 1,
+     95              0x00160000 << 1,
+     96              0x00170000 << 1, // Last config sector 26
+     97              0x00180000 << 1, // First config backup 27
+     98              0x00190000 << 1,
+     99              0x001a0000 << 1,
+    100              0x001b0000 << 1, // Last config backup sector 30
+    101              0x001c0000 << 1, // Setting start 31
+    102              0x001d0000 << 1, // Setting end   32
+    103              0x001e0000 << 1, // Setting start backup 33
+    104              0x001f0000 << 1, // Setting end backup 34
+    105              0x00200000 << 1, // TDU settings 35
+    106              0x00210000 << 1, // TDU settings 36 ( Does not exist ), But will give correct Erase
+    107          };
+    108          
+    109          U32 SectorTable2[] = {  // MX29LVB 32bit satt opp i byte mode
+    110              0x00000000 << 1,
+    111              0x00002000 << 1,
+    112              0x00004000 << 1,
+    113              0x00006000 << 1,
+    114              0x00008000 << 1,
+    115              0x0000A000 << 1,
+    116              0x0000C000 << 1,
+    117              0x0000E000 << 1,
+    118              0x00010000 << 1,
+    119              0x00020000 << 1, // First program sector 10
+    120              0x00030000 << 1,
+    121              0x00040000 << 1,
+    122              0x00050000 << 1,
+    123              0x00060000 << 1,
+    124              0x00070000 << 1,
+    125              0x00080000 << 1,
+    126              0x00090000 << 1,
+    127              0x000a0000 << 1,
+    128              0x000b0000 << 1,
+    129              0x000c0000 << 1,
+    130              0x000d0000 << 1,
+    131              0x000e0000 << 1,
+    132              0x000f0000 << 1,
+    133              0x00100000 << 1,
+    134              0x00110000 << 1,
+    135              0x00120000 << 1,  // Program End Sector 25
+    136              0x00130000 << 1, // First config sector 26
+    137              0x00140000 << 1,
+    138              0x00150000 << 1,
+    139              0x00160000 << 1, // Last config sector 29
+    140              0x00170000 << 1, // First config backup 30
+    141              0x00180000 << 1,
+    142              0x00190000 << 1,
+    143              0x001a0000 << 1, // Last config backup sector 33
+    144              0x001b0000 << 1,  // Settings 1
+    145              0x001c0000 << 1,
+    146              0x001d0000 << 1,  // Settings 2
+    147              0x001e0000 << 1,
+    148              0x001f0000 << 1,  // 38, Local settings
+    149              0x00200000 << 1,
+    150              0x00210000 << 1,
+    151              0x00220000 << 1,
+    152              0x00230000 << 1,
+    153              0x00240000 << 1,
+    154              0x00250000 << 1,
+    155              0x00260000 << 1,
+    156              0x00270000 << 1,
+    157              0x00280000 << 1,
+    158              0x00290000 << 1,
+    159              0x002a0000 << 1,
+    160              0x002b0000 << 1,
+    161              0x002c0000 << 1,
+    162              0x002d0000 << 1,
+    163              0x002e0000 << 1,
+    164              0x002f0000 << 1,
+    165              0x00300000 << 1,
+    166              0x00310000 << 1,
+    167              0x00320000 << 1,
+    168              0x00330000 << 1,
+    169              0x00340000 << 1,
+    170              0x00350000 << 1,
+    171              0x00360000 << 1,
+    172              0x00370000 << 1,
+    173              0x00380000 << 1,
+    174              0x00390000 << 1,
+    175              0x003a0000 << 1,
+    176              0x003b0000 << 1,
+    177              0x003c0000 << 1,
+    178              0x003d0000 << 1,
+    179              0x003e0000 << 1,
+    180              0x003f0000 << 1,
+    181              0x00400000 << 1,
+    182              0x00410000 << 1,
+    183              0x00420000 << 1,
+    184              0x00430000 << 1,
+    185              0x00440000 << 1,
+    186              0x00450000 << 1,
+    187              0x00460000 << 1,
+    188              0x00470000 << 1,
+    189              0x00480000 << 1,
+    190              0x00490000 << 1,
+    191              0x004a0000 << 1,
+    192              0x004b0000 << 1,
+    193              0x004c0000 << 1,
+    194              0x004d0000 << 1,
+    195              0x004e0000 << 1,
+    196              0x004f0000 << 1,
+    197              0x00500000 << 1,
+    198              0x00510000 << 1,
+    199              0x00520000 << 1,
+    200              0x00530000 << 1,
+    201              0x00540000 << 1,
+    202              0x00550000 << 1,
+    203              0x00560000 << 1,
+    204              0x00570000 << 1,
+    205              0x00580000 << 1,
+    206              0x00590000 << 1,
+    207              0x005a0000 << 1,
+    208              0x005b0000 << 1,
+    209              0x005c0000 << 1,
+    210              0x005d0000 << 1,
+    211              0x005e0000 << 1,
+    212              0x005f0000 << 1,
+    213              0x00600000 << 1,
+    214              0x00610000 << 1,
+    215              0x00620000 << 1,
+    216              0x00630000 << 1,
+    217              0x00640000 << 1,
+    218              0x00650000 << 1,
+    219              0x00660000 << 1,
+    220              0x00670000 << 1,
+    221              0x00680000 << 1,
+    222              0x00690000 << 1,
+    223              0x006a0000 << 1,
+    224              0x006b0000 << 1,
+    225              0x006c0000 << 1,
+    226              0x006d0000 << 1,
+    227              0x006e0000 << 1,
+    228              0x006f0000 << 1,
+    229              0x00700000 << 1,
+    230              0x00710000 << 1,
+    231              0x00720000 << 1,
+    232              0x00730000 << 1,
+    233              0x00740000 << 1,
+    234              0x00750000 << 1,
+    235              0x00760000 << 1,
+    236              0x00770000 << 1,
+    237              0x00780000 << 1,
+    238              0x00790000 << 1,
+    239              0x007a0000 << 1,
+    240              0x007b0000 << 1,
+    241              0x007c0000 << 1,
+    242              0x007d0000 << 1,
+    243              0x007e0000 << 1,
+    244              0x007f0000 << 1,
+    245          };
+    246          
+    247          //#pragma pack(1)
+    248          bool IdOk = false;
+    249          U32 *SectorTable = NULL;
+   \                     SectorTable:
+   \   0000000C                      DS8 4
+   \   00000010                      REQUIRE `?<Initializer for SectorTable>`
+    250          U32 SectorBootStart = 0;
+   \                     SectorBootStart:
+   \   00000010                      DS8 4
+   \   00000014                      REQUIRE `?<Initializer for SectorBootStart>`
+    251          U32 SectorBootEnd = 0;
+   \                     SectorBootEnd:
+   \   00000014                      DS8 4
+   \   00000018                      REQUIRE `?<Initializer for SectorBootEnd>`
+    252          U32 SectorProgStart = 0;
+   \                     SectorProgStart:
+   \   00000018                      DS8 4
+   \   0000001C                      REQUIRE `?<Initializer for SectorProgStart>`
+    253          U32 SectorProgEnd = 0;
+   \                     SectorProgEnd:
+   \   0000001C                      DS8 4
+   \   00000020                      REQUIRE `?<Initializer for SectorProgEnd>`
+    254          U32 SectorConfigStart = 0;
+   \                     SectorConfigStart:
+   \   00000020                      DS8 4
+   \   00000024                      REQUIRE `?<Initializer for SectorConfigStart>`
+    255          U32 SectorConfigEnd = 0;
+   \                     SectorConfigEnd:
+   \   00000024                      DS8 4
+   \   00000028                      REQUIRE `?<Initializer for SectorConfigEnd>`
+    256          U32 SectorConfigBakStart = 0;
+   \                     SectorConfigBakStart:
+   \   00000028                      DS8 4
+   \   0000002C                      REQUIRE `?<Initializer for SectorConfigBakStart>`
+    257          U32 SectorConfigBakEnd = 0;
+   \                     SectorConfigBakEnd:
+   \   0000002C                      DS8 4
+   \   00000030                      REQUIRE `?<Initializer for SectorConfigBakEnd>`
+    258          U32 SectorSettings1Start = 0;
+   \                     SectorSettings1Start:
+   \   00000030                      DS8 4
+   \   00000034                      REQUIRE `?<Initializer for SectorSettings1Start>`
+    259          U32 SectorSettings1End = 0;
+   \                     SectorSettings1End:
+   \   00000034                      DS8 4
+   \   00000038                      REQUIRE `?<Initializer for SectorSettings1End>`
+    260          U32 SectorSettings2Start = 0;
+   \                     SectorSettings2Start:
+   \   00000038                      DS8 4
+   \   0000003C                      REQUIRE `?<Initializer for SectorSettings2Start>`
+    261          U32 SectorSettings2End = 0;
+   \                     SectorSettings2End:
+   \   0000003C                      DS8 4
+   \   00000040                      REQUIRE `?<Initializer for SectorSettings2End>`
+    262          U32 SectorLocalSettings = 0;
+   \                     SectorLocalSettings:
+   \   00000040                      DS8 4
+   \   00000044                      REQUIRE `?<Initializer for SectorLocalSettings>`
+   \                     IdOk:
+   \   00000044                      DS8 1
+   \   00000045                      REQUIRE `?<Initializer for IdOk>`
+   \   00000045                      DS8 3
+   \                     FlashSema:
+   \   00000048                      DS8 16
+   \   00000058                      REQUIRE `?<Initializer for FlashSema>`
+   \                     SectorTable1:
+   \   00000058                      DS8 148
+   \   000000EC                      REQUIRE `?<Initializer for SectorTable1>`
+   \                     SectorTable2:
+   \   000000EC                      DS8 540
+   \   00000308                      REQUIRE `?<Initializer for SectorTable2>`
+    263          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    264          void SetFlashSectorTable(void) {
+    265              switch (GlobalDeviceHWId) {
+   \                     ??SetFlashSectorTable:
+   \   00000000   ........           LDR      R0,??DataTable24  ;; FlashBaseAddress
+   \   00000004   10002DE9           PUSH     {R4}
+   \   00000008   ........           LDR      R4,??DataTable5  ;; GlobalDeviceHWId
+   \   0000000C   1E10A0E3           MOV      R1,#+30
+   \   00000010   F040D4E1           LDRSH    R4,[R4, #+0]
+   \   00000014   1A20A0E3           MOV      R2,#+26
+   \   00000018   0030A0E3           MOV      R3,#+0
+   \   0000001C   000054E3           CMP      R4,#+0
+   \   00000020   02405412           SUBSNE   R4,R4,#+2
+   \   00000024   1400001A           BNE      ??SetFlashSectorTable_1
+    266              case TCU_R1:
+    267              case TDU_R1:
+    268                  SectorTable = SectorTable1;
+   \   00000028   584080E2           ADD      R4,R0,#+88
+   \   0000002C   0C4080E5           STR      R4,[R0, #+12]
+    269                  SectorBootStart = SECTOR_BOOT_START_R1;
+   \   00000030   103080E5           STR      R3,[R0, #+16]
+    270                  SectorBootEnd = SECTOR_BOOT_END_R1;
+   \   00000034   0530A0E3           MOV      R3,#+5
+   \   00000038   143080E5           STR      R3,[R0, #+20]
+    271                  SectorProgStart = SECTOR_PROG_START_R1;
+   \   0000003C   0630A0E3           MOV      R3,#+6
+   \   00000040   183080E5           STR      R3,[R0, #+24]
+    272                  SectorProgEnd = SECTOR_PROG_END_R1;
+   \   00000044   1630A0E3           MOV      R3,#+22
+   \   00000048   1C3080E5           STR      R3,[R0, #+28]
+    273                  SectorConfigStart = SECTOR_CONFIG_START_R1;
+   \   0000004C   1730A0E3           MOV      R3,#+23
+   \   00000050   203080E5           STR      R3,[R0, #+32]
+    274                  SectorConfigEnd = SECTOR_CONFIG_END_R1;
+   \   00000054   242080E5           STR      R2,[R0, #+36]
+    275                  SectorConfigBakStart = SECTOR_CONFIG_BAK_START_R1;
+   \   00000058   1B20A0E3           MOV      R2,#+27
+   \   0000005C   282080E5           STR      R2,[R0, #+40]
+    276                  SectorConfigBakEnd = SECTOR_CONFIG_BAK_END_R1;
+   \   00000060   2C1080E5           STR      R1,[R0, #+44]
+    277                  SectorSettings1Start = SECTOR_SETTINGS1_START_R1;
+   \   00000064   1F10A0E3           MOV      R1,#+31
+    278                  SectorSettings1End = SECTOR_SETTINGS1_END_R1;
+   \   00000068   2020A0E3           MOV      R2,#+32
+    279                  SectorSettings2Start = SECTOR_SETTINGS2_START_R1;
+   \   0000006C   2130A0E3           MOV      R3,#+33
+    280                  SectorSettings2End = SECTOR_SETTINGS2_END_R1;
+   \   00000070   22C0A0E3           MOV      R12,#+34
+    281                  SectorLocalSettings = SECTOR_LOCAL_SETTINGS_START_R1;
+   \   00000074   1540A0E3           MOV      R4,#+21
+   \   00000078   130000EA           B        ??SetFlashSectorTable_2
+    282                  break;
+    283              case TCU_R2:
+    284              case TDU_R2:
+    285              default:
+    286                  SectorTable = SectorTable2;
+   \                     ??SetFlashSectorTable_1:
+   \   0000007C   EC4080E2           ADD      R4,R0,#+236
+   \   00000080   0C4080E5           STR      R4,[R0, #+12]
+    287                  SectorBootStart = SECTOR_BOOT_START_R2;
+   \   00000084   103080E5           STR      R3,[R0, #+16]
+    288                  SectorBootEnd = SECTOR_BOOT_END_R2;
+   \   00000088   0930A0E3           MOV      R3,#+9
+   \   0000008C   143080E5           STR      R3,[R0, #+20]
+    289                  SectorProgStart = SECTOR_PROG_START_R2;
+   \   00000090   0A30A0E3           MOV      R3,#+10
+   \   00000094   183080E5           STR      R3,[R0, #+24]
+    290                  SectorProgEnd = SECTOR_PROG_END_R2;
+   \   00000098   1930A0E3           MOV      R3,#+25
+   \   0000009C   1C3080E5           STR      R3,[R0, #+28]
+    291                  SectorConfigStart = SECTOR_CONFIG_START_R2;
+   \   000000A0   202080E5           STR      R2,[R0, #+32]
+    292                  SectorConfigEnd = SECTOR_CONFIG_END_R2;
+   \   000000A4   1D20A0E3           MOV      R2,#+29
+   \   000000A8   242080E5           STR      R2,[R0, #+36]
+    293                  SectorConfigBakStart = SECTOR_CONFIG_BAK_START_R2;
+   \   000000AC   281080E5           STR      R1,[R0, #+40]
+    294                  SectorConfigBakEnd = SECTOR_CONFIG_BAK_END_R2;
+   \   000000B0   2110A0E3           MOV      R1,#+33
+   \   000000B4   2C1080E5           STR      R1,[R0, #+44]
+    295                  SectorSettings1Start = SECTOR_SETTINGS1_START_R2;
+   \   000000B8   2210A0E3           MOV      R1,#+34
+    296                  SectorSettings1End = SECTOR_SETTINGS1_END_R2;
+   \   000000BC   2320A0E3           MOV      R2,#+35
+    297                  SectorSettings2Start = SECTOR_SETTINGS2_START_R2;
+   \   000000C0   2430A0E3           MOV      R3,#+36
+    298                  SectorSettings2End = SECTOR_SETTINGS2_END_R2;
+   \   000000C4   25C0A0E3           MOV      R12,#+37
+    299                  SectorLocalSettings = SECTOR_LOCAL_SETTINGS_START_R2;
+   \   000000C8   2640A0E3           MOV      R4,#+38
+   \                     ??SetFlashSectorTable_2:
+   \   000000CC   404080E5           STR      R4,[R0, #+64]
+   \   000000D0   3CC080E5           STR      R12,[R0, #+60]
+   \   000000D4   383080E5           STR      R3,[R0, #+56]
+   \   000000D8   342080E5           STR      R2,[R0, #+52]
+   \   000000DC   301080E5           STR      R1,[R0, #+48]
+    300                  break;
+    301              }
+    302          }
+   \   000000E0   1000BDE8           POP      {R4}
+   \   000000E4   1EFF2FE1           BX       LR               ;; return
+    303          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    304          bool MX29LV_CheckId(void) {
+   \                     ??MX29LV_CheckId:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    305              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R4,??DataTable25  ;; FlashBaseAddress
+   \   00000008   04D04DE2           SUB      SP,SP,#+4
+   \   0000000C   480084E2           ADD      R0,R4,#+72
+   \   00000010   ........           _BLF     OS_Use,??OS_Use??rA
+    306              if (!IdOk) {
+   \   00000014   4400D4E5           LDRB     R0,[R4, #+68]
+   \   00000018   000050E3           CMP      R0,#+0
+   \   0000001C   3B00001A           BNE      ??MX29LV_CheckId_1
+    307                  U32 manId, devId;
+    308                  OS_IncDI();
+   \   00000020   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   00000024   ........           LDR      R0,??DataTable26  ;; OS_Counters
+    309                  _RESET();
+   \   00000028   003094E5           LDR      R3,[R4, #+0]
+   \   0000002C   0110D0E5           LDRB     R1,[R0, #+1]
+   \   00000030   F020A0E3           MOV      R2,#+240
+   \   00000034   F02882E3           ORR      R2,R2,#0xF00000
+   \   00000038   011081E2           ADD      R1,R1,#+1
+   \   0000003C   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000040   002083E5           STR      R2,[R3, #+0]
+    310                  // Word mode, shift address 2bit left due to a2=a0
+    311                  *firstAddr = FIRST_CMD;
+   \   00000044   043094E5           LDR      R3,[R4, #+4]
+   \   00000048   AA60A0E3           MOV      R6,#+170
+   \   0000004C   AA6886E3           ORR      R6,R6,#0xAA0000
+   \   00000050   006083E5           STR      R6,[R3, #+0]
+    312                  *secondAddr = SECOND_CMD;
+   \   00000054   08C094E5           LDR      R12,[R4, #+8]
+   \   00000058   A6E0A0E1           MOV      LR,R6, LSR #+1
+   \   0000005C   00E08CE5           STR      LR,[R12, #+0]
+    313                  *firstAddr = ID_CMD;
+   \   00000060   9070A0E3           MOV      R7,#+144
+   \   00000064   907887E3           ORR      R7,R7,#0x900000
+   \   00000068   007083E5           STR      R7,[R3, #+0]
+    314                  manId = *((volatile U32 *)(FlashBaseAddress + 0));
+   \   0000006C   008094E5           LDR      R8,[R4, #+0]
+    315                  _RESET();
+    316          
+    317                  *firstAddr = FIRST_CMD;
+    318                  *secondAddr = SECOND_CMD;
+    319                  *firstAddr = ID_CMD;
+    320                  devId = *((volatile U32 *)(FlashBaseAddress + 4));
+    321          
+    322                  _RESET();
+    323                  OS_DecRI();
+   \   00000070   011051E2           SUBS     R1,R1,#+1
+   \   00000074   005098E5           LDR      R5,[R8, #+0]
+   \   00000078   002088E5           STR      R2,[R8, #+0]
+   \   0000007C   006083E5           STR      R6,[R3, #+0]
+   \   00000080   00E08CE5           STR      LR,[R12, #+0]
+   \   00000084   007083E5           STR      R7,[R3, #+0]
+   \   00000088   003094E5           LDR      R3,[R4, #+0]
+   \   0000008C   046093E5           LDR      R6,[R3, #+4]
+   \   00000090   002083E5           STR      R2,[R3, #+0]
+   \   00000094   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000098   0000001A           BNE      ??MX29LV_CheckId_2
+   \   0000009C   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+    324                  // Flash code for 160 device	"2249"
+    325                  // Flash code for 640 device	"22CB"
+    326                  switch (GlobalDeviceHWId) {
+   \                     ??MX29LV_CheckId_2:
+   \   000000A0   ........           LDR      R2,??DataTable5  ;; GlobalDeviceHWId
+   \   000000A4   C200A0E3           MOV      R0,#+194
+   \   000000A8   F020D2E1           LDRSH    R2,[R2, #+0]
+   \   000000AC   C20880E3           ORR      R0,R0,#0xC20000
+   \   000000B0   0110A0E3           MOV      R1,#+1
+   \   000000B4   000052E3           CMP      R2,#+0
+   \   000000B8   0600000A           BEQ      ??MX29LV_CheckId_3
+   \   000000BC   012052E2           SUBS     R2,R2,#+1
+   \   000000C0   0B00000A           BEQ      ??MX29LV_CheckId_4
+   \   000000C4   012052E2           SUBS     R2,R2,#+1
+   \   000000C8   0200000A           BEQ      ??MX29LV_CheckId_3
+   \   000000CC   012052E2           SUBS     R2,R2,#+1
+   \   000000D0   0700000A           BEQ      ??MX29LV_CheckId_4
+   \   000000D4   0D0000EA           B        ??MX29LV_CheckId_1
+    327                  case TCU_R1:
+    328                  case TDU_R1:
+    329                      if (manId == 0x00c200c2 && devId == 0x22492249) {
+   \                     ??MX29LV_CheckId_3:
+   \   000000D8   000055E1           CMP      R5,R0
+   \   000000DC   40009F05           LDREQ    R0,??MX29LV_CheckId_5  ;; 0x22492249
+   \   000000E0   00005601           CMPEQ    R6,R0
+   \   000000E4   0900001A           BNE      ??MX29LV_CheckId_1
+    330                          IdOk = true; // ID OK
+   \   000000E8   4410C4E5           STRB     R1,[R4, #+68]
+    331                          SectorTable = SectorTable1;
+   \   000000EC   580084E2           ADD      R0,R4,#+88
+   \   000000F0   050000EA           B        ??MX29LV_CheckId_6
+    332                      }
+    333                      break;
+    334                  case TCU_R2:
+    335                  case TDU_R2:
+    336                      if (manId == 0x00c200c2 && devId == 0x22CB22CB) {
+   \                     ??MX29LV_CheckId_4:
+   \   000000F4   000055E1           CMP      R5,R0
+   \   000000F8   28009F05           LDREQ    R0,??MX29LV_CheckId_5+0x4  ;; 0x22cb22cb
+   \   000000FC   00005601           CMPEQ    R6,R0
+   \   00000100   0200001A           BNE      ??MX29LV_CheckId_1
+    337                          IdOk = true; // ID OK
+   \   00000104   4410C4E5           STRB     R1,[R4, #+68]
+    338                          SectorTable = SectorTable2;
+   \   00000108   EC0084E2           ADD      R0,R4,#+236
+   \                     ??MX29LV_CheckId_6:
+   \   0000010C   0C0084E5           STR      R0,[R4, #+12]
+    339                      }
+    340                      break;
+    341                  }
+    342              }
+    343              OS_Unuse(&FlashSema);
+   \                     ??MX29LV_CheckId_1:
+   \   00000110   480084E2           ADD      R0,R4,#+72
+   \   00000114   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    344              //MX29LV_ProgFlash(FlashBaseAddress,0);
+    345              return (IdOk);
+   \   00000118   4400D4E5           LDRB     R0,[R4, #+68]
+   \   0000011C   F241BDE8           POP      {R1,R4-R8,LR}
+   \   00000120   1EFF2FE1           BX       LR               ;; return
+   \                     ??MX29LV_CheckId_5:
+   \   00000124   49224922           DC32     0x22492249
+   \   00000128   CB22CB22           DC32     0x22cb22cb
+    346          }
+    347          
+    348          
+    349          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    350          bool ProgramMX29LV(U32 FirstSector, U32 targetAddress, U32 srcAddress, U32 targetSize) {
+   \                     ??ProgramMX29LV:
+   \   00000000   F0432DE9           PUSH     {R4-R9,LR}
+    351              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R6,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0090A0E1           MOV      R9,R0
+   \   0000000C   0180A0E1           MOV      R8,R1
+   \   00000010   0240A0E1           MOV      R4,R2
+   \   00000014   0350A0E1           MOV      R5,R3
+   \   00000018   480086E2           ADD      R0,R6,#+72
+   \   0000001C   ........           _BLF     OS_Use,??OS_Use??rA
+    352              bool NoError = true;
+    353              targetAddress += SectorTable[FirstSector] + FlashBaseAddress;
+   \   00000020   0C0096E5           LDR      R0,[R6, #+12]
+   \   00000024   001096E5           LDR      R1,[R6, #+0]
+   \   00000028   090190E7           LDR      R0,[R0, +R9, LSL #+2]
+   \   0000002C   0170A0E3           MOV      R7,#+1
+   \   00000030   000081E0           ADD      R0,R1,R0
+   \   00000034   088080E0           ADD      R8,R0,R8
+    354              U8 *srcPtr = (U8 *)srcAddress;
+    355              for (int i = 0x0; NoError && i < targetSize; i += 4) {
+   \   00000038   0090A0E3           MOV      R9,#+0
+   \                     ??ProgramMX29LV_1:
+   \   0000003C   050059E1           CMP      R9,R5
+   \   00000040   0D00002A           BCS      ??ProgramMX29LV_2
+    356                  U32 tmpData = srcPtr[3] << 24 | srcPtr[2] << 16 | srcPtr[1] << 8 | srcPtr[0];
+   \   00000044   0300D4E5           LDRB     R0,[R4, #+3]
+   \   00000048   0210D4E5           LDRB     R1,[R4, #+2]
+   \   0000004C   0118A0E1           LSL      R1,R1,#+16
+   \   00000050   000C81E1           ORR      R0,R1,R0, LSL #+24
+   \   00000054   0110D4E5           LDRB     R1,[R4, #+1]
+   \   00000058   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   0000005C   ........           LDRB     R1,[R4], #+4
+   \   00000060   001081E1           ORR      R1,R1,R0
+    357                  srcPtr += 4;
+    358                  NoError = MX29LV_ProgFlash(targetAddress + i, tmpData);
+   \   00000064   080089E0           ADD      R0,R9,R8
+   \   00000068   ........           BL       ??MX29LV_ProgFlash
+   \   0000006C   0070A0E1           MOV      R7,R0
+    359              }
+   \   00000070   049089E2           ADD      R9,R9,#+4
+   \   00000074   000057E3           CMP      R7,#+0
+   \   00000078   EFFFFF1A           BNE      ??ProgramMX29LV_1
+    360              _RESET();
+   \                     ??ProgramMX29LV_2:
+   \   0000007C   000096E5           LDR      R0,[R6, #+0]
+   \   00000080   F010A0E3           MOV      R1,#+240
+   \   00000084   F01881E3           ORR      R1,R1,#0xF00000
+   \   00000088   001080E5           STR      R1,[R0, #+0]
+    361              /*
+    362              srcPtr = (U8*)srcAddress;
+    363              volatile U8 *trgtPtr = (U8*)targetAddress;
+    364              int Cnt;
+    365              for ( Cnt=0; NoError && Cnt < targetSize; Cnt++ ) {
+    366                  if ( srcPtr[Cnt] != trgtPtr[Cnt] ) {
+    367                      NoError = false;
+    368                  }
+    369              }
+    370              */
+    371              /*
+    372              if ( memcmp((char*)srcAddress,(char*)targetAddress,targetSize) ) {
+    373                  NoError = false;
+    374              }
+    375              */
+    376              OS_Unuse(&FlashSema);
+   \   0000008C   480086E2           ADD      R0,R6,#+72
+   \   00000090   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    377              return (NoError);
+   \   00000094   0700A0E1           MOV      R0,R7
+   \   00000098   F043BDE8           POP      {R4-R9,LR}
+   \   0000009C   1EFF2FE1           BX       LR               ;; return
+    378          }
+    379          
+    380          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    381          bool MarkCompletedMX29LV(U32 LastSector, U32 Size) {
+   \                     ??MarkCompletedMX29LV:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+    382              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R5,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0060A0E1           MOV      R6,R0
+   \   0000000C   0140A0E1           MOV      R4,R1
+   \   00000010   480085E2           ADD      R0,R5,#+72
+   \   00000014   ........           _BLF     OS_Use,??OS_Use??rA
+    383              bool NoError = true;
+    384              //OS_EnterRegion();  // May be required, or a semaphore.
+    385          
+    386              U32 targetAddress = SectorTable[LastSector + 1] + FlashBaseAddress;
+   \   00000018   0C0095E5           LDR      R0,[R5, #+12]
+   \   0000001C   001095E5           LDR      R1,[R5, #+0]
+   \   00000020   060180E0           ADD      R0,R0,R6, LSL #+2
+   \   00000024   040090E5           LDR      R0,[R0, #+4]
+   \   00000028   006081E0           ADD      R6,R1,R0
+    387              U32 OKPattern = 0x11223344;
+    388              NoError = MX29LV_ProgFlash(targetAddress - sizeof(U32), OKPattern);
+   \   0000002C   ........           LDR      R1,??DataTable16  ;; 0x11223344
+   \   00000030   040046E2           SUB      R0,R6,#+4
+   \   00000034   ........           BL       ??MX29LV_ProgFlash
+   \   00000038   0070B0E1           MOVS     R7,R0
+    389              if (NoError) {
+   \   0000003C   0300000A           BEQ      ??MarkCompletedMX29LV_1
+    390                  NoError = MX29LV_ProgFlash(targetAddress - 2 * sizeof(U32), Size);
+   \   00000040   0410A0E1           MOV      R1,R4
+   \   00000044   080046E2           SUB      R0,R6,#+8
+   \   00000048   ........           BL       ??MX29LV_ProgFlash
+   \   0000004C   0070A0E1           MOV      R7,R0
+    391              }
+    392              OS_Unuse(&FlashSema);
+   \                     ??MarkCompletedMX29LV_1:
+   \   00000050   480085E2           ADD      R0,R5,#+72
+   \   00000054   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    393              return (NoError);
+   \   00000058   0700A0E1           MOV      R0,R7
+   \   0000005C   F040BDE8           POP      {R4-R7,LR}
+   \   00000060   1EFF2FE1           BX       LR               ;; return
+    394          
+    395              //OS_LeaveRegion();
+    396          }
+    397          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    398          bool GetBlockSizeMX29LV(U32 LastSector, U32 *Size) {
+   \                     ??GetBlockSizeMX29LV:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+    399              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R5,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0070A0E1           MOV      R7,R0
+   \   0000000C   0140A0E1           MOV      R4,R1
+   \   00000010   480085E2           ADD      R0,R5,#+72
+   \   00000014   ........           _BLF     OS_Use,??OS_Use??rA
+    400          
+    401              bool NoError = true;
+    402              //OS_EnterRegion();  // May be required, or a semaphore.
+    403          
+    404              U32 targetAddress = SectorTable[LastSector + 1] + FlashBaseAddress;
+    405              U32 OKPattern = 0x11223344;
+    406          
+    407              U32 *targetPtr = (U32 *)targetAddress;
+   \   00000018   0C0095E5           LDR      R0,[R5, #+12]
+   \   0000001C   001095E5           LDR      R1,[R5, #+0]
+    408              if (targetPtr[-1] == OKPattern) *Size = targetPtr[-2];
+   \   00000020   ........           LDR      R2,??DataTable16  ;; 0x11223344
+   \   00000024   070180E0           ADD      R0,R0,R7, LSL #+2
+   \   00000028   040090E5           LDR      R0,[R0, #+4]
+   \   0000002C   0160A0E3           MOV      R6,#+1
+   \   00000030   000081E0           ADD      R0,R1,R0
+   \   00000034   080040E2           SUB      R0,R0,#+8
+   \   00000038   041090E5           LDR      R1,[R0, #+4]
+   \   0000003C   020051E1           CMP      R1,R2
+   \   00000040   00009005           LDREQ    R0,[R0, #+0]
+    409              else NoError = false;
+   \   00000044   0060A013           MOVNE    R6,#+0
+   \   00000048   00008405           STREQ    R0,[R4, #+0]
+    410              OS_Unuse(&FlashSema);
+   \   0000004C   480085E2           ADD      R0,R5,#+72
+   \   00000050   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    411          
+    412              return (NoError);
+   \   00000054   0600A0E1           MOV      R0,R6
+   \   00000058   F040BDE8           POP      {R4-R7,LR}
+   \   0000005C   1EFF2FE1           BX       LR               ;; return
+    413          
+    414              //OS_LeaveRegion();
+    415          }
+    416          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    417          bool GetBlockInfoMX29LV(U32 FirstSector, U32 LastSector, U8 **FlashStartPtr, U32 *Size) {
+   \                     ??GetBlockInfoMX29LV:
+   \   00000000   F0432DE9           PUSH     {R4-R9,LR}
+    418              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R7,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0190A0E1           MOV      R9,R1
+   \   00000010   0250A0E1           MOV      R5,R2
+   \   00000014   0360A0E1           MOV      R6,R3
+   \   00000018   480087E2           ADD      R0,R7,#+72
+   \   0000001C   ........           _BLF     OS_Use,??OS_Use??rA
+    419              bool NoError = true;
+    420              //OS_EnterRegion();  // May be required, or a semaphore.
+    421          
+    422              U32 targetAddress = SectorTable[LastSector + 1] + FlashBaseAddress;
+    423              U32 OKPattern = 0x11223344;
+    424          
+    425              U32 *targetPtr = (U32 *)targetAddress;
+   \   00000020   0C0097E5           LDR      R0,[R7, #+12]
+   \   00000024   002097E5           LDR      R2,[R7, #+0]
+    426              if (targetPtr[-1] == OKPattern) {
+   \   00000028   ........           LDR      R3,??DataTable16  ;; 0x11223344
+   \   0000002C   091180E0           ADD      R1,R0,R9, LSL #+2
+   \   00000030   041091E5           LDR      R1,[R1, #+4]
+   \   00000034   0180A0E3           MOV      R8,#+1
+   \   00000038   011082E0           ADD      R1,R2,R1
+   \   0000003C   081041E2           SUB      R1,R1,#+8
+   \   00000040   042091E5           LDR      R2,[R1, #+4]
+   \   00000044   030052E1           CMP      R2,R3
+   \   00000048   0600001A           BNE      ??GetBlockInfoMX29LV_1
+    427                  *Size = targetPtr[-2];
+   \   0000004C   001091E5           LDR      R1,[R1, #+0]
+   \   00000050   001086E5           STR      R1,[R6, #+0]
+    428                  *FlashStartPtr = (U8 *)SectorTable[FirstSector] + FlashBaseAddress;;
+   \   00000054   001097E5           LDR      R1,[R7, #+0]
+   \   00000058   040190E7           LDR      R0,[R0, +R4, LSL #+2]
+   \   0000005C   000081E0           ADD      R0,R1,R0
+   \   00000060   000085E5           STR      R0,[R5, #+0]
+   \   00000064   000000EA           B        ??GetBlockInfoMX29LV_2
+    429              } else {
+    430                  NoError = false;
+   \                     ??GetBlockInfoMX29LV_1:
+   \   00000068   0080A0E3           MOV      R8,#+0
+    431              }
+    432              OS_Unuse(&FlashSema);
+   \                     ??GetBlockInfoMX29LV_2:
+   \   0000006C   480087E2           ADD      R0,R7,#+72
+   \   00000070   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    433          
+    434              return (NoError);
+   \   00000074   0800A0E1           MOV      R0,R8
+   \   00000078   F043BDE8           POP      {R4-R9,LR}
+   \   0000007C   1EFF2FE1           BX       LR               ;; return
+    435          
+    436              //OS_LeaveRegion();
+    437          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+    438          bool CopyFromFlash(U32 FirstSector, U32 LastSector, char *TargetPtr) {
+   \                     ??CopyFromFlash:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    439              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R6,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0180A0E1           MOV      R8,R1
+   \   00000010   0250A0E1           MOV      R5,R2
+   \   00000014   480086E2           ADD      R0,R6,#+72
+   \   00000018   ........           _BLF     OS_Use,??OS_Use??rA
+    440              bool NoError = false;
+    441              U32 *FlashInfoPtr = (U32 *)(SectorTable[LastSector + 1] + FlashBaseAddress);
+   \   0000001C   0C1096E5           LDR      R1,[R6, #+12]
+   \   00000020   000096E5           LDR      R0,[R6, #+0]
+   \   00000024   082181E0           ADD      R2,R1,R8, LSL #+2
+   \   00000028   042092E5           LDR      R2,[R2, #+4]
+    442              if (FlashInfoPtr[-1] == 0x11223344) {
+   \   0000002C   ........           LDR      R8,??DataTable16  ;; 0x11223344
+   \   00000030   022080E0           ADD      R2,R0,R2
+   \   00000034   082042E2           SUB      R2,R2,#+8
+   \   00000038   043092E5           LDR      R3,[R2, #+4]
+   \   0000003C   0070A0E3           MOV      R7,#+0
+   \   00000040   080053E1           CMP      R3,R8
+   \   00000044   0500001A           BNE      ??CopyFromFlash_1
+    443                  U32 Size = FlashInfoPtr[-2];
+    444                  char *FlashStartPtr = (char *)(SectorTable[FirstSector] + FlashBaseAddress);
+    445                  memcpy(TargetPtr, FlashStartPtr, Size);
+   \   00000048   002092E5           LDR      R2,[R2, #+0]
+   \   0000004C   041191E7           LDR      R1,[R1, +R4, LSL #+2]
+    446                  NoError = true;
+   \   00000050   0170A0E3           MOV      R7,#+1
+   \   00000054   011080E0           ADD      R1,R0,R1
+   \   00000058   0500A0E1           MOV      R0,R5
+   \   0000005C   ........           _BLF     memcpy,??memcpy??rA
+    447              }
+    448              OS_Unuse(&FlashSema);
+   \                     ??CopyFromFlash_1:
+   \   00000060   480086E2           ADD      R0,R6,#+72
+   \   00000064   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    449              return (NoError);
+   \   00000068   0700A0E1           MOV      R0,R7
+   \   0000006C   F041BDE8           POP      {R4-R8,LR}
+   \   00000070   1EFF2FE1           BX       LR               ;; return
+    450          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+    451          bool GetBlockStart(U32 FirstSector, U32 LastSector, U8 **blockPtr) {
+   \                     ??GetBlockStart:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    452              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R6,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0180A0E1           MOV      R8,R1
+   \   00000010   0250A0E1           MOV      R5,R2
+   \   00000014   480086E2           ADD      R0,R6,#+72
+   \   00000018   ........           _BLF     OS_Use,??OS_Use??rA
+    453              bool NoError = true;
+    454              U32 *FlashInfoPtr = (U32 *)(SectorTable[LastSector + 1] + FlashBaseAddress);
+    455              if (FlashInfoPtr[-1] == 0x11223344) {
+   \   0000001C   0C0096E5           LDR      R0,[R6, #+12]
+   \   00000020   001096E5           LDR      R1,[R6, #+0]
+   \   00000024   ........           LDR      R3,??DataTable16  ;; 0x11223344
+   \   00000028   082180E0           ADD      R2,R0,R8, LSL #+2
+   \   0000002C   042092E5           LDR      R2,[R2, #+4]
+   \   00000030   0170A0E3           MOV      R7,#+1
+   \   00000034   022081E0           ADD      R2,R1,R2
+   \   00000038   042012E5           LDR      R2,[R2, #-4]
+   \   0000003C   030052E1           CMP      R2,R3
+   \   00000040   0300001A           BNE      ??GetBlockStart_1
+    456                  *blockPtr = (U8 *)(SectorTable[FirstSector] + FlashBaseAddress);
+   \   00000044   040190E7           LDR      R0,[R0, +R4, LSL #+2]
+   \   00000048   000081E0           ADD      R0,R1,R0
+   \   0000004C   000085E5           STR      R0,[R5, #+0]
+   \   00000050   000000EA           B        ??GetBlockStart_2
+    457              } else {
+    458                  NoError = false;
+   \                     ??GetBlockStart_1:
+   \   00000054   0070A0E3           MOV      R7,#+0
+    459              }
+    460              OS_Unuse(&FlashSema);
+   \                     ??GetBlockStart_2:
+   \   00000058   480086E2           ADD      R0,R6,#+72
+   \   0000005C   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    461              return (NoError);
+   \   00000060   0700A0E1           MOV      R0,R7
+   \   00000064   F041BDE8           POP      {R4-R8,LR}
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+    462          }
+    463          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    464          U32 GetBlockAddress(U32 FirstSector) {
+    465              return SectorTable[FirstSector] + FlashBaseAddress;
+   \                     ??GetBlockAddress:
+   \   00000000   ........           LDR      R1,??DataTable25  ;; FlashBaseAddress
+   \   00000004   0C2091E5           LDR      R2,[R1, #+12]
+   \   00000008   001091E5           LDR      R1,[R1, #+0]
+   \   0000000C   000192E7           LDR      R0,[R2, +R0, LSL #+2]
+   \   00000010   000081E0           ADD      R0,R1,R0
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+    466          }
+    467          
+    468          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    469          bool MX29LV_EraseSector(int Sector) {
+   \                     ??MX29LV_EraseSector:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    470              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R5,??DataTable25  ;; FlashBaseAddress
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   480085E2           ADD      R0,R5,#+72
+   \   00000010   ........           _BLF     OS_Use,??OS_Use??rA
+    471              bool NoError = true;
+    472          
+    473              volatile U32 *targetP = (volatile U32 *)(SectorTable[Sector] + FlashBaseAddress);
+   \   00000014   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000018   001095E5           LDR      R1,[R5, #+0]
+   \   0000001C   040190E7           LDR      R0,[R0, +R4, LSL #+2]
+   \   00000020   0160A0E3           MOV      R6,#+1
+   \   00000024   007081E0           ADD      R7,R1,R0
+    474          
+    475              OS_IncDI();
+   \   00000028   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   0000002C   ........           LDR      R0,??DataTable26  ;; OS_Counters
+    476              *firstAddr = FIRST_CMD;
+   \   00000030   042095E5           LDR      R2,[R5, #+4]
+   \   00000034   0110D0E5           LDRB     R1,[R0, #+1]
+   \   00000038   AA30A0E3           MOV      R3,#+170
+   \   0000003C   AA3883E3           ORR      R3,R3,#0xAA0000
+   \   00000040   011081E2           ADD      R1,R1,#+1
+   \   00000044   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000048   003082E5           STR      R3,[R2, #+0]
+    477              *secondAddr = SECOND_CMD;
+   \   0000004C   08C095E5           LDR      R12,[R5, #+8]
+   \   00000050   A3E0A0E1           MOV      LR,R3, LSR #+1
+   \   00000054   00E08CE5           STR      LR,[R12, #+0]
+    478              *firstAddr = ERASE_CMD;
+   \   00000058   8080A0E3           MOV      R8,#+128
+   \   0000005C   808888E3           ORR      R8,R8,#0x800000
+   \   00000060   008082E5           STR      R8,[R2, #+0]
+    479          
+    480              *firstAddr = FIRST_CMD;
+   \   00000064   003082E5           STR      R3,[R2, #+0]
+    481              *secondAddr = SECOND_CMD;
+   \   00000068   00E08CE5           STR      LR,[R12, #+0]
+    482              *targetP = ERASE_SEC_CMD;
+   \   0000006C   3020A0E3           MOV      R2,#+48
+   \   00000070   C02982E3           ORR      R2,R2,#0x300000
+   \   00000074   002087E5           STR      R2,[R7, #+0]
+    483              OS_DecRI();
+   \   00000078   011051E2           SUBS     R1,R1,#+1
+   \   0000007C   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000080   0000001A           BNE      ??MX29LV_EraseSector_1
+   \   00000084   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+    484              OS_Delay(10);   // If we read toggle bits too early, the status may be incorrect
+   \                     ??MX29LV_EraseSector_1:
+   \   00000088   0A00A0E3           MOV      R0,#+10
+   \   0000008C   ........           _BLF     OS_Delay,??OS_Delay??rA
+    485              int RetryCnt = 0;
+   \   00000090   0070A0E3           MOV      R7,#+0
+    486              do {
+    487                  OS_Delay(700);
+   \                     ??MX29LV_EraseSector_2:
+   \   00000094   AF0FA0E3           MOV      R0,#+700
+   \   00000098   ........           _BLF     OS_Delay,??OS_Delay??rA
+    488          
+    489              } while (RetryCnt++ < 15 && !BlankCheck(SectorTable[Sector] + FlashBaseAddress, SectorTable[Sector + 1] - SectorTable[Sector]));
+   \   0000009C   0700A0E1           MOV      R0,R7
+   \   000000A0   017080E2           ADD      R7,R0,#+1
+   \   000000A4   0F0050E3           CMP      R0,#+15
+   \   000000A8   0C0000AA           BGE      ??MX29LV_EraseSector_3
+   \   000000AC   0C0095E5           LDR      R0,[R5, #+12]
+   \   000000B0   040180E0           ADD      R0,R0,R4, LSL #+2
+   \   000000B4   041090E5           LDR      R1,[R0, #+4]
+   \   000000B8   002090E5           LDR      R2,[R0, #+0]
+   \   000000BC   021041E0           SUB      R1,R1,R2
+   \   000000C0   0200A0E1           MOV      R0,R2
+   \   000000C4   002095E5           LDR      R2,[R5, #+0]
+   \   000000C8   000082E0           ADD      R0,R2,R0
+   \   000000CC   ........           BL       ??BlankCheck
+   \   000000D0   000050E3           CMP      R0,#+0
+   \   000000D4   0100A013           MOVNE    R0,#+1
+   \   000000D8   000050E3           CMP      R0,#+0
+   \   000000DC   ECFFFF0A           BEQ      ??MX29LV_EraseSector_2
+    490              // Not blank, do nothing for now
+    491              if (RetryCnt > 15) NoError = false;
+    492              _RESET();
+   \                     ??MX29LV_EraseSector_3:
+   \   000000E0   000095E5           LDR      R0,[R5, #+0]
+   \   000000E4   100057E3           CMP      R7,#+16
+   \   000000E8   0060A0A3           MOVGE    R6,#+0
+   \   000000EC   F010A0E3           MOV      R1,#+240
+   \   000000F0   F01881E3           ORR      R1,R1,#0xF00000
+   \   000000F4   001080E5           STR      R1,[R0, #+0]
+    493              OS_Unuse(&FlashSema);
+   \   000000F8   480085E2           ADD      R0,R5,#+72
+   \   000000FC   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    494              return (NoError);
+   \   00000100   0600A0E1           MOV      R0,R6
+   \   00000104   F041BDE8           POP      {R4-R8,LR}
+   \   00000108   1EFF2FE1           BX       LR               ;; return
+    495          }
+    496          
+    497          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    498          bool MX29LV_EraseSectors(int FirstSector, int LastSector) {
+   \                     ??MX29LV_EraseSectors:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+    499              bool NoError = true;
+   \   0000000C   0160A0E3           MOV      R6,#+1
+    500              if (FirstSector >= 0 && LastSector >= FirstSector) {
+   \   00000010   000054E3           CMP      R4,#+0
+   \   00000014   4C00004A           BMI      ??MX29LV_EraseSectors_1
+   \   00000018   040055E1           CMP      R5,R4
+   \   0000001C   4A0000BA           BLT      ??MX29LV_EraseSectors_1
+    501                  OS_Use(&FlashSema);
+   \   00000020   ........           LDR      R7,??DataTable25  ;; FlashBaseAddress
+   \   00000024   480087E2           ADD      R0,R7,#+72
+   \   00000028   ........           _BLF     OS_Use,??OS_Use??rA
+    502                  if (!BlankCheck(SectorTable[FirstSector] + FlashBaseAddress, SectorTable[LastSector] - SectorTable[FirstSector])) {
+   \   0000002C   0C0097E5           LDR      R0,[R7, #+12]
+   \   00000030   042180E0           ADD      R2,R0,R4, LSL #+2
+   \   00000034   050190E7           LDR      R0,[R0, +R5, LSL #+2]
+   \   00000038   001092E5           LDR      R1,[R2, #+0]
+   \   0000003C   011040E0           SUB      R1,R0,R1
+   \   00000040   000092E5           LDR      R0,[R2, #+0]
+   \   00000044   002097E5           LDR      R2,[R7, #+0]
+   \   00000048   000082E0           ADD      R0,R2,R0
+   \   0000004C   ........           BL       ??BlankCheck
+   \   00000050   000050E3           CMP      R0,#+0
+   \   00000054   0100A013           MOVNE    R0,#+1
+   \   00000058   000050E3           CMP      R0,#+0
+   \   0000005C   3800001A           BNE      ??MX29LV_EraseSectors_2
+    503                      OS_IncDI();
+   \   00000060   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   00000064   ........           LDR      R0,??DataTable26  ;; OS_Counters
+    504                      *firstAddr = FIRST_CMD;
+   \   00000068   042097E5           LDR      R2,[R7, #+4]
+   \   0000006C   0110D0E5           LDRB     R1,[R0, #+1]
+   \   00000070   AA30A0E3           MOV      R3,#+170
+   \   00000074   AA3883E3           ORR      R3,R3,#0xAA0000
+   \   00000078   011081E2           ADD      R1,R1,#+1
+   \   0000007C   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000080   003082E5           STR      R3,[R2, #+0]
+    505                      *secondAddr = SECOND_CMD;
+   \   00000084   088097E5           LDR      R8,[R7, #+8]
+   \   00000088   A3C0A0E1           MOV      R12,R3, LSR #+1
+   \   0000008C   00C088E5           STR      R12,[R8, #+0]
+    506                      *firstAddr = ERASE_CMD;
+   \   00000090   80E0A0E3           MOV      LR,#+128
+   \   00000094   80E88EE3           ORR      LR,LR,#0x800000
+   \   00000098   00E082E5           STR      LR,[R2, #+0]
+    507          
+    508                      *firstAddr = FIRST_CMD;
+   \   0000009C   003082E5           STR      R3,[R2, #+0]
+    509                      *secondAddr = SECOND_CMD;
+   \   000000A0   00C088E5           STR      R12,[R8, #+0]
+    510                      for (int Sector = LastSector; Sector >= FirstSector; Sector--) {
+   \   000000A4   0C3097E5           LDR      R3,[R7, #+12]
+   \   000000A8   0520A0E1           MOV      R2,R5
+   \   000000AC   3080A0E3           MOV      R8,#+48
+   \   000000B0   C08988E3           ORR      R8,R8,#0x300000
+    511                          volatile U32 *targetP = (volatile U32 *)(SectorTable[Sector] + FlashBaseAddress);
+    512                          *targetP = ERASE_SEC_CMD;
+   \                     ??MX29LV_EraseSectors_3:
+   \   000000B4   02C193E7           LDR      R12,[R3, +R2, LSL #+2]
+   \   000000B8   00E097E5           LDR      LR,[R7, #+0]
+    513                      }
+   \   000000BC   012042E2           SUB      R2,R2,#+1
+   \   000000C0   0C808EE7           STR      R8,[LR, +R12]
+   \   000000C4   040052E1           CMP      R2,R4
+   \   000000C8   F9FFFFAA           BGE      ??MX29LV_EraseSectors_3
+    514                      OS_DecRI();
+   \   000000CC   011051E2           SUBS     R1,R1,#+1
+   \   000000D0   0110C0E5           STRB     R1,[R0, #+1]
+   \   000000D4   0000001A           BNE      ??MX29LV_EraseSectors_4
+   \   000000D8   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+    515                      int RetryCnt = 0;
+   \                     ??MX29LV_EraseSectors_4:
+   \   000000DC   0080A0E3           MOV      R8,#+0
+    516                      do {
+    517                          OS_Delay(700);
+   \                     ??MX29LV_EraseSectors_5:
+   \   000000E0   AF0FA0E3           MOV      R0,#+700
+   \   000000E4   ........           _BLF     OS_Delay,??OS_Delay??rA
+    518                      } while (RetryCnt++ < 15 && !BlankCheck(SectorTable[FirstSector] + FlashBaseAddress, SectorTable[LastSector] - SectorTable[FirstSector]));
+   \   000000E8   0800A0E1           MOV      R0,R8
+   \   000000EC   018080E2           ADD      R8,R0,#+1
+   \   000000F0   0F0050E3           CMP      R0,#+15
+   \   000000F4   0C0000AA           BGE      ??MX29LV_EraseSectors_6
+   \   000000F8   0C0097E5           LDR      R0,[R7, #+12]
+   \   000000FC   042180E0           ADD      R2,R0,R4, LSL #+2
+   \   00000100   050190E7           LDR      R0,[R0, +R5, LSL #+2]
+   \   00000104   001092E5           LDR      R1,[R2, #+0]
+   \   00000108   011040E0           SUB      R1,R0,R1
+   \   0000010C   000092E5           LDR      R0,[R2, #+0]
+   \   00000110   002097E5           LDR      R2,[R7, #+0]
+   \   00000114   000082E0           ADD      R0,R2,R0
+   \   00000118   ........           BL       ??BlankCheck
+   \   0000011C   000050E3           CMP      R0,#+0
+   \   00000120   0100A013           MOVNE    R0,#+1
+   \   00000124   000050E3           CMP      R0,#+0
+   \   00000128   ECFFFF0A           BEQ      ??MX29LV_EraseSectors_5
+    519                      // Not blank, do nothing for now
+    520                      if (RetryCnt > 15) NoError = false;
+    521                      _RESET();
+   \                     ??MX29LV_EraseSectors_6:
+   \   0000012C   000097E5           LDR      R0,[R7, #+0]
+   \   00000130   100058E3           CMP      R8,#+16
+   \   00000134   0060A0A3           MOVGE    R6,#+0
+   \   00000138   F010A0E3           MOV      R1,#+240
+   \   0000013C   F01881E3           ORR      R1,R1,#0xF00000
+   \   00000140   001080E5           STR      R1,[R0, #+0]
+    522          
+    523                  }
+    524                  OS_Unuse(&FlashSema);
+   \                     ??MX29LV_EraseSectors_2:
+   \   00000144   480087E2           ADD      R0,R7,#+72
+   \   00000148   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    525          
+    526              }
+    527              return (NoError);
+   \                     ??MX29LV_EraseSectors_1:
+   \   0000014C   0600A0E1           MOV      R0,R6
+   \   00000150   F041BDE8           POP      {R4-R8,LR}
+   \   00000154   1EFF2FE1           BX       LR               ;; return
+    528          }
+    529          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    530          bool MX29LV_EraseChip(void) {
+   \                     ??MX29LV_EraseChip:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+    531              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R4,??DataTable24  ;; FlashBaseAddress
+    532              // Word mode, shift address 2bit left due to a2=a0
+    533              OS_IncDI();
+    534              *firstAddr = RESET_CMD;
+   \   00000008   F050A0E3           MOV      R5,#+240
+   \   0000000C   480084E2           ADD      R0,R4,#+72
+   \   00000010   ........           _BLF     OS_Use,??OS_Use??rA
+   \   00000014   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   00000018   ........           LDR      R0,??DataTable26  ;; OS_Counters
+   \   0000001C   042094E5           LDR      R2,[R4, #+4]
+   \   00000020   0110D0E5           LDRB     R1,[R0, #+1]
+   \   00000024   F05885E3           ORR      R5,R5,#0xF00000
+    535              *firstAddr = FIRST_CMD;
+   \   00000028   AA30A0E3           MOV      R3,#+170
+   \   0000002C   011081E2           ADD      R1,R1,#+1
+   \   00000030   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000034   005082E5           STR      R5,[R2, #+0]
+   \   00000038   AA3883E3           ORR      R3,R3,#0xAA0000
+   \   0000003C   003082E5           STR      R3,[R2, #+0]
+    536              *secondAddr = SECOND_CMD;
+   \   00000040   08C094E5           LDR      R12,[R4, #+8]
+   \   00000044   A3E0A0E1           MOV      LR,R3, LSR #+1
+   \   00000048   00E08CE5           STR      LR,[R12, #+0]
+    537              *firstAddr = ERASE_CMD;
+   \   0000004C   8060A0E3           MOV      R6,#+128
+   \   00000050   806886E3           ORR      R6,R6,#0x800000
+   \   00000054   006082E5           STR      R6,[R2, #+0]
+    538          
+    539              *firstAddr = FIRST_CMD;
+   \   00000058   003082E5           STR      R3,[R2, #+0]
+    540              *secondAddr = SECOND_CMD;
+   \   0000005C   00E08CE5           STR      LR,[R12, #+0]
+    541              *firstAddr = ERASE_ALL_CMD;
+   \   00000060   A631A0E1           MOV      R3,R6, LSR #+3
+   \   00000064   003082E5           STR      R3,[R2, #+0]
+    542              OS_DecRI();
+   \   00000068   011051E2           SUBS     R1,R1,#+1
+   \   0000006C   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000070   0000001A           BNE      ??MX29LV_EraseChip_1
+   \   00000074   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+    543              bool NoError = WaitForFlash();
+   \                     ??MX29LV_EraseChip_1:
+   \   00000078   ........           BL       ??WaitForFlash
+   \   0000007C   0060A0E1           MOV      R6,R0
+    544              *firstAddr = RESET_CMD;
+   \   00000080   040094E5           LDR      R0,[R4, #+4]
+   \   00000084   005080E5           STR      R5,[R0, #+0]
+    545              OS_Unuse(&FlashSema);
+   \   00000088   480084E2           ADD      R0,R4,#+72
+   \   0000008C   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    546              return (NoError);
+   \   00000090   0600A0E1           MOV      R0,R6
+   \   00000094   7040BDE8           POP      {R4-R6,LR}
+   \   00000098   1EFF2FE1           BX       LR               ;; return
+    547          }
+    548          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    549          bool BlankCheck(int targetAddr, int targetSize) {
+   \                     ??BlankCheck:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+    550              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R6,??DataTable24  ;; FlashBaseAddress
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   480086E2           ADD      R0,R6,#+72
+   \   00000014   ........           _BLF     OS_Use,??OS_Use??rA
+    551              int i;
+    552              volatile U32 *tmpPtr = (volatile U32 *)targetAddr;
+    553              bool NoError = true;
+   \   00000018   0170A0E3           MOV      R7,#+1
+    554              for (i = 0; NoError && i < targetSize; i += 4) {
+   \   0000001C   0000A0E3           MOV      R0,#+0
+   \                     ??BlankCheck_1:
+   \   00000020   050050E1           CMP      R0,R5
+   \   00000024   050000AA           BGE      ??BlankCheck_2
+    555                  if (*tmpPtr++ != 0xffffffff) {
+   \   00000028   ........           LDR      R1,[R4], #+4
+    556                      // Not blank
+    557                      NoError = false;
+    558                  }
+    559              }
+   \   0000002C   040080E2           ADD      R0,R0,#+4
+   \   00000030   010071E3           CMN      R1,#+1
+   \   00000034   0070A013           MOVNE    R7,#+0
+   \   00000038   000057E3           CMP      R7,#+0
+   \   0000003C   F7FFFF1A           BNE      ??BlankCheck_1
+    560              OS_Unuse(&FlashSema);
+   \                     ??BlankCheck_2:
+   \   00000040   480086E2           ADD      R0,R6,#+72
+   \   00000044   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    561              return (NoError);
+   \   00000048   0700A0E1           MOV      R0,R7
+   \   0000004C   F040BDE8           POP      {R4-R7,LR}
+   \   00000050   1EFF2FE1           BX       LR               ;; return
+    562          }
+    563          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    564          bool WaitForFlash(void) {   //Check if the bit6 toggle ends.
+   \                     ??WaitForFlash:
+   \   00000000   90009FE5           LDR      R0,??WaitForFlash_1  ;; FlashBaseAddress + 4
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+   \   00000008   000090E5           LDR      R0,[R0, #+0]
+   \   0000000C   4010A0E3           MOV      R1,#+64
+   \   00000010   002090E5           LDR      R2,[R0, #+0]
+   \   00000014   401881E3           ORR      R1,R1,#0x400000
+   \   00000018   04208DE5           STR      R2,[SP, #+4]
+   \   0000001C   010000EA           B        ??WaitForFlash_2
+    565              volatile U32 flashStatus;
+    566              volatile U32 old = *firstAddr;
+    567          
+    568              while (true) {
+    569                  flashStatus = *firstAddr;
+    570                  if ((old & FLASH_MASK_Q6) == (flashStatus & FLASH_MASK_Q6)) return (true);
+    571          
+    572                  if (flashStatus & FLASH_MASK_Q5) {
+    573                      old = *firstAddr;
+    574                      flashStatus = *firstAddr;
+    575                      if ((old & FLASH_MASK_Q6) == (flashStatus & FLASH_MASK_Q6)) {
+    576                          return (true);
+    577                      } else {
+    578                          return (false);
+    579                      }
+    580                  }
+    581                  old = flashStatus;
+   \                     ??WaitForFlash_3:
+   \   00000020   00309DE5           LDR      R3,[SP, #+0]
+   \   00000024   04308DE5           STR      R3,[SP, #+4]
+   \                     ??WaitForFlash_2:
+   \   00000028   003090E5           LDR      R3,[R0, #+0]
+   \   0000002C   00308DE5           STR      R3,[SP, #+0]
+   \   00000030   04209DE5           LDR      R2,[SP, #+4]
+   \   00000034   00309DE5           LDR      R3,[SP, #+0]
+   \   00000038   022001E0           AND      R2,R1,R2
+   \   0000003C   033001E0           AND      R3,R1,R3
+   \   00000040   030052E1           CMP      R2,R3
+   \   00000044   0200001A           BNE      ??WaitForFlash_4
+   \                     ??WaitForFlash_5:
+   \   00000048   0600BDE8           POP      {R1,R2}
+   \   0000004C   0100A0E3           MOV      R0,#+1
+   \   00000050   1EFF2FE1           BX       LR
+   \                     ??WaitForFlash_4:
+   \   00000054   00209DE5           LDR      R2,[SP, #+0]
+   \   00000058   A130A0E1           MOV      R3,R1, LSR #+1
+   \   0000005C   020013E1           TST      R3,R2
+   \   00000060   EEFFFF0A           BEQ      ??WaitForFlash_3
+   \   00000064   003090E5           LDR      R3,[R0, #+0]
+   \   00000068   04308DE5           STR      R3,[SP, #+4]
+   \   0000006C   000090E5           LDR      R0,[R0, #+0]
+   \   00000070   00008DE5           STR      R0,[SP, #+0]
+   \   00000074   04009DE5           LDR      R0,[SP, #+4]
+   \   00000078   00209DE5           LDR      R2,[SP, #+0]
+   \   0000007C   000001E0           AND      R0,R1,R0
+   \   00000080   021001E0           AND      R1,R1,R2
+   \   00000084   010050E1           CMP      R0,R1
+   \   00000088   EEFFFF0A           BEQ      ??WaitForFlash_5
+   \   0000008C   0600BDE8           POP      {R1,R2}
+   \   00000090   0000A0E3           MOV      R0,#+0
+   \   00000094   1EFF2FE1           BX       LR               ;; return
+   \                     ??WaitForFlash_1:
+   \   00000098   ........           DC32     FlashBaseAddress + 4
+    582              }
+    583              //return(false);
+    584          }
+    585          
+    586          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    587          bool MX29LV_ProgFlash(U32 realAddr, U32 data) {
+   \                     ??MX29LV_ProgFlash:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    588              OS_Use(&FlashSema);
+   \   00000004   ........           LDR      R5,??DataTable25  ;; FlashBaseAddress
+    589              int ExitTime = OS_GetTime() + 2;
+   \   00000008   B0609FE5           LDR      R6,??MX29LV_ProgFlash_1  ;; OS_Time
+   \   0000000C   0080A0E1           MOV      R8,R0
+   \   00000010   0140A0E1           MOV      R4,R1
+   \   00000014   480085E2           ADD      R0,R5,#+72
+   \   00000018   ........           _BLF     OS_Use,??OS_Use??rA
+   \   0000001C   000096E5           LDR      R0,[R6, #+0]
+    590              _RESET();
+   \   00000020   F010A0E3           MOV      R1,#+240
+   \   00000024   027080E2           ADD      R7,R0,#+2
+   \   00000028   000095E5           LDR      R0,[R5, #+0]
+   \   0000002C   F01881E3           ORR      R1,R1,#0xF00000
+   \   00000030   001080E5           STR      R1,[R0, #+0]
+    591              // Word mode, shift address 2bit left due to a2=a0
+    592              volatile U32 *targetP = (volatile U32 *)realAddr;
+    593              OS_IncDI();
+   \   00000034   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   00000038   ........           LDR      R0,??DataTable26  ;; OS_Counters
+    594              *firstAddr = FIRST_CMD;
+   \   0000003C   042095E5           LDR      R2,[R5, #+4]
+   \   00000040   0110D0E5           LDRB     R1,[R0, #+1]
+   \   00000044   AA30A0E3           MOV      R3,#+170
+   \   00000048   AA3883E3           ORR      R3,R3,#0xAA0000
+   \   0000004C   011081E2           ADD      R1,R1,#+1
+   \   00000050   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000054   003082E5           STR      R3,[R2, #+0]
+    595              *secondAddr = SECOND_CMD;
+   \   00000058   083095E5           LDR      R3,[R5, #+8]
+   \   0000005C   55C0A0E3           MOV      R12,#+85
+   \   00000060   55C88CE3           ORR      R12,R12,#0x550000
+   \   00000064   00C083E5           STR      R12,[R3, #+0]
+    596              *firstAddr = PROGRAM_CMD;
+   \   00000068   A030A0E3           MOV      R3,#+160
+   \   0000006C   A03883E3           ORR      R3,R3,#0xA00000
+   \   00000070   003082E5           STR      R3,[R2, #+0]
+    597              *targetP = data;
+   \   00000074   004088E5           STR      R4,[R8, #+0]
+    598              OS_DecRI();
+   \   00000078   011051E2           SUBS     R1,R1,#+1
+   \   0000007C   0110C0E5           STRB     R1,[R0, #+1]
+   \   00000080   0000001A           BNE      ??MX29LV_ProgFlash_2
+   \   00000084   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+    599              while (ExitTime > OS_GetTime() && (*targetP != data));
+   \                     ??MX29LV_ProgFlash_2:
+   \   00000088   000096E5           LDR      R0,[R6, #+0]
+   \   0000008C   070050E1           CMP      R0,R7
+   \   00000090   020000AA           BGE      ??MX29LV_ProgFlash_3
+   \   00000094   000098E5           LDR      R0,[R8, #+0]
+   \   00000098   040050E1           CMP      R0,R4
+   \   0000009C   F9FFFF1A           BNE      ??MX29LV_ProgFlash_2
+    600              OS_Unuse(&FlashSema);
+   \                     ??MX29LV_ProgFlash_3:
+   \   000000A0   480085E2           ADD      R0,R5,#+72
+   \   000000A4   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+    601              return (*targetP == data);
+   \   000000A8   000098E5           LDR      R0,[R8, #+0]
+   \   000000AC   040050E1           CMP      R0,R4
+   \   000000B0   F041BDE8           POP      {R4-R8,LR}
+   \   000000B4   0100A003           MOVEQ    R0,#+1
+   \   000000B8   0000A013           MOVNE    R0,#+0
+   \   000000BC   1EFF2FE1           BX       LR               ;; return
+   \                     ??MX29LV_ProgFlash_1:
+   \   000000C0   ........           DC32     OS_Time
+    602          }
+
+   \                                 In segment DATA_ID, align 4, align-sorted
+   \                     `?<Initializer for FlashBaseAddress>`:
+   \   00000000   00000004           DC32 67108864
+   \                     `?<Initializer for firstAddr>`:
+   \   00000004   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for secondAddr>`:
+   \   00000008   00000000           DC8 0, 0, 0, 0
+   \                     `?<Initializer for SectorTable>`:
+   \   0000000C   00000000           DC32 0H
+   \                     `?<Initializer for SectorBootStart>`:
+   \   00000010   00000000           DC32 0
+   \                     `?<Initializer for SectorBootEnd>`:
+   \   00000014   00000000           DC32 0
+   \                     `?<Initializer for SectorProgStart>`:
+   \   00000018   00000000           DC32 0
+   \                     `?<Initializer for SectorProgEnd>`:
+   \   0000001C   00000000           DC32 0
+   \                     `?<Initializer for SectorConfigStart>`:
+   \   00000020   00000000           DC32 0
+   \                     `?<Initializer for SectorConfigEnd>`:
+   \   00000024   00000000           DC32 0
+   \                     `?<Initializer for SectorConfigBakStart>`:
+   \   00000028   00000000           DC32 0
+   \                     `?<Initializer for SectorConfigBakEnd>`:
+   \   0000002C   00000000           DC32 0
+   \                     `?<Initializer for SectorSettings1Start>`:
+   \   00000030   00000000           DC32 0
+   \                     `?<Initializer for SectorSettings1End>`:
+   \   00000034   00000000           DC32 0
+   \                     `?<Initializer for SectorSettings2Start>`:
+   \   00000038   00000000           DC32 0
+   \                     `?<Initializer for SectorSettings2End>`:
+   \   0000003C   00000000           DC32 0
+   \                     `?<Initializer for SectorLocalSettings>`:
+   \   00000040   00000000           DC32 0
+   \                     `?<Initializer for IdOk>`:
+   \   00000044   00                 DC8 0
+   \   00000045   000000             DC8 0, 0, 0
+   \                     `?<Initializer for FlashSema>`:
+   \   00000048   000000000000       DC8 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+   \              000000000000
+   \              00000000    
+   \                     `?<Initializer for SectorTable1>`:
+   \   00000058   000000000080       DC32 0, 32768, 49152, 65536, 131072, 262144, 393216, 524288, 655360
+   \              000000C00000
+   \              000001000000
+   \              020000000400
+   \              000006000000
+   \              080000000A00
+   \   0000007C   00000C000000       DC32 786432, 917504, 1048576, 1179648, 1310720, 1441792, 1572864
+   \              0E0000001000
+   \              000012000000
+   \              140000001600
+   \              00001800    
+   \   00000098   00001A000000       DC32 1703936, 1835008, 1966080, 2097152, 2228224, 2359296, 2490368
+   \              1C0000001E00
+   \              000020000000
+   \              220000002400
+   \              00002600    
+   \   000000B4   000028000000       DC32 2621440, 2752512, 2883584, 3014656, 3145728, 3276800, 3407872
+   \              2A0000002C00
+   \              00002E000000
+   \              300000003200
+   \              00003400    
+   \   000000D0   000036000000       DC32 3538944, 3670016, 3801088, 3932160, 4063232, 4194304, 4325376
+   \              380000003A00
+   \              00003C000000
+   \              3E0000004000
+   \              00004200    
+   \                     `?<Initializer for SectorTable2>`:
+   \   000000EC   000000000040       DC32 0, 16384, 32768, 49152, 65536, 81920, 98304, 114688, 131072
+   \              000000800000
+   \              00C000000000
+   \              010000400100
+   \              0080010000C0
+   \              010000000200
+   \   00000110   000004000000       DC32 262144, 393216, 524288, 655360, 786432, 917504, 1048576, 1179648
+   \              060000000800
+   \              00000A000000
+   \              0C0000000E00
+   \              000010000000
+   \              1200        
+   \   00000130   000014000000       DC32 1310720, 1441792, 1572864, 1703936, 1835008, 1966080, 2097152
+   \              160000001800
+   \              00001A000000
+   \              1C0000001E00
+   \              00002000    
+   \   0000014C   000022000000       DC32 2228224, 2359296, 2490368, 2621440, 2752512, 2883584, 3014656
+   \              240000002600
+   \              000028000000
+   \              2A0000002C00
+   \              00002E00    
+   \   00000168   000030000000       DC32 3145728, 3276800, 3407872, 3538944, 3670016, 3801088, 3932160
+   \              320000003400
+   \              000036000000
+   \              380000003A00
+   \              00003C00    
+   \   00000184   00003E000000       DC32 4063232, 4194304, 4325376, 4456448, 4587520, 4718592, 4849664
+   \              400000004200
+   \              000044000000
+   \              460000004800
+   \              00004A00    
+   \   000001A0   00004C000000       DC32 4980736, 5111808, 5242880, 5373952, 5505024, 5636096, 5767168
+   \              4E0000005000
+   \              000052000000
+   \              540000005600
+   \              00005800    
+   \   000001BC   00005A000000       DC32 5898240, 6029312, 6160384, 6291456, 6422528, 6553600, 6684672
+   \              5C0000005E00
+   \              000060000000
+   \              620000006400
+   \              00006600    
+   \   000001D8   000068000000       DC32 6815744, 6946816, 7077888, 7208960, 7340032, 7471104, 7602176
+   \              6A0000006C00
+   \              00006E000000
+   \              700000007200
+   \              00007400    
+   \   000001F4   000076000000       DC32 7733248, 7864320, 7995392, 8126464, 8257536, 8388608, 8519680
+   \              780000007A00
+   \              00007C000000
+   \              7E0000008000
+   \              00008200    
+   \   00000210   000084000000       DC32 8650752, 8781824, 8912896, 9043968, 9175040, 9306112, 9437184
+   \              860000008800
+   \              00008A000000
+   \              8C0000008E00
+   \              00009000    
+   \   0000022C   000092000000       DC32 9568256, 9699328, 9830400, 9961472, 10092544, 10223616, 10354688
+   \              940000009600
+   \              000098000000
+   \              9A0000009C00
+   \              00009E00    
+   \   00000248   0000A0000000       DC32 10485760, 10616832, 10747904, 10878976, 11010048, 11141120
+   \              A2000000A400
+   \              0000A6000000
+   \              A8000000AA00
+   \   00000260   0000AC000000       DC32 11272192, 11403264, 11534336, 11665408, 11796480, 11927552
+   \              AE000000B000
+   \              0000B2000000
+   \              B4000000B600
+   \   00000278   0000B8000000       DC32 12058624, 12189696, 12320768, 12451840, 12582912, 12713984
+   \              BA000000BC00
+   \              0000BE000000
+   \              C0000000C200
+   \   00000290   0000C4000000       DC32 12845056, 12976128, 13107200, 13238272, 13369344, 13500416
+   \              C6000000C800
+   \              0000CA000000
+   \              CC000000CE00
+   \   000002A8   0000D0000000       DC32 13631488, 13762560, 13893632, 14024704, 14155776, 14286848
+   \              D2000000D400
+   \              0000D6000000
+   \              D8000000DA00
+   \   000002C0   0000DC000000       DC32 14417920, 14548992, 14680064, 14811136, 14942208, 15073280
+   \              DE000000E000
+   \              0000E2000000
+   \              E4000000E600
+   \   000002D8   0000E8000000       DC32 15204352, 15335424, 15466496, 15597568, 15728640, 15859712
+   \              EA000000EC00
+   \              0000EE000000
+   \              F0000000F200
+   \   000002F0   0000F4000000       DC32 15990784, 16121856, 16252928, 16384000, 16515072, 16646144
+   \              F6000000F800
+   \              0000FA000000
+   \              FC000000FE00
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   ........           LDR      R0,??DataTable25  ;; FlashBaseAddress
+   \   00000004   5420A0E3           MOV      R2,#+84
+   \   00000008   001090E5           LDR      R1,[R0, #+0]
+   \   0000000C   542D82E3           ORR      R2,R2,#0x1500
+   \   00000010   012082E0           ADD      R2,R2,R1
+   \   00000014   042080E5           STR      R2,[R0, #+4]
+   \   00000018   A820A0E3           MOV      R2,#+168
+   \   0000001C   A02E82E3           ORR      R2,R2,#0xA00
+   \   00000020   011082E0           ADD      R1,R2,R1
+   \   00000024   081080E5           STR      R1,[R0, #+8]
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable5:
+   \   00000000   ........           DC32     GlobalDeviceHWId
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable16:
+   \   00000000   44332211           DC32     0x11223344
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable24:
+   \   00000000   ........           DC32     FlashBaseAddress
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable25:
+   \   00000000   ........           DC32     FlashBaseAddress
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable26:
+   \   00000000   ........           DC32     OS_Counters
+    603          
+    604          
+    605          
+    606          
+    607          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     BlankCheck(int, int)              20
+     CopyFromFlash(unsigned long, unsigned long, char *)
+                                       24
+     GetBlockAddress(unsigned long)     0
+     GetBlockInfoMX29LV(unsigned long, unsigned long, unsigned char **, unsigned long *)
+                                       28
+     GetBlockSizeMX29LV(unsigned long, unsigned long *)
+                                       20
+     GetBlockStart(unsigned long, unsigned long, unsigned char **)
+                                       24
+     MX29LV_CheckId()                  28
+     MX29LV_EraseChip()                16
+     MX29LV_EraseSector(int)           24
+     MX29LV_EraseSectors(int, int)     24
+     MX29LV_ProgFlash(unsigned long, unsigned long)
+                                       24
+     MarkCompletedMX29LV(unsigned long, unsigned long)
+                                       20
+     ProgramMX29LV(unsigned long, unsigned long, unsigned long, unsigned long)
+                                       28
+     SetFlashSectorTable()              4
+     WaitForFlash()                     8
+     __sti__routine()                   0
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     FlashBaseAddress                776
+     SetFlashSectorTable()           232
+     MX29LV_CheckId()                300
+     ProgramMX29LV(unsigned long, unsigned long, unsigned long, unsigned long)
+                                     160
+     MarkCompletedMX29LV(unsigned long, unsigned long)
+                                     100
+     GetBlockSizeMX29LV(unsigned long, unsigned long *)
+                                      96
+     GetBlockInfoMX29LV(unsigned long, unsigned long, unsigned char **, unsigned long *)
+                                     128
+     CopyFromFlash(unsigned long, unsigned long, char *)
+                                     116
+     GetBlockStart(unsigned long, unsigned long, unsigned char **)
+                                     108
+     GetBlockAddress(unsigned long)   24
+     MX29LV_EraseSector(int)         268
+     MX29LV_EraseSectors(int, int)   344
+     MX29LV_EraseChip()              156
+     BlankCheck(int, int)             84
+     WaitForFlash()                  156
+     MX29LV_ProgFlash(unsigned long, unsigned long)
+                                     196
+     ?<Initializer for FlashBaseAddress>
+                                     776
+     __sti__routine()                 44
+     ??DataTable5                      4
+     ??DataTable16                     4
+     ??DataTable24                     4
+     ??DataTable25                     4
+     ??DataTable26                     4
+      Others                         152
+
+ 
+ 2 668 bytes in segment CODE
+   776 bytes in segment DATA_I
+   776 bytes in segment DATA_ID
+     4 bytes in segment DIFUNCT
+    12 bytes in segment INITTAB
+ 
+ 2 536 bytes of CODE  memory (+ 148 bytes shared)
+   776 bytes of CONST memory
+   776 bytes of DATA  memory
+
+Errors: none
+Warnings: none

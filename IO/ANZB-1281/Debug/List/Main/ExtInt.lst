@@ -1,0 +1,228 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:15
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\ExtInt.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\ExtInt.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\ExtInt.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\ExtInt.r90.iar_deps
+#    Locale                =  C
+#    List file             =  D:\S2Prog\IO\ANZB-1281\Debug\List\Main\ExtInt.lst
+#    Object file           =  D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\ExtInt.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\ExtInt.c
+      1          /****************************************************************************************
+      2          / AD converter handling , AD7715
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #ifdef __ATMEGA_1280__
+      7          #include	"iom1280.h"
+      8          #endif
+      9          
+     10          #ifdef __ATMEGA_1281__
+     11          #include	"iom1281.h"
+     12          #endif
+     13          #include "stdio.h"
+     14          #include "math.h"
+     15          #include "externals.h"
+     16          
+     17          /*************************************************************************
+     18          *
+     19          *  External int 0 (UART PC16554 on AN-ZB485 or ADready on AN-ZBANA)
+     20          *
+     21          *************************************************************************/
+     22          #pragma vector=INT0_vect
+     23          __interrupt void IntHandler_INT0( void ){               //Int handler for ext int 0
+     24          
+     25              // OBS!!!
+     26              // Uses UART16552[].TxStatus as intreason and
+     27              // UART16552[].TxSeqCnt as counter because these needs to be globale 
+     28              // by using OS_EnterIntStack()
+     29          
+     30              
+     31              OS_EnterInterrupt();
+     32              OS_EnterIntStack();
+     33          
+     34              switch (UnitID) {
+     35              case 0x00:                  // AN-ZB485  
+     36                    UART16552[0].TxStatus = (U0_IIR & 0x0f);          // reason for interrupt
+     37                  do {
+     38                      switch (UART16552[0].TxStatus) {
+     39                      case 0x02 :             // transmit holding reg emty
+     40                          if (UART16552[0].TxCount == 0) {
+     41                              U0_MCR &= ~RTS;        // set RTS off
+     42                              OS_StopTimer(&TimerUART0);                    // and stop timer
+     43                          } else {
+     44                              for (UART16552[0].TxSeqCnt = 0;( UART16552[0].TxSeqCnt < FIFO_TX_BUFSIZE ) && (UART16552[0].TxCount > 0 ); UART16552[0].TxSeqCnt++, --UART16552[0].TxCount) {
+     45                                  U0_THR = UART16552[0].pTxBuffer[UART16552[0].TxLast++];
+     46                              }
+     47                          }
+     48                          break;
+     49                      case 0x04 :             // Receive data available    
+     50                      case 0x0C :             // or caracter timeout (FIFO)
+     51                          while (U0_LSR & DATA_READY) {
+     52          
+     53                              UART16552[0].pRxBuffer[ UART16552[0].RxFirst ] = U0_RBR;             // Read the character 
+     54          
+     55                              if (UART16552[0].RxState != HANDLE) {                 // ok to receive? 
+     56                                  switch (UART16552[0].RxState) {                   // Yes, check state
+     57                                  case SYNC :
+     58                                      if ( UART16552[0].pRxBuffer[ UART16552[0].RxFirst ] == ANPRO1_SYN) {
+     59                                          UART16552[0].SyncCnt ++ ;                 // count sync
+     60                                          UART16552[0].RxFirst = 0;                 // start at start of buff
+     61                                      } else if (UART16552[0].SyncCnt >= 2) {       // minimum two sync bytes
+     62                                          UART16552[0].SyncCnt = 0 ;                // reset counter
+     63                                          UART16552[0].RxState = HEADER ;
+     64                                          UART16552[0].RxLast = 0 ;
+     65                                          UART16552[0].RxTimeout = RX_TO_TIME ;   // reset timeout
+     66                                          UART16552[0].RxFirst++ ;                 //  1. char OK, start on next
+     67                                          ReceivePacketUart16552(0) ;              // Check package
+     68                                      } else {
+     69                                          UART16552[0].SyncCnt = 0 ;                // start over once more
+     70                                      }
+     71                                      break;
+     72                                  default :
+     73                                      if ((++UART16552[0].RxFirst) > RXSIZE_UART_16552) { // Point to next location
+     74                                          GoToSyncUART16552(0) ;                       // go to sync mode
+     75                                      } else {
+     76                                          ReceivePacketUart16552(0) ;              // Check package
+     77                                      }
+     78                                      break ;   
+     79                                  }
+     80                              }
+     81                          } 
+     82                          break;
+     83                      case 0x06 :                 // Receiver line status, OR, PE, FR, Break int.
+     84                          U0_LSR;      // Dummy read to empty register        
+     85                          break;
+     86                      case 0x00 :                 // Modem status.
+     87                          U0_MSR;      // Dummy read to empty register           
+     88                          break;
+     89                      }
+     90                      UART16552[0].TxStatus = (U0_IIR & 0x0f) ;      // reason for interrupt, 
+     91                                                                                // check again before exit to avoid lost int. and hang
+     92                  } while ((UART16552[0].TxStatus & 0x01) != 0x01) ;  
+     93                  break;
+     94              case 0x01:                  // AN-ZBANA ADready
+     95                  OS_SignalEvent(1, &TCB_AD7715);
+     96                  break;
+     97              }
+     98              OS_LeaveIntStack();
+     99              OS_LeaveInterruptNoSwitch();
+    100          
+    101          }
+    102          
+    103          
+    104          /*************************************************************************
+    105          *
+    106          *  External int 1 (UART PC16554 on AN-ZB485)
+    107          *
+    108          *************************************************************************/
+    109          #pragma vector=INT1_vect
+    110          __interrupt void IntHandler_INT1( void ){               //Int handler for Ext int 1
+    111          
+    112              // OBS!!!
+    113              // Uses UART16552[].TxStatus as intreason and
+    114              // UART16552[].TxSeqCnt as counter because these needs to be globale 
+    115              // by using OS_EnterIntStack()
+    116              
+    117            
+    118              OS_EnterInterrupt();
+    119              OS_EnterIntStack();
+    120          
+    121              switch (UnitID) {
+    122              case 0x00:               // AN-ZB485 
+    123                  UART16552[1].TxStatus = (U1_IIR & 0x0f) ;      // reason for interrupt
+    124                  do {
+    125                      switch (UART16552[1].TxStatus) {
+    126                      case 0x02 :             // transmit holding reg emty
+    127                          if (UART16552[1].TxCount == 0) {
+    128                              U1_MCR &= ~RTS;        // set RTS off
+    129                              OS_StopTimer(&TimerUART1);                    // and stop timer
+    130                          } else {
+    131                              for (UART16552[1].TxSeqCnt = 0;( UART16552[1].TxSeqCnt < FIFO_TX_BUFSIZE ) && (UART16552[1].TxCount > 0 ); UART16552[1].TxSeqCnt++, UART16552[1].TxCount--) {
+    132                                 U1_THR = UART16552[1].pTxBuffer[UART16552[1].TxLast++] ;
+    133                              }
+    134                          }
+    135                          break;
+    136                      case 0x04 :             // Receive data available    
+    137                      case 0x0C :             // or caracter timeout (FIFO)
+    138                          while (U1_LSR & DATA_READY) {
+    139          
+    140                              UART16552[1].pRxBuffer[ UART16552[1].RxFirst ] = U1_RBR;          // Read the character 
+    141          
+    142                              if (UART16552[1].RxState != HANDLE) {        // ok to receive? 
+    143                                  switch (UART16552[1].RxState) {                   // Yes, check state
+    144                                  case SYNC :
+    145                                      if ( UART16552[1].pRxBuffer[ UART16552[1].RxFirst ] == ANPRO1_SYN) {
+    146                                          UART16552[1].SyncCnt ++ ;                 // count sync
+    147                                          UART16552[1].RxFirst = 0;                 // start at start of buff
+    148                                      } else if (UART16552[1].SyncCnt >= 2) {       // minimum two sync bytes
+    149                                          UART16552[1].SyncCnt = 0 ;                // reset counter
+    150                                          UART16552[1].RxState = HEADER ;
+    151                                          UART16552[1].RxLast = 0 ;
+    152                                          UART16552[1].RxTimeout = RX_TO_TIME ;     // reset timeout
+    153                                          UART16552[1].RxFirst++ ;                  //  1. char OK, start on next
+    154                                          ReceivePacketUart16552(1) ;               // Check package
+    155                                      } else {
+    156                                          UART16552[1].SyncCnt = 0 ;                // start over once more
+    157                                      }
+    158                                      break;
+    159                                  default :
+    160                                      if ((++UART16552[1].RxFirst) > RXSIZE_UART_16552) { // Point to next location
+    161                                          GoToSyncUART16552(1) ;                       // go to sync mode
+    162                                      } else {
+    163                                          ReceivePacketUart16552(1) ;              // Check package
+    164                                      }
+    165                                      break ;   
+    166                                  }
+    167                              }
+    168                          }
+    169                          break;
+    170                      case 0x06 :                 // Receiver line status, OR, PE, FR, Break int.
+    171                          U1_LSR;      // Dummy read to empty register        
+    172                          break;
+    173                      case 0x00 :                 // Modem status.
+    174                          U1_MSR;      // Dummy read to empty register           
+    175                          break;
+    176                      }
+    177                      UART16552[1].TxStatus = (U1_IIR & 0x0f) ;      // reason for interrupt, 
+    178                                                                                // check again before exit to avoid lost int. and hang
+    179                 } while ((UART16552[1].TxStatus & 0x01) != 0x01);  
+    180                  break;
+    181              case 0x01:                  // AN-ZBANA Not connected!
+    182                  break;
+    183              }
+    184              OS_LeaveIntStack();
+    185              OS_LeaveInterruptNoSwitch();
+    186          }
+
+Errors: 9
+Warnings: 2

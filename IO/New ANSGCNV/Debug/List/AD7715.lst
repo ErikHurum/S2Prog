@@ -1,0 +1,1685 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.4.1668 for Microchip AVR       10/Aug/2021  11:27:14
+# Copyright 1996-2021 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\New ANSGCNV\Src\AD7715.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW801F.tmp ("D:\S2Prog\IO\New
+#        ANSGCNV\Src\AD7715.c" --cpu=m128a -ms -o "D:\S2Prog\IO\New
+#        ANSGCNV\Debug\Obj" -D OS_LIBMODE_R -D OS_UART=-1 -lCN
+#        "D:\S2Prog\IO\New ANSGCNV\Debug\List" -y --initializers_in_flash
+#        --no_cse --no_inline --no_code_motion --no_cross_call --no_clustering
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I "D:\S2Prog\IO\New
+#        ANSGCNV\INC\\" -I "D:\S2Prog\IO\New ANSGCNV\..\..\SHARED\INC\\"
+#        --eeprom_size 4096 --clib -On)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\New ANSGCNV\Debug\List\AD7715.lst
+#    Object file  =  D:\S2Prog\IO\New ANSGCNV\Debug\Obj\AD7715.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\New ANSGCNV\Src\AD7715.c
+      1          /****************************************************************************************
+      2          / AD converter handling , AD7715
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom128a.h"
+
+   \                                 In  segment ABSOLUTE, at 0x65
+   \   union <unnamed> volatile __io _A_PORTG
+   \                     _A_PORTG:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x38
+   \   union <unnamed> volatile __io _A_PORTB
+   \                     _A_PORTB:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x35
+   \   union <unnamed> volatile __io _A_PORTC
+   \                     _A_PORTC:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x32
+   \   union <unnamed> volatile __io _A_PORTD
+   \                     _A_PORTD:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x30
+   \   union <unnamed> volatile __io _A_PIND
+   \                     _A_PIND:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x23
+   \   union <unnamed> volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+      7          #include "stdio.h"
+      8          #include "math.h"
+      9          #include "externals.h"
+     10          #include "version.h"
+     11          
+     12          #define CMD_COM_REG_WR 	    0x00
+     13          #define CMD_SET_UP_REG_WR   0x10
+     14          #define CMD_TEST_REG_WR	    0x20
+     15          #define CMD_DATA_REG_WR	    0x30
+     16          
+     17          #define CMD_COM_REG_RD 	    0x08
+     18          #define CMD_SET_UP_REG_RD   0x18
+     19          #define CMD_TEST_REG_RD	    0x28
+     20          #define CMD_DATA_REG_RD	    0x38
+     21          
+     22          #define CMD_GAIN_1			0x00
+     23          #define CMD_GAIN_2			0x01
+     24          #define CMD_GAIN_32			0x02
+     25          #define CMD_GAIN_128		0x03
+     26          
+     27          #define AD_GAIN  ( 1.0893/1.1017 )
+     28          //#define AD_GAIN ( 9.877e-3/
+     29          
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     30          const float CurrentT      = 0.001; // Ampere
+   \                     CurrentT:
+   \   00000000                      DS8 4
+   \   00000004                      REQUIRE `?<Initializer for CurrentT>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     31          const float CurrentP      = 0.010; // Ampere
+   \                     CurrentP:
+   \   00000000                      DS8 4
+   \   00000004                      REQUIRE `?<Initializer for CurrentP>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     32          const float CurrentO      = 0.010; // Ampere
+   \                     CurrentO:
+   \   00000000                      DS8 4
+   \   00000004                      REQUIRE `?<Initializer for CurrentO>`
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     33          float Cal_1R = 0.0;
+   \                     Cal_1R:
+   \   00000000                      DS8 4
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+     34          float Cal_1K = 0.0;
+   \                     Cal_1K:
+   \   00000000                      DS8 4
+     35          
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     36          int SensorType = -1;
+   \                     SensorType:
+   \   00000000                      DS8 2
+   \   00000002                      REQUIRE `?<Initializer for SensorType>`
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     37          const unsigned char MuxControlSns[14][7] = {
+   \                     MuxControlSns:
+   \   00000000                      DS8 98
+   \   00000062                      REQUIRE `?<Initializer for MuxControlSns>`
+     38          	{ 0x10, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x10,  },
+     39          	{ 0x94, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x10,  },
+     40          	{ 0x52, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x11,  },
+     41          	{ 0xd6, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x11,  },
+     42          	{ 0x31, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x12,  },
+     43          	{ 0xb5, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x12,  },
+     44          	{ 0x73, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x13,  },
+     45          	{ 0xf7, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x13,  },
+     46          
+     47          	{ 0x08, 0x3f, 0x00, 0x27, 0xD0, 0x10, 0x14,  },
+     48          	{ 0x8C, 0x3f, 0x40, 0x27, 0xC8, 0x10, 0x14,  },
+     49          	{ 0x4A, 0x3f, 0x00, 0x27, 0xD0, 0x10, 0x16,  },
+     50          	{ 0xCE, 0x3f, 0x40, 0x27, 0xC8, 0x10, 0x16,  },
+     51          	{ 0x29, 0x3f, 0x00, 0x27, 0xD0, 0x10, 0x16,  },
+     52          	{ 0xAD, 0x3f, 0x40, 0x27, 0xC8, 0x10, 0x16,  },
+     53          };
+     54          
+     55          
+
+   \                                 In  segment NEAR_I, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_I>`
+     56          const unsigned char MuxControlCal[14][7] = {
+   \                     MuxControlCal:
+   \   00000000                      DS8 98
+   \   00000062                      REQUIRE `?<Initializer for MuxControlCal>`
+     57          	{ 0xe8, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x10,  },
+     58          	{ 0x6c, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x10,  },
+     59          	{ 0xea, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x11,  },
+     60          	{ 0x6e, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x11,  },
+     61          	{ 0xe9, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x12,  },
+     62          	{ 0x6d, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x12,  },
+     63          	{ 0xeb, 0x3f, 0x80, 0x27, 0x50, 0x10, 0x13,  },
+     64          	{ 0x6f, 0x3f, 0xC0, 0x27, 0x48, 0x10, 0x13,  },
+     65          
+     66          	{ 0xe8, 0x3f, 0x00, 0x27, 0xD0, 0x10, 0x14,  },
+     67          	{ 0x6C, 0x3f, 0x40, 0x27, 0xC8, 0x10, 0x14,  },
+     68          	{ 0xeA, 0x3f, 0x00, 0x27, 0xD0, 0x10, 0x16,  },
+     69          	{ 0x6E, 0x3f, 0x40, 0x27, 0xC8, 0x10, 0x16,  },
+     70          	{ 0xe9, 0x3f, 0x00, 0x27, 0xD0, 0x10, 0x16,  },
+     71          	{ 0x6D, 0x3f, 0x40, 0x27, 0xC8, 0x10, 0x16,  },
+     72          };
+     73          
+     74          
+     75          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     76          static void
+     77          ResetADCBySW(void) {
+   \                     ResetADCBySW:
+     78          	WriteAdByte(0xff);               /* Reset the ad */
+   \   00000000   EF0F               LDI     R16, 255
+   \   00000002   ....               RCALL   WriteAdByte
+     79          	WriteAdByte(0xff);               /* with */
+   \   00000004   EF0F               LDI     R16, 255
+   \   00000006   ....               RCALL   WriteAdByte
+     80          	WriteAdByte(0xff);               /* 32 (8*4)*/
+   \   00000008   EF0F               LDI     R16, 255
+   \   0000000A   ....               RCALL   WriteAdByte
+     81          	WriteAdByte(0xff);               /* write pulses*/
+   \   0000000C   EF0F               LDI     R16, 255
+   \   0000000E   ....               RCALL   WriteAdByte
+     82          }
+   \   00000010   9508               RET
+     83          
+     84          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     85          void EnableChannelSns(int Ch) {
+   \                     EnableChannelSns:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   01C8               MOVW    R25:R24, R17:R16
+     86          
+     87          	PORTB =  MuxControlSns[Ch][0];
+   \   00000006   018C               MOVW    R17:R16, R25:R24
+   \   00000008   E047               LDI     R20, 7
+   \   0000000A   E050               LDI     R21, 0
+   \   0000000C   ........           CALL    ?S_EC_MUL_L02
+   \   00000010   01F8               MOVW    R31:R30, R17:R16
+   \   00000012   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   00000014   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   00000016   8100               LD      R16, Z
+   \   00000018   BB08               OUT     0x18, R16
+     88          	OS_IncDI();
+   \   0000001A   94F8               cli
+   \   0000001C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000020   9503               INC     R16
+   \   00000022   9300....           STS     (OS_Global + 1), R16
+     89          	PORTD &= MuxControlSns[Ch][1];
+   \   00000026   018C               MOVW    R17:R16, R25:R24
+   \   00000028   E047               LDI     R20, 7
+   \   0000002A   E050               LDI     R21, 0
+   \   0000002C   ........           CALL    ?S_EC_MUL_L02
+   \   00000030   01F8               MOVW    R31:R30, R17:R16
+   \   00000032   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   00000034   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   00000036   8101               LDD     R16, Z+1
+   \   00000038   B312               IN      R17, 0x12
+   \   0000003A   2310               AND     R17, R16
+   \   0000003C   BB12               OUT     0x12, R17
+     90          	PORTD |= MuxControlSns[Ch][2];
+   \   0000003E   018C               MOVW    R17:R16, R25:R24
+   \   00000040   E047               LDI     R20, 7
+   \   00000042   E050               LDI     R21, 0
+   \   00000044   ........           CALL    ?S_EC_MUL_L02
+   \   00000048   01F8               MOVW    R31:R30, R17:R16
+   \   0000004A   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   0000004C   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   0000004E   8102               LDD     R16, Z+2
+   \   00000050   B312               IN      R17, 0x12
+   \   00000052   2B10               OR      R17, R16
+   \   00000054   BB12               OUT     0x12, R17
+     91          	PORTE &= MuxControlSns[Ch][3];
+   \   00000056   018C               MOVW    R17:R16, R25:R24
+   \   00000058   E047               LDI     R20, 7
+   \   0000005A   E050               LDI     R21, 0
+   \   0000005C   ........           CALL    ?S_EC_MUL_L02
+   \   00000060   01F8               MOVW    R31:R30, R17:R16
+   \   00000062   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   00000064   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   00000066   8103               LDD     R16, Z+3
+   \   00000068   B113               IN      R17, 0x03
+   \   0000006A   2310               AND     R17, R16
+   \   0000006C   B913               OUT     0x03, R17
+     92          	PORTE |= MuxControlSns[Ch][4];
+   \   0000006E   018C               MOVW    R17:R16, R25:R24
+   \   00000070   E047               LDI     R20, 7
+   \   00000072   E050               LDI     R21, 0
+   \   00000074   ........           CALL    ?S_EC_MUL_L02
+   \   00000078   01F8               MOVW    R31:R30, R17:R16
+   \   0000007A   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   0000007C   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   0000007E   8104               LDD     R16, Z+4
+   \   00000080   B113               IN      R17, 0x03
+   \   00000082   2B10               OR      R17, R16
+   \   00000084   B913               OUT     0x03, R17
+     93          	PORTG &= MuxControlSns[Ch][5];
+   \   00000086   018C               MOVW    R17:R16, R25:R24
+   \   00000088   E047               LDI     R20, 7
+   \   0000008A   E050               LDI     R21, 0
+   \   0000008C   ........           CALL    ?S_EC_MUL_L02
+   \   00000090   01F8               MOVW    R31:R30, R17:R16
+   \   00000092   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   00000094   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   00000096   8105               LDD     R16, Z+5
+   \   00000098   9110....           LDS     R17, _A_PORTG
+   \   0000009C   2310               AND     R17, R16
+   \   0000009E   9310....           STS     _A_PORTG, R17
+     94          	PORTG |= MuxControlSns[Ch][6];
+   \   000000A2   018C               MOVW    R17:R16, R25:R24
+   \   000000A4   E047               LDI     R20, 7
+   \   000000A6   E050               LDI     R21, 0
+   \   000000A8   ........           CALL    ?S_EC_MUL_L02
+   \   000000AC   01F8               MOVW    R31:R30, R17:R16
+   \   000000AE   ....               SUBI    R30, LOW((-(MuxControlSns) & 0xFFFF))
+   \   000000B0   ....               SBCI    R31, (-(MuxControlSns) & 0xFFFF) >> 8
+   \   000000B2   8106               LDD     R16, Z+6
+   \   000000B4   9110....           LDS     R17, _A_PORTG
+   \   000000B8   2B10               OR      R17, R16
+   \   000000BA   9310....           STS     _A_PORTG, R17
+     95          	OS_DecRI();
+   \   000000BE   9100....           LDS     R16, (OS_Global + 1)
+   \   000000C2   950A               DEC     R16
+   \   000000C4   9300....           STS     (OS_Global + 1), R16
+   \   000000C8   9100....           LDS     R16, (OS_Global + 1)
+   \   000000CC   2300               TST     R16
+   \   000000CE   F409               BRNE    ??EnableChannelSns_0
+   \   000000D0   9478               sei
+     96          	OS_Delay(50);
+   \                     ??EnableChannelSns_0:
+   \   000000D2   E302               LDI     R16, 50
+   \   000000D4   E010               LDI     R17, 0
+   \   000000D6   ........           CALL    OS_Delay
+     97          }
+   \   000000DA   9189               LD      R24, Y+
+   \   000000DC   9199               LD      R25, Y+
+   \   000000DE   9508               RET
+   \   000000E0                      REQUIRE _A_PORTB
+   \   000000E0                      REQUIRE _A_PORTD
+   \   000000E0                      REQUIRE _A_PORTE
+   \   000000E0                      REQUIRE _A_PORTG
+     98          
+     99          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    100          void EnableChannelCal(int Ch) {
+   \                     EnableChannelCal:
+   \   00000000   0198               MOVW    R19:R18, R17:R16
+    101          	PORTB =  MuxControlCal[Ch][0];
+   \   00000002   0189               MOVW    R17:R16, R19:R18
+   \   00000004   E047               LDI     R20, 7
+   \   00000006   E050               LDI     R21, 0
+   \   00000008   ........           CALL    ?S_EC_MUL_L02
+   \   0000000C   01F8               MOVW    R31:R30, R17:R16
+   \   0000000E   ....               SUBI    R30, LOW((-(MuxControlCal) & 0xFFFF))
+   \   00000010   ....               SBCI    R31, (-(MuxControlCal) & 0xFFFF) >> 8
+   \   00000012   8100               LD      R16, Z
+   \   00000014   BB08               OUT     0x18, R16
+    102          }
+   \   00000016   9508               RET
+   \   00000018                      REQUIRE _A_PORTB
+    103          
+    104          /*************************************************************************
+    105          *
+    106          *  Set  10 mA sypply current
+    107          *
+    108          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    109          void SetSupplyCurrentHi(void) {
+   \                     SetSupplyCurrentHi:
+    110          	SetBitsOr(PORTD, 0x40);
+   \   00000000   94F8               cli
+   \   00000002   9100....           LDS     R16, (OS_Global + 1)
+   \   00000006   9503               INC     R16
+   \   00000008   9300....           STS     (OS_Global + 1), R16
+   \   0000000C   9A96               SBI     0x12, 0x06
+   \   0000000E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000012   950A               DEC     R16
+   \   00000014   9300....           STS     (OS_Global + 1), R16
+   \   00000018   9100....           LDS     R16, (OS_Global + 1)
+   \   0000001C   2300               TST     R16
+   \   0000001E   F409               BRNE    ??SetSupplyCurrentHi_0
+   \   00000020   9478               sei
+    111          }
+   \                     ??SetSupplyCurrentHi_0:
+   \   00000022   9508               RET
+   \   00000024                      REQUIRE _A_PORTD
+    112          /*************************************************************************
+    113          *
+    114          *  Set  1 mA sypply current
+    115          *
+    116          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    117          void SetSupplyCurrentLo(void) {
+   \                     SetSupplyCurrentLo:
+    118          	ClrBit(PORTD, 0x40);
+   \   00000000   94F8               cli
+   \   00000002   9100....           LDS     R16, (OS_Global + 1)
+   \   00000006   9503               INC     R16
+   \   00000008   9300....           STS     (OS_Global + 1), R16
+   \   0000000C   9896               CBI     0x12, 0x06
+   \   0000000E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000012   950A               DEC     R16
+   \   00000014   9300....           STS     (OS_Global + 1), R16
+   \   00000018   9100....           LDS     R16, (OS_Global + 1)
+   \   0000001C   2300               TST     R16
+   \   0000001E   F409               BRNE    ??SetSupplyCurrentLo_0
+   \   00000020   9478               sei
+    119          }
+   \                     ??SetSupplyCurrentLo_0:
+   \   00000022   9508               RET
+   \   00000024                      REQUIRE _A_PORTD
+    120          
+    121          
+    122          /*************************************************************************
+    123          *
+    124          *  Select calibration resistance
+    125          *
+    126          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    127          void SetCalResistance(unsigned char value) {
+   \                     SetCalResistance:
+    128          	switch (value) {
+   \   00000000   2F10               MOV     R17, R16
+   \   00000002   5018               SUBI    R17, 8
+   \   00000004   F029               BREQ    ??SetCalResistance_0
+   \   00000006   5018               SUBI    R17, 8
+   \   00000008   F431               BRNE    ??SetCalResistance_1
+    129          	case OHM_1R :                                       /* 1 ohm resistor */
+    130          		PORTE |= OHM_1R;
+   \   0000000A   9A1C               SBI     0x03, 0x04
+    131          		PORTE &= ~OHM_1K;
+   \   0000000C   981B               CBI     0x03, 0x03
+    132          		break;
+   \   0000000E   9508               RET
+    133          	case OHM_1K :                                       /* 1000 ohm resistor */
+    134          		PORTE |= OHM_1K;
+   \                     ??SetCalResistance_0:
+   \   00000010   9A1B               SBI     0x03, 0x03
+    135          		PORTE &= ~OHM_1R;
+   \   00000012   981C               CBI     0x03, 0x04
+    136          		break;
+   \   00000014   9508               RET
+    137          	default :                                           /* both off */
+    138          		PORTE &= ~(OHM_1R | OHM_1K);
+   \                     ??SetCalResistance_1:
+   \   00000016   B113               IN      R17, 0x03
+   \   00000018   7E17               ANDI    R17, 0xE7
+   \   0000001A   B913               OUT     0x03, R17
+    139          		break;
+    140          	}
+    141          }
+   \   0000001C   9508               RET
+   \   0000001E                      REQUIRE _A_PORTE
+    142          
+    143          #define CMD_SETUP_FS	0
+    144          #define CMD_SETUP_CLK   0
+    145          #define CMD_BUF			0
+    146          /* Calibration of AD Converter */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    147          void CalibrateAD7715(char UniPolar, char Gain ) {
+   \                     CalibrateAD7715:
+   \   00000000   ........           CALL    ?PROLOGUE8_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R6_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R7_is_cg_reg
+   \   00000004   2E60               MOV     R6, R16
+   \   00000006   2E71               MOV     R7, R17
+    148          	// MD1=0, MD0=1,CLK=0,  FS1=1, FS0=0, Unipolar?, BUF=0, FSYNC=0
+    149          	OS_ClearEvents(&TCB_AD7715);
+   \   00000008   ....               LDI     R16, LOW(TCB_AD7715)
+   \   0000000A   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   0000000C   ........           CALL    OS_ClearEvents
+    150          	int T1 = OS_Time;
+   \   00000010   ....               LDI     R30, LOW(OS_Global)
+   \   00000012   ....               LDI     R31, (OS_Global) >> 8
+   \   00000014   8902               LDD     R16, Z+18
+   \   00000016   8913               LDD     R17, Z+19
+   \   00000018   8924               LDD     R18, Z+20
+   \   0000001A   8935               LDD     R19, Z+21
+   \   0000001C   0128               MOVW    R5:R4, R17:R16
+    151          	WriteToRegister(CMD_SET_UP_REG_WR | Gain, (1 << 6) | (CMD_SETUP_CLK << 5) | (CMD_SETUP_FS << 3) | (UniPolar << 2) | (CMD_BUF << 1) | 0);
+   \   0000001E   2D16               MOV     R17, R6
+   \   00000020   0F11               LSL     R17
+   \   00000022   0F11               LSL     R17
+   \   00000024   6410               ORI     R17, 0x40
+   \   00000026   2D07               MOV     R16, R7
+   \   00000028   6100               ORI     R16, 0x10
+   \   0000002A   ....               RCALL   WriteToRegister
+    152          	OS_WaitEventTimed(1, 5000);
+   \   0000002C   E828               LDI     R18, 136
+   \   0000002E   E133               LDI     R19, 19
+   \   00000030   E001               LDI     R16, 1
+   \   00000032   ........           CALL    OS_WaitEventTimed
+    153          	int T2 = OS_Time;
+   \   00000036   ....               LDI     R30, LOW(OS_Global)
+   \   00000038   ....               LDI     R31, (OS_Global) >> 8
+   \   0000003A   8982               LDD     R24, Z+18
+   \   0000003C   8993               LDD     R25, Z+19
+   \   0000003E   89A4               LDD     R26, Z+20
+   \   00000040   89B5               LDD     R27, Z+21
+    154          	int T3 = T2 - T1;
+   \   00000042   01DC               MOVW    R27:R26, R25:R24
+   \   00000044   19A4               SUB     R26, R4
+   \   00000046   09B5               SBC     R27, R5
+    155          	OS_Delay(0);
+   \   00000048   E000               LDI     R16, 0
+   \   0000004A   E010               LDI     R17, 0
+   \   0000004C   ........           CALL    OS_Delay
+    156          }
+   \   00000050   E0E8               LDI     R30, 8
+   \   00000052   ........           JMP     ?EPILOGUE_B8_L09
+    157          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    158          void PrepareForPressureReading(char Ch) {
+   \                     PrepareForPressureReading:
+   \   00000000   938A               ST      -Y, R24
+   \   00000002   2F80               MOV     R24, R16
+    159          	if (SensorType != 0) {
+   \   00000004   ....               LDI     R30, LOW(SensorType)
+   \   00000006   ....               LDI     R31, (SensorType) >> 8
+   \   00000008   8100               LD      R16, Z
+   \   0000000A   8111               LDD     R17, Z+1
+   \   0000000C   2B01               OR      R16, R17
+   \   0000000E   F079               BREQ    ??PrepareForPressureReading_0
+    160          		SensorType = 0;
+   \   00000010   ....               LDI     R30, LOW(SensorType)
+   \   00000012   ....               LDI     R31, (SensorType) >> 8
+   \   00000014   E000               LDI     R16, 0
+   \   00000016   8300               ST      Z, R16
+   \   00000018   E000               LDI     R16, 0
+   \   0000001A   8301               STD     Z+1, R16
+    161          		SetCalResistance(OHM_1R);
+   \   0000001C   E100               LDI     R16, 16
+   \   0000001E   ....               RCALL   SetCalResistance
+    162          		SetSupplyCurrentHi();
+   \   00000020   ....               RCALL   SetSupplyCurrentHi
+    163          		CalibrateAD7715(1, CMD_GAIN_128);
+   \   00000022   E013               LDI     R17, 3
+   \   00000024   E001               LDI     R16, 1
+   \   00000026   ....               RCALL   CalibrateAD7715
+    164          		// MD1=0, MD0=1,CLK=0,  FS1=1, FS0=0, N/U=0, BUF=0, FSYNC=0
+    165          		WriteToRegister(CMD_SET_UP_REG_WR | CMD_GAIN_128 , (0 << 6) | (CMD_SETUP_CLK << 5) | (CMD_SETUP_FS << 3) | (1 << 2) | (CMD_BUF << 1) | 0); // Bipolar, no Buf, 1MHz
+   \   00000028   E014               LDI     R17, 4
+   \   0000002A   E103               LDI     R16, 19
+   \   0000002C   ....               RCALL   WriteToRegister
+    166          	}
+    167          	EnableChannelSns(Ch);
+   \                     ??PrepareForPressureReading_0:
+   \   0000002E   2F08               MOV     R16, R24
+   \   00000030   E010               LDI     R17, 0
+   \   00000032   ....               RCALL   EnableChannelSns
+    168          }
+   \   00000034   9189               LD      R24, Y+
+   \   00000036   9508               RET
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    169          void PrepareForTempReading(char Ch) {
+   \                     PrepareForTempReading:
+   \   00000000   ........           CALL    ?PROLOGUE4_L09
+   \   00000004   2F80               MOV     R24, R16
+    170          
+    171          	if (SensorType != 1) {
+   \   00000006   ....               LDI     R26, LOW(SensorType)
+   \   00000008   ....               LDI     R27, (SensorType) >> 8
+   \   0000000A   91ED               LD      R30, X+
+   \   0000000C   91FC               LD      R31, X
+   \   0000000E   9711               SBIW    R27:R26, 1
+   \   00000010   9731               SBIW    R31:R30, 1
+   \   00000012   F079               BREQ    ??PrepareForTempReading_0
+    172          		SensorType = 1;
+   \   00000014   ....               LDI     R30, LOW(SensorType)
+   \   00000016   ....               LDI     R31, (SensorType) >> 8
+   \   00000018   E001               LDI     R16, 1
+   \   0000001A   E010               LDI     R17, 0
+   \   0000001C   8300               ST      Z, R16
+   \   0000001E   8311               STD     Z+1, R17
+    173          		SetSupplyCurrentLo();
+   \   00000020   ....               RCALL   SetSupplyCurrentLo
+    174          		SetCalResistance(OHM_1K);
+   \   00000022   E008               LDI     R16, 8
+   \   00000024   ....               RCALL   SetCalResistance
+    175          		CalibrateAD7715(1,CMD_GAIN_1);
+   \   00000026   E010               LDI     R17, 0
+   \   00000028   E001               LDI     R16, 1
+   \   0000002A   ....               RCALL   CalibrateAD7715
+    176          		// MD1=0, MD0=1,CLK=0,  FS1=1, FS0=0, N/U=1, BUF=0, FSYNC=0
+    177          		WriteToRegister(CMD_SET_UP_REG_WR | CMD_GAIN_1, (0 << 6) | (CMD_SETUP_CLK << 5) | (CMD_SETUP_FS << 3) | (1 << 2) | (CMD_BUF << 1) | 0); // Unipolar, no Buf, 1MHz
+   \   0000002C   E014               LDI     R17, 4
+   \   0000002E   E100               LDI     R16, 16
+   \   00000030   ....               RCALL   WriteToRegister
+    178          	}
+    179          	EnableChannelSns(Ch);
+   \                     ??PrepareForTempReading_0:
+   \   00000032   2F08               MOV     R16, R24
+   \   00000034   E010               LDI     R17, 0
+   \   00000036   ....               RCALL   EnableChannelSns
+    180          }
+   \   00000038   E0E4               LDI     R30, 4
+   \   0000003A   ........           JMP     ?EPILOGUE_B4_L09
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    181          void PrepareForOtherReading(char Ch) {
+   \                     PrepareForOtherReading:
+   \   00000000   ........           CALL    ?PROLOGUE4_L09
+   \   00000004   2F80               MOV     R24, R16
+    182          	if (SensorType != 2) {
+   \   00000006   ....               LDI     R26, LOW(SensorType)
+   \   00000008   ....               LDI     R27, (SensorType) >> 8
+   \   0000000A   91ED               LD      R30, X+
+   \   0000000C   91FC               LD      R31, X
+   \   0000000E   9711               SBIW    R27:R26, 1
+   \   00000010   9732               SBIW    R31:R30, 2
+   \   00000012   F079               BREQ    ??PrepareForOtherReading_0
+    183          		SensorType = 2;
+   \   00000014   ....               LDI     R30, LOW(SensorType)
+   \   00000016   ....               LDI     R31, (SensorType) >> 8
+   \   00000018   E002               LDI     R16, 2
+   \   0000001A   E010               LDI     R17, 0
+   \   0000001C   8300               ST      Z, R16
+   \   0000001E   8311               STD     Z+1, R17
+    184          		SetSupplyCurrentLo();
+   \   00000020   ....               RCALL   SetSupplyCurrentLo
+    185          		SetCalResistance(OHM_1K);
+   \   00000022   E008               LDI     R16, 8
+   \   00000024   ....               RCALL   SetCalResistance
+    186          		CalibrateAD7715(0,CMD_GAIN_1);
+   \   00000026   E010               LDI     R17, 0
+   \   00000028   E000               LDI     R16, 0
+   \   0000002A   ....               RCALL   CalibrateAD7715
+    187          		// MD1=0, MD0=1,CLK=0,  FS1=1, FS0=0, N/U=0, BUF=0, FSYNC=0
+    188          		WriteToRegister(CMD_SET_UP_REG_WR | CMD_GAIN_1, (0 << 6) | (CMD_SETUP_CLK << 5) | (CMD_SETUP_FS << 3) | (1 << 2) | (0 << 1) | 0); // Bipolar, no Buf, 1MHz
+   \   0000002C   E014               LDI     R17, 4
+   \   0000002E   E100               LDI     R16, 16
+   \   00000030   ....               RCALL   WriteToRegister
+    189          	}
+    190          	EnableChannelSns(Ch);
+   \                     ??PrepareForOtherReading_0:
+   \   00000032   2F08               MOV     R16, R24
+   \   00000034   E010               LDI     R17, 0
+   \   00000036   ....               RCALL   EnableChannelSns
+    191          }
+   \   00000038   E0E4               LDI     R30, 4
+   \   0000003A   ........           JMP     ?EPILOGUE_B4_L09
+    192          
+    193          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    194          char ReadADC(float *RawADC, char notSigned) {
+   \                     ReadADC:
+   \   00000000   ........           CALL    ?PROLOGUE8_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R6_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R7_is_cg_reg
+   \   00000004   0128               MOVW    R5:R4, R17:R16
+   \   00000006   2E62               MOV     R6, R18
+    195          	OS_ClearEvents(&TCB_AD7715);
+   \   00000008   ....               LDI     R16, LOW(TCB_AD7715)
+   \   0000000A   ....               LDI     R17, (TCB_AD7715) >> 8
+   \   0000000C   ........           CALL    OS_ClearEvents
+    196          	WriteAdByte(CMD_DATA_REG_RD);             // Next read data
+   \   00000010   E308               LDI     R16, 56
+   \   00000012   ....               RCALL   WriteAdByte
+    197          	char ConversionCompleted = OS_WaitEventTimed(1, 500);
+   \   00000014   EF24               LDI     R18, 244
+   \   00000016   E031               LDI     R19, 1
+   \   00000018   E001               LDI     R16, 1
+   \   0000001A   ........           CALL    OS_WaitEventTimed
+   \   0000001E   2E70               MOV     R7, R16
+    198          	unsigned Hi = ReadAdByte();
+   \   00000020   ....               RCALL   ReadAdByte
+   \   00000022   2FA0               MOV     R26, R16
+   \   00000024   E0B0               LDI     R27, 0
+    199          	unsigned Lo = ReadAdByte();
+   \   00000026   ....               RCALL   ReadAdByte
+   \   00000028   2F80               MOV     R24, R16
+   \   0000002A   E090               LDI     R25, 0
+    200                  notSigned = 1;
+   \   0000002C   2466               CLR     R6
+   \   0000002E   9463               INC     R6
+    201          	if (notSigned) {
+   \   00000030   2066               TST     R6
+   \   00000032   F0E1               BREQ    ??ReadADC_0
+    202          		unsigned uRawADC = Lo + (Hi << 8); /* read data 16 bit data from ad */
+   \   00000034   019D               MOVW    R19:R18, R27:R26
+   \   00000036   2F32               MOV     R19, R18
+   \   00000038   E020               LDI     R18, 0
+   \   0000003A   018C               MOVW    R17:R16, R25:R24
+   \   0000003C   0F02               ADD     R16, R18
+   \   0000003E   1F13               ADC     R17, R19
+    203          		*RawADC = 2.5 * (uRawADC / 65536.0);
+   \   00000040   E020               LDI     R18, 0
+   \   00000042   E030               LDI     R19, 0
+   \   00000044   ........           CALL    ?UL2F_L04
+   \   00000048   E040               LDI     R20, 0
+   \   0000004A   E050               LDI     R21, 0
+   \   0000004C   E860               LDI     R22, 128
+   \   0000004E   E477               LDI     R23, 71
+   \   00000050   ........           CALL    ?F_DIV_L04
+   \   00000054   E040               LDI     R20, 0
+   \   00000056   E050               LDI     R21, 0
+   \   00000058   E260               LDI     R22, 32
+   \   0000005A   E470               LDI     R23, 64
+   \   0000005C   ........           CALL    ?F_MUL_L04
+   \   00000060   01F2               MOVW    R31:R30, R5:R4
+   \   00000062   8300               ST      Z, R16
+   \   00000064   8311               STD     Z+1, R17
+   \   00000066   8322               STD     Z+2, R18
+   \   00000068   8333               STD     Z+3, R19
+   \   0000006A   C01D               RJMP    ??ReadADC_1
+    204          	} else {
+    205          		int iRawADC = Lo + (Hi << 8); /* read data 16 bit data from ad */
+   \                     ??ReadADC_0:
+   \   0000006C   019D               MOVW    R19:R18, R27:R26
+   \   0000006E   2F32               MOV     R19, R18
+   \   00000070   E020               LDI     R18, 0
+   \   00000072   018C               MOVW    R17:R16, R25:R24
+   \   00000074   0F02               ADD     R16, R18
+   \   00000076   1F13               ADC     R17, R19
+    206          		*RawADC = 1.25 * (iRawADC / 32768.0);
+   \   00000078   2F21               MOV     R18, R17
+   \   0000007A   0F22               LSL     R18
+   \   0000007C   0B22               SBC     R18, R18
+   \   0000007E   2F32               MOV     R19, R18
+   \   00000080   ........           CALL    ?SL2F_L04
+   \   00000084   E040               LDI     R20, 0
+   \   00000086   E050               LDI     R21, 0
+   \   00000088   E060               LDI     R22, 0
+   \   0000008A   E477               LDI     R23, 71
+   \   0000008C   ........           CALL    ?F_DIV_L04
+   \   00000090   E040               LDI     R20, 0
+   \   00000092   E050               LDI     R21, 0
+   \   00000094   EA60               LDI     R22, 160
+   \   00000096   E37F               LDI     R23, 63
+   \   00000098   ........           CALL    ?F_MUL_L04
+   \   0000009C   01F2               MOVW    R31:R30, R5:R4
+   \   0000009E   8300               ST      Z, R16
+   \   000000A0   8311               STD     Z+1, R17
+   \   000000A2   8322               STD     Z+2, R18
+   \   000000A4   8333               STD     Z+3, R19
+    207          	}
+    208          	return ConversionCompleted;
+   \                     ??ReadADC_1:
+   \   000000A6   2D07               MOV     R16, R7
+   \   000000A8   E0E8               LDI     R30, 8
+   \   000000AA   ........           JMP     ?EPILOGUE_B8_L09
+    209          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    210          void ReadADConverter(int ch) {
+   \                     ReadADConverter:
+   \   00000000   ........           CALL    ?PROLOGUE7_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R6_is_cg_reg
+   \   00000004   9728               SBIW    R29:R28, 8
+   \   00000006   0128               MOVW    R5:R4, R17:R16
+    211          	float SnsADC = 0;
+   \   00000008   E000               LDI     R16, 0
+   \   0000000A   8308               ST      Y, R16
+   \   0000000C   E000               LDI     R16, 0
+   \   0000000E   8309               STD     Y+1, R16
+   \   00000010   E000               LDI     R16, 0
+   \   00000012   830A               STD     Y+2, R16
+   \   00000014   E000               LDI     R16, 0
+   \   00000016   830B               STD     Y+3, R16
+    212          	float CalADC = 0;
+   \   00000018   E000               LDI     R16, 0
+   \   0000001A   830C               STD     Y+4, R16
+   \   0000001C   E000               LDI     R16, 0
+   \   0000001E   830D               STD     Y+5, R16
+   \   00000020   E000               LDI     R16, 0
+   \   00000022   830E               STD     Y+6, R16
+   \   00000024   E000               LDI     R16, 0
+   \   00000026   830F               STD     Y+7, R16
+    213          	char ConversionCompleted = ReadADC(&SnsADC, ch & 1); // Only signed for even channels
+   \   00000028   2D24               MOV     R18, R4
+   \   0000002A   7021               ANDI    R18, 0x01
+   \   0000002C   018E               MOVW    R17:R16, R29:R28
+   \   0000002E   ....               RCALL   ReadADC
+   \   00000030   2E60               MOV     R6, R16
+    214          	ConversionCompleted = ReadADC(&SnsADC, ch & 1);
+   \   00000032   2D24               MOV     R18, R4
+   \   00000034   7021               ANDI    R18, 0x01
+   \   00000036   018E               MOVW    R17:R16, R29:R28
+   \   00000038   ....               RCALL   ReadADC
+   \   0000003A   2E60               MOV     R6, R16
+    215          	if (ConversionCompleted) {
+   \   0000003C   2066               TST     R6
+   \   0000003E   F409               BRNE    $+2+2
+   \   00000040   C083               RJMP    ??ReadADConverter_0
+    216          		EnableChannelCal(ch);
+   \   00000042   0182               MOVW    R17:R16, R5:R4
+   \   00000044   ....               RCALL   EnableChannelCal
+    217          		ConversionCompleted = ReadADC(&CalADC, ch & 1); // Only signed for even channels
+   \   00000046   2D24               MOV     R18, R4
+   \   00000048   7021               ANDI    R18, 0x01
+   \   0000004A   018E               MOVW    R17:R16, R29:R28
+   \   0000004C   5F0C               SUBI    R16, 252
+   \   0000004E   4F1F               SBCI    R17, 255
+   \   00000050   ....               RCALL   ReadADC
+   \   00000052   2E60               MOV     R6, R16
+    218          		ConversionCompleted = ReadADC(&CalADC, ch & 1);
+   \   00000054   2D24               MOV     R18, R4
+   \   00000056   7021               ANDI    R18, 0x01
+   \   00000058   018E               MOVW    R17:R16, R29:R28
+   \   0000005A   5F0C               SUBI    R16, 252
+   \   0000005C   4F1F               SBCI    R17, 255
+   \   0000005E   ....               RCALL   ReadADC
+   \   00000060   2E60               MOV     R6, R16
+    219          		if (ConversionCompleted) {
+   \   00000062   2066               TST     R6
+   \   00000064   F409               BRNE    $+2+2
+   \   00000066   C070               RJMP    ??ReadADConverter_0
+    220          			TData.Ana.Raw[ch] = SnsADC;
+   \   00000068   8148               LD      R20, Y
+   \   0000006A   8159               LDD     R21, Y+1
+   \   0000006C   816A               LDD     R22, Y+2
+   \   0000006E   817B               LDD     R23, Y+3
+   \   00000070   0182               MOVW    R17:R16, R5:R4
+   \   00000072   0F00               LSL     R16
+   \   00000074   1F11               ROL     R17
+   \   00000076   0F00               LSL     R16
+   \   00000078   1F11               ROL     R17
+   \   0000007A   01F8               MOVW    R31:R30, R17:R16
+   \   0000007C   ....               SUBI    R30, LOW((-(TData + 142) & 0xFFFF))
+   \   0000007E   ....               SBCI    R31, HIGH((-(TData + 142) & 0xFFFF))
+   \   00000080   8340               ST      Z, R20
+   \   00000082   8351               STD     Z+1, R21
+   \   00000084   8362               STD     Z+2, R22
+   \   00000086   8373               STD     Z+3, R23
+    221          			switch (ch) {
+   \   00000088   0182               MOVW    R17:R16, R5:R4
+   \   0000008A   ....               LDI     R30, LOW(`?<Jumptable for ReadADConverter>_0`)
+   \   0000008C   ....               LDI     R31, (`?<Jumptable for ReadADConverter>_0`) >> 16
+   \   0000008E   BFFB               OUT     0x3B, R31
+   \   00000090   ....               LDI     R31, HIGH(`?<Jumptable for ReadADConverter>_0`)
+   \   00000092   ........           JMP     ?SV_SWITCH_L06
+    222          			case 0:
+    223          			case 2:
+    224          			case 4:
+    225          			case 6:
+    226          			case 8:
+    227          			case 10:
+    228          			case 12:
+    229          				{
+    230          					// Gain is 128
+    231          					float NewSnsResult = (SnsADC / 128.0); // * TData.Ana.Gain[ch];// - TData.Ana.Offset[ch];
+   \                     ??ReadADConverter_1:
+   \   00000096   E040               LDI     R20, 0
+   \   00000098   E050               LDI     R21, 0
+   \   0000009A   E060               LDI     R22, 0
+   \   0000009C   E473               LDI     R23, 67
+   \   0000009E   8108               LD      R16, Y
+   \   000000A0   8119               LDD     R17, Y+1
+   \   000000A2   812A               LDD     R18, Y+2
+   \   000000A4   813B               LDD     R19, Y+3
+   \   000000A6   ........           CALL    ?F_DIV_L04
+   \   000000AA   01C8               MOVW    R25:R24, R17:R16
+   \   000000AC   01D9               MOVW    R27:R26, R19:R18
+    232          					float NewCalResult = (CalADC / 128.0);
+   \   000000AE   E040               LDI     R20, 0
+   \   000000B0   E050               LDI     R21, 0
+   \   000000B2   E060               LDI     R22, 0
+   \   000000B4   E473               LDI     R23, 67
+   \   000000B6   810C               LDD     R16, Y+4
+   \   000000B8   811D               LDD     R17, Y+5
+   \   000000BA   812E               LDD     R18, Y+6
+   \   000000BC   813F               LDD     R19, Y+7
+   \   000000BE   ........           CALL    ?F_DIV_L04
+    233          
+    234          					TData.Ana.Status[ch] = 0;                   // Result ok
+   \   000000C2   01F2               MOVW    R31:R30, R5:R4
+   \   000000C4   ....               SUBI    R30, LOW((-(TData) & 0xFFFF))
+   \   000000C6   ....               SBCI    R31, (-(TData) & 0xFFFF) >> 8
+   \   000000C8   E040               LDI     R20, 0
+   \   000000CA   8B40               STD     Z+16, R20
+    235          					TData.Ana.Result[ch] = NewSnsResult; //(NewResult  - TData.Ana.Result[ch]) / (TData.Ana.Filter[ch] + 1.0);             // readed value / 16bit * 2.5 volt range
+   \   000000CC   01A2               MOVW    R21:R20, R5:R4
+   \   000000CE   0F44               LSL     R20
+   \   000000D0   1F55               ROL     R21
+   \   000000D2   0F44               LSL     R20
+   \   000000D4   1F55               ROL     R21
+   \   000000D6   01FA               MOVW    R31:R30, R21:R20
+   \   000000D8   ....               SUBI    R30, LOW((-(TData + 86) & 0xFFFF))
+   \   000000DA   ....               SBCI    R31, HIGH((-(TData + 86) & 0xFFFF))
+   \   000000DC   8380               ST      Z, R24
+   \   000000DE   8391               STD     Z+1, R25
+   \   000000E0   83A2               STD     Z+2, R26
+   \   000000E2   83B3               STD     Z+3, R27
+    236          					TData.Ana.CalData[ch] = NewCalResult;
+   \   000000E4   01A2               MOVW    R21:R20, R5:R4
+   \   000000E6   0F44               LSL     R20
+   \   000000E8   1F55               ROL     R21
+   \   000000EA   0F44               LSL     R20
+   \   000000EC   1F55               ROL     R21
+   \   000000EE   01FA               MOVW    R31:R30, R21:R20
+   \   000000F0   ....               SUBI    R30, LOW((-(TData) & 0xFFFF))
+   \   000000F2   ....               SBCI    R31, (-(TData) & 0xFFFF) >> 8
+   \   000000F4   8F06               STD     Z+30, R16
+   \   000000F6   8F17               STD     Z+31, R17
+   \   000000F8   A320               STD     Z+32, R18
+   \   000000FA   A331               STD     Z+33, R19
+    237          				}
+    238          				break;
+   \   000000FC   C025               RJMP    ??ReadADConverter_0
+    239          			case 1:
+    240          			case 3:
+    241          			case 5:
+    242          			case 7:
+    243          			case 9:
+    244          			case 11:
+    245          			case 13:
+    246          				{
+    247          					float NewSnsResult =  SnsADC; //(Voltage * TData.Ana.Gain[ch]) - TData.Ana.Offset[ch];
+   \                     ??ReadADConverter_2:
+   \   000000FE   8108               LD      R16, Y
+   \   00000100   8119               LDD     R17, Y+1
+   \   00000102   812A               LDD     R18, Y+2
+   \   00000104   813B               LDD     R19, Y+3
+    248          					float NewCalResult =  CalADC;
+   \   00000106   814C               LDD     R20, Y+4
+   \   00000108   815D               LDD     R21, Y+5
+   \   0000010A   816E               LDD     R22, Y+6
+   \   0000010C   817F               LDD     R23, Y+7
+    249          
+    250          					TData.Ana.Status[ch] = 0;                   // Result ok
+   \   0000010E   01F2               MOVW    R31:R30, R5:R4
+   \   00000110   ....               SUBI    R30, LOW((-(TData) & 0xFFFF))
+   \   00000112   ....               SBCI    R31, (-(TData) & 0xFFFF) >> 8
+   \   00000114   E080               LDI     R24, 0
+   \   00000116   8B80               STD     Z+16, R24
+    251          					TData.Ana.Result[ch] = NewSnsResult; //(NewResult  - TData.Ana.Result[ch]) / (TData.Ana.Filter[ch] + 1.0);             // readed value / 16bit * 2.5 volt range
+   \   00000118   0102               MOVW    R1:R0, R5:R4
+   \   0000011A   0C00               LSL     R0
+   \   0000011C   1C11               ROL     R1
+   \   0000011E   0C00               LSL     R0
+   \   00000120   1C11               ROL     R1
+   \   00000122   01F0               MOVW    R31:R30, R1:R0
+   \   00000124   ....               SUBI    R30, LOW((-(TData + 86) & 0xFFFF))
+   \   00000126   ....               SBCI    R31, HIGH((-(TData + 86) & 0xFFFF))
+   \   00000128   8300               ST      Z, R16
+   \   0000012A   8311               STD     Z+1, R17
+   \   0000012C   8322               STD     Z+2, R18
+   \   0000012E   8333               STD     Z+3, R19
+    252          					TData.Ana.CalData[ch] = NewCalResult;
+   \   00000130   0102               MOVW    R1:R0, R5:R4
+   \   00000132   0C00               LSL     R0
+   \   00000134   1C11               ROL     R1
+   \   00000136   0C00               LSL     R0
+   \   00000138   1C11               ROL     R1
+   \   0000013A   01F0               MOVW    R31:R30, R1:R0
+   \   0000013C   ....               SUBI    R30, LOW((-(TData) & 0xFFFF))
+   \   0000013E   ....               SBCI    R31, (-(TData) & 0xFFFF) >> 8
+   \   00000140   8F46               STD     Z+30, R20
+   \   00000142   8F57               STD     Z+31, R21
+   \   00000144   A360               STD     Z+32, R22
+   \   00000146   A371               STD     Z+33, R23
+    253          				}
+    254          				break;
+    255          			default:
+    256          				break;
+    257          			}
+    258          		}
+    259          	}
+    260          }
+   \                     ??ReadADConverter_0:
+   \   00000148   9628               ADIW    R29:R28, 8
+   \   0000014A   E0E7               LDI     R30, 7
+   \   0000014C   ........           JMP     ?EPILOGUE_B7_L09
+    261          
+    262          /*************************************************************************
+    263          *   (This is a task)
+    264          *  AD7715 task 
+    265          *
+    266          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    267          void AD7715(void) {
+   \                     AD7715:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+    268          	unsigned int addata;
+    269          	float Tempfloat;
+    270          
+    271          	for (int ch = 0; ch < 14; ch++) {
+   \   00000004   E080               LDI     R24, 0
+   \   00000006   E090               LDI     R25, 0
+   \                     ??AD7715_0:
+   \   00000008   308E               CPI     R24, 14
+   \   0000000A   E000               LDI     R16, 0
+   \   0000000C   0790               CPC     R25, R16
+   \   0000000E   F43C               BRGE    ??AD7715_1
+    272          		TData.Ana.Filter[ch] = 1.0;
+   \   00000010   01FC               MOVW    R31:R30, R25:R24
+   \   00000012   ....               SUBI    R30, LOW((-(TData) & 0xFFFF))
+   \   00000014   ....               SBCI    R31, (-(TData) & 0xFFFF) >> 8
+   \   00000016   E001               LDI     R16, 1
+   \   00000018   8302               STD     Z+2, R16
+    273          	}
+   \   0000001A   9601               ADIW    R25:R24, 1
+   \   0000001C   CFF5               RJMP    ??AD7715_0
+    274          	// Reset ADC by set, reset and set ADC Enable
+    275          	SetBitsOr(PORTG, 0x10);
+   \                     ??AD7715_1:
+   \   0000001E   94F8               cli
+   \   00000020   9100....           LDS     R16, (OS_Global + 1)
+   \   00000024   9503               INC     R16
+   \   00000026   9300....           STS     (OS_Global + 1), R16
+   \   0000002A   91000065           LDS     R16, 101
+   \   0000002E   6100               ORI     R16, 0x10
+   \   00000030   93000065           STS     101, R16
+   \   00000034   9100....           LDS     R16, (OS_Global + 1)
+   \   00000038   950A               DEC     R16
+   \   0000003A   9300....           STS     (OS_Global + 1), R16
+   \   0000003E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??AD7715_2
+   \   00000046   9478               sei
+    276          	OS_Delay(50);
+   \                     ??AD7715_2:
+   \   00000048   E302               LDI     R16, 50
+   \   0000004A   E010               LDI     R17, 0
+   \   0000004C   ........           CALL    OS_Delay
+    277          	ClrBit(PORTG, 0x18);
+   \   00000050   94F8               cli
+   \   00000052   9100....           LDS     R16, (OS_Global + 1)
+   \   00000056   9503               INC     R16
+   \   00000058   9300....           STS     (OS_Global + 1), R16
+   \   0000005C   9100....           LDS     R16, _A_PORTG
+   \   00000060   7E07               ANDI    R16, 0xE7
+   \   00000062   9300....           STS     _A_PORTG, R16
+   \   00000066   9100....           LDS     R16, (OS_Global + 1)
+   \   0000006A   950A               DEC     R16
+   \   0000006C   9300....           STS     (OS_Global + 1), R16
+   \   00000070   9100....           LDS     R16, (OS_Global + 1)
+   \   00000074   2300               TST     R16
+   \   00000076   F409               BRNE    ??AD7715_3
+   \   00000078   9478               sei
+    278          	OS_Delay(50);
+   \                     ??AD7715_3:
+   \   0000007A   E302               LDI     R16, 50
+   \   0000007C   E010               LDI     R17, 0
+   \   0000007E   ........           CALL    OS_Delay
+    279          
+    280          	ResetADCBySW();
+   \   00000082   ....               RCALL   ResetADCBySW
+    281          
+    282          	SetBitsOr(PORTC, 0x02); // Temporary, remember to disable when reading eeproms
+   \   00000084   94F8               cli
+   \   00000086   9100....           LDS     R16, (OS_Global + 1)
+   \   0000008A   9503               INC     R16
+   \   0000008C   9300....           STS     (OS_Global + 1), R16
+   \   00000090   9AA9               SBI     0x15, 0x01
+   \   00000092   9100....           LDS     R16, (OS_Global + 1)
+   \   00000096   950A               DEC     R16
+   \   00000098   9300....           STS     (OS_Global + 1), R16
+   \   0000009C   9100....           LDS     R16, (OS_Global + 1)
+   \   000000A0   2300               TST     R16
+   \   000000A2   F409               BRNE    ??AD7715_4
+   \   000000A4   9478               sei
+    283          
+    284          
+    285          	for (int ch = 0; ch < 14; ch++) {       // Get the gain and offset from the EEPROM
+   \                     ??AD7715_4:
+   \   000000A6   E080               LDI     R24, 0
+   \   000000A8   E090               LDI     R25, 0
+   \                     ??AD7715_5:
+   \   000000AA   308E               CPI     R24, 14
+   \   000000AC   E000               LDI     R16, 0
+   \   000000AE   0790               CPC     R25, R16
+   \   000000B0   F514               BRGE    ??AD7715_6
+    286          		TData.Ana.Offset[ch] = 0.0;
+   \   000000B2   018C               MOVW    R17:R16, R25:R24
+   \   000000B4   0F00               LSL     R16
+   \   000000B6   1F11               ROL     R17
+   \   000000B8   0F00               LSL     R16
+   \   000000BA   1F11               ROL     R17
+   \   000000BC   01F8               MOVW    R31:R30, R17:R16
+   \   000000BE   ....               SUBI    R30, LOW((-(TData + 198) & 0xFFFF))
+   \   000000C0   ....               SBCI    R31, HIGH((-(TData + 198) & 0xFFFF))
+   \   000000C2   E000               LDI     R16, 0
+   \   000000C4   8300               ST      Z, R16
+   \   000000C6   E000               LDI     R16, 0
+   \   000000C8   8301               STD     Z+1, R16
+   \   000000CA   E000               LDI     R16, 0
+   \   000000CC   8302               STD     Z+2, R16
+   \   000000CE   E000               LDI     R16, 0
+   \   000000D0   8303               STD     Z+3, R16
+    287          		TData.Ana.Gain[ch] = 0.9972; //0.9985;
+   \   000000D2   018C               MOVW    R17:R16, R25:R24
+   \   000000D4   0F00               LSL     R16
+   \   000000D6   1F11               ROL     R17
+   \   000000D8   0F00               LSL     R16
+   \   000000DA   1F11               ROL     R17
+   \   000000DC   01F8               MOVW    R31:R30, R17:R16
+   \   000000DE   ....               SUBI    R30, LOW((-(TData + 254) & 0xFFFF))
+   \   000000E0   ....               SBCI    R31, HIGH((-(TData + 254) & 0xFFFF))
+   \   000000E2   E800               LDI     R16, 128
+   \   000000E4   E418               LDI     R17, 72
+   \   000000E6   E72F               LDI     R18, 127
+   \   000000E8   E33F               LDI     R19, 63
+   \   000000EA   8300               ST      Z, R16
+   \   000000EC   8311               STD     Z+1, R17
+   \   000000EE   8322               STD     Z+2, R18
+   \   000000F0   8333               STD     Z+3, R19
+    288          	}
+   \   000000F2   9601               ADIW    R25:R24, 1
+   \   000000F4   CFDA               RJMP    ??AD7715_5
+    289          	/*
+    290          	for (int ch = 0; ch < 12; ch++) {       // Get the gain and offset from the EEPROM
+    291          		ReadEEPROMBuffer((ch | 0x80) * sizeof(float) * 2, sizeof(float), (char *)&Tempfloat);
+    292          
+    293          		if (IsFloat(Tempfloat) && Tempfloat > -2.0 && Tempfloat < 2.0) {
+    294          			*((float *)&TData.Ana.Offset[ch]) = *((float *)&Tempfloat);  //offset
+    295          		}
+    296          
+    297          		ReadEEPROMBuffer(((ch | 0x80) * sizeof(float) * 2) + sizeof(float), sizeof(float), (char *)&Tempfloat);
+    298          
+    299          		if (IsFloat(Tempfloat) && Tempfloat > 0.98 && Tempfloat < 1.02) {
+    300          			*((float *)&TData.Ana.Gain[ch]) = *((float *)&Tempfloat);  //gain
+    301          		}
+    302          	}
+    303          	*/
+    304          	while (1) {
+    305          		Led(1, LED_ON);                                        /* Led 2 on */
+   \                     ??AD7715_6:
+   \   000000F6   E021               LDI     R18, 1
+   \   000000F8   E030               LDI     R19, 0
+   \   000000FA   E001               LDI     R16, 1
+   \   000000FC   E010               LDI     R17, 0
+   \   000000FE   ........           CALL    Led
+    306          		Led(2, LED_OFF);                                        /* Led 2 off */
+   \   00000102   E020               LDI     R18, 0
+   \   00000104   E030               LDI     R19, 0
+   \   00000106   E002               LDI     R16, 2
+   \   00000108   E010               LDI     R17, 0
+   \   0000010A   ........           CALL    Led
+    307          		for (int Ch = 0; Ch <= 12; Ch += 2) {
+   \   0000010E   E080               LDI     R24, 0
+   \   00000110   E090               LDI     R25, 0
+   \                     ??AD7715_7:
+   \   00000112   308D               CPI     R24, 13
+   \   00000114   E000               LDI     R16, 0
+   \   00000116   0790               CPC     R25, R16
+   \   00000118   F434               BRGE    ??AD7715_8
+    308          			PrepareForPressureReading(Ch);
+   \   0000011A   2F08               MOV     R16, R24
+   \   0000011C   ....               RCALL   PrepareForPressureReading
+    309          			ReadADConverter(Ch);
+   \   0000011E   018C               MOVW    R17:R16, R25:R24
+   \   00000120   ....               RCALL   ReadADConverter
+    310          		}
+   \   00000122   9602               ADIW    R25:R24, 2
+   \   00000124   CFF6               RJMP    ??AD7715_7
+    311          		//OS_Delay(500);
+    312          		Led(1, LED_OFF);                                        /* Led 2 off */
+   \                     ??AD7715_8:
+   \   00000126   E020               LDI     R18, 0
+   \   00000128   E030               LDI     R19, 0
+   \   0000012A   E001               LDI     R16, 1
+   \   0000012C   E010               LDI     R17, 0
+   \   0000012E   ........           CALL    Led
+    313          		Led(2, LED_ON);                                        /* Led 2 on */
+   \   00000132   E021               LDI     R18, 1
+   \   00000134   E030               LDI     R19, 0
+   \   00000136   E002               LDI     R16, 2
+   \   00000138   E010               LDI     R17, 0
+   \   0000013A   ........           CALL    Led
+    314          		for (int Ch = 1; Ch <= 13; Ch += 2) {
+   \   0000013E   E081               LDI     R24, 1
+   \   00000140   E090               LDI     R25, 0
+   \                     ??AD7715_9:
+   \   00000142   308E               CPI     R24, 14
+   \   00000144   E000               LDI     R16, 0
+   \   00000146   0790               CPC     R25, R16
+   \   00000148   F6B4               BRGE    ??AD7715_6
+    315          			PrepareForTempReading(Ch);
+   \   0000014A   2F08               MOV     R16, R24
+   \   0000014C   ....               RCALL   PrepareForTempReading
+    316          			ReadADConverter(Ch);
+   \   0000014E   018C               MOVW    R17:R16, R25:R24
+   \   00000150   ....               RCALL   ReadADConverter
+    317          		}
+   \   00000152   9602               ADIW    R25:R24, 2
+   \   00000154   CFF6               RJMP    ??AD7715_9
+   \   00000156                      REQUIRE _A_PORTG
+   \   00000156                      REQUIRE _A_PORTC
+    318          
+    319          		//OS_Delay(500);
+    320          	}
+    321          }
+    322          
+    323          /*************************************************************************
+    324          *
+    325          *  Set ports on or off
+    326          *
+    327          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    328          void SetAnaPort(void) {
+   \                     SetAnaPort:
+    329          
+    330          	PORTC = (TData.Ana.PortUsed & 0xff);         // Set power on ports 0-7
+   \   00000000   ....               LDI     R30, LOW(TData)
+   \   00000002   ....               LDI     R31, (TData) >> 8
+   \   00000004   8100               LD      R16, Z
+   \   00000006   8111               LDD     R17, Z+1
+   \   00000008   BB05               OUT     0x15, R16
+    331          	ClrBit(PORTB, 0xe1);                            // Set power on ports 8-11 off
+   \   0000000A   94F8               cli
+   \   0000000C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000010   9503               INC     R16
+   \   00000012   9300....           STS     (OS_Global + 1), R16
+   \   00000016   B308               IN      R16, 0x18
+   \   00000018   710E               ANDI    R16, 0x1E
+   \   0000001A   BB08               OUT     0x18, R16
+   \   0000001C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000020   950A               DEC     R16
+   \   00000022   9300....           STS     (OS_Global + 1), R16
+   \   00000026   9100....           LDS     R16, (OS_Global + 1)
+   \   0000002A   2300               TST     R16
+   \   0000002C   F409               BRNE    ??SetAnaPort_0
+   \   0000002E   9478               sei
+    332          	SetBitsOr(PORTB, TData.Ana.PortUsed >> 8 & 0x01);    // Set power on port 8
+   \                     ??SetAnaPort_0:
+   \   00000030   94F8               cli
+   \   00000032   9100....           LDS     R16, (OS_Global + 1)
+   \   00000036   9503               INC     R16
+   \   00000038   9300....           STS     (OS_Global + 1), R16
+   \   0000003C   ....               LDI     R30, LOW(TData)
+   \   0000003E   ....               LDI     R31, (TData) >> 8
+   \   00000040   8101               LDD     R16, Z+1
+   \   00000042   7001               ANDI    R16, 0x01
+   \   00000044   7001               ANDI    R16, 0x01
+   \   00000046   B318               IN      R17, 0x18
+   \   00000048   2B10               OR      R17, R16
+   \   0000004A   BB18               OUT     0x18, R17
+   \   0000004C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000050   950A               DEC     R16
+   \   00000052   9300....           STS     (OS_Global + 1), R16
+   \   00000056   9100....           LDS     R16, (OS_Global + 1)
+   \   0000005A   2300               TST     R16
+   \   0000005C   F409               BRNE    ??SetAnaPort_1
+   \   0000005E   9478               sei
+    333          	SetBitsOr(PORTB, TData.Ana.PortUsed >> 4 & 0xe0);      // Set power on ports 9-11
+   \                     ??SetAnaPort_1:
+   \   00000060   94F8               cli
+   \   00000062   9100....           LDS     R16, (OS_Global + 1)
+   \   00000066   9503               INC     R16
+   \   00000068   9300....           STS     (OS_Global + 1), R16
+   \   0000006C   E044               LDI     R20, 4
+   \   0000006E   ....               LDI     R30, LOW(TData)
+   \   00000070   ....               LDI     R31, (TData) >> 8
+   \   00000072   8100               LD      R16, Z
+   \   00000074   8111               LDD     R17, Z+1
+   \   00000076   ........           CALL    ?US_SHR_L02
+   \   0000007A   7E00               ANDI    R16, 0xE0
+   \   0000007C   B318               IN      R17, 0x18
+   \   0000007E   2B10               OR      R17, R16
+   \   00000080   BB18               OUT     0x18, R17
+   \   00000082   9100....           LDS     R16, (OS_Global + 1)
+   \   00000086   950A               DEC     R16
+   \   00000088   9300....           STS     (OS_Global + 1), R16
+   \   0000008C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000090   2300               TST     R16
+   \   00000092   F409               BRNE    ??SetAnaPort_2
+   \   00000094   9478               sei
+    334          
+    335          }
+   \                     ??SetAnaPort_2:
+   \   00000096   9508               RET
+   \   00000098                      REQUIRE _A_PORTC
+   \   00000098                      REQUIRE _A_PORTB
+    336          
+    337          /*************************************************************************
+    338          *
+    339          *  Read from AD-converter
+    340          *
+    341          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    342          char ReadAdByte(void) {
+   \                     ReadAdByte:
+    343          
+    344          	char readbyte = 0;
+   \   00000000   E000               LDI     R16, 0
+    345          
+    346          	for (char i = 0; i <  8; i++) {
+   \   00000002   E010               LDI     R17, 0
+   \                     ??ReadAdByte_0:
+   \   00000004   3018               CPI     R17, 8
+   \   00000006   F538               BRCC    ??ReadAdByte_1
+    347          		readbyte <<= 1;                    // shift to next bit
+   \   00000008   0F00               LSL     R16
+    348          		ClrBit(PORTD, ADCLK);
+   \   0000000A   94F8               cli
+   \   0000000C   9120....           LDS     R18, (OS_Global + 1)
+   \   00000010   9523               INC     R18
+   \   00000012   9320....           STS     (OS_Global + 1), R18
+   \   00000016   9894               CBI     0x12, 0x04
+   \   00000018   9120....           LDS     R18, (OS_Global + 1)
+   \   0000001C   952A               DEC     R18
+   \   0000001E   9320....           STS     (OS_Global + 1), R18
+   \   00000022   9120....           LDS     R18, (OS_Global + 1)
+   \   00000026   2322               TST     R18
+   \   00000028   F409               BRNE    ??ReadAdByte_2
+   \   0000002A   9478               sei
+    349          		SetBitsOr(PORTD, ADCLK);                  // set clock line high
+   \                     ??ReadAdByte_2:
+   \   0000002C   94F8               cli
+   \   0000002E   9120....           LDS     R18, (OS_Global + 1)
+   \   00000032   9523               INC     R18
+   \   00000034   9320....           STS     (OS_Global + 1), R18
+   \   00000038   9A94               SBI     0x12, 0x04
+   \   0000003A   9120....           LDS     R18, (OS_Global + 1)
+   \   0000003E   952A               DEC     R18
+   \   00000040   9320....           STS     (OS_Global + 1), R18
+   \   00000044   9120....           LDS     R18, (OS_Global + 1)
+   \   00000048   2322               TST     R18
+   \   0000004A   F409               BRNE    ??ReadAdByte_3
+   \   0000004C   9478               sei
+    350          		if (PIND & ADCDO) {                  // data  = 1?
+   \                     ??ReadAdByte_3:
+   \   0000004E   9982               SBIC    0x10, 0x02
+    351          			readbyte |= 0x01;                    // set bit high
+   \   00000050   6001               ORI     R16, 0x01
+    352          		}
+    353          	}
+   \                     ??ReadAdByte_4:
+   \   00000052   9513               INC     R17
+   \   00000054   CFD7               RJMP    ??ReadAdByte_0
+    354          	return readbyte;
+   \                     ??ReadAdByte_1:
+   \   00000056   9508               RET
+   \   00000058                      REQUIRE _A_PORTD
+   \   00000058                      REQUIRE _A_PIND
+    355          }
+    356          
+    357          /*************************************************************************
+    358          *
+    359          *  Write to AD-converter
+    360          *
+    361          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    362          void WriteAdByte(char data) {
+   \                     WriteAdByte:
+    363          	for (char i = 0; i <  8; i++) {
+   \   00000000   E010               LDI     R17, 0
+   \                     ??WriteAdByte_0:
+   \   00000002   3018               CPI     R17, 8
+   \   00000004   F008               BRCS    $+2+2
+   \   00000006   C04A               RJMP    ??WriteAdByte_1
+    364          		ClrBit(PORTD, ADCLK);              // set clock line low
+   \   00000008   94F8               cli
+   \   0000000A   9120....           LDS     R18, (OS_Global + 1)
+   \   0000000E   9523               INC     R18
+   \   00000010   9320....           STS     (OS_Global + 1), R18
+   \   00000014   9894               CBI     0x12, 0x04
+   \   00000016   9120....           LDS     R18, (OS_Global + 1)
+   \   0000001A   952A               DEC     R18
+   \   0000001C   9320....           STS     (OS_Global + 1), R18
+   \   00000020   9120....           LDS     R18, (OS_Global + 1)
+   \   00000024   2322               TST     R18
+   \   00000026   F409               BRNE    ??WriteAdByte_2
+   \   00000028   9478               sei
+    365          		if (data & 0x80) {                 // data bit = 1?
+   \                     ??WriteAdByte_2:
+   \   0000002A   FB07               BST     R16, 7
+   \   0000002C   F496               BRTC    ??WriteAdByte_3
+    366          			SetBitsOr(PORTD, ADCDI);          // set data high
+   \   0000002E   94F8               cli
+   \   00000030   9120....           LDS     R18, (OS_Global + 1)
+   \   00000034   9523               INC     R18
+   \   00000036   9320....           STS     (OS_Global + 1), R18
+   \   0000003A   9A93               SBI     0x12, 0x03
+   \   0000003C   9120....           LDS     R18, (OS_Global + 1)
+   \   00000040   952A               DEC     R18
+   \   00000042   9320....           STS     (OS_Global + 1), R18
+   \   00000046   9120....           LDS     R18, (OS_Global + 1)
+   \   0000004A   2322               TST     R18
+   \   0000004C   F499               BRNE    ??WriteAdByte_4
+   \   0000004E   9478               sei
+   \   00000050   C011               RJMP    ??WriteAdByte_4
+    367          		} else {
+    368          			ClrBit(PORTD, ADCDI);          // set data low
+   \                     ??WriteAdByte_3:
+   \   00000052   94F8               cli
+   \   00000054   9120....           LDS     R18, (OS_Global + 1)
+   \   00000058   9523               INC     R18
+   \   0000005A   9320....           STS     (OS_Global + 1), R18
+   \   0000005E   9893               CBI     0x12, 0x03
+   \   00000060   9120....           LDS     R18, (OS_Global + 1)
+   \   00000064   952A               DEC     R18
+   \   00000066   9320....           STS     (OS_Global + 1), R18
+   \   0000006A   9120....           LDS     R18, (OS_Global + 1)
+   \   0000006E   2322               TST     R18
+   \   00000070   F409               BRNE    ??WriteAdByte_4
+   \   00000072   9478               sei
+    369          		}
+    370          		data <<= 1;                        // shift to next bit
+   \                     ??WriteAdByte_4:
+   \   00000074   0F00               LSL     R16
+    371          		SetBitsOr(PORTD, ADCLK);              // set clock line high
+   \   00000076   94F8               cli
+   \   00000078   9120....           LDS     R18, (OS_Global + 1)
+   \   0000007C   9523               INC     R18
+   \   0000007E   9320....           STS     (OS_Global + 1), R18
+   \   00000082   9A94               SBI     0x12, 0x04
+   \   00000084   9120....           LDS     R18, (OS_Global + 1)
+   \   00000088   952A               DEC     R18
+   \   0000008A   9320....           STS     (OS_Global + 1), R18
+   \   0000008E   9120....           LDS     R18, (OS_Global + 1)
+   \   00000092   2322               TST     R18
+   \   00000094   F409               BRNE    ??WriteAdByte_5
+   \   00000096   9478               sei
+    372          	}
+   \                     ??WriteAdByte_5:
+   \   00000098   9513               INC     R17
+   \   0000009A   CFB3               RJMP    ??WriteAdByte_0
+    373          }
+   \                     ??WriteAdByte_1:
+   \   0000009C   9508               RET
+   \   0000009E                      REQUIRE _A_PORTD
+    374          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    375          void WriteToRegister(char Cmd, char data) {
+   \                     WriteToRegister:
+   \   00000000   2F30               MOV     R19, R16
+   \   00000002   2F41               MOV     R20, R17
+    376          	WriteAdByte(Cmd);
+   \   00000004   2F03               MOV     R16, R19
+   \   00000006   ....               RCALL   WriteAdByte
+    377          	WriteAdByte(data);
+   \   00000008   2F04               MOV     R16, R20
+   \   0000000A   ....               RCALL   WriteAdByte
+    378          }
+   \   0000000C   9508               RET
+    379          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    380          int ReadFromRegister(char Cmd) {
+   \                     ReadFromRegister:
+   \   00000000   2F30               MOV     R19, R16
+    381          	int Result = 0;
+   \   00000002   E040               LDI     R20, 0
+   \   00000004   E050               LDI     R21, 0
+    382          	WriteAdByte(Cmd);
+   \   00000006   2F03               MOV     R16, R19
+   \   00000008   ....               RCALL   WriteAdByte
+    383          	switch (Cmd) {
+   \   0000000A   2F03               MOV     R16, R19
+   \   0000000C   5008               SUBI    R16, 8
+   \   0000000E   F039               BREQ    ??ReadFromRegister_0
+   \   00000010   5100               SUBI    R16, 16
+   \   00000012   F029               BREQ    ??ReadFromRegister_0
+   \   00000014   5100               SUBI    R16, 16
+   \   00000016   F019               BREQ    ??ReadFromRegister_0
+   \   00000018   5100               SUBI    R16, 16
+   \   0000001A   F029               BREQ    ??ReadFromRegister_1
+   \   0000001C   C00E               RJMP    ??ReadFromRegister_2
+    384          	case CMD_COM_REG_RD   :
+    385          	case CMD_SET_UP_REG_RD:
+    386          	case CMD_TEST_REG_RD  :
+    387          		Result = ReadAdByte();
+   \                     ??ReadFromRegister_0:
+   \   0000001E   ....               RCALL   ReadAdByte
+   \   00000020   E010               LDI     R17, 0
+   \   00000022   01A8               MOVW    R21:R20, R17:R16
+    388          		break;
+   \   00000024   C00A               RJMP    ??ReadFromRegister_2
+    389          	case CMD_DATA_REG_RD  :
+    390          		{
+    391          			int Hi = ReadAdByte();
+   \                     ??ReadFromRegister_1:
+   \   00000026   ....               RCALL   ReadAdByte
+   \   00000028   2F60               MOV     R22, R16
+   \   0000002A   E070               LDI     R23, 0
+    392          			int Lo = ReadAdByte();
+   \   0000002C   ....               RCALL   ReadAdByte
+   \   0000002E   E010               LDI     R17, 0
+    393          			Result = Lo + (Hi << 8); /* read data 16 bit data from ad */
+   \   00000030   2F76               MOV     R23, R22
+   \   00000032   E060               LDI     R22, 0
+   \   00000034   0F06               ADD     R16, R22
+   \   00000036   1F17               ADC     R17, R23
+   \   00000038   01A8               MOVW    R21:R20, R17:R16
+    394          		}
+    395          		break;
+    396          	}
+    397          	return Result;
+   \                     ??ReadFromRegister_2:
+   \   0000003A   018A               MOVW    R17:R16, R21:R20
+   \   0000003C   9508               RET
+    398          }
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for CurrentT>`:
+   \   00000000   126F3A83           DD 3A83126FH
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for CurrentP>`:
+   \   00000000   D70A3C23           DD 3C23D70AH
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for CurrentO>`:
+   \   00000000   D70A3C23           DD 3C23D70AH
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for SensorType>`:
+   \   00000000   FFFF               DC16 -1
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for MuxControlSns>`:
+   \   00000000   3F1027801050       DC8 16, 63, 128, 39, 80, 16, 16, 148, 63, 192, 39, 72, 16, 16, 82, 63
+   \              9410C03F4827
+   \              10103F52    
+   \   00000010   27801050D611       DC8 128, 39, 80, 16, 17, 214, 63, 192, 39, 72, 16, 17, 49, 63, 128, 39
+   \              C03F48271110
+   \              3F312780    
+   \   00000020   1050B512C03F       DC8 80, 16, 18, 181, 63, 192, 39, 72, 16, 18, 115, 63, 128, 39, 80, 16
+   \              482712103F73
+   \              27801050    
+   \   00000030   F713C03F4827       DC8 19, 247, 63, 192, 39, 72, 16, 19, 8, 63, 0, 39, 208, 16, 20, 140
+   \              13103F082700
+   \              10D08C14    
+   \   00000040   403FC8271410       DC8 63, 64, 39, 200, 16, 20, 74, 63, 0, 39, 208, 16, 22, 206, 63, 64
+   \              3F4A270010D0
+   \              CE16403F    
+   \   00000050   C82716103F29       DC8 39, 200, 16, 22, 41, 63, 0, 39, 208, 16, 22, 173, 63, 64, 39, 200
+   \              270010D0AD16
+   \              403FC827    
+   \   00000060   1610               DC8 16, 22
+
+   \                                 In  segment NEAR_ID, align 1, keep-with-next
+   \                     `?<Initializer for MuxControlCal>`:
+   \   00000000   3FE827801050       DC8 232, 63, 128, 39, 80, 16, 16, 108, 63, 192, 39, 72, 16, 16, 234, 63
+   \              6C10C03F4827
+   \              10103FEA    
+   \   00000010   278010506E11       DC8 128, 39, 80, 16, 17, 110, 63, 192, 39, 72, 16, 17, 233, 63, 128, 39
+   \              C03F48271110
+   \              3FE92780    
+   \   00000020   10506D12C03F       DC8 80, 16, 18, 109, 63, 192, 39, 72, 16, 18, 235, 63, 128, 39, 80, 16
+   \              482712103FEB
+   \              27801050    
+   \   00000030   6F13C03F4827       DC8 19, 111, 63, 192, 39, 72, 16, 19, 232, 63, 0, 39, 208, 16, 20, 108
+   \              13103FE82700
+   \              10D06C14    
+   \   00000040   403FC8271410       DC8 63, 64, 39, 200, 16, 20, 234, 63, 0, 39, 208, 16, 22, 110, 63, 64
+   \              3FEA270010D0
+   \              6E16403F    
+   \   00000050   C82716103FE9       DC8 39, 200, 16, 22, 233, 63, 0, 39, 208, 16, 22, 109, 63, 64, 39, 200
+   \              270010D06D16
+   \              403FC827    
+   \   00000060   1610               DC8 16, 22
+
+   \                                 In  segment SWITCH, align 2, keep-with-next
+   \                     `?<Jumptable for ReadADConverter>_0`:
+   \   00000000   0000               DW      0
+   \   00000002   00                 DB      0
+   \   00000003   ....               DW      (??ReadADConverter_0) /2
+   \   00000005   000E               DW      14
+   \   00000007   ....               DW      (??ReadADConverter_1) /2
+   \   00000009   ....               DW      (??ReadADConverter_2) /2
+   \   0000000B   ....               DW      (??ReadADConverter_1) /2
+   \   0000000D   ....               DW      (??ReadADConverter_2) /2
+   \   0000000F   ....               DW      (??ReadADConverter_1) /2
+   \   00000011   ....               DW      (??ReadADConverter_2) /2
+   \   00000013   ....               DW      (??ReadADConverter_1) /2
+   \   00000015   ....               DW      (??ReadADConverter_2) /2
+   \   00000017   ....               DW      (??ReadADConverter_1) /2
+   \   00000019   ....               DW      (??ReadADConverter_2) /2
+   \   0000001B   ....               DW      (??ReadADConverter_1) /2
+   \   0000001D   ....               DW      (??ReadADConverter_2) /2
+   \   0000001F   ....               DW      (??ReadADConverter_1) /2
+   \   00000021   ....               DW      (??ReadADConverter_2) /2
+   \   00000023   00                 DB      0
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      2      2   AD7715
+        2      2   -> Led
+        2      2   -> OS_Delay
+        2      2   -> PrepareForPressureReading
+        2      2   -> PrepareForTempReading
+        2      2   -> ReadADConverter
+        2      2   -> ResetADCBySW
+      8      2   CalibrateAD7715
+        8      2   -> OS_ClearEvents
+        8      2   -> OS_Delay
+        8      2   -> OS_WaitEventTimed
+        8      2   -> WriteToRegister
+      0      2   EnableChannelCal
+        0      2 ?S_EC_MUL_L02
+      2      2   EnableChannelSns
+        2      2   -> OS_Delay
+        2      2 ?S_EC_MUL_L02
+      4      2   PrepareForOtherReading
+        4      2   -> CalibrateAD7715
+        4      2   -> EnableChannelSns
+        4      2   -> SetCalResistance
+        4      2   -> SetSupplyCurrentLo
+        4      2   -> WriteToRegister
+      1      2   PrepareForPressureReading
+        1      2   -> CalibrateAD7715
+        1      2   -> EnableChannelSns
+        1      2   -> SetCalResistance
+        1      2   -> SetSupplyCurrentHi
+        1      2   -> WriteToRegister
+      4      2   PrepareForTempReading
+        4      2   -> CalibrateAD7715
+        4      2   -> EnableChannelSns
+        4      2   -> SetCalResistance
+        4      2   -> SetSupplyCurrentLo
+        4      2   -> WriteToRegister
+      8      2   ReadADC
+        8      2   -> OS_ClearEvents
+        8      2   -> OS_WaitEventTimed
+        8      2   -> ReadAdByte
+        8      2   -> WriteAdByte
+        8      2 ?F_DIV_L04
+        8      2 ?F_MUL_L04
+        8      2 ?SL2F_L04
+        8      2 ?UL2F_L04
+     15      2   ReadADConverter
+       15      2   -> EnableChannelCal
+       15      2   -> ReadADC
+       15      2 ?F_DIV_L04
+       15      2 ?SV_SWITCH_L06
+      0      2   ReadAdByte
+      0      2   ReadFromRegister
+        0      2   -> ReadAdByte
+        0      2   -> WriteAdByte
+      0      2   ResetADCBySW
+        0      2   -> WriteAdByte
+      0      2   SetAnaPort
+        0      2 ?US_SHR_L02
+      0      2   SetCalResistance
+      0      2   SetSupplyCurrentHi
+      0      2   SetSupplyCurrentLo
+      0      2   WriteAdByte
+      0      2   WriteToRegister
+        0      2   -> WriteAdByte
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       4  ?<Initializer for CurrentO>
+       4  ?<Initializer for CurrentP>
+       4  ?<Initializer for CurrentT>
+      98  ?<Initializer for MuxControlCal>
+      98  ?<Initializer for MuxControlSns>
+       2  ?<Initializer for SensorType>
+      36  ?<Jumptable for ReadADConverter>_0
+     342  AD7715
+       4  Cal_1K
+       4  Cal_1R
+      86  CalibrateAD7715
+       4  CurrentO
+       4  CurrentP
+       4  CurrentT
+      24  EnableChannelCal
+     224  EnableChannelSns
+      98  MuxControlCal
+      98  MuxControlSns
+      62  PrepareForOtherReading
+      56  PrepareForPressureReading
+      62  PrepareForTempReading
+     174  ReadADC
+     336  ReadADConverter
+      88  ReadAdByte
+      62  ReadFromRegister
+      18  ResetADCBySW
+       2  SensorType
+     152  SetAnaPort
+      30  SetCalResistance
+      36  SetSupplyCurrentHi
+      36  SetSupplyCurrentLo
+     158  WriteAdByte
+      14  WriteToRegister
+       1  _A_PIND
+       1  _A_PORTB
+       1  _A_PORTC
+       1  _A_PORTD
+       1  _A_PORTE
+       1  _A_PORTG
+      14  -- Other
+
+ 
+     6 bytes in segment ABSOLUTE
+ 1 960 bytes in segment CODE
+    14 bytes in segment INITTAB
+   210 bytes in segment NEAR_I
+   210 bytes in segment NEAR_ID
+     8 bytes in segment NEAR_Z
+    36 bytes in segment SWITCH
+ 
+ 2 206 bytes of CODE memory (+ 14 bytes shared)
+   218 bytes of DATA memory (+  6 bytes shared)
+
+Errors: none
+Warnings: 3

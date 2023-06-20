@@ -1,0 +1,213 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.10.6.1378 for Atmel AVR           30/Jul/2018  09:24:39
+# Copyright 1996-2018 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 7.10
+#
+#    Source file  =  D:\S2Prog\IO\ANZB – ATmega1280\Src\adc.c
+#    Command line =  
+#        -f C:\Users\esy\AppData\Local\Temp\EW569E.tmp ("D:\S2Prog\IO\ANZB –
+#        ATmega1280\Src\adc.c" --cpu=m1280 -ms -o "D:\S2Prog\IO\ANZB –
+#        ATmega1280\Debug\Obj" -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        "D:\S2Prog\IO\ANZB – ATmega1280\Debug\List" -y --initializers_in_flash
+#        --no_cse --no_inline --no_code_motion --no_cross_call --no_clustering
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I "D:\S2Prog\IO\ANZB –
+#        ATmega1280\INC\" -I "D:\S2Prog\IO\ANZB – ATmega1280\..\..\SHARED\INC\"
+#        --eeprom_size 4096 --clib -On)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\ANZB – ATmega1280\Debug\List\adc.lst
+#    Object file  =  D:\S2Prog\IO\ANZB – ATmega1280\Debug\Obj\adc.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB – ATmega1280\Src\adc.c
+      1          /****************************************************************************************
+      2          / AD converter functions and interrupt
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x7c
+   \   union <unnamed> volatile __io _A_ADMUX
+   \                     _A_ADMUX:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x7a
+   \   union <unnamed> volatile __io _A_ADCSRA
+   \                     _A_ADCSRA:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x78
+   \   union <unnamed> volatile __io _A_ADC
+   \                     _A_ADC:
+   \   00000000                      DS8 2
+      7          #include "stdio.h"
+      8          #include "math.h"
+      9          #include "externals.h"
+     10          #include "version.h"
+     11          
+     12          #pragma vector=ADC_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     13          __interrupt void IntHandler_AD( void ){
+   \                     IntHandler_AD:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+     14          
+     15              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_InInt
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_InInt, R16
+   \   0000002E   9100....           LDS     R16, OS_Counters
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     OS_Counters, R16
+   \   00000038   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000003C   9503               INC     R16
+   \   0000003E   9300....           STS     (OS_Counters + 1), R16
+     16              OS_EnterIntStack();
+   \   00000042   94F8               CLI
+   \   00000044   ........           CALL    OS__EnterIntStack
+   \   00000048   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000004C   7F00               ANDI    R16, 0xF0
+   \   0000004E   2300               TST     R16
+   \   00000050   F021               BREQ    ??IntHandler_AD_0
+   \   00000052   E909               LDI     R16, 153
+   \   00000054   E010               LDI     R17, 0
+   \   00000056   ........           CALL    OS_Error
+   \                     ??IntHandler_AD_0:
+   \   0000005A   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000005E   2300               TST     R16
+   \   00000060   F409               BRNE    ??IntHandler_AD_1
+   \   00000062   9478               SEI
+     17              ADInt.Result[ADChannel] = ADC; // Reading ADCL and ADCH in one run
+   \                     ??IntHandler_AD_1:
+   \   00000064   9100....           LDS     R16, ADChannel
+   \   00000068   9120....           LDS     R18, _A_ADC
+   \   0000006C   9130....           LDS     R19, (_A_ADC + 1)
+   \   00000070   E010               LDI     R17, 0
+   \   00000072   0F00               LSL     R16
+   \   00000074   1F11               ROL     R17
+   \   00000076   01F8               MOVW    R31:R30, R17:R16
+   \   00000078   ....               SUBI    R30, LOW((-(ADInt) & 0xFFFF))
+   \   0000007A   ....               SBCI    R31, (-(ADInt) & 0xFFFF) >> 8
+   \   0000007C   8320               ST      Z, R18
+   \   0000007E   8331               STD     Z+1, R19
+     18              if (++ADChannel > 0x01 ) {                //set next ADchannel
+   \   00000080   9100....           LDS     R16, ADChannel
+   \   00000084   9503               INC     R16
+   \   00000086   9300....           STS     ADChannel, R16
+   \   0000008A   3002               CPI     R16, 2
+   \   0000008C   F018               BRCS    ??IntHandler_AD_2
+     19                    ADChannel = 0x00 ;
+   \   0000008E   E000               LDI     R16, 0
+   \   00000090   9300....           STS     ADChannel, R16
+     20              }
+     21              ADMUX &= 0xe0 ;                           // set the channel
+   \                     ??IntHandler_AD_2:
+   \   00000094   9100....           LDS     R16, _A_ADMUX
+   \   00000098   7E00               ANDI    R16, 0xE0
+   \   0000009A   9300....           STS     _A_ADMUX, R16
+     22              ADMUX |= ADChannel ;
+   \   0000009E   9100....           LDS     R16, ADChannel
+   \   000000A2   9110....           LDS     R17, _A_ADMUX
+   \   000000A6   2B10               OR      R17, R16
+   \   000000A8   9310....           STS     _A_ADMUX, R17
+     23              ADCSRA |= 0x40 ;                           //start new convertion
+   \   000000AC   9100007A           LDS     R16, 122
+   \   000000B0   6400               ORI     R16, 0x40
+   \   000000B2   9300007A           STS     122, R16
+     24              OS_LeaveIntStack();
+   \   000000B6   94F8               CLI
+   \   000000B8   ........           CALL    OS__LeaveIntStack
+     25              OS_LeaveInterruptNoSwitch();
+   \   000000BC   9100....           LDS     R16, OS_InInt
+   \   000000C0   2F10               MOV     R17, R16
+   \   000000C2   951A               DEC     R17
+   \   000000C4   9310....           STS     OS_InInt, R17
+   \   000000C8   2300               TST     R16
+   \   000000CA   F421               BRNE    ??IntHandler_AD_3
+   \   000000CC   E908               LDI     R16, 152
+   \   000000CE   E010               LDI     R17, 0
+   \   000000D0   ........           CALL    OS_Error
+   \                     ??IntHandler_AD_3:
+   \   000000D4   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000D8   950A               DEC     R16
+   \   000000DA   9300....           STS     (OS_Counters + 1), R16
+   \   000000DE   9100....           LDS     R16, OS_Counters
+   \   000000E2   950A               DEC     R16
+   \   000000E4   9300....           STS     OS_Counters, R16
+     26          }
+   \   000000E8   BF9B               OUT     0x3B, R25
+   \   000000EA   BF8F               OUT     0x3F, R24
+   \   000000EC   9109               LD      R16, Y+
+   \   000000EE   9119               LD      R17, Y+
+   \   000000F0   9129               LD      R18, Y+
+   \   000000F2   9139               LD      R19, Y+
+   \   000000F4   9149               LD      R20, Y+
+   \   000000F6   9159               LD      R21, Y+
+   \   000000F8   9169               LD      R22, Y+
+   \   000000FA   9179               LD      R23, Y+
+   \   000000FC   9009               LD      R0, Y+
+   \   000000FE   9019               LD      R1, Y+
+   \   00000100   9029               LD      R2, Y+
+   \   00000102   9039               LD      R3, Y+
+   \   00000104   91E9               LD      R30, Y+
+   \   00000106   91F9               LD      R31, Y+
+   \   00000108   9189               LD      R24, Y+
+   \   0000010A   9199               LD      R25, Y+
+   \   0000010C   9518               RETI
+   \   0000010E                      REQUIRE _A_ADC
+   \   0000010E                      REQUIRE _A_ADMUX
+   \   0000010E                      REQUIRE _A_ADCSRA
+
+   \                                 In  segment INTVEC, offset 0x74, root
+   \                     `??IntHandler_AD::??INTVEC 116`:
+   \   00000074   ........           JMP     IntHandler_AD
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     16      2   IntHandler_AD
+       16      2   -> OS_Error
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+     270  IntHandler_AD
+       4  IntHandler_AD::??INTVEC 116
+       2  _A_ADC
+       1  _A_ADCSRA
+       1  _A_ADMUX
+
+ 
+   4 bytes in segment ABSOLUTE
+ 270 bytes in segment CODE
+   4 bytes in segment INTVEC
+ 
+ 270 bytes of CODE memory (+ 4 bytes shared)
+   0 bytes of DATA memory (+ 4 bytes shared)
+
+Errors: none
+Warnings: 2

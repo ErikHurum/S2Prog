@@ -1,0 +1,39 @@
+-!		   -sgS.XCL-
+
+    XLINK 4.xx command file to be used with the H8300 C-compiler V2.xx
+    using the  -ms option (small memory model).
+    Usage: xlink your_file(s) -f ads -o your_output_file
+
+    First define CPU  -!
+
+-cH8300
+
+-!  Allocate segments which should be loaded -!
+
+-!  First allocate the read only segments . -!
+
+-Z(CODE)INTVEC=0
+-Z(CODE)RCODE,CODE,CDATA,ZVECT,CONST,CSTR,CCSTR=100
+
+-!  Then the writeable segments which must be mapped to a RAM area
+    FB80 was here supposed to be start of RAM -!
+
+-Z(DATA)DATA,IDATA,UDATA,ECSTR,WCSTR,TEMP=FB80
+-! Z(DATA)CSTACK+100=FE80
+-!
+-Z(DATA)CSTACK+100=7000
+-!  NOTE: In case of a RAM-only system, the two segment lists may be
+    connected to allocate a contigious memory space. I.e. :
+	    -Z...CCSTR,DATA...=start_of_RAM			   -!
+
+-! See configuration section concerning printf/sprintf -!
+ -e_medium_write=_formatted_write
+
+-! See configuration section concerning scanf/sscanf -!
+ -e_medium_read=_formatted_read
+
+-!  Now load the 'C' library -!
+cdebug -C ..\clh83s	  -! or clh83sd for -2 option -!
+
+-! Code will now reside in file aout.a20 in Motorola 'S' format -!
+

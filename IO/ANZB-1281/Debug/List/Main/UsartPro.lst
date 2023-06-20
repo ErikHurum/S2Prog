@@ -1,0 +1,953 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:16
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\UsartPro.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\UsartPro.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\UsartPro.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\UsartPro.r90.iar_deps
+#    Locale                =  C
+#    List file             =
+#        D:\S2Prog\IO\ANZB-1281\Debug\List\Main\UsartPro.lst
+#    Object file           =
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\UsartPro.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\UsartPro.c
+      1          /****************************************************************************************
+      2          / Com protocol for USART0 
+      3          /
+      4          ***************************************************************************************/
+      5          
+      6          #ifdef __ATMEGA_1280__
+      7          #include	"iom1280.h"
+      8          #endif
+      9          
+     10          #ifdef __ATMEGA_1281__
+     11          #include	"iom1281.h"
+     12          #endif
+     13          #include "stdio.h"
+     14          #include "math.h"
+     15          #include "string.h"
+     16          #include "externals.h"
+     17          #include "version.h"
+     18          
+     19          /*************************************************************************
+     20          *   (This is a timer calback)
+     21          *  Timout timer USART 0
+     22          *
+     23          *************************************************************************/
+     24          void TimoutUSART0(void) {
+     25          
+     26              UCSR0B &= ~(__BIT_MASK( UDRIE0)) ;            // transmission end, disable int.
+     27              ClrBit(PORTE, 0x04) ;                              // TXE0 off
+     28              OS_StopTimer(&TimerUSART0);                    // and stop timer
+     29              GoToSyncUART(0) ;                                    // go to sync modus for recive
+     30          }
+     31          
+     32          /*************************************************************************
+     33          *   (This is a timer calback)
+     34          *  Timer USART 0 on before TX
+     35          *
+     36          *************************************************************************/
+     37          void TimoutUSART0On(void) {
+     38          
+     39              UCSR0B |= __BIT_MASK( UDRIE0) ;                     // start sending by enableing interrupt
+     40              OS_StopTimer(&TimerUSART0On);                    // and stop timer
+     41          }
+     42          
+     43          /*************************************************************************
+     44          *   (This is a timer calback)
+     45          *  Timout timer USART 1
+     46          *
+     47          *************************************************************************/
+     48          void TimoutUSART1(void) {
+     49          
+     50              UCSR1B &= ~(__BIT_MASK( UDRIE1)) ;            // transmission end, disable int.
+     51              ClrBit(PORTE, 0x08) ;                              // TXE1 off
+     52              OS_StopTimer(&TimerUSART1);                    // and stop timer
+     53              GoToSyncUART(1) ;                                    // go to sync modus for recive
+     54          }
+     55          
+     56          
+     57          /*************************************************************************
+     58          *   (This is a timer calback)
+     59          *  Timer USART 1 on before TX
+     60          *
+     61          *************************************************************************/
+     62          void TimoutUSART1On(void) {
+     63          
+     64              UCSR1B |= __BIT_MASK( UDRIE1) ;                     // start sending by enableing interrupt
+     65              OS_StopTimer(&TimerUSART1On);                    // and stop timer
+     66          }
+     67          
+     68          
+     69          /*************************************************************************
+     70          *   (This is a task)
+     71          *  Usart0 handler
+     72          *
+     73          *************************************************************************/
+     74          void Usart0Handler(void) {
+     75              char stat;
+     76          
+     77              while (1) {
+     78                  stat = OS_WaitEventTimed(1,500);
+     79                  if (stat) {
+     80                      OS_Use(&UARTSEND);
+     81                      UsartCheckPackage(0) ; 
+     82                      OS_Unuse(&UARTSEND);
+     83                  }
+     84              }
+     85          }
+     86          
+     87          /*************************************************************************
+     88          *   (This is a task)
+     89          *  Usart1 handler
+     90          *
+     91          *************************************************************************/
+     92          void Usart1Handler(void) {
+     93              char stat;
+     94          
+     95              while (1) {
+     96                  stat = OS_WaitEventTimed(1,500);
+     97                  if (stat) {
+     98                      OS_Use(&UARTSEND);
+     99                      UsartCheckPackage(1) ; 
+    100                      OS_Unuse(&UARTSEND);
+    101                  }
+    102              }
+    103          }
+    104          
+    105          /*************************************************************************
+    106          *
+    107          *  Check the incoming packages
+    108          *
+    109          *************************************************************************/
+    110          void UsartCheckPackage(char ch) {
+    111          
+    112              unsigned short pointer;
+    113              char    retval ;
+    114          
+    115              UART[ch].RxSendReply = false ;                              // flag for answering set to fault
+    116              UART[ch].TxFirst = 11 ;                                     // Start pos for first TX command
+    117              pointer = 7 ;
+    118              do {
+    119                  retval = CheckActionUart(ch, pointer);
+    120                  pointer = pointer + UART[ch].pRxBuffer[pointer+2] 
+    121                            + (UART[ch].pRxBuffer[pointer+3]*256) + 4;      // Point to a command cmd hb/lb
+    122              } while (retval && (pointer < (UART[ch].RxPacklen - 4 )));
+    123              if (UART[ch].RxSendReply) {                                   //send answer?
+    124                  Uart_BuildTail(ch);                                       // yes, build tail (and header) and start sending
+    125              } else {
+    126                  GoToSyncUART(ch) ;                                        // go to sync modus here if not reply
+    127              }
+    128          }
+    129          
+    130          
+    131          /*************************************************************************
+    132          *
+    133          *  Check action on received data
+    134          *
+    135          *************************************************************************/
+    136          char CheckActionUart(char ch, unsigned short pointer) {
+    137          
+    138              unsigned short   command;
+    139              char    retval = true;
+    140           
+    141              command = UART[ch].pRxBuffer[pointer] | (UART[ch].pRxBuffer[pointer+1] << 8);
+    142              switch (command) {                                  // check action 
+    143              case CMD_REQ_STATUS :                           // Regusest status for target
+    144                  BuildStatusData(ch) ;                         // make package
+    145                  break;
+    146          
+    147              case CMD_GET_STACKSTATUS :                        // Request stck status
+    148                  BuildStackStatus(ch, pointer+4) ;                     // receive package	
+    149                  break ;
+    150          
+    151              case CMD_EEPROM_RESET :                        // Reset EEPROM??
+    152                  GetResetEEPROM(ch, pointer+4) ;                     // receive package	
+    153                  break ;
+    154          
+    155              case CMD_GOTO_BOOTLOADER :                        // Goto bootlaoder??
+    156                  GetGotoBootloader(ch, pointer+4) ;                     // receive package	
+    157                  break ;
+    158          
+    159              case CMD_SND_EEPROM_DATA :                              // Receive EEPROM data
+    160                  GetEEPROMData(ch, pointer+4) ;                     // receive package	
+    161                  break ;
+    162          
+    163              case CMD_REQ_EEPROM_DATA :                              // Request to send EEPROM data
+    164                  BuildEEPROMData(ch, pointer+4) ;                     // receive package	
+    165                  break ;
+    166          
+    167              case CMD_REQ_INT_DATA :                              // Request external data
+    168                  BuildADInt(ch, pointer+4) ;                     // receive package	
+    169                  break ;
+    170          
+    171              case CMD_SND_RS4_SETUP :                              // Receive sertup of AN-RS485
+    172                  if (UnitID == AN_ZB485) {
+    173                      GetRS4Setup(ch, pointer+4) ;                     // receive package	
+    174                  }
+    175                  break ;
+    176          
+    177              case CMD_REQ_RS4_SETUP :                              // Request for sertup of AN-RS485
+    178                  if (UnitID == AN_ZB485) {
+    179                      BuildRS4Setup(ch, pointer+4) ;                     // receive package	
+    180                  }
+    181                  break ;
+    182                  
+    183              case CMD_SND_RS4_ADBUF :                              // Request external AD data
+    184                  if (UnitID == AN_ZB485) {
+    185                      GetADData(ch, pointer+4) ;                     // receive package	
+    186                  }
+    187                  break;
+    188                  
+    189              case CMD_REQ_RS4_DATA :                              // Request external AD eeprom data
+    190                  if (UnitID == AN_ZB485) {
+    191                      switch (UART[ch].pRxBuffer[pointer+4]) {
+    192                      case 0:                                         // Measure data
+    193                          BuildMData485(ch, pointer+5) ;              // receive package	
+    194                          if (TData.RS4.FromTargetBuffer[0][0] == true) {     // send eepromdata ch 0?
+    195                            BuildADEpromdata(ch, 0);
+    196                            TData.RS4.FromTargetBuffer[0][0] = false ;  // Marked as sent
+    197                          }
+    198                          if (TData.RS4.FromTargetBuffer[1][0] == true) {     // send eepromdata ch 1?
+    199                            BuildADEpromdata(ch, 1);                  // channel 1
+    200                            TData.RS4.FromTargetBuffer[1][0] = false ;  // Marked as sent
+    201                          }
+    202                          if ((TData.RS4.WHDataAvailable >> UART[ch].pRxBuffer[pointer+5]) & 0x01) {
+    203                              BuildWHdata(ch, pointer + 5);
+    204                              //TData.RS4.WHDataAvailable &= ~(0x01 << UART[ch].pRxBuffer[pointer+5]);
+    205                          }
+    206                          break;
+    207                      case 1:                                         // Raw and cal data
+    208                          BuildRData485(ch, pointer+5) ;                     // receive package	
+    209                          break;             
+    210                      }          
+    211                  }
+    212                  break;
+    213          
+    214              case CMD_SND_ANA_SETUP :                              // Receive sertup of AN-RSANA
+    215                  if (UnitID == AN_ZBANA) {
+    216                      GetANASetup(ch, pointer+4) ;                     // receive package	
+    217                  }
+    218                  break ;
+    219          
+    220              case CMD_REQ_ANA_SETUP :                              // Request for sertup of AN-RSANA
+    221                  if (UnitID == AN_ZBANA) {
+    222                      BuildANASetup(ch, pointer+4) ;                     // receive package	
+    223                  }
+    224                  break ;
+    225          
+    226              case CMD_SND_ANA_FILTER :                              // Receive filter of AN-RSANA
+    227                  if (UnitID == AN_ZBANA) {
+    228                      GetANAFilter(ch, pointer+4) ;                     // receive package	
+    229                  }
+    230                  break ;
+    231          
+    232              case CMD_REQ_ANA_FILTER :                              // Request filter of AN-RSANA
+    233                  if (UnitID == AN_ZBANA) {
+    234                      BuildANAFilter(ch, pointer+4) ;                     // receive package	
+    235                  }
+    236                  break ;
+    237          
+    238              case CMD_REQ_ANA_DATA :                              // Request ANA data(4-20ma)
+    239                  if (UnitID == AN_ZBANA) {
+    240                      BuildMDataANA(ch, pointer+4) ;                     // receive 
+    241                  }
+    242                  break ;
+    243          
+    244              default:
+    245                  if (command < MAX_ECMD) {                   // handle end commands
+    246                      retval = false ;
+    247                  }
+    248                  break;
+    249          
+    250              }
+    251              return retval;
+    252          }
+    253          
+    254          /*************************************************************************
+    255          *
+    256          * Build send packet header
+    257          *
+    258          *************************************************************************/
+    259          void Uart_BuildHeader(char ch) {
+    260          
+    261              UART[ch].RxFirst = 0;                                // Reset pointers
+    262              UART[ch].RxLast  = 0;
+    263              UART[ch].TxLast  = 0;
+    264          
+    265              UART[ch].pTxBuffer[0] = ANPRO10_SYN ;                        /* Sync */
+    266              UART[ch].pTxBuffer[1] = ANPRO10_SYN ;                        /* Sync */
+    267              UART[ch].pTxBuffer[2] = ANPRO10_SYN ;                        /* Sync */
+    268              UART[ch].pTxBuffer[3] = ANPRO10_SOH ;                        /* Start of header */
+    269              UART[ch].pTxBuffer[4] = UART[ch].pRxBuffer[2] ;      /* RXID */
+    270              UART[ch].pTxBuffer[5] = UART[ch].pRxBuffer[3] ;      /* Rx address */
+    271              UART[ch].pTxBuffer[6] = 0x10 + UnitID ;              /* Unit ID */
+    272              UART[ch].pTxBuffer[7] = MyAddress();                 /* Tx address */
+    273              UART[ch].pTxBuffer[8] = 0 ;                          /* packlen HB, don't know yet */
+    274              UART[ch].pTxBuffer[9] = 0 ;                          /* packlen LB, don't know yet */
+    275              UART[ch].pTxBuffer[10] = 0 ;                         /* Header checksum, don't know yet */
+    276          }
+    277          
+    278          /*************************************************************************
+    279          *
+    280          * Build  packet tail
+    281          *
+    282          *************************************************************************/
+    283          void Uart_BuildTail(char ch) {
+    284          
+    285              Uart_BuildHeader(ch);                                    // fist build the header
+    286          
+    287              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ECMD_NMDWOACK & 0xff ;  // End command lb
+    288              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ECMD_NMDWOACK >> 8 ;    // End command hb 
+    289              UART[ch].pTxBuffer[UART[ch].TxFirst++] = 0x00 ;                  // End data 
+    290          
+    291              UART[ch].pTxBuffer[UART[ch].TxFirst++] = UART[ch].TxSeqCnt++ ;   // Sequence counter 
+    292          
+    293              UART[ch].pTxBuffer[8] = UART[ch].TxFirst -2;                    // correct length because stx's
+    294              UART[ch].pTxBuffer[9] = (UART[ch].TxFirst-2) >> 8 ;             // packet len high 
+    295          
+    296              UART[ch].pTxBuffer[10] = CalcDSTxChecksum(ch, 10) ;         // Get header checksum 
+    297          
+    298              UART[ch].pTxBuffer[UART[ch].TxFirst] = CalcDSTxChecksum(ch, UART[ch].TxFirst) ; // Get checksum 
+    299              UART[ch].TxFirst++ ;                                        // OBS!! must be inc here due to ANSI standard !!!!
+    300                                                                          
+    301              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ANPRO10_EOT ;            // End of transmission 
+    302              UART[ch].TxCount = UART[ch].TxFirst;                      //bytes to send 
+    303              UART[ch].TxLast = 0;                                     // reset cunter
+    304              if (ch == 0) {                                           // Turn on TXE for channel
+    305                  OS_RetriggerTimer(&TimerUSART0);                     // and start timeout TX timer
+    306                  SetBit(PORTE, 0x04) ;                                // TXE0 on
+    307                  OS_RetriggerTimer(&TimerUSART0On);                   // and start timer for on before TX
+    308              } else if (ch ==1) {
+    309                  OS_RetriggerTimer(&TimerUSART1);                     // and start timeout TX timer
+    310                  SetBit(PORTE, 0x08) ;                                // TXE1 on
+    311                  OS_RetriggerTimer(&TimerUSART1On);                   // and start timer for on before TX
+    312              }
+    313          }
+    314          
+    315          /*************************************************************************
+    316          *
+    317          * Build datablock for card status
+    318          *
+    319          *************************************************************************/
+    320          void BuildStatusData(char ch){
+    321          
+    322              short ntna ;
+    323              UART[ch].RxSendReply = true ;                               // flag for answering 
+    324          
+    325              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_STATUS & 0xff;     
+    326              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_STATUS >> 8;     
+    327              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    328              UART[ch].TxFirst += 2 ;                                      // two byte length
+    329              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ch ;               // channel
+    330              UART[ch].pTxBuffer[UART[ch].TxFirst++] = DEVICE_IO + UnitID ;   // Product ID
+    331              UART[ch].pTxBuffer[UART[ch].TxFirst++] = MyAddress();           // unit adddress
+    332              UART[ch].pTxBuffer[UART[ch].TxFirst++] = PROG_VERSION ;       // software version */
+    333              UART[ch].pTxBuffer[UART[ch].TxFirst++] = COMP_VERSION;        // cpmpability version
+    334              UART[ch].pTxBuffer[UART[ch].TxFirst++] = STORE_VERSION;        // cpmpability version
+    335              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (RXSIZE_UART & 0xff);         // rx buffer size
+    336              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (( RXSIZE_UART >> 8) & 0xff); // rx buffer size
+    337              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TXSIZE_UART & 0xff);         // tx buffer size
+    338              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((TXSIZE_UART >> 8) & 0xff);  // tx buffer size
+    339              UART[ch].pTxBuffer[UART[ch].TxFirst++] = RestartStatus ;                  // restart flag
+    340              UART[ch].pTxBuffer[UART[ch].TxFirst++] = PROGTYPE_APP ;                // Application program
+    341          
+    342              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    343              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    344          
+    345              RestartStatus = 0 ;                                                       // set reset stat to 0 = read
+    346          }
+    347          
+    348          /*************************************************************************
+    349          *
+    350          * Build EEPROM data package
+    351          *
+    352          *************************************************************************/
+    353          void BuildEEPROMData(char ch, short pointer) {   
+    354          
+    355              short ntna ;
+    356              char channel;
+    357              UART[ch].RxSendReply = true ;                               // flag for answering 
+    358          
+    359              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_EEPROM_DATA & 0xff;     
+    360              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_EEPROM_DATA >> 8;     
+    361              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    362              UART[ch].TxFirst += 2 ;                                      // two byte length
+    363              
+    364              channel = UART[ch].pRxBuffer[pointer];
+    365              UART[ch].pTxBuffer[UART[ch].TxFirst++] = channel; //channel 
+    366          
+    367              ReadEEPROMBuffer( (channel * sizeof(float)* 2) , sizeof(float), (char*)&UART[ch].pTxBuffer[UART[ch].TxFirst] );
+    368              UART[ch].TxFirst += sizeof(float) ;
+    369              ReadEEPROMBuffer( (channel * sizeof(float) * 2) + sizeof(float), sizeof(float), (char*)&UART[ch].pTxBuffer[UART[ch].TxFirst] );
+    370              UART[ch].TxFirst += sizeof(float) ;
+    371          
+    372              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    373              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    374          }
+    375          
+    376          
+    377          /*************************************************************************
+    378          *
+    379          * Build datablock for Internal AD
+    380          *
+    381          *************************************************************************/
+    382          void BuildADInt(char ch, short pointer) {
+    383          
+    384              short ntna, i ;
+    385              UART[ch].RxSendReply = true ;                               // flag for answering 
+    386          
+    387              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_INT_DATA & 0xff;     
+    388              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_INT_DATA >> 8;     
+    389              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    390              UART[ch].TxFirst += 2 ;                                      // two byte length
+    391          
+    392              for (i = 0; i<3; i++) {
+    393                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = ADInt.Result[i] ;
+    394                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = ADInt.Result[i] >> 8 ;   // ADresult
+    395              }
+    396          
+    397              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    398              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    399          
+    400          }
+    401          
+    402          
+    403          /*************************************************************************
+    404          *
+    405          * Build datablock for eeprom on ADcard
+    406          *
+    407          *************************************************************************/
+    408          void BuildADEpromdata(char ch, char portch) {
+    409          
+    410              UART[ch].RxSendReply = true ;                               // flag for answering 
+    411          
+    412              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_ADBUF & 0xff;     
+    413              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_ADBUF >> 8;     
+    414              short ntna = UART[ch].TxFirst ;                                    // remember index
+    415              UART[ch].TxFirst += 2 ;                                      // two byte length
+    416          
+    417              for (short i = 0; i < 44; i++) {
+    418                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.FromTargetBuffer[portch][i] ;
+    419              }
+    420              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2) & 0xff;      // length of data block lb
+    421              UART[ch].pTxBuffer[ntna + 1] = ((UART[ch].TxFirst - ntna - 2) >> 8) & 0xff; // length of data block hb
+    422          
+    423          }
+    424          
+    425          /*************************************************************************
+    426          *
+    427          * Build datablock for WHData on ADcard
+    428          *
+    429          *************************************************************************/
+    430          void BuildWHdata(char ch, short pointer) {
+    431          
+    432              UART[ch].RxSendReply = true;                               // flag for answering
+    433          
+    434              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_SND_RS4_WHBUF & 0xff;
+    435              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_SND_RS4_WHBUF >> 8;
+    436              short ntna = UART[ch].TxFirst;                          // remember index
+    437              UART[ch].TxFirst += 2;                                  // two byte length
+    438              for (short i = 0; i < 4; i++) {
+    439                  OS_EnterRegion();
+    440                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.WTrackCnt[UART[ch].pRxBuffer[pointer]][i] & 0xff; // WashTrackcnt
+    441                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TData.RS4.WTrackCnt[UART[ch].pRxBuffer[pointer]][i] >> 8) & 0xff; // WashTrackcnt
+    442                  OS_LeaveRegion();
+    443              }
+    444              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.LevelSwitch[UART[ch].pRxBuffer[pointer]];
+    445              OS_EnterRegion();
+    446              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.WTTime[UART[ch].pRxBuffer[pointer]] & 0xff; // WashTrackcnt
+    447              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TData.RS4.WTTime[UART[ch].pRxBuffer[pointer]] >> 8) & 0xff; // WashTrackcnt
+    448              OS_LeaveRegion();
+    449              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2) & 0xff;      // length of data block lb
+    450              UART[ch].pTxBuffer[ntna + 1] = ((UART[ch].TxFirst - ntna - 2) >> 8) & 0xff; // length of data block hb
+    451          }
+    452          
+    453          
+    454          
+    455          /*************************************************************************
+    456          *
+    457          * Build setup dat package for AN-ZB485
+    458          *
+    459          *************************************************************************/
+    460          void BuildRS4Setup(char ch, short pointer) {   
+    461          
+    462              short ntna ;
+    463              UART[ch].RxSendReply = true ;                               // flag for answering 
+    464          
+    465              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_SETUP & 0xff;     
+    466              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_SETUP >> 8;     
+    467              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    468              UART[ch].TxFirst += 2 ;                                      // two byte length
+    469          
+    470              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.PortUsed;  // send the setup
+    471              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.SensorType[0];  // send the sensor type
+    472              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.SensorType[1];  // send the sensor type
+    473          
+    474              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    475              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    476          }
+    477          
+    478          /*************************************************************************
+    479          *
+    480          * Build datablock of measured data for ADcard
+    481          *
+    482          *************************************************************************/
+    483          void BuildMData485(char ch, short pointer) {
+    484          
+    485              short ntna, i ;
+    486              UART[ch].RxSendReply = true ;                               // flag for answering 
+    487          
+    488              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_MDATA & 0xff;     
+    489              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_MDATA >> 8;     
+    490              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    491              UART[ch].TxFirst += 2 ;                                      // two byte length
+    492          
+    493              UART[ch].pTxBuffer[UART[ch].TxFirst++] = UART[ch].pRxBuffer[pointer] ;
+    494              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.IOUnitStatus[UART[ch].pRxBuffer[pointer]] | (RestartStatus <<4); // IOUnit status +  restart status
+    495              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.FailCnt[UART[ch].pRxBuffer[pointer]][0] & 0xff; // Failcnt error
+    496              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TData.RS4.FailCnt[UART[ch].pRxBuffer[pointer]][0] >> 8) & 0xff; // Failcnt error
+    497              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.FailCnt[UART[ch].pRxBuffer[pointer]][1] & 0xff; // Failcnt total
+    498              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TData.RS4.FailCnt[UART[ch].pRxBuffer[pointer]][1] >> 8) & 0xff; // Failcnt total
+    499              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.TargetStatusSWVer[UART[ch].pRxBuffer[pointer]] ; // Target status byte 1
+    500              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.TargetStatusAddress[UART[ch].pRxBuffer[pointer]] ; // Target status byte 2
+    501          
+    502              TData.RS4.TargetStatusAddress[UART[ch].pRxBuffer[pointer]] &= ~0x80;                                  //reset restart flag for adcard
+    503             
+    504              for (i = 0; i < 14; i++) {
+    505                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.TargetSetup1[UART[ch].pRxBuffer[pointer]][i] ;
+    506                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.RS4.TargetSetup2[UART[ch].pRxBuffer[pointer]][i] ;
+    507                  *((float*)&UART[ch].pTxBuffer[UART[ch].TxFirst]) = *((float*)&TData.RS4.Result[UART[ch].pRxBuffer[pointer]][i]) ;   // ADresult
+    508                  UART[ch].TxFirst += sizeof(float) ;
+    509              }
+    510          
+    511              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    512              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    513          
+    514          }
+    515          
+    516          /*************************************************************************
+    517          *
+    518          * Build datablock of raw and cal data for ADcard
+    519          *
+    520          *************************************************************************/
+    521          void BuildRData485(char ch, short pointer) {
+    522          
+    523              short ntna, i ;
+    524              UART[ch].RxSendReply = true ;                               // flag for answering 
+    525          
+    526              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_RDATA & 0xff;     
+    527              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_RS4_RDATA >> 8;     
+    528              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    529              UART[ch].TxFirst += 2 ;                                      // two byte length
+    530          
+    531              UART[ch].pTxBuffer[UART[ch].TxFirst++] = UART[ch].pRxBuffer[pointer] ;
+    532              for (i = 0; i < 14; i++) {
+    533                  *((short*)&UART[ch].pTxBuffer[UART[ch].TxFirst]) = *((short*)&TData.RS4.Raw[UART[ch].pRxBuffer[pointer]][i]) ;   // Raw data
+    534                  UART[ch].TxFirst += sizeof(short) ;
+    535                  *((short*)&UART[ch].pTxBuffer[UART[ch].TxFirst]) = *((short*)&TData.RS4.Cal[UART[ch].pRxBuffer[pointer]][i]) ;   // Cal data
+    536                  UART[ch].TxFirst += sizeof(short) ;
+    537              }
+    538          
+    539              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    540              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    541          
+    542          }
+    543          
+    544          /*************************************************************************
+    545          *
+    546          * Build setup data package for AN-ZBANA
+    547          *
+    548          *************************************************************************/
+    549          void BuildANASetup(char ch, short pointer) {   
+    550          
+    551              short ntna ;
+    552              UART[ch].RxSendReply = true ;                               // flag for answering 
+    553          
+    554              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_ANA_SETUP & 0xff;     
+    555              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_ANA_SETUP >> 8;     
+    556              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    557              UART[ch].TxFirst += 2 ;                                      // two byte length
+    558          
+    559              UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.Ana.PortUsed & 0xff;
+    560              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TData.Ana.PortUsed >> 8) & 0xff;
+    561          
+    562              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    563              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    564          }
+    565          
+    566          /*************************************************************************
+    567          *
+    568          * Build filter data package for AN-ZBANA
+    569          *
+    570          *************************************************************************/
+    571          void BuildANAFilter(char ch, short pointer) {   
+    572          
+    573              char port;
+    574              short ntna ;
+    575              UART[ch].RxSendReply = true ;                               // flag for answering 
+    576          
+    577              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_ANA_FILTER & 0xff;     
+    578              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_ANA_FILTER >> 8;     
+    579              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    580              UART[ch].TxFirst += 2 ;                                      // two byte length
+    581          
+    582              for (port = 0; port < 12; port++) {
+    583                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.Ana.Filter[port];
+    584              }
+    585          
+    586              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    587              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    588          }
+    589          
+    590          /*************************************************************************
+    591          *
+    592          * Build datablock for External AD (ANA)
+    593          *
+    594          *************************************************************************/
+    595          void BuildMDataANA(char ch, short pointer) {
+    596          
+    597              short ntna, i ;
+    598              UART[ch].RxSendReply = true ;                               // flag for answering 
+    599          
+    600              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_ANA_MDATA & 0xff;     
+    601              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_ANA_MDATA >> 8;     
+    602              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    603              UART[ch].TxFirst += 2 ;                                      // two byte length
+    604          
+    605              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (RestartStatus << 4) ;    // Add restart status
+    606              for (i = 0; i<12; i++) {
+    607                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = TData.Ana.Status[i] ;
+    608                  *((float*)&UART[ch].pTxBuffer[UART[ch].TxFirst]) = *((float*)&TData.Ana.Result[i]) ;   // ADresult
+    609                  UART[ch].TxFirst += sizeof(float) ;
+    610              }
+    611          
+    612              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    613              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    614          
+    615          }
+    616          
+    617          /*************************************************************************
+    618          *
+    619          * Build datablock for Stack status
+    620          *
+    621          *************************************************************************/
+    622          void BuildStackStatus(char ch, short pointer) {
+    623          
+    624              short ntna, stack ;
+    625              UART[ch].RxSendReply = true ;                               // flag for answering 
+    626          
+    627              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_STACKSTATUS & 0xff;     
+    628              UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_STACKSTATUS >> 8;     
+    629              ntna = UART[ch].TxFirst ;                                    /* remember index */
+    630              UART[ch].TxFirst += 2 ;                                      // two byte length
+    631          
+    632              stack = OS_GetStackSpace(&TCB_USART0);                            // USART 0
+    633              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (stack & 0xff) ;
+    634              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((stack>>8) & 0xff) ;
+    635              stack = OS_GetStackSpace(&TCB_USART1);                            // USART 1
+    636              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (stack & 0xff) ;
+    637              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((stack>>8) & 0xff) ;
+    638              stack = OS_GetStackSpace(&TCB_WATCHDOG);                            // watchdog
+    639              UART[ch].pTxBuffer[UART[ch].TxFirst++] = (stack & 0xff) ;
+    640              UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((stack>>8) & 0xff) ;
+    641              switch (UnitID) {
+    642              case AN_ZB485 :
+    643                  stack = OS_GetStackSpace(&TCB_RS485Ctl);                            // RS485 Control
+    644                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = (stack & 0xff) ;
+    645                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((stack>>8) & 0xff) ;
+    646                  stack = OS_GetStackSpace(&TCB_RS485Rec);                            // RS485 receive
+    647                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = (stack & 0xff) ;
+    648                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((stack>>8) & 0xff) ;
+    649                  break;
+    650              case AN_ZBANA :
+    651                  stack = OS_GetStackSpace(&TCB_AD7715);                            // AD handling
+    652                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = (stack & 0xff) ;
+    653                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((stack>>8) & 0xff) ;
+    654                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = 0 ;
+    655                  UART[ch].pTxBuffer[UART[ch].TxFirst++] = 0 ;
+    656                  break;
+    657              } 
+    658          
+    659              UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2)  & 0xff ;      // length of data block lb
+    660              UART[ch].pTxBuffer[ntna+1] = ((UART[ch].TxFirst - ntna - 2) >> 8 ) & 0xff ; // length of data block hb
+    661          
+    662          }
+    663          
+    664          //////////////////////////////////////////////////////////////////////////////
+    665          // Receiving data to IO module here
+    666          /////////////////////////////////////////////////////////////////////////////
+    667          
+    668          /*************************************************************************
+    669          *
+    670          * Receive Command to Reset the EEPROM
+    671          *
+    672          *************************************************************************/
+    673          void GetResetEEPROM(char ch, short pointer) {   
+    674          
+    675              EEPROMReset();
+    676          }
+    677          
+    678          
+    679          /*************************************************************************
+    680          *
+    681          * Receive Command to go to the bootloader program
+    682          *
+    683          *************************************************************************/
+    684          void GetGotoBootloader(char ch, short pointer) {   
+    685          
+    686          //    void (*BootApp)(void) = (void(*)())0xF000;
+    687          
+    688              while ( (EECR & 1<<EEWE) != 0 ) //chech if EEPROM is ready
+    689                  ;
+    690              EEARL = (0x0fff & 0xff);
+    691              EEARH = (0x0fff >> 8);
+    692              EEDR = 0xff;
+    693              EECR |= (1<<EEMWE);
+    694              EECR |= (1<<EEWE);
+    695              while (EECR & (1<<EEWE))
+    696                  ;
+    697          
+    698              WDTCR = 0x18;               //Start watchdog to genetate restart
+    699              WDTCR = 0x08;               //Start watchdog to genetate restart
+    700          }
+    701          
+    702          /*************************************************************************
+    703          *
+    704          * Receive EEPROM data
+    705          *
+    706          *************************************************************************/
+    707          void GetEEPROMData(char ch, short pointer) {   
+    708          
+    709            char channel;
+    710            int t0;
+    711            
+    712              channel = UART[ch].pRxBuffer[pointer] ;
+    713              if ((channel >= 0x80) && (UnitID == 0x01)) { // AN-ZBANA
+    714                *((float*)&TData.Ana.Offset[channel & 0x0f]) = *((float*)&UART[ch].pRxBuffer[pointer+1]) ;  //offset
+    715                *((float*)&TData.Ana.Gain[channel & 0x0f]) = *((float*)&UART[ch].pRxBuffer[pointer+5]) ;  //gain
+    716              }
+    717              WriteEEPROMBuffer((channel * sizeof(float) * 2), sizeof(float), (char*)&UART[ch].pRxBuffer[pointer+1]);
+    718              t0 = OS_GetTime();
+    719              do {
+    720                OS_Delay(1);
+    721              }while ((OS_GetTime()-t0)< (sizeof(float)*9) && !EEPWriteOK);  //8.5 ms programming time
+    722              WriteEEPROMBuffer( (channel * sizeof(float) * 2) + sizeof(float), sizeof(float), (char*)&UART[ch].pRxBuffer[pointer+5]);
+    723              t0 = OS_GetTime();
+    724              do {
+    725                OS_Delay(1);
+    726              }while ((OS_GetTime()-t0)< (sizeof(float)*9) && !EEPWriteOK);
+    727          }
+    728          
+    729          /*************************************************************************
+    730          *
+    731          * Receive AN-ZB485 setup
+    732          *
+    733          *************************************************************************/
+    734          void GetRS4Setup(char ch, short pointer) {   
+    735          
+    736              TData.RS4.PortUsed = UART[ch].pRxBuffer[pointer];           // Get the setup
+    737              TData.RS4.SensorType[0] = UART[ch].pRxBuffer[pointer+1];       // Get the sensor type
+    738              TData.RS4.SensorType[1] = UART[ch].pRxBuffer[pointer+2];       // Get the sensor type
+    739              WriteEEPROMByte(EEPROM_PORTSETUP, TData.RS4.PortUsed);      // store in EEPROM 
+    740              WriteEEPROMByte(EEPROM_PORTSETUP+1, TData.RS4.SensorType[0]); 
+    741              WriteEEPROMByte(EEPROM_PORTSETUP+2, TData.RS4.SensorType[1]); 
+    742              SetRS4Port();                                               // Set power on ports
+    743          }
+    744          
+    745          /*************************************************************************
+    746          *
+    747          * Rceive data fo AD card
+    748          *
+    749          *************************************************************************/
+    750          void GetADData(char ch, short pointer) {   
+    751          
+    752             char i, pair;
+    753             
+    754             if (UART[ch].pRxBuffer[pointer] <=3) {
+    755               pair = 0;
+    756             } else {
+    757               pair = 1;
+    758             }
+    759             if (!TData.RS4.ToTargetBuffer[pair][0]) {                                // buffer empty?
+    760                TData.RS4.ToTargetBuffer[pair][0] = true;                            //  Availible data for AD card
+    761                TData.RS4.ToTargetBuffer[pair][1] = UART[ch].pRxBuffer[pointer++];   //  Channel to AD card
+    762                TData.RS4.ToTargetBuffer[pair][2] = UART[ch].pRxBuffer[pointer++];   // nob in datablock
+    763                for (i = 3; i < TData.RS4.ToTargetBuffer[pair][2] + 3; i++) {
+    764                    TData.RS4.ToTargetBuffer[pair][i] = UART[ch].pRxBuffer[pointer++];  //Get the buffer
+    765                }
+    766             }
+    767          }
+    768          
+    769          /*************************************************************************
+    770          *
+    771          * Receive AN-ZBANA setup
+    772          *
+    773          *************************************************************************/
+    774          void GetANASetup(char ch, short pointer) {   
+    775          
+    776              TData.Ana.PortUsed = UART[ch].pRxBuffer[pointer] + (UART[ch].pRxBuffer[pointer+1] << 8);  //Get the setup
+    777              WriteEEPROMByte(EEPROM_PORTSETUP,UART[ch].pRxBuffer[pointer]);   // store in EEPROM 
+    778              WriteEEPROMByte(EEPROM_PORTSETUP+1,UART[ch].pRxBuffer[pointer+1]); 
+    779              SetAnaPort();                           // set the port on or off
+    780          }
+    781          
+    782          /*************************************************************************
+    783          *
+    784          * Receive AN-ZBANA filter
+    785          *
+    786          *************************************************************************/
+    787          void GetANAFilter(char ch, short pointer) {   
+    788              char port;
+    789          
+    790              for (port = 0; port <12; port++) {
+    791                  TData.Ana.Filter[port] = UART[ch].pRxBuffer[pointer++];  //Get the filter
+    792              }
+    793          }
+    794          
+    795          /*************************************************************************
+    796          *
+    797          *  Receive data on USARTs
+    798          *
+    799          *************************************************************************/
+    800          void ReceivePacketUart(char ch) {
+    801          
+    802              switch (UART[ch].RxState) {                  // check status 
+    803              case SYNC :
+    804                  // all functionallity in inerrupt routine 
+    805                  break ;
+    806              case HEADER :
+    807                  if (UART[ch].RxLast >= 6) {             // receive header 
+    808                      UART[ch].RxPacklen = (UART[ch].pRxBuffer[4] + (UART[ch].pRxBuffer[5] * 256)) ; // Find length of package
+    809                      if (CalcDSRxChecksum(ch, 6) && (UART[ch].pRxBuffer[0] == (DEVICE_IO + UnitID))) {
+    810                          // header checksum OK and to me
+    811                          if ((UART[ch].RxPacklen < ((short) RXSIZE_UART-UART[ch].RxLast)) &&    /* chk. header */
+    812                              (UART[ch].RxPacklen >= MIN_PACK_LEN)) {
+    813                              UART[ch].RxState = RECEIVE ;       // Header ok go to data receive state
+    814                              UART[ch].RxCount = UART[ch].RxLast + 1 ;    // Set receive counter
+    815                          } else {
+    816                              GoToSyncUART(ch) ;                        // go to sync modus for recive
+    817                          }
+    818                      } else {
+    819                          GoToSyncUART(ch) ;                            // go to sync modus for recive
+    820                      }
+    821                  }
+    822                  break ;
+    823              case RECEIVE :
+    824                  if (++UART[ch].RxCount >= UART[ch].RxPacklen) {
+    825                      if ((UART[ch].pRxBuffer[UART[ch].RxPacklen -1]) == ANPRO10_EOT) {
+    826                          if (CalcDSRxChecksum(ch, UART[ch].RxPacklen-2)) {
+    827                              if ((UART[ch].pRxBuffer[1] == MyAddress())||      // message to me? or
+    828                                  (UART[ch].pRxBuffer[1] == 0xff)) {            // broadcast
+    829                                  hostAddress = UART[ch].pRxBuffer[3];            // address to sender (host)
+    830                                  UART[ch].RxState = HANDLE ;                     // Package OK
+    831                                  if (ch == 0) {
+    832                                      OS_SignalEvent(1, &TCB_USART0);
+    833                                  } else if (ch == 1) {
+    834                                      OS_SignalEvent(1, &TCB_USART1);
+    835                                  }
+    836                              } else {
+    837                                  GoToSyncUART(ch) ;                             // go to sync modus for recive
+    838                              }
+    839                          } else {
+    840                              GoToSyncUART(ch) ;                                // go to sync modus for recive
+    841                          }
+    842                      } else {
+    843                          GoToSyncUART(ch) ;                                    // go to sync modus for recive
+    844                      }
+    845                  }
+    846                  break ;
+    847              case HANDLE :
+    848                  break;
+    849              default :
+    850                  GoToSyncUART(ch) ;                                            // go to sync modus for recive
+    851                  break ;
+    852              }                                                           // end switch 
+    853              if (++UART[ch].RxLast >= RXSIZE_UART) {                     // check pointer 
+    854                  UART[ch].RxLast = 0;                                     // reset pointer
+    855              }
+    856          }
+    857          
+    858          
+    859          /*************************************************************************
+    860          *
+    861          * Calculate tx checksum (header and package) using Dallas Semiconductor one-wire CRC
+    862          *
+    863          *************************************************************************/
+    864          char CalcDSTxChecksum(char ch, unsigned short len) {
+    865          
+    866              unsigned short  cnt ;
+    867              unsigned char   csum ;
+    868          
+    869              csum = 0 ;
+    870              for (cnt = 4 ; cnt < len ; cnt++) {
+    871                  csum = crc[csum ^ UART[ch].pTxBuffer[cnt]] ;
+    872              }
+    873              return csum ;
+    874          }
+    875          
+    876          /*************************************************************************
+    877          *
+    878          * Calculate rx packet checksum (header and package) using Dallas Semiconductor one-wire CRC
+    879          *
+    880          *************************************************************************/
+    881          short CalcDSRxChecksum(char ch, unsigned short len) {
+    882          
+    883              unsigned short  cnt ;
+    884              unsigned char   csum ;
+    885          
+    886              csum = 0 ;
+    887              for (cnt=0 ; cnt < len ; cnt++) {
+    888                  csum = crc[csum ^ UART[ch].pRxBuffer[cnt]] ;
+    889              }
+    890              if (csum == UART[ch].pRxBuffer[len]) {
+    891                  return true ;
+    892              } else {
+    893                  return false ;
+    894              }
+    895          }
+    896          
+    897          /*************************************************************************
+    898          *
+    899          * Goes to sync mode
+    900          *
+    901          *************************************************************************/
+    902          __monitor void GoToSyncUART(char ch) {
+    903          
+    904              if (ch < 2) {
+    905                  UART[ch].SyncCnt = 0 ;                        // ready for sync
+    906                  UART[ch].RxState = SYNC ;
+    907                  UART[ch].RxFirst = 0 ;
+    908              }
+    909          }
+
+Errors: 26
+Warnings: none

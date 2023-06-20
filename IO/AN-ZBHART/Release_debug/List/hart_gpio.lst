@@ -1,0 +1,1331 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       29/Dec/2022  11:09:59
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\hart active\Src\hart_gpio.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW8F41.tmp ("D:\S2Prog\IO\hart
+#        active\Src\hart_gpio.c" --cpu=m1280 -ms -o "D:\S2Prog\IO\hart
+#        active\Release_debug\Obj" -D OS_LIBMODE_S -D OS_UART=-1 -lCN
+#        "D:\S2Prog\IO\hart active\Release_debug\List" -y
+#        --initializers_in_flash -DENABLE_BIT_DEFINITIONS -e -I
+#        "D:\S2Prog\IO\hart active\INC\\" -I "D:\S2Prog\IO\hart
+#        active\..\..\SHARED\INC\\" --eeprom_size 4096 --dlib --dlib_config
+#        "C:\Program Files (x86)\IAR Systems\Embedded Workbench
+#        8.4\avr\LIB\DLIB\dlAVR-3s-ec_mul-n.h" -Ohs)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\hart active\Release_debug\List\hart_gpio.lst
+#    Object file  =  D:\S2Prog\IO\hart active\Release_debug\Obj\hart_gpio.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\hart active\Src\hart_gpio.c
+      1          #include <stdio.h>
+      2          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x10b
+   \   union <unnamed> volatile __ext_io _A_PORTL
+   \                     _A_PORTL:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x10a
+   \   union <unnamed> volatile __ext_io _A_DDRL
+   \                     _A_DDRL:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x108
+   \   union <unnamed> volatile __ext_io _A_PORTK
+   \                     _A_PORTK:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x107
+   \   union <unnamed> volatile __ext_io _A_DDRK
+   \                     _A_DDRK:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x105
+   \   union <unnamed> volatile __ext_io _A_PORTJ
+   \                     _A_PORTJ:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x104
+   \   union <unnamed> volatile __ext_io _A_DDRJ
+   \                     _A_DDRJ:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x102
+   \   union <unnamed> volatile __ext_io _A_PORTH
+   \                     _A_PORTH:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x101
+   \   union <unnamed> volatile __ext_io _A_DDRH
+   \                     _A_DDRH:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x34
+   \   union <unnamed> volatile __io _A_PORTG
+   \                     _A_PORTG:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x33
+   \   union <unnamed> volatile __io _A_DDRG
+   \                     _A_DDRG:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x31
+   \   union <unnamed> volatile __io _A_PORTF
+   \                     _A_PORTF:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x30
+   \   union <unnamed> volatile __io _A_DDRF
+   \                     _A_DDRF:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2e
+   \   union <unnamed> volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2d
+   \   union <unnamed> volatile __io _A_DDRE
+   \                     _A_DDRE:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2b
+   \   union <unnamed> volatile __io _A_PORTD
+   \                     _A_PORTD:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2a
+   \   union <unnamed> volatile __io _A_DDRD
+   \                     _A_DDRD:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x28
+   \   union <unnamed> volatile __io _A_PORTC
+   \                     _A_PORTC:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x27
+   \   union <unnamed> volatile __io _A_DDRC
+   \                     _A_DDRC:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x22
+   \   union <unnamed> volatile __io _A_PORTA
+   \                     _A_PORTA:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x21
+   \   union <unnamed> volatile __io _A_DDRA
+   \                     _A_DDRA:
+   \   00000000                      DS8 1
+      3          #include "RTOS.h"
+      4          #include "constants.h"
+      5          
+      6          #include "hart_gpio.h"
+      7          
+      8          ////////////////////////////////////////////////////////////////////////////////
+      9          //
+     10          // Channel Power Control
+     11          //
+     12          ////////////////////////////////////////////////////////////////////////////////
+     13          /*
+     14           * power control for each channel
+     15           *
+     16           * CHP0     : PA0
+     17           * CHP1     : PA1
+     18           * CHP2     : PA2
+     19           * CHP3     : PA3
+     20           * CHP4     : PA4
+     21           * CHP5     : PA5
+     22           * CHP6     : PA6
+     23           * CHP7     : PA7
+     24           * CHP8     : PJ4
+     25           * CHP9     : PJ5
+     26           * CHP10    : PJ6
+     27           * CHP11    : PJ7
+     28           *
+     29           * HIGH     : Power On
+     30           * LOW      : Power Off
+     31           *
+     32           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     33          static void
+     34          hart_gpio_power_gpio_init(void) {
+   \                     hart_gpio_power_gpio_init:
+     35          	SetBit(DDRA, 0xff);         // PA0-PA7 as output
+   \   00000000   94F8               cli
+   \   00000002   B101               IN      R16, 0x01
+   \   00000004   EF0F               LDI     R16, 255
+   \   00000006   B901               OUT     0x01, R16
+   \   00000008   9100....           LDS     R16, (OS_Global + 1)
+   \   0000000C   2300               TST     R16
+   \   0000000E   F409               BRNE    ??hart_gpio_power_gpio_init_0
+   \   00000010   9478               sei
+     36          	SetBit(DDRJ, 0xf0);         // PJ4-PJ7 as output
+   \                     ??hart_gpio_power_gpio_init_0:
+   \   00000012   94F8               cli
+   \   00000014   9100....           LDS     R16, _A_DDRJ
+   \   00000018   6F00               ORI     R16, 0xF0
+   \   0000001A   9300....           STS     _A_DDRJ, R16
+   \   0000001E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000022   2300               TST     R16
+   \   00000024   F409               BRNE    ??hart_gpio_power_gpio_init_1
+   \   00000026   9478               sei
+     37          
+     38          	//
+     39          	// power off everything just to make sure
+     40          	//
+     41          	ClrBit(PORTA, 0xff);        // PA0-PA7 LOW
+   \                     ??hart_gpio_power_gpio_init_1:
+   \   00000028   94F8               cli
+   \   0000002A   B102               IN      R16, 0x02
+   \   0000002C   E000               LDI     R16, 0
+   \   0000002E   B902               OUT     0x02, R16
+   \   00000030   9100....           LDS     R16, (OS_Global + 1)
+   \   00000034   2300               TST     R16
+   \   00000036   F409               BRNE    ??hart_gpio_power_gpio_init_2
+   \   00000038   9478               sei
+     42          	ClrBit(PORTJ, 0xf0);        // PJ4-PJ7 LOW
+   \                     ??hart_gpio_power_gpio_init_2:
+   \   0000003A   94F8               cli
+   \   0000003C   9100....           LDS     R16, _A_PORTJ
+   \   00000040   700F               ANDI    R16, 0x0F
+   \   00000042   9300....           STS     _A_PORTJ, R16
+   \   00000046   9100....           LDS     R16, (OS_Global + 1)
+   \   0000004A   2300               TST     R16
+   \   0000004C   F409               BRNE    ??hart_gpio_power_gpio_init_3
+   \   0000004E   9478               sei
+     43          }
+   \                     ??hart_gpio_power_gpio_init_3:
+   \   00000050   9508               RET
+   \   00000052                      REQUIRE _A_DDRA
+   \   00000052                      REQUIRE _A_DDRJ
+   \   00000052                      REQUIRE _A_PORTA
+   \   00000052                      REQUIRE _A_PORTJ
+     44          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     45          void
+     46          hart_gpio_power_on(hart_channel_t chnl) {
+   \                     hart_gpio_power_on:
+   \   00000000   2F40               MOV     R20, R16
+     47          	switch (chnl) {
+   \   00000002   5008               SUBI    R16, 8
+   \   00000004   F018               BRCS    ??hart_gpio_power_on_0
+   \   00000006   5004               SUBI    R16, 4
+   \   00000008   F070               BRCS    ??hart_gpio_power_on_1
+   \   0000000A   9508               RET
+     48          	case hart_channel_0:
+     49          	case hart_channel_1:
+     50          	case hart_channel_2:
+     51          	case hart_channel_3:
+     52          	case hart_channel_4:
+     53          	case hart_channel_5:
+     54          	case hart_channel_6:
+     55          	case hart_channel_7:
+     56          		SetBit(PORTA, __BIT_MASK(chnl));
+   \                     ??hart_gpio_power_on_0:
+   \   0000000C   94F8               cli
+   \   0000000E   E001               LDI     R16, 1
+   \   00000010   E010               LDI     R17, 0
+   \   00000012   ........           CALL    ?S_SHL_L02
+   \   00000016   B112               IN      R17, 0x02
+   \   00000018   2B10               OR      R17, R16
+   \   0000001A   B912               OUT     0x02, R17
+   \   0000001C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000020   2300               TST     R16
+   \   00000022   F489               BRNE    ??hart_gpio_power_on_2
+   \   00000024   C00F               RJMP    ??hart_gpio_power_on_3
+     57          		break;
+     58          
+     59          	case hart_channel_8:
+     60          	case hart_channel_9:
+     61          	case hart_channel_10:
+     62          	case hart_channel_11:
+     63          		SetBit(PORTJ, __BIT_MASK(chnl - hart_channel_8 + 4));
+   \                     ??hart_gpio_power_on_1:
+   \   00000026   94F8               cli
+   \   00000028   5044               SUBI    R20, 4
+   \   0000002A   E001               LDI     R16, 1
+   \   0000002C   E010               LDI     R17, 0
+   \   0000002E   ........           CALL    ?S_SHL_L02
+   \   00000032   9110....           LDS     R17, _A_PORTJ
+   \   00000036   2B10               OR      R17, R16
+   \   00000038   9310....           STS     _A_PORTJ, R17
+   \   0000003C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000040   2300               TST     R16
+   \   00000042   F409               BRNE    ??hart_gpio_power_on_2
+   \                     ??hart_gpio_power_on_3:
+   \   00000044   9478               sei
+     64          		break;
+     65          	}
+     66          }
+   \                     ??hart_gpio_power_on_2:
+   \   00000046   9508               RET
+   \   00000048                      REQUIRE _A_PORTA
+   \   00000048                      REQUIRE _A_PORTJ
+     67          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     68          void
+     69          hart_gpio_power_off(hart_channel_t chnl) {
+   \                     hart_gpio_power_off:
+   \   00000000   2F40               MOV     R20, R16
+     70          	switch (chnl) {
+   \   00000002   5008               SUBI    R16, 8
+   \   00000004   F018               BRCS    ??hart_gpio_power_off_0
+   \   00000006   5004               SUBI    R16, 4
+   \   00000008   F078               BRCS    ??hart_gpio_power_off_1
+   \   0000000A   9508               RET
+     71          	case hart_channel_0:
+     72          	case hart_channel_1:
+     73          	case hart_channel_2:
+     74          	case hart_channel_3:
+     75          	case hart_channel_4:
+     76          	case hart_channel_5:
+     77          	case hart_channel_6:
+     78          	case hart_channel_7:
+     79          		ClrBit(PORTA, __BIT_MASK(chnl));
+   \                     ??hart_gpio_power_off_0:
+   \   0000000C   94F8               cli
+   \   0000000E   E001               LDI     R16, 1
+   \   00000010   E010               LDI     R17, 0
+   \   00000012   ........           CALL    ?S_SHL_L02
+   \   00000016   9500               COM     R16
+   \   00000018   B112               IN      R17, 0x02
+   \   0000001A   2310               AND     R17, R16
+   \   0000001C   B912               OUT     0x02, R17
+   \   0000001E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000022   2300               TST     R16
+   \   00000024   F491               BRNE    ??hart_gpio_power_off_2
+   \   00000026   C010               RJMP    ??hart_gpio_power_off_3
+     80          		break;
+     81          
+     82          	case hart_channel_8:
+     83          	case hart_channel_9:
+     84          	case hart_channel_10:
+     85          	case hart_channel_11:
+     86          		ClrBit(PORTJ, __BIT_MASK((chnl - hart_channel_8 + 4)));
+   \                     ??hart_gpio_power_off_1:
+   \   00000028   94F8               cli
+   \   0000002A   5044               SUBI    R20, 4
+   \   0000002C   E001               LDI     R16, 1
+   \   0000002E   E010               LDI     R17, 0
+   \   00000030   ........           CALL    ?S_SHL_L02
+   \   00000034   9500               COM     R16
+   \   00000036   9110....           LDS     R17, _A_PORTJ
+   \   0000003A   2310               AND     R17, R16
+   \   0000003C   9310....           STS     _A_PORTJ, R17
+   \   00000040   9100....           LDS     R16, (OS_Global + 1)
+   \   00000044   2300               TST     R16
+   \   00000046   F409               BRNE    ??hart_gpio_power_off_2
+   \                     ??hart_gpio_power_off_3:
+   \   00000048   9478               sei
+     87          		break;
+     88          	}
+     89          }
+   \                     ??hart_gpio_power_off_2:
+   \   0000004A   9508               RET
+   \   0000004C                      REQUIRE _A_PORTA
+   \   0000004C                      REQUIRE _A_PORTJ
+     90          
+     91          
+     92          ////////////////////////////////////////////////////////////////////////////////
+     93          //
+     94          // Modem MUX control
+     95          //
+     96          ////////////////////////////////////////////////////////////////////////////////
+     97          /*
+     98           *    MUX0
+     99           * ENABLE     : PD5
+    100           * ADR0       : PK0
+    101           * ADR1       : PK1
+    102           *
+    103           *    MUX1
+    104           * ENABLE     : PH3
+    105           * ADR0       : PK4
+    106           * ADR1       : PK5
+    107           *
+    108           *    MUX2
+    109           * ENABLE     : PJ3
+    110           * ADR0       : PC0
+    111           * ADR1       : PC1
+    112           *
+    113           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    114          static void
+    115          hart_gpio_mux_gpio_init(void) {
+   \                     hart_gpio_mux_gpio_init:
+    116          	//
+    117          	// MUX0
+    118          	//
+    119          	SetBit(DDRD, __BIT_MASK(5));    // ENABLE : PD5 as output
+   \   00000000   94F8               cli
+   \   00000002   9A55               SBI     0x0A, 0x05
+   \   00000004   9100....           LDS     R16, (OS_Global + 1)
+   \   00000008   2300               TST     R16
+   \   0000000A   F409               BRNE    ??hart_gpio_mux_gpio_init_0
+   \   0000000C   9478               sei
+    120          	SetBit(DDRK, __BIT_MASK(0));    // ADDR0  : PK0 as output
+   \                     ??hart_gpio_mux_gpio_init_0:
+   \   0000000E   94F8               cli
+   \   00000010   91000107           LDS     R16, 263
+   \   00000014   6001               ORI     R16, 0x01
+   \   00000016   93000107           STS     263, R16
+   \   0000001A   9100....           LDS     R16, (OS_Global + 1)
+   \   0000001E   2300               TST     R16
+   \   00000020   F409               BRNE    ??hart_gpio_mux_gpio_init_1
+   \   00000022   9478               sei
+    121          	SetBit(DDRK, __BIT_MASK(1));    // ADDR1  : PK1 as output
+   \                     ??hart_gpio_mux_gpio_init_1:
+   \   00000024   94F8               cli
+   \   00000026   91000107           LDS     R16, 263
+   \   0000002A   6002               ORI     R16, 0x02
+   \   0000002C   93000107           STS     263, R16
+   \   00000030   9100....           LDS     R16, (OS_Global + 1)
+   \   00000034   2300               TST     R16
+   \   00000036   F409               BRNE    ??hart_gpio_mux_gpio_init_2
+   \   00000038   9478               sei
+    122          
+    123          	//
+    124          	// MUX1
+    125          	//
+    126          	SetBit(DDRH, __BIT_MASK(3));    // ENABLE : PH3 as output
+   \                     ??hart_gpio_mux_gpio_init_2:
+   \   0000003A   94F8               cli
+   \   0000003C   91000101           LDS     R16, 257
+   \   00000040   6008               ORI     R16, 0x08
+   \   00000042   93000101           STS     257, R16
+   \   00000046   9100....           LDS     R16, (OS_Global + 1)
+   \   0000004A   2300               TST     R16
+   \   0000004C   F409               BRNE    ??hart_gpio_mux_gpio_init_3
+   \   0000004E   9478               sei
+    127          	SetBit(DDRK, __BIT_MASK(4));    // ADDR0  : PK4 as output
+   \                     ??hart_gpio_mux_gpio_init_3:
+   \   00000050   94F8               cli
+   \   00000052   91000107           LDS     R16, 263
+   \   00000056   6100               ORI     R16, 0x10
+   \   00000058   93000107           STS     263, R16
+   \   0000005C   9100....           LDS     R16, (OS_Global + 1)
+   \   00000060   2300               TST     R16
+   \   00000062   F409               BRNE    ??hart_gpio_mux_gpio_init_4
+   \   00000064   9478               sei
+    128          	SetBit(DDRK, __BIT_MASK(5));    // ADDR1  : PK5 as output
+   \                     ??hart_gpio_mux_gpio_init_4:
+   \   00000066   94F8               cli
+   \   00000068   91000107           LDS     R16, 263
+   \   0000006C   6200               ORI     R16, 0x20
+   \   0000006E   93000107           STS     263, R16
+   \   00000072   9100....           LDS     R16, (OS_Global + 1)
+   \   00000076   2300               TST     R16
+   \   00000078   F409               BRNE    ??hart_gpio_mux_gpio_init_5
+   \   0000007A   9478               sei
+    129          
+    130          	//
+    131          	// MUX2
+    132          	//
+    133          	SetBit(DDRJ, __BIT_MASK(3));    // ENABLE : PJ3 as output
+   \                     ??hart_gpio_mux_gpio_init_5:
+   \   0000007C   94F8               cli
+   \   0000007E   91000104           LDS     R16, 260
+   \   00000082   6008               ORI     R16, 0x08
+   \   00000084   93000104           STS     260, R16
+   \   00000088   9100....           LDS     R16, (OS_Global + 1)
+   \   0000008C   2300               TST     R16
+   \   0000008E   F409               BRNE    ??hart_gpio_mux_gpio_init_6
+   \   00000090   9478               sei
+    134          	SetBit(DDRC, __BIT_MASK(0));    // ADDR0  : PC0 as output
+   \                     ??hart_gpio_mux_gpio_init_6:
+   \   00000092   94F8               cli
+   \   00000094   9A38               SBI     0x07, 0x00
+   \   00000096   9100....           LDS     R16, (OS_Global + 1)
+   \   0000009A   2300               TST     R16
+   \   0000009C   F409               BRNE    ??hart_gpio_mux_gpio_init_7
+   \   0000009E   9478               sei
+    135          	SetBit(DDRC, __BIT_MASK(1));    // ADDR1  : PC1 as output
+   \                     ??hart_gpio_mux_gpio_init_7:
+   \   000000A0   94F8               cli
+   \   000000A2   9A39               SBI     0x07, 0x01
+   \   000000A4   9100....           LDS     R16, (OS_Global + 1)
+   \   000000A8   2300               TST     R16
+   \   000000AA   F409               BRNE    ??hart_gpio_mux_gpio_init_8
+   \   000000AC   9478               sei
+    136          }
+   \                     ??hart_gpio_mux_gpio_init_8:
+   \   000000AE   9508               RET
+   \   000000B0                      REQUIRE _A_DDRD
+   \   000000B0                      REQUIRE _A_DDRK
+   \   000000B0                      REQUIRE _A_DDRH
+   \   000000B0                      REQUIRE _A_DDRJ
+   \   000000B0                      REQUIRE _A_DDRC
+    137          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    138          void
+    139          hart_gpio_mux_enable(hart_mux_t mux) {
+   \                     hart_gpio_mux_enable:
+    140          	switch (mux) {
+   \   00000000   2300               TST     R16
+   \   00000002   F029               BREQ    ??hart_gpio_mux_enable_0
+   \   00000004   950A               DEC     R16
+   \   00000006   F031               BREQ    ??hart_gpio_mux_enable_1
+   \   00000008   950A               DEC     R16
+   \   0000000A   F079               BREQ    ??hart_gpio_mux_enable_2
+   \   0000000C   9508               RET
+    141          	case hart_mux_0:
+    142          		SetBit(PORTD, __BIT_MASK(5));     // PD5
+   \                     ??hart_gpio_mux_enable_0:
+   \   0000000E   94F8               cli
+   \   00000010   9A5D               SBI     0x0B, 0x05
+   \   00000012   C006               RJMP    ??hart_gpio_mux_enable_3
+    143          		break;
+    144          
+    145          	case hart_mux_1:
+    146          		SetBit(PORTH, __BIT_MASK(3));     // PH3
+   \                     ??hart_gpio_mux_enable_1:
+   \   00000014   94F8               cli
+   \   00000016   91000102           LDS     R16, 258
+   \   0000001A   6008               ORI     R16, 0x08
+   \   0000001C   93000102           STS     258, R16
+   \                     ??hart_gpio_mux_enable_3:
+   \   00000020   9100....           LDS     R16, (OS_Global + 1)
+   \   00000024   2300               TST     R16
+   \   00000026   F461               BRNE    ??hart_gpio_mux_enable_4
+   \   00000028   C00A               RJMP    ??hart_gpio_mux_enable_5
+    147          		break;
+    148          
+    149          	case hart_mux_2:
+    150          		SetBit(PORTJ, __BIT_MASK(3));     // PJ3
+   \                     ??hart_gpio_mux_enable_2:
+   \   0000002A   94F8               cli
+   \   0000002C   91000105           LDS     R16, 261
+   \   00000030   6008               ORI     R16, 0x08
+   \   00000032   93000105           STS     261, R16
+   \   00000036   9100....           LDS     R16, (OS_Global + 1)
+   \   0000003A   2300               TST     R16
+   \   0000003C   F409               BRNE    ??hart_gpio_mux_enable_4
+   \                     ??hart_gpio_mux_enable_5:
+   \   0000003E   9478               sei
+    151          		break;
+    152          	}
+    153          }
+   \                     ??hart_gpio_mux_enable_4:
+   \   00000040   9508               RET
+   \   00000042                      REQUIRE _A_PORTD
+   \   00000042                      REQUIRE _A_PORTH
+   \   00000042                      REQUIRE _A_PORTJ
+    154          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    155          void
+    156          hart_gpio_mux_disable(hart_mux_t mux) {
+   \                     hart_gpio_mux_disable:
+    157          	switch (mux) {
+   \   00000000   2300               TST     R16
+   \   00000002   F029               BREQ    ??hart_gpio_mux_disable_0
+   \   00000004   950A               DEC     R16
+   \   00000006   F031               BREQ    ??hart_gpio_mux_disable_1
+   \   00000008   950A               DEC     R16
+   \   0000000A   F079               BREQ    ??hart_gpio_mux_disable_2
+   \   0000000C   9508               RET
+    158          	case hart_mux_0:
+    159          		ClrBit(PORTD, __BIT_MASK(5));     // PD5
+   \                     ??hart_gpio_mux_disable_0:
+   \   0000000E   94F8               cli
+   \   00000010   985D               CBI     0x0B, 0x05
+   \   00000012   C006               RJMP    ??hart_gpio_mux_disable_3
+    160          		break;
+    161          
+    162          	case hart_mux_1:
+    163          		ClrBit(PORTH, __BIT_MASK(3));     // PH3
+   \                     ??hart_gpio_mux_disable_1:
+   \   00000014   94F8               cli
+   \   00000016   91000102           LDS     R16, 258
+   \   0000001A   7F07               ANDI    R16, 0xF7
+   \   0000001C   93000102           STS     258, R16
+   \                     ??hart_gpio_mux_disable_3:
+   \   00000020   9100....           LDS     R16, (OS_Global + 1)
+   \   00000024   2300               TST     R16
+   \   00000026   F461               BRNE    ??hart_gpio_mux_disable_4
+   \   00000028   C00A               RJMP    ??hart_gpio_mux_disable_5
+    164          		break;
+    165          
+    166          	case hart_mux_2:
+    167          		ClrBit(PORTJ, __BIT_MASK(3));     // PJ3
+   \                     ??hart_gpio_mux_disable_2:
+   \   0000002A   94F8               cli
+   \   0000002C   91000105           LDS     R16, 261
+   \   00000030   7F07               ANDI    R16, 0xF7
+   \   00000032   93000105           STS     261, R16
+   \   00000036   9100....           LDS     R16, (OS_Global + 1)
+   \   0000003A   2300               TST     R16
+   \   0000003C   F409               BRNE    ??hart_gpio_mux_disable_4
+   \                     ??hart_gpio_mux_disable_5:
+   \   0000003E   9478               sei
+    168          		break;
+    169          	}
+    170          }
+   \                     ??hart_gpio_mux_disable_4:
+   \   00000040   9508               RET
+   \   00000042                      REQUIRE _A_PORTD
+   \   00000042                      REQUIRE _A_PORTH
+   \   00000042                      REQUIRE _A_PORTJ
+    171          
+    172          /*
+    173           * NOTE: XXX
+    174           *
+    175           * if you think disabling/enabling mux is not necessary during 
+    176           * channel change, just remove it. I don't care.
+    177           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    178          void
+    179          hart_gpio_channel_select(hart_channel_t chnl) {
+   \                     hart_gpio_channel_select:
+    180          	switch (chnl) {
+   \   00000000   2F10               MOV     R17, R16
+   \   00000002   300C               CPI     R16, 12
+   \   00000004   F550               BRCC    ??hart_gpio_channel_select_0
+   \   00000006   ....               LDI     R31, (`?<Jumptable for hart_gpio_channel_select>_0`) >> 16
+   \   00000008   BFFB               OUT     0x3B, R31
+   \   0000000A   E0F2               LDI     R31, 2
+   \   0000000C   9F1F               MUL     R17, R31
+   \   0000000E   01F0               MOVW    R31:R30, R1:R0
+   \   00000010   ....               SUBI    R30, LOW((-(`?<Jumptable for hart_gpio_channel_select>_0`) & 0xFFFF))
+   \   00000012   ....               SBCI    R31, (-(`?<Jumptable for hart_gpio_channel_select>_0`) & 0xFFFF) >> 8
+   \   00000014   9007               ELPM    R0, Z+
+   \   00000016   9016               ELPM    R1, Z
+   \   00000018   01F0               MOVW    R31:R30, R1:R0
+   \   0000001A   9409               IJMP
+    181          	case hart_channel_0:
+    182          	case hart_channel_1:
+    183          	case hart_channel_2:
+    184          	case hart_channel_3:
+    185          		{
+    186          			uint8_t chnl_mask = (uint8_t)(chnl - hart_channel_0);
+    187          			OS_IncDI();
+   \                     ??hart_gpio_channel_select_1:
+   \   0000001C   94F8               cli
+    188          			uint8_t tmpPort =  PORTK;
+    189          			tmpPort &= ~(__BIT_MASK(0) | __BIT_MASK(1));
+    190          			tmpPort |=chnl_mask << 0;
+    191          			PORTK = tmpPort; 
+   \   0000001E   9110....           LDS     R17, _A_PORTK
+   \   00000022   7F1C               ANDI    R17, 0xFC
+   \   00000024   C007               RJMP    ??hart_gpio_channel_select_2
+    192          			OS_DecRI();
+    193          
+    194          			//ClrBit(PORTK, 3/* (__BIT_MASK(0) | __BIT_MASK(1))*/);     // clear first
+    195          			//SetBit(PORTK, chnl_mask/*(chnl_mask << 0)*/); 
+    196          		}
+    197          		break;
+    198          
+    199          	case hart_channel_4:
+    200          	case hart_channel_5:
+    201          	case hart_channel_6:
+    202          	case hart_channel_7:
+    203          		{
+    204          			uint8_t chnl_mask = (uint8_t)(chnl - hart_channel_4);
+    205          			OS_IncDI();
+   \                     ??hart_gpio_channel_select_3:
+   \   00000026   94F8               cli
+    206          			uint8_t tmpPort =  PORTK;
+    207          			tmpPort &= ~(__BIT_MASK(4) | __BIT_MASK(5));
+    208          			tmpPort |=chnl_mask << 4;
+    209          			PORTK = tmpPort; 
+   \   00000028   9110....           LDS     R17, _A_PORTK
+   \   0000002C   7C1F               ANDI    R17, 0xCF
+   \   0000002E   5004               SUBI    R16, 4
+   \   00000030   9502               SWAP    R16
+   \   00000032   7F00               ANDI    R16, 0xF0
+   \                     ??hart_gpio_channel_select_2:
+   \   00000034   2B10               OR      R17, R16
+   \   00000036   9310....           STS     _A_PORTK, R17
+    210          			OS_DecRI();
+   \   0000003A   9100....           LDS     R16, (OS_Global + 1)
+   \   0000003E   2300               TST     R16
+   \   00000040   F461               BRNE    ??hart_gpio_channel_select_0
+   \   00000042   C00A               RJMP    ??hart_gpio_channel_select_4
+    211          
+    212          			//ClrBit(PORTK, (__BIT_MASK(4) | __BIT_MASK(5)));     // clear first
+    213          			//SetBit(PORTK, (chnl_mask << 4));                    // PK4/PK5
+    214          
+    215          		}
+    216          		break;
+    217          
+    218          	case hart_channel_8:
+    219          	case hart_channel_9:
+    220          	case hart_channel_10:
+    221          	case hart_channel_11:
+    222          		{
+    223          			uint8_t chnl_mask = (uint8_t)(chnl - hart_channel_8);
+    224          			OS_IncDI();
+   \                     ??hart_gpio_channel_select_5:
+   \   00000044   94F8               cli
+    225          			uint8_t tmpPort =  PORTC;
+    226          			tmpPort &= ~(__BIT_MASK(0) | __BIT_MASK(1));
+    227          			tmpPort |=chnl_mask << 0;
+    228          			PORTC = tmpPort; 
+   \   00000046   B118               IN      R17, 0x08
+   \   00000048   7F1C               ANDI    R17, 0xFC
+   \   0000004A   5008               SUBI    R16, 8
+   \   0000004C   2B10               OR      R17, R16
+   \   0000004E   B918               OUT     0x08, R17
+    229          			OS_DecRI();
+   \   00000050   9100....           LDS     R16, (OS_Global + 1)
+   \   00000054   2300               TST     R16
+   \   00000056   F409               BRNE    ??hart_gpio_channel_select_0
+   \                     ??hart_gpio_channel_select_4:
+   \   00000058   9478               sei
+    230          
+    231          			//ClrBit(PORTC, (__BIT_MASK(0) | __BIT_MASK(1)));     // clear first
+    232          			//SetBit(PORTC, (chnl_mask << 0));                    // PC0/PC1
+    233          		}
+    234          		break;
+    235          	}
+    236          }
+   \                     ??hart_gpio_channel_select_0:
+   \   0000005A   9508               RET
+   \   0000005C                      REQUIRE _A_PORTK
+   \   0000005C                      REQUIRE _A_PORTC
+    237          
+    238          
+    239          
+    240          /*
+    241           * NOTE: XXX
+    242           *
+    243           * Enable all mux for HART
+    244           *
+    245           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    246          void hart_gpio_enable_all_mux(void) {
+   \                     hart_gpio_enable_all_mux:
+    247          
+    248          	hart_gpio_mux_enable(hart_mux_0);
+   \   00000000   E000               LDI     R16, 0
+   \   00000002   ....               RCALL   hart_gpio_mux_enable
+    249          	hart_gpio_mux_enable(hart_mux_1);
+   \   00000004   E001               LDI     R16, 1
+   \   00000006   ....               RCALL   hart_gpio_mux_enable
+    250          	hart_gpio_mux_enable(hart_mux_2);
+   \   00000008   E002               LDI     R16, 2
+   \   0000000A   ....               RJMP    hart_gpio_mux_enable
+    251          }
+    252          
+    253          ////////////////////////////////////////////////////////////////////////////////
+    254          //
+    255          // ADC & ADC MUX
+    256          //
+    257          ////////////////////////////////////////////////////////////////////////////////
+    258          /*
+    259           *
+    260           * ADC MUX
+    261           * ADR0       : PF0
+    262           * ADR1       : PF1
+    263           * ADR2       : PF2
+    264           * ADR3       : PF3
+    265           *
+    266           * ADC SPI
+    267           *
+    268           * SCLK       : PL0
+    269           * MISO       : PL1
+    270           * MOSI       : PL2
+    271           * CS         : N/A. always selected
+    272           * /RESET     : PL3
+    273           * /DRDY      : PD0, PD0 is mapped to EINT0 when set up as input
+    274           *
+    275           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    276          static void
+    277          hart_gpio_adc_gpio_init(void) {
+   \                     hart_gpio_adc_gpio_init:
+    278          	SetBit(DDRF,  0x0f);              // PF0-PF3 as output
+   \   00000000   94F8               cli
+   \   00000002   B300               IN      R16, 0x10
+   \   00000004   600F               ORI     R16, 0x0F
+   \   00000006   BB00               OUT     0x10, R16
+   \   00000008   9100....           LDS     R16, (OS_Global + 1)
+   \   0000000C   2300               TST     R16
+   \   0000000E   F409               BRNE    ??hart_gpio_adc_gpio_init_0
+   \   00000010   9478               sei
+    279          									  // Port F data direction, used for ADC
+    280          	SetBit(DDRL,  AD7715_SCLK);       // SCLK   : PL0 as output
+   \                     ??hart_gpio_adc_gpio_init_0:
+   \   00000012   94F8               cli
+   \   00000014   9100010A           LDS     R16, 266
+   \   00000018   6001               ORI     R16, 0x01
+   \   0000001A   9300010A           STS     266, R16
+   \   0000001E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000022   2300               TST     R16
+   \   00000024   F409               BRNE    ??hart_gpio_adc_gpio_init_1
+   \   00000026   9478               sei
+    281          	ClrBit(DDRL,  AD7715_MISO);       // MISO   : PL1 as input
+   \                     ??hart_gpio_adc_gpio_init_1:
+   \   00000028   94F8               cli
+   \   0000002A   9100010A           LDS     R16, 266
+   \   0000002E   7F0D               ANDI    R16, 0xFD
+   \   00000030   9300010A           STS     266, R16
+   \   00000034   9100....           LDS     R16, (OS_Global + 1)
+   \   00000038   2300               TST     R16
+   \   0000003A   F409               BRNE    ??hart_gpio_adc_gpio_init_2
+   \   0000003C   9478               sei
+    282          	SetBit(DDRL,  AD7715_MOSI);       // MOSI   : PL2 as output
+   \                     ??hart_gpio_adc_gpio_init_2:
+   \   0000003E   94F8               cli
+   \   00000040   9100010A           LDS     R16, 266
+   \   00000044   6004               ORI     R16, 0x04
+   \   00000046   9300010A           STS     266, R16
+   \   0000004A   9100....           LDS     R16, (OS_Global + 1)
+   \   0000004E   2300               TST     R16
+   \   00000050   F409               BRNE    ??hart_gpio_adc_gpio_init_3
+   \   00000052   9478               sei
+    283          	SetBit(DDRL,  __BIT_MASK(3));     // /RESET : PL3 as output
+   \                     ??hart_gpio_adc_gpio_init_3:
+   \   00000054   94F8               cli
+   \   00000056   9100010A           LDS     R16, 266
+   \   0000005A   6008               ORI     R16, 0x08
+   \   0000005C   9300010A           STS     266, R16
+   \   00000060   9100....           LDS     R16, (OS_Global + 1)
+   \   00000064   2300               TST     R16
+   \   00000066   F409               BRNE    ??hart_gpio_adc_gpio_init_4
+   \   00000068   9478               sei
+    284          	ClrBit(DDRD,  __BIT_MASK(0));     // /DRDY  : PD0 as input
+   \                     ??hart_gpio_adc_gpio_init_4:
+   \   0000006A   94F8               cli
+   \   0000006C   9850               CBI     0x0A, 0x00
+   \   0000006E   9100....           LDS     R16, (OS_Global + 1)
+   \   00000072   2300               TST     R16
+   \   00000074   F409               BRNE    ??hart_gpio_adc_gpio_init_5
+   \   00000076   9478               sei
+    285          
+    286          	//
+    287          	// setup clock high
+    288          	//
+    289          	SetBit(PORTL, AD7715_SCLK);
+   \                     ??hart_gpio_adc_gpio_init_5:
+   \   00000078   94F8               cli
+   \   0000007A   9100010B           LDS     R16, 267
+   \   0000007E   6001               ORI     R16, 0x01
+   \   00000080   9300010B           STS     267, R16
+   \   00000084   9100....           LDS     R16, (OS_Global + 1)
+   \   00000088   2300               TST     R16
+   \   0000008A   F409               BRNE    ??hart_gpio_adc_gpio_init_6
+   \   0000008C   9478               sei
+    290          
+    291          	//
+    292          	// put ADC in reset state
+    293          	//
+    294          	hart_gpio_adc_reset(0);
+   \                     ??hart_gpio_adc_gpio_init_6:
+   \   0000008E   E000               LDI     R16, 0
+   \   00000090   ....               RJMP    hart_gpio_adc_reset
+   \   00000092                      REQUIRE _A_DDRF
+   \   00000092                      REQUIRE _A_DDRL
+   \   00000092                      REQUIRE _A_DDRD
+   \   00000092                      REQUIRE _A_PORTL
+    295          }
+    296          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    297          void hart_gpio_adc_channel_select(hart_channel_t chnl) {
+   \                     hart_gpio_adc_channel_select:
+    298          	uint8_t   mask    = (uint8_t)(chnl - hart_channel_0);
+    299          
+    300          	PORTF &= ~0x0f;         // clear
+   \   00000000   B311               IN      R17, 0x11
+   \   00000002   7F10               ANDI    R17, 0xF0
+   \   00000004   BB11               OUT     0x11, R17
+    301          	PORTF |=  mask;         // set
+   \   00000006   B311               IN      R17, 0x11
+   \   00000008   2B10               OR      R17, R16
+   \   0000000A   BB11               OUT     0x11, R17
+    302          }
+   \   0000000C   9508               RET
+   \   0000000E                      REQUIRE _A_PORTF
+    303          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    304          void hart_gpio_adc_reset(uint8_t hi) {
+   \                     hart_gpio_adc_reset:
+    305          	if (hi) {
+   \   00000000   2300               TST     R16
+   \   00000002   F059               BREQ    ??hart_gpio_adc_reset_0
+    306          		SetBit(PORTL, __BIT_MASK(3));
+   \   00000004   94F8               cli
+   \   00000006   9100010B           LDS     R16, 267
+   \   0000000A   6008               ORI     R16, 0x08
+   \   0000000C   9300010B           STS     267, R16
+   \   00000010   9100....           LDS     R16, (OS_Global + 1)
+   \   00000014   2300               TST     R16
+   \   00000016   F461               BRNE    ??hart_gpio_adc_reset_1
+   \   00000018   C00A               RJMP    ??hart_gpio_adc_reset_2
+    307          	} else {
+    308          		ClrBit(PORTL, __BIT_MASK(3));
+   \                     ??hart_gpio_adc_reset_0:
+   \   0000001A   94F8               cli
+   \   0000001C   9100010B           LDS     R16, 267
+   \   00000020   7F07               ANDI    R16, 0xF7
+   \   00000022   9300010B           STS     267, R16
+   \   00000026   9100....           LDS     R16, (OS_Global + 1)
+   \   0000002A   2300               TST     R16
+   \   0000002C   F409               BRNE    ??hart_gpio_adc_reset_1
+   \                     ??hart_gpio_adc_reset_2:
+   \   0000002E   9478               sei
+    309          	}
+    310          }
+   \                     ??hart_gpio_adc_reset_1:
+   \   00000030   9508               RET
+   \   00000032                      REQUIRE _A_PORTL
+    311          
+    312          ////////////////////////////////////////////////////////////////////////////////
+    313          //
+    314          // HART Modem Control
+    315          //
+    316          ////////////////////////////////////////////////////////////////////////////////
+    317          /*
+    318           *
+    319           * MODEM0 /RTS : PD4
+    320           * MODEM1 /RTS : PH2
+    321           * MODEM2 /RTS : PJ2
+    322           *
+    323           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    324          static void hart_gpio_modem_gpio_init(void) {
+   \                     hart_gpio_modem_gpio_init:
+    325          	SetBit(DDRD,  __BIT_MASK(4));     // MODEM0 /RTS: PD4 as output
+   \   00000000   94F8               cli
+   \   00000002   9A54               SBI     0x0A, 0x04
+   \   00000004   9100....           LDS     R16, (OS_Global + 1)
+   \   00000008   2300               TST     R16
+   \   0000000A   F409               BRNE    ??hart_gpio_modem_gpio_init_0
+   \   0000000C   9478               sei
+    326          	SetBit(DDRH,  __BIT_MASK(2));     // MODEM1 /RTS: PH2 as output
+   \                     ??hart_gpio_modem_gpio_init_0:
+   \   0000000E   94F8               cli
+   \   00000010   91000101           LDS     R16, 257
+   \   00000014   6004               ORI     R16, 0x04
+   \   00000016   93000101           STS     257, R16
+   \   0000001A   9100....           LDS     R16, (OS_Global + 1)
+   \   0000001E   2300               TST     R16
+   \   00000020   F409               BRNE    ??hart_gpio_modem_gpio_init_1
+   \   00000022   9478               sei
+    327          	SetBit(DDRJ,  __BIT_MASK(2));     // MODEM2 /RTS: PJ2 as output
+   \                     ??hart_gpio_modem_gpio_init_1:
+   \   00000024   94F8               cli
+   \   00000026   91000104           LDS     R16, 260
+   \   0000002A   6004               ORI     R16, 0x04
+   \   0000002C   93000104           STS     260, R16
+   \   00000030   9100....           LDS     R16, (OS_Global + 1)
+   \   00000034   2300               TST     R16
+   \   00000036   F409               BRNE    ??hart_gpio_modem_gpio_init_2
+   \   00000038   9478               sei
+    328          
+    329          	hart_gpio_hart_carrier_off(hart_modem_0);
+   \                     ??hart_gpio_modem_gpio_init_2:
+   \   0000003A   E000               LDI     R16, 0
+   \   0000003C   ....               RCALL   hart_gpio_hart_carrier_off
+    330          	hart_gpio_hart_carrier_off(hart_modem_1);
+   \   0000003E   E001               LDI     R16, 1
+   \   00000040   ....               RCALL   hart_gpio_hart_carrier_off
+    331          	hart_gpio_hart_carrier_off(hart_modem_2);
+   \   00000042   E002               LDI     R16, 2
+   \   00000044   ....               RJMP    hart_gpio_hart_carrier_off
+   \   00000046                      REQUIRE _A_DDRD
+   \   00000046                      REQUIRE _A_DDRH
+   \   00000046                      REQUIRE _A_DDRJ
+    332          }
+    333          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    334          void hart_gpio_hart_carrier_off(hart_modem_t modem) {
+   \                     hart_gpio_hart_carrier_off:
+    335          	OS_IncDI();
+   \   00000000   94F8               cli
+    336          	hart_gpio_hart_carrier_off_irq(modem);
+   \   00000002   2300               TST     R16
+   \   00000004   F081               BREQ    ??hart_gpio_hart_carrier_off_0
+   \   00000006   950A               DEC     R16
+   \   00000008   F041               BREQ    ??hart_gpio_hart_carrier_off_1
+   \   0000000A   950A               DEC     R16
+   \   0000000C   F469               BRNE    ??hart_gpio_hart_carrier_off_2
+   \   0000000E   91000105           LDS     R16, 261
+   \   00000012   6004               ORI     R16, 0x04
+   \   00000014   93000105           STS     261, R16
+   \   00000018   C007               RJMP    ??hart_gpio_hart_carrier_off_2
+   \                     ??hart_gpio_hart_carrier_off_1:
+   \   0000001A   91000102           LDS     R16, 258
+   \   0000001E   6004               ORI     R16, 0x04
+   \   00000020   93000102           STS     258, R16
+   \   00000024   C001               RJMP    ??hart_gpio_hart_carrier_off_2
+   \                     ??hart_gpio_hart_carrier_off_0:
+   \   00000026   9A5C               SBI     0x0B, 0x04
+    337          	OS_DecRI();
+   \                     ??hart_gpio_hart_carrier_off_2:
+   \   00000028   9100....           LDS     R16, (OS_Global + 1)
+   \   0000002C   2300               TST     R16
+   \   0000002E   F409               BRNE    ??hart_gpio_hart_carrier_off_3
+   \   00000030   9478               sei
+    338          }
+   \                     ??hart_gpio_hart_carrier_off_3:
+   \   00000032   9508               RET
+   \   00000034                      REQUIRE _A_PORTD
+   \   00000034                      REQUIRE _A_PORTH
+   \   00000034                      REQUIRE _A_PORTJ
+    339          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    340          void hart_gpio_hart_carrier_off_irq(hart_modem_t modem) {
+   \                     hart_gpio_hart_carrier_off_irq:
+    341          	switch (modem) {
+   \   00000000   2300               TST     R16
+   \   00000002   F029               BREQ    ??hart_gpio_hart_carrier_off_irq_0
+   \   00000004   950A               DEC     R16
+   \   00000006   F029               BREQ    ??hart_gpio_hart_carrier_off_irq_1
+   \   00000008   950A               DEC     R16
+   \   0000000A   F049               BREQ    ??hart_gpio_hart_carrier_off_irq_2
+   \   0000000C   9508               RET
+    342          	case hart_modem_0:
+    343          		PORTD |= __BIT_MASK(4);
+   \                     ??hart_gpio_hart_carrier_off_irq_0:
+   \   0000000E   9A5C               SBI     0x0B, 0x04
+    344          		break;
+   \   00000010   9508               RET
+    345          
+    346          	case hart_modem_1:
+    347          		PORTH |= __BIT_MASK(2);
+   \                     ??hart_gpio_hart_carrier_off_irq_1:
+   \   00000012   91000102           LDS     R16, 258
+   \   00000016   6004               ORI     R16, 0x04
+   \   00000018   93000102           STS     258, R16
+    348          		break;
+   \   0000001C   9508               RET
+    349          
+    350          	case hart_modem_2:
+    351          		{
+    352          			uint8_t tmpReg = PORTJ;
+    353          			tmpReg |= __BIT_MASK(2);
+    354          			PORTJ = tmpReg;
+   \                     ??hart_gpio_hart_carrier_off_irq_2:
+   \   0000001E   91000105           LDS     R16, 261
+   \   00000022   6004               ORI     R16, 0x04
+   \   00000024   93000105           STS     261, R16
+    355          		}
+    356          		break;
+    357          	}
+    358          }
+   \   00000028   9508               RET
+   \   0000002A                      REQUIRE _A_PORTD
+   \   0000002A                      REQUIRE _A_PORTH
+   \   0000002A                      REQUIRE _A_PORTJ
+    359           
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    360          void hart_gpio_hart_carrier_on(hart_modem_t modem) {
+   \                     hart_gpio_hart_carrier_on:
+    361          	OS_IncDI();
+   \   00000000   94F8               cli
+    362          	hart_gpio_hart_carrier_on_irq(modem);
+   \   00000002   2300               TST     R16
+   \   00000004   F081               BREQ    ??hart_gpio_hart_carrier_on_0
+   \   00000006   950A               DEC     R16
+   \   00000008   F041               BREQ    ??hart_gpio_hart_carrier_on_1
+   \   0000000A   950A               DEC     R16
+   \   0000000C   F469               BRNE    ??hart_gpio_hart_carrier_on_2
+   \   0000000E   91000105           LDS     R16, 261
+   \   00000012   7F0B               ANDI    R16, 0xFB
+   \   00000014   93000105           STS     261, R16
+   \   00000018   C007               RJMP    ??hart_gpio_hart_carrier_on_2
+   \                     ??hart_gpio_hart_carrier_on_1:
+   \   0000001A   91000102           LDS     R16, 258
+   \   0000001E   7F0B               ANDI    R16, 0xFB
+   \   00000020   93000102           STS     258, R16
+   \   00000024   C001               RJMP    ??hart_gpio_hart_carrier_on_2
+   \                     ??hart_gpio_hart_carrier_on_0:
+   \   00000026   985C               CBI     0x0B, 0x04
+    363          	OS_DecRI();
+   \                     ??hart_gpio_hart_carrier_on_2:
+   \   00000028   9100....           LDS     R16, (OS_Global + 1)
+   \   0000002C   2300               TST     R16
+   \   0000002E   F409               BRNE    ??hart_gpio_hart_carrier_on_3
+   \   00000030   9478               sei
+    364          }
+   \                     ??hart_gpio_hart_carrier_on_3:
+   \   00000032   9508               RET
+   \   00000034                      REQUIRE _A_PORTD
+   \   00000034                      REQUIRE _A_PORTH
+   \   00000034                      REQUIRE _A_PORTJ
+    365          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    366          void hart_gpio_hart_carrier_on_irq(hart_modem_t modem) {
+   \                     hart_gpio_hart_carrier_on_irq:
+    367          	switch (modem) {
+   \   00000000   2300               TST     R16
+   \   00000002   F029               BREQ    ??hart_gpio_hart_carrier_on_irq_0
+   \   00000004   950A               DEC     R16
+   \   00000006   F029               BREQ    ??hart_gpio_hart_carrier_on_irq_1
+   \   00000008   950A               DEC     R16
+   \   0000000A   F049               BREQ    ??hart_gpio_hart_carrier_on_irq_2
+   \   0000000C   9508               RET
+    368          	case hart_modem_0:
+    369          		PORTD &= ~__BIT_MASK(4);
+   \                     ??hart_gpio_hart_carrier_on_irq_0:
+   \   0000000E   985C               CBI     0x0B, 0x04
+    370          		break;
+   \   00000010   9508               RET
+    371          
+    372          	case hart_modem_1:
+    373          		PORTH &= ~__BIT_MASK(2);
+   \                     ??hart_gpio_hart_carrier_on_irq_1:
+   \   00000012   91000102           LDS     R16, 258
+   \   00000016   7F0B               ANDI    R16, 0xFB
+   \   00000018   93000102           STS     258, R16
+    374          		break;
+   \   0000001C   9508               RET
+    375          
+    376          	case hart_modem_2:
+    377          		PORTJ &= ~__BIT_MASK(2);
+   \                     ??hart_gpio_hart_carrier_on_irq_2:
+   \   0000001E   91000105           LDS     R16, 261
+   \   00000022   7F0B               ANDI    R16, 0xFB
+   \   00000024   93000105           STS     261, R16
+    378          		break;
+    379          	}
+    380          }
+   \   00000028   9508               RET
+   \   0000002A                      REQUIRE _A_PORTD
+   \   0000002A                      REQUIRE _A_PORTH
+   \   0000002A                      REQUIRE _A_PORTJ
+    381          
+    382          ////////////////////////////////////////////////////////////////////////////////
+    383          //
+    384          // Misc
+    385          //
+    386          ////////////////////////////////////////////////////////////////////////////////
+    387          /*
+    388           *
+    389           * Debug LED: PG5
+    390           * 
+    391           * Address Rotary Switch 0 : PE4
+    392           * Address Rotary Switch 1 : PE5
+    393           * Address Rotary Switch 2 : PE6
+    394           * Address Rotary Switch 3 : PE7 
+    395           *
+    396           * My485UART0 RS485 RX/TX Control : PE2
+    397           *
+    398           * ADC CLOCK, OSC, 1 MHz : PE3
+    399           */
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    400          static void hart_gpio_misc_gpio_init(void) {
+   \                     hart_gpio_misc_gpio_init:
+    401          
+    402          	SetBit(DDRG, __BIT_MASK(5));        // Debug LED: PG5 as output
+   \   00000000   94F8               cli
+   \   00000002   9A9D               SBI     0x13, 0x05
+   \   00000004   9100....           LDS     R16, (OS_Global + 1)
+   \   00000008   2300               TST     R16
+   \   0000000A   F409               BRNE    ??hart_gpio_misc_gpio_init_0
+   \   0000000C   9478               sei
+    403          
+    404          
+    405          	ClrBit(DDRE, (0xf0));               // PE4-PE7 as input
+   \                     ??hart_gpio_misc_gpio_init_0:
+   \   0000000E   94F8               cli
+   \   00000010   B10D               IN      R16, 0x0D
+   \   00000012   700F               ANDI    R16, 0x0F
+   \   00000014   B90D               OUT     0x0D, R16
+   \   00000016   9100....           LDS     R16, (OS_Global + 1)
+   \   0000001A   2300               TST     R16
+   \   0000001C   F409               BRNE    ??hart_gpio_misc_gpio_init_1
+   \   0000001E   9478               sei
+    406          
+    407          	SetBit(DDRE,  __BIT_MASK(2));       // PE2 : My485UART0 RS485 RX/TX Control
+   \                     ??hart_gpio_misc_gpio_init_1:
+   \   00000020   94F8               cli
+   \   00000022   9A6A               SBI     0x0D, 0x02
+   \   00000024   9100....           LDS     R16, (OS_Global + 1)
+   \   00000028   2300               TST     R16
+   \   0000002A   F409               BRNE    ??hart_gpio_misc_gpio_init_2
+   \   0000002C   9478               sei
+    408          	ClrBit(PORTE, __BIT_MASK(2));
+   \                     ??hart_gpio_misc_gpio_init_2:
+   \   0000002E   94F8               cli
+   \   00000030   9872               CBI     0x0E, 0x02
+   \   00000032   9100....           LDS     R16, (OS_Global + 1)
+   \   00000036   2300               TST     R16
+   \   00000038   F409               BRNE    ??hart_gpio_misc_gpio_init_3
+   \   0000003A   9478               sei
+    409          
+    410          	SetBit(DDRE, __BIT_MASK(3));        // PE3 : 1 MHz ADC Clock
+   \                     ??hart_gpio_misc_gpio_init_3:
+   \   0000003C   94F8               cli
+   \   0000003E   9A6B               SBI     0x0D, 0x03
+   \   00000040   9100....           LDS     R16, (OS_Global + 1)
+   \   00000044   2300               TST     R16
+   \   00000046   F409               BRNE    ??hart_gpio_misc_gpio_init_4
+   \   00000048   9478               sei
+    411          }
+   \                     ??hart_gpio_misc_gpio_init_4:
+   \   0000004A   9508               RET
+   \   0000004C                      REQUIRE _A_DDRG
+   \   0000004C                      REQUIRE _A_DDRE
+   \   0000004C                      REQUIRE _A_PORTE
+    412          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    413          void hart_gpio_debug_led(uint8_t on) {
+   \                     hart_gpio_debug_led:
+    414          	if (on) {
+   \   00000000   2300               TST     R16
+   \   00000002   F011               BREQ    ??hart_gpio_debug_led_0
+    415          		PORTG &= ~__BIT_MASK(5);
+   \   00000004   98A5               CBI     0x14, 0x05
+   \   00000006   9508               RET
+    416          	} else {
+    417          		PORTG |=  __BIT_MASK(5);
+   \                     ??hart_gpio_debug_led_0:
+   \   00000008   9AA5               SBI     0x14, 0x05
+    418          	}
+    419          }
+   \   0000000A   9508               RET
+   \   0000000C                      REQUIRE _A_PORTG
+    420          
+    421          ////////////////////////////////////////////////////////////////////////////////
+    422          //
+    423          // GPIO init
+    424          //
+    425          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    426          void
+    427          hart_gpio_init(void) {
+   \                     hart_gpio_init:
+    428          	hart_gpio_power_gpio_init();
+   \   00000000   ....               RCALL   hart_gpio_power_gpio_init
+    429          	hart_gpio_mux_gpio_init();
+   \   00000002   ....               RCALL   hart_gpio_mux_gpio_init
+    430          	hart_gpio_adc_gpio_init();
+   \   00000004   ....               RCALL   hart_gpio_adc_gpio_init
+    431          	hart_gpio_modem_gpio_init();
+   \   00000006   ....               RCALL   hart_gpio_modem_gpio_init
+    432          	hart_gpio_misc_gpio_init();
+   \   00000008   ....               RJMP    hart_gpio_misc_gpio_init
+    433          }
+
+   \                                 In  segment SWITCH, align 2, keep-with-next
+   \                     `?<Jumptable for hart_gpio_channel_select>_0`:
+   \   00000000   ....               DW      (??hart_gpio_channel_select_1) /2
+   \   00000002   ....               DW      (??hart_gpio_channel_select_1) /2
+   \   00000004   ....               DW      (??hart_gpio_channel_select_1) /2
+   \   00000006   ....               DW      (??hart_gpio_channel_select_1) /2
+   \   00000008   ....               DW      (??hart_gpio_channel_select_3) /2
+   \   0000000A   ....               DW      (??hart_gpio_channel_select_3) /2
+   \   0000000C   ....               DW      (??hart_gpio_channel_select_3) /2
+   \   0000000E   ....               DW      (??hart_gpio_channel_select_3) /2
+   \   00000010   ....               DW      (??hart_gpio_channel_select_5) /2
+   \   00000012   ....               DW      (??hart_gpio_channel_select_5) /2
+   \   00000014   ....               DW      (??hart_gpio_channel_select_5) /2
+   \   00000016   ....               DW      (??hart_gpio_channel_select_5) /2
+
+   Maximum stack usage in bytes:
+
+   RSTACK Function
+   ------ --------
+      2   hart_gpio_adc_channel_select
+      2   hart_gpio_adc_gpio_init
+        2   -> hart_gpio_adc_reset
+      2   hart_gpio_adc_reset
+      2   hart_gpio_channel_select
+      2   hart_gpio_debug_led
+      2   hart_gpio_enable_all_mux
+        2   -> hart_gpio_mux_enable
+      2   hart_gpio_hart_carrier_off
+      2   hart_gpio_hart_carrier_off_irq
+      2   hart_gpio_hart_carrier_on
+      2   hart_gpio_hart_carrier_on_irq
+      2   hart_gpio_init
+        2   -> hart_gpio_adc_gpio_init
+        2   -> hart_gpio_misc_gpio_init
+        2   -> hart_gpio_modem_gpio_init
+        2   -> hart_gpio_mux_gpio_init
+        2   -> hart_gpio_power_gpio_init
+      2   hart_gpio_misc_gpio_init
+      2   hart_gpio_modem_gpio_init
+        2   -> hart_gpio_hart_carrier_off
+      2   hart_gpio_mux_disable
+      2   hart_gpio_mux_enable
+      2   hart_gpio_mux_gpio_init
+      2   hart_gpio_power_gpio_init
+      2   hart_gpio_power_off
+        2 ?S_SHL_L02
+      2   hart_gpio_power_on
+        2 ?S_SHL_L02
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      24  ?<Jumptable for hart_gpio_channel_select>_0
+       1  _A_DDRA
+       1  _A_DDRC
+       1  _A_DDRD
+       1  _A_DDRE
+       1  _A_DDRF
+       1  _A_DDRG
+       1  _A_DDRH
+       1  _A_DDRJ
+       1  _A_DDRK
+       1  _A_DDRL
+       1  _A_PORTA
+       1  _A_PORTC
+       1  _A_PORTD
+       1  _A_PORTE
+       1  _A_PORTF
+       1  _A_PORTG
+       1  _A_PORTH
+       1  _A_PORTJ
+       1  _A_PORTK
+       1  _A_PORTL
+      14  hart_gpio_adc_channel_select
+     146  hart_gpio_adc_gpio_init
+      50  hart_gpio_adc_reset
+      92  hart_gpio_channel_select
+      12  hart_gpio_debug_led
+      12  hart_gpio_enable_all_mux
+      52  hart_gpio_hart_carrier_off
+      42  hart_gpio_hart_carrier_off_irq
+      52  hart_gpio_hart_carrier_on
+      42  hart_gpio_hart_carrier_on_irq
+      10  hart_gpio_init
+      76  hart_gpio_misc_gpio_init
+      70  hart_gpio_modem_gpio_init
+      66  hart_gpio_mux_disable
+      66  hart_gpio_mux_enable
+     176  hart_gpio_mux_gpio_init
+      82  hart_gpio_power_gpio_init
+      76  hart_gpio_power_off
+      72  hart_gpio_power_on
+
+ 
+    20 bytes in segment ABSOLUTE
+ 1 208 bytes in segment CODE
+    24 bytes in segment SWITCH
+ 
+ 1 232 bytes of CODE memory
+     0 bytes of DATA memory (+ 20 bytes shared)
+
+Errors: none
+Warnings: none

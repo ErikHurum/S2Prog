@@ -1,0 +1,534 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:19:41 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\TSNMessageQ.cpp                 #
+#    Command line    =  D:\S2Prog\Shared\Src\TSNMessageQ.cpp --fpu None -D   #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\TSNMessageQ.lst             #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\TSNMessageQ.r79              #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\TSNMessageQ.cpp
+      1          #ifdef WIN32
+      2          #include "windows.h"
+      3          
+      4          //using namespace std;
+      5          
+      6          #else
+      7          #include "RTOS.h"
+      8          #endif
+      9          #include "def.h"
+     10          #include "TSNMessageQ.h"
+     11          #ifdef ANWIN
+     12          #pragma warn -8004
+     13          #endif
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     14          unsigned int TSNMessageQ::qNumber = 0;
+   \                     ??qNumber:
+   \   00000000                      DS8 4
+     15          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     16          TSNMessageQ::TSNMessageQ() {
+   \                     ??TSNMessageQ:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     17          #ifdef WIN32
+     18          #pragma warn -8004
+     19          	DWORD error;
+     20              DWORD pid;
+     21          
+     22              //
+     23              // the original mailbox scheme is not suitable for multi instance situation.
+     24              // so fixing it.
+     25              // -hkim-
+     26              //
+     27          #if 0
+     28              wsprintf(QName,"\\\\.\\mailslot\\MessageQ%d\\Q",qNumber);
+     29          #else
+     30              pid = GetCurrentProcessId();
+     31              wsprintf(QName, "\\\\.\\mailslot\\MessageQ%d-%d\\Q", pid, qNumber);
+     32          #endif
+     33          
+     34              hQ = CreateMailslot(QName, (DWORD)0, MAILSLOT_WAIT_FOREVER, NULL);
+     35              if ( hQ == INVALID_HANDLE_VALUE ) {
+     36                  error = GetLastError();
+     37              }
+     38              qNumber++;
+     39          	hEvent 			= CreateEvent(NULL, TRUE, FALSE, TEXT("WriteEvent"));
+     40              ov.Offset 		= 0;
+     41              ov.OffsetHigh 	= 0;
+     42              ov.hEvent     	= hEvent;
+     43              hMailQ 			= CreateFile(QName, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, 0, NULL);
+     44          
+     45          
+     46          #else
+     47              // allocate memory for the queue
+     48              qBuffer = new U8[qSize];
+   \   00000008   800CA0E3           MOV      R0,#+32768
+   \   0000000C   ........           _BLF     `??operator new[]`,`??operator new[]??rA`
+   \   00000010   040084E5           STR      R0,[R4, #+4]
+     49              pQ = new OS_Q;
+   \   00000014   1C00A0E3           MOV      R0,#+28
+   \   00000018   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   0000001C   000084E5           STR      R0,[R4, #+0]
+     50              OS_Q_Create(pQ, qBuffer, qSize);            //EHSMark, why not use QSize? Was 8192
+   \   00000020   041094E5           LDR      R1,[R4, #+4]
+   \   00000024   802CA0E3           MOV      R2,#+32768
+   \   00000028   ........           _BLF     OS_Q_Create,??OS_Q_Create??rA
+     51              pMessage = 0;
+   \   0000002C   0000A0E3           MOV      R0,#+0
+   \   00000030   080084E5           STR      R0,[R4, #+8]
+     52          #endif
+     53          }
+   \   00000034   0400A0E1           MOV      R0,R4
+   \   00000038                      REQUIRE ?Subroutine11
+   \   00000038                      ;; // Fall through to label ?Subroutine11
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine11:
+   \   00000000   1040BDE8           POP      {R4,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     54          TSNMessageQ::~TSNMessageQ() {
+   \                     `?~TSNMessageQ`:
+   \   00000000   00402DE9           PUSH     {LR}
+     55          #ifdef WIN32
+     56              CloseHandle(hQ);
+     57              CloseHandle(hMailQ);
+     58              CloseHandle(hEvent);
+     59          
+     60          #else
+     61              delete[] qBuffer;
+   \   00000004   040090E5           LDR      R0,[R0, #+4]
+   \   00000008   ........           _BLF     `??operator delete[]`,`??operator delete[]??rA`
+     62          #endif
+     63          }
+   \   0000000C                      REQUIRE ?Subroutine10
+   \   0000000C                      ;; // Fall through to label ?Subroutine10
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine10:
+   \   00000000   0040BDE8           POP      {LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     64          bool TSNMessageQ::PostMessage(void *buf, int size) {
+   \                     ??PostMessage:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+   \   0000000C   0260A0E1           MOV      R6,R2
+   \   00000010   000000EA           B        ??PostMessage_1
+     65          #ifdef WIN32
+     66              DWORD bytesWritten;
+     67              DWORD error;
+     68              if ( !WriteFile(hMailQ, buf, (DWORD)size, &bytesWritten, 0) ) {
+     69                  error = GetLastError();
+     70              }
+     71              SetEvent(hEvent);
+     72              return (bytesWritten == (unsigned)size);
+     73          #else
+     74              int Ret;
+     75              do{
+     76                  Ret= OS_Q_Put(pQ,buf,size);
+     77                  if (Ret) {
+     78                      OS_Delay(1);
+   \                     ??PostMessage_2:
+   \   00000014   ........           _BLF     OS_Delay,??OS_Delay??rA
+     79                  }
+   \                     ??PostMessage_1:
+   \   00000018   000094E5           LDR      R0,[R4, #+0]
+   \   0000001C   0620A0E1           MOV      R2,R6
+   \   00000020   0510A0E1           MOV      R1,R5
+   \   00000024   ........           _BLF     OS_Q_Put,??OS_Q_Put??rA
+   \   00000028   000050E3           CMP      R0,#+0
+   \   0000002C   0100A0E3           MOV      R0,#+1
+   \   00000030   F7FFFF1A           BNE      ??PostMessage_2
+     80              }while(Ret);
+     81              return (bool(!Ret));
+   \   00000034   ........           B        ?Subroutine12
+     82          #endif
+     83          
+     84          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine12:
+   \   00000000   7040BDE8           POP      {R4-R6,LR}
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     85          bool TSNMessageQ::GetMessageCond(void *buf, int *size) {
+   \                     ??GetMessageCond:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     86          #ifdef WIN32
+     87          
+     88              //	LPDWORD bytesRead = 0;
+     89              DWORD cbMessage, cMessage, cbRead;
+     90              bool fResult;
+     91              LPSTR lpszBuffer;
+     92              DWORD error;
+     93          
+     94          
+     95          
+     96              cbMessage = cMessage = cbRead = 0;
+     97              fResult = GetMailslotInfo(hQ,   // mailslot handle
+     98                                        (LPDWORD)NULL,                             // no maximum message size
+     99                                        &cbMessage,                                     // size of next message
+    100                                        &cMessage,                                      // number of messages
+    101                                        (LPDWORD)NULL);                            // no read time-out
+    102          
+    103              if ( !fResult ) {
+    104                  error = GetLastError();
+    105                  return (FALSE);
+    106              }
+    107          
+    108              if ( cbMessage == MAILSLOT_NO_MESSAGE ) {
+    109                  *size = 0;
+    110                  return (false);
+    111              }
+    112              lpszBuffer = (LPSTR)GlobalAlloc(GPTR, cbMessage);
+    113              if ( NULL == lpszBuffer ) {
+    114                  *size = 0;
+    115                  return (FALSE);
+    116              }
+    117              lpszBuffer[0] = '\0';
+    118          
+    119              fResult = ReadFile(hQ,
+    120                                 lpszBuffer,
+    121                                 cbMessage,
+    122                                 &cbRead,
+    123                                 NULL);
+    124          
+    125              if ( !fResult ) {
+    126                  error = GetLastError();
+    127                  GlobalFree((HGLOBAL)lpszBuffer);
+    128                  *size = 0;
+    129                  return (FALSE);
+    130              }
+    131              memcpy(buf, lpszBuffer, cbRead);
+    132              *size = cbRead;
+    133              GlobalFree((HGLOBAL)lpszBuffer);
+    134              return (fResult && cbRead);
+    135          #else
+    136              if ( !pMessage ) {
+   \   00000008   080094E5           LDR      R0,[R4, #+8]
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   000050E3           CMP      R0,#+0
+   \   00000018   0300001A           BNE      ??GetMessageCond_1
+    137                  *size = OS_Q_GetPtrCond(pQ,&pMessage);
+   \   0000001C   000094E5           LDR      R0,[R4, #+0]
+   \   00000020   081084E2           ADD      R1,R4,#+8
+   \   00000024   ........           _BLF     OS_Q_GetPtrCond,??OS_Q_GetPtrCond??rA
+   \   00000028   000000EA           B        ??GetMessageCond_2
+    138              } else {
+    139                  *size = 0;
+   \                     ??GetMessageCond_1:
+   \   0000002C   0000A0E3           MOV      R0,#+0
+   \                     ??GetMessageCond_2:
+   \   00000030   000086E5           STR      R0,[R6, #+0]
+    140              }
+    141              if ( *size ) {
+   \   00000034   0070A0E3           MOV      R7,#+0
+   \   00000038   000050E3           CMP      R0,#+0
+   \   0000003C   0600000A           BEQ      ??GetMessageCond_3
+    142                  memcpy(buf,pMessage,*size);
+   \   00000040   081094E5           LDR      R1,[R4, #+8]
+   \   00000044   0020A0E1           MOV      R2,R0
+   \   00000048   0500A0E1           MOV      R0,R5
+   \   0000004C   ........           _BLF     memcpy,??memcpy??rA
+    143                  OS_Q_Purge(pQ);
+   \   00000050   000094E5           LDR      R0,[R4, #+0]
+   \   00000054   ........           _BLF     OS_Q_Purge,??OS_Q_Purge??rA
+    144                  pMessage = 0;
+   \   00000058   087084E5           STR      R7,[R4, #+8]
+    145              }
+    146              return (*size);
+   \                     ??GetMessageCond_3:
+   \   0000005C   000096E5           LDR      R0,[R6, #+0]
+   \   00000060   F040BDE8           POP      {R4-R7,LR}
+   \   00000064   000050E3           CMP      R0,#+0
+   \   00000068   0100A013           MOVNE    R0,#+1
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    147          #endif
+    148          
+    149          }
+    150          
+    151          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    152          int TSNMessageQ::GetMessage(void *buf, int *size, int TimeOut) {
+   \                     ??GetMessage:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    153          #ifdef WIN32
+    154          #pragma warn -8004
+    155              DWORD cbRead = 0;
+    156              bool fResult = false;
+    157              DWORD error;
+    158              unsigned RxSize = unsigned (*size);
+    159              char *BufPtr = (char *)buf;
+    160          
+    161              while ( true ) {
+    162                  if ( CharQueue.size() >= RxSize ) {
+    163                      for ( unsigned i = 0; i < RxSize; i++ ) {
+    164                          BufPtr[i] = CharQueue.front();
+    165                          CharQueue.pop();
+    166                      }
+    167                      return true;
+    168                  }
+    169                  if ( WaitForSingleObject(hEvent, TimeOut) != WAIT_OBJECT_0 ) return false;
+    170                  char tmpBuf[4096];
+    171                  fResult = ReadFile(hQ, tmpBuf, 4096, &cbRead, NULL);
+    172          
+    173                  if ( !fResult ) {
+    174                      error = GetLastError();
+    175                      *size = 0;
+    176                      return (false);
+    177                  }
+    178                  for ( unsigned i = 0; i < cbRead; i++ ) {
+    179                      CharQueue.push(tmpBuf[i]);
+    180          		}
+    181              }
+    182          #else
+    183              if ( !pMessage ) {
+   \   00000008   080094E5           LDR      R0,[R4, #+8]
+   \   0000000C   0150A0E1           MOV      R5,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   0320A0E1           MOV      R2,R3
+   \   00000018   000050E3           CMP      R0,#+0
+   \   0000001C   0700001A           BNE      ??GetMessage_1
+    184                  if ( TimeOut==INFINITE ){
+   \   00000020   000094E5           LDR      R0,[R4, #+0]
+   \   00000024   010072E3           CMN      R2,#+1
+   \   00000028   081084E2           ADD      R1,R4,#+8
+   \   0000002C   0100001A           BNE      ??GetMessage_2
+    185                      *size = OS_Q_GetPtr(pQ,&pMessage);
+   \   00000030   ........           _BLF     OS_Q_GetPtr,??OS_Q_GetPtr??rA
+   \   00000034   020000EA           B        ??GetMessage_3
+    186                  } else {
+    187                      *size = OS_Q_GetPtrTimed(pQ,&pMessage,TimeOut);
+   \                     ??GetMessage_2:
+   \   00000038   ........           _BLF     OS_Q_GetPtrTimed,??OS_Q_GetPtrTimed??rA
+   \   0000003C   000000EA           B        ??GetMessage_3
+    188                  }
+    189              } else {
+    190                  *size = 0;
+   \                     ??GetMessage_1:
+   \   00000040   0000A0E3           MOV      R0,#+0
+   \                     ??GetMessage_3:
+   \   00000044   000086E5           STR      R0,[R6, #+0]
+    191              }
+    192              if ( *size ){
+   \   00000048   000050E3           CMP      R0,#+0
+   \   0000004C   0700000A           BEQ      ??GetMessage_4
+    193                  memcpy(buf,pMessage,*size);
+   \   00000050   081094E5           LDR      R1,[R4, #+8]
+   \   00000054   0020A0E1           MOV      R2,R0
+   \   00000058   0500A0E1           MOV      R0,R5
+   \   0000005C   ........           _BLF     memcpy,??memcpy??rA
+    194                  OS_Q_Purge(pQ);
+   \   00000060   000094E5           LDR      R0,[R4, #+0]
+   \   00000064   ........           _BLF     OS_Q_Purge,??OS_Q_Purge??rA
+    195                  pMessage = 0;
+   \   00000068   0000A0E3           MOV      R0,#+0
+   \   0000006C   080084E5           STR      R0,[R4, #+8]
+    196              }
+    197              return (*size);
+   \                     ??GetMessage_4:
+   \   00000070   000096E5           LDR      R0,[R6, #+0]
+   \   00000074                      REQUIRE ?Subroutine12
+   \   00000074                      ;; // Fall through to label ?Subroutine12
+    198          #endif
+    199          
+    200          }
+    201          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    202          int TSNMessageQ::GetMessageCnt() {
+   \                     ??GetMessageCnt:
+   \   00000000   00402DE9           PUSH     {LR}
+    203          #ifdef WIN32
+    204              DWORD cbMessage, cMessage;
+    205              bool fResult;
+    206          
+    207          
+    208          
+    209              cbMessage = cMessage = 0;
+    210              fResult = GetMailslotInfo(hQ,   // mailslot handle
+    211                                        (LPDWORD)NULL,                             // no maximum message size
+    212                                        &cbMessage,                                     // size of next message
+    213                                        &cMessage,                                      // number of messages
+    214                                        (LPDWORD)NULL);                            // no read time-out
+    215              if ( !fResult ) return (-1);
+    216              else return (cMessage);
+    217          #else
+    218              return (OS_Q_GetMessageCnt(pQ));
+   \   00000004   000090E5           LDR      R0,[R0, #+0]
+   \   00000008   ........           _BLF     OS_Q_GetMessageCnt,??OS_Q_GetMessageCnt??rA
+   \   0000000C   ........           B        ?Subroutine10
+    219          #endif
+    220          
+    221          }int TSNMessageQ::GetMessageSize() {
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??GetMessageSize:
+   \   00000000   00402DE9           PUSH     {LR}
+    222          #ifdef WIN32
+    223              DWORD cbMessage, cMessage;
+    224              bool fResult;
+    225          
+    226          
+    227          
+    228              cbMessage = cMessage = 0;
+    229              fResult = GetMailslotInfo(hQ,   // mailslot handle
+    230                                        (LPDWORD)NULL,                             // no maximum message size
+    231                                        &cbMessage,                                     // size of next message
+    232                                        &cMessage,                                      // number of messages
+    233                                        (LPDWORD)NULL);                            // no read time-out
+    234              if ( !fResult ) return (-1);
+    235              else return (cbMessage);
+    236          #else
+    237              if ( !pMessage ) return OS_Q_GetPtrCond(pQ,&pMessage);
+   \   00000004   081090E5           LDR      R1,[R0, #+8]
+   \   00000008   000051E3           CMP      R1,#+0
+   \   0000000C   0300001A           BNE      ??GetMessageSize_1
+   \   00000010   081080E2           ADD      R1,R0,#+8
+   \   00000014   000090E5           LDR      R0,[R0, #+0]
+   \   00000018   ........           _BLF     OS_Q_GetPtrCond,??OS_Q_GetPtrCond??rA
+   \   0000001C   000000EA           B        ??GetMessageSize_2
+    238              return (0);
+   \                     ??GetMessageSize_1:
+   \   00000020   0000A0E3           MOV      R0,#+0
+   \                     ??GetMessageSize_2:
+   \   00000024   ........           B        ?Subroutine10
+    239          
+    240          #endif
+    241          
+    242          }
+    243          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    244          bool TSNMessageQ::HasMore(void) {
+    245          #ifndef S2TXU
+    246              return !CharQueue.empty();
+    247          #else
+    248              return false;
+   \                     ??HasMore:
+   \   00000000   0000A0E3           MOV      R0,#+0
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    249          #endif
+    250          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs TSNMessageQ &TSNMessageQ::new TSNMessageQ()
+   \                     `??new TSNMessageQ`:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   0C00A0E3           MOV      R0,#+12
+   \   00000008   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0000000A           BEQ      `??new TSNMessageQ_1`
+   \   00000014   ........           BL       ??TSNMessageQ
+   \                     `??new TSNMessageQ_1`:
+   \   00000018   ........           B        ?Subroutine10
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs void TSNMessageQ::delete ~TSNMessageQ(TSNMessageQ *)
+   \                     `??delete ~TSNMessageQ`:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0200000A           BEQ      `??delete ~TSNMessageQ_1`
+   \   0000000C   ........           BL       `?~TSNMessageQ`
+   \   00000010   0400A0E1           MOV      R0,R4
+   \   00000014   ........           _BLF     `??operator delete`,`??operator delete??rA`
+   \                     `??delete ~TSNMessageQ_1`:
+   \   00000018   ........           B        ?Subroutine11
+    251          
+    252          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     TSNMessageQ::GetMessage(void *, int *, int)
+                                       16
+     TSNMessageQ::GetMessageCnt()       4
+     TSNMessageQ::GetMessageCond(void *, int *)
+                                       20
+     TSNMessageQ::GetMessageSize()      4
+     TSNMessageQ::HasMore()             0
+     TSNMessageQ::PostMessage(void *, int)
+                                       16
+     TSNMessageQ::TSNMessageQ()         8
+     TSNMessageQ::delete ~TSNMessageQ(TSNMessageQ *)
+                                        8
+     TSNMessageQ::new TSNMessageQ()     4
+     TSNMessageQ::~TSNMessageQ()        4
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     TSNMessageQ::qNumber              4
+     TSNMessageQ::TSNMessageQ()       56
+     ?Subroutine11                     8
+     TSNMessageQ::~TSNMessageQ()      12
+     ?Subroutine10                     8
+     TSNMessageQ::PostMessage(void *, int)
+                                      56
+     ?Subroutine12                     8
+     TSNMessageQ::GetMessageCond(void *, int *)
+                                     112
+     TSNMessageQ::GetMessage(void *, int *, int)
+                                     116
+     TSNMessageQ::GetMessageCnt()     16
+     TSNMessageQ::GetMessageSize()    40
+     TSNMessageQ::HasMore()            8
+     TSNMessageQ::new TSNMessageQ()   28
+     TSNMessageQ::delete ~TSNMessageQ(TSNMessageQ *)
+                                      28
+      Others                         208
+
+ 
+ 692 bytes in segment CODE
+   4 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 496 bytes of CODE memory (+ 208 bytes shared)
+   4 bytes of DATA memory
+
+Errors: none
+Warnings: none

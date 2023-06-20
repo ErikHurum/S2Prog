@@ -1,0 +1,169 @@
+; Additional embOS Menues
+
+add
+menu
+(
+  popup "&embOS"
+  (
+    default
+    menuitem "Display Tasks"       "TASK.TaskList"
+    menuitem "Display Timers"      "TASK.TIMer"
+    menuitem "Display &Mailbox"
+    (
+      sYmbol.Browse *mailbox* /Click "Task.MailBox *" /Delete
+    )
+    menuitem "Display RSemas"
+    (
+      sYmbol.Browse *rsema* /Click "Task.RSema *" /Delete
+    )
+    menuitem "Display CSemas"
+    (
+      sYmbol.Browse *csema* /Click "Task.CSema *" /Delete
+    )
+    separator
+    popup "&Stack Coverage"
+    (
+      menuitem "List Stacks"
+      (
+        TASK.STacK.PATtern 0xaa
+        TASK.STacK
+      )
+      menuitem "Add Task to Cov"       "TASK.STacK.ADD"
+      menuitem "Remove Task from Cov"  "TASK.STacK.ReMove"
+      enable ice()||fire()
+      menuitem "Reset Coverage" "TASK.STacK.RESet"
+    )
+  )
+  popup "&Trace"
+  (
+    popup "&List"
+    (
+      separator
+      menuitem "&Task Switches"    "A.L List.TASK"
+      menuitem "Default and Tasks" "A.L List.TASK def"
+    )
+  )
+  popup "Perf"
+  (
+    separator
+    popup "&Task Runtime"
+    (
+      menuitem "&Prepare"
+      (
+        if tr.method.analyzer()
+        (
+          Analyzer.AutoInit on
+        )
+        if (ice()||fire())&&!a.mode.flow()
+        (
+          Analyzer.ReProgram
+          (
+            Sample.Enable if AlphaBreak&&Write
+          )
+        )
+	    Break.Delete /Alpha
+	    Break.Set task.config(magic)++(task.config(magicsize)-1) /Alpha
+      )
+      menuitem "[:perf]Show &Numerical"   "TRace.STATistic.TASK"
+      menuitem "[:achart]Show as &Timing" "TRace.CHART.TASK"
+      menuitem "[:achart]Tracking with Trace &List"
+      (
+        TRace.List List.TASK DEFault /Track
+        TRace.CHART.TASK /Track
+      )
+    )
+    popup "Task &Function Runtime"
+    (
+      menuitem "&Prepare"
+      (
+        if tr.method.analyzer()
+        (
+          Analyzer.AutoInit on
+          Analyzer.STATistic.PreFetch on
+        )
+
+        if (ice()||fire())&&!a.mode.flow()
+        (
+          if a.config.hac()
+          (
+             Analyzer.ReProgram
+             (
+               Sample.Enable if AlphaBreak
+               Sample.Enable if BetaBreak
+               Mark.A        if AlphaBreak
+               Mark.B        if BetaBreak
+             )
+          )
+          else
+          (
+             Analyzer.ReProgram
+             (
+               Sample.Enable if AlphaBreak||BetaBreak
+               Mark.A if AlphaBreak
+               Mark.B if BetaBreak
+             )
+          )
+	    )
+
+        Break.Delete /Alpha /Beta /Charly
+        Break.SetFunc /PreFetch
+	    Break.Set task.config(magic)++(task.config(magicsize)-1) /Alpha
+      )
+      menuitem "[:perf]Show &Numerical"     "TRace.STATistic.TASKFUNC"
+      menuitem "[:perf]Show as &Tree"       "TRace.STATistic.TASKTREE"
+      menuitem "[:perf]Show &Detailed Tree" "TRace.STATistic.TASKTREE ALL"
+      menuitem "[:achart]Show as &Timing"   "TRace.CHART.TASKFUNC"
+      menuitem "[:alist]Show N&esting"      "TRace.List List.TASK FUNC TI.FUNC"
+    )
+    popup "Task &Status"
+    (
+      menuitem "&Prepare"
+      (
+        if tr.method.analyzer()
+        (
+          Analyzer.AutoInit on
+        )
+        if (ice()||fire())&&!a.mode.flow()
+        (
+          Analyzer.ReProgram
+          (
+            Sample.Enable if AlphaBreak&&Write
+          )
+        )
+	    Break.Delete /Alpha
+	    Break.Set task.config(magic)++(task.config(magicsize)-1) /Alpha
+	    TASK.TASKState
+      )
+      menuitem "[:perf]Show &Numerical"   "TRace.STATistic.TASKSTATE"
+      menuitem "[:achart]Show as &Timing" "TRace.CHART.TASKSTATE"
+      menuitem "[:achart]Tracking with Trace &List"
+      (
+        TRace.List List.TASK DEFault /Track
+        TRace.CHART.TASKSTATE /Track
+      )
+    )
+  )
+  popup "&Help"
+  (
+     menuitem "embOS Multitask Debugger Manual" "HELP __EMEMBOS_001"
+  )
+)
+
+
+menu "task.tl"
+(
+  default
+  menuitem "Display Detailed"  "TASK.TaskList track.address()"
+  menuitem "Display TCB"
+  (
+    &address=address.offset(track.address())
+    Var.View %m %s (OS_TASK *)&address
+  )
+  menuitem "Display Stack Frame"  "Var.Frame /Locals /Caller /Task track.address()"
+  menuitem "Switch Context"       "Register.TASK track.address()"
+  separator
+  menuitem "Add to Stack Cov"   "TASK.STK.ADD address.offset(track.address())"
+  menuitem "Rm from Stack Cov"  "TASK.STK.RM  address.offset(track.address())"
+  separator
+  menuitem "Dump TCB"          "Data.dump track.address()"
+)

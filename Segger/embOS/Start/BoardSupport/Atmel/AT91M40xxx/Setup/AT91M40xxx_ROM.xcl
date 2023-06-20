@@ -1,0 +1,93 @@
+//**********************************************************************
+//*                SEGGER MICROCONTROLLER SYSTEME GmbH                 *
+//*        Solutions for real time microcontroller applications        *
+//**********************************************************************
+//*                                                                    *
+//*           (C) 2004    SEGGER Microcontroller Systeme GmbH          *
+//*                                                                    *
+//*        Internet: www.segger.com    Support:  support@segger.com    *
+//*                                                                    *
+//**********************************************************************
+//
+//----------------------------------------------------------------------
+//File   : AT91M40xxx_ROM.xcl
+//Purpose: Link file for use with AT91M40xx with ROM/RAM
+//-------- END-OF-HEADER -----------------------------------------------
+//
+
+-carm    // Define CPU
+
+// Address map
+
+-DROM_BASE_ADDR=1000000    // Used to initialize EBI and remap
+-DRAM_BASE_ADDR=0000000
+-DROM_CODE_SIZE=60000
+-DRAM_DATA_SIZE=2000
+
+-DROMSTART=(ROM_BASE_ADDR)
+-DROMEND=(ROM_BASE_ADDR+ROM_CODE_SIZE-1)
+-DRAMSTART=(RAM_BASE_ADDR+0x40)    // Leave room for vectors
+-DRAMEND=(RAMSTART+RAM_DATA_SIZE-1)
+
+//**********************************************************************
+// Read only segments that are mapped to ROM.
+//**********************************************************************
+
+-Z(CODE)INTVEC=ROMSTART-ROMEND
+
+//************************************************
+// Startup code and exception routines (ICODE).
+//************************************************
+
+-Z(CODE)ICODE,DIFUNCT=ROMSTART-ROMEND
+-Z(CODE)SWITAB=ROMSTART-ROMEND
+
+//************************************************
+// Code segments may be placed anywhere.
+//************************************************
+
+-Z(CODE)CODE=ROMSTART-ROMEND
+
+//************************************************
+// Original ROM location for __ramfunc code copied
+// to and executed from RAM.
+//************************************************
+
+-Z(CONST)CODE_ID=ROMSTART-ROMEND
+
+//************************************************
+// Various constants and initializers.
+//************************************************
+
+-Z(CONST)INITTAB,DATA_ID,DATA_C,CHECKSUM=ROMSTART-ROMEND
+
+//**********************************************************************
+// Read/write segments that are mapped to RAM.
+//**********************************************************************
+
+// Code executed in RAM
+-Z(DATA)DATA_I,DATA_Z,DATA_N=RAMSTART-RAMEND
+-Z(DATA)CODE_I=RAMSTART-RAMEND
+-QCODE_I=CODE_ID
+
+//**********************************************************************
+// Stack and heap.
+//
+// NOTE:   To change the size of the stack or the heap,
+//         change the value after "+".
+//         e.g.: CSTACK+2500
+//**********************************************************************
+
+// For the OS, only CSTACK and IRQ_STACK are required
+// Define other stacks if needed by application
+-Z(DATA)CSTACK+200,IRQ_STACK+200,HEAP+0=RAMSTART-RAMEND
+
+//**********************************************************************
+// Read/write segments that are mapped to non-volatile RAM/EEPROM
+//**********************************************************************
+
+-Z(DATA)HUGE_N=RAMSTART-RAMEND
+
+//**********************************************************************
+// End of File
+//**********************************************************************

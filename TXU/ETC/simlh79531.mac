@@ -1,0 +1,25 @@
+
+__var val;
+__var count;
+
+execUserSetup(){
+  __message "embOS: ARM 7 LH79513 Simulator Macro";  
+  __orderInterrupt ("0x18", 20000, 10000, 0, 0, 100);
+  __message "embOS: Generating interrupt 0x18 every 10000 cycles";
+  __setSimBreak("0xFFFF7400","R","Access()");
+  count = 0;
+}
+
+Access()
+{
+  count++;
+  if (count<2) {
+    val = 0x00;
+  }
+  else {
+    val = 0x40;
+    count = 0;
+  }
+  __writeMemoryByte(val,0xFFFF7400,"Memory");
+}
+

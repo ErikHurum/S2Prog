@@ -1,0 +1,222 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       04/May/2023  10:24:01
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file  =  D:\S2Prog\IO\AN-ZBHART\Src\OS_Error.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EWA2C.tmp
+#        (D:\S2Prog\IO\AN-ZBHART\Src\OS_Error.c --cpu=m1280 -ms -o
+#        D:\S2Prog\IO\AN-ZBHART\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\AN-ZBHART\Debug\List -y --initializers_in_flash --no_cse
+#        --no_inline --no_code_motion --no_cross_call --no_clustering --no_tbaa
+#        --debug -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\AN-ZBHART\INC\\ -I
+#        ..\..\..\Shared\Inc\\ --eeprom_size 4096 --clib -On)
+#    Locale       =  English_USA.1252
+#    List file    =  D:\S2Prog\IO\AN-ZBHART\Debug\List\OS_Error.lst
+#    Object file  =  D:\S2Prog\IO\AN-ZBHART\Debug\Obj\OS_Error.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\AN-ZBHART\Src\OS_Error.c
+      1          /*********************************************************************
+      2          *               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+      3          *       Solutions for real time microcontroller applications         *
+      4          **********************************************************************
+      5          *                                                                    *
+      6          *       (C) 2005   SEGGER Microcontroller Systeme GmbH               *
+      7          *                                                                    *
+      8          *       www.segger.com     Support: support@segger.com               *
+      9          *                                                                    *
+     10          **********************************************************************
+     11          *                                                                    *
+     12          *       embOS * Real time operating system for microcontrollers      *
+     13          *                                                                    *
+     14          *                                                                    *
+     15          *       Please note:                                                 *
+     16          *                                                                    *
+     17          *       Knowledge of this file may under no circumstances            *
+     18          *       be used to write a similar product or a real-time            *
+     19          *       operating system for in-house use.                           *
+     20          *                                                                    *
+     21          *       Thank you for your fairness !                                *
+     22          *                                                                    *
+     23          **********************************************************************
+     24          *                                                                    *
+     25          *       embOS version: 3.28h                                         *
+     26          *                                                                    *
+     27          **********************************************************************
+     28          
+     29          ----------------------------------------------------------------------
+     30          File    : OS_Error.c
+     31          Purpose : embOS error handler. Not required in "R" (release) builds
+     32                    Feel free to modify this file acc. to your target system.
+     33          --------  END-OF-HEADER  ---------------------------------------------
+     34          */
+     35          
+     36          #include "RTOS.H"
+     37          #include "constants.h"
+     38          
+     39          /*********************************************************************
+     40          *
+     41          *       Run-time error reaction (OS_Error)
+     42          *
+     43          **********************************************************************
+     44          
+     45           Run-time error reaction
+     46          
+     47           When this happens, a fatal error has occured and the kernel
+     48           can not continue. In linux, the equivalent would be a
+     49           "kernel panic"
+     50          
+     51           This routine can be modified to suit your needs ...
+     52           E.g. a red LED could light up. When using an
+     53           emulator, you may set a breakpoint here.
+     54           In the release builds of the library (R), this routine is not required
+     55           (as no checks are performed).
+     56           In the stack check builds (S/SP), only error 120 may occur.
+     57           In the debug builds(D/DP), all of the listed errors may occur.
+     58          
+     59           The following are the current errorcodes (V3.20) :
+     60           (Please refer to the documentation for more info)
+     61            
+     62          OS_ERR_STACK                          (120 = 0x78)
+     63          *** invalid or non-initialized data structures ***
+     64          OS_ERR_INV_TASK                       (128 = 0x80)
+     65          OS_ERR_INV_TIMER                      (129 = 0x81)
+     66          OS_ERR_INV_MAILBOX                    (130 = 0x82)
+     67          OS_ERR_INV_CSEMA                      (132 = 0x84)
+     68          OS_ERR_INV_RSEMA                      (133 = 0x85)
+     69          
+     70          *** Using GetMail1, PutMail1, GetMailCond1 or PutMailCond1
+     71          *** on a non-1 byte mailbox  *********************
+     72          
+     73          OS_ERR_MAILBOX_NOT1                   (135 = 0x87)
+     74          
+     75          *** internal errors, please contact SEGGER Microcontrollersysteme ***
+     76          OS_ERR_MAILBOX_NOT_IN_LIST            (140 = 0x8C)
+     77          OS_ERR_TASKLIST_CORRUPT               (142 = 0x8E)
+     78          
+     79          *** not matching routine calls or macro usage ****
+     80          OS_ERR_UNUSE_BEFORE_USE               (150 = 0x96)
+     81          OS_ERR_LEAVEREGION_BEFORE_ENTERREGION (151 = 0x97)
+     82          OS_ERR_LEAVEINT                       (152 = 0x98)
+     83          OS_ERR_DICNT                          (153 = 0x99)
+     84          OS_ERR_INTERRUPT_DISABLED             (154 = 0x9A)
+     85          OS_ERR_TASK_ENDS_WITHOUT_TERMINATE    (155 = 0x9B)
+     86          
+     87          *** not a legal system call during interrupt *****
+     88          OS_ERR_ILLEGAL_IN_ISR                 (160 = 0xA0)
+     89          
+     90          *** not a legal system call during timer *********
+     91          OS_ERR_ILLEGAL_IN_TIMER               (161 = 0xA1)
+     92          
+     93          *** not a legal system call outside interrupt ****
+     94          OS_ERR_ILLEGAL_OUT_ISR                (162 = 0xA2) 
+     95          
+     96          *** double used data structures **
+     97          OS_ERR_2USE_TASK                      (170 = 0xAA)
+     98          OS_ERR_2USE_TIMER                     (171 = 0xAB)
+     99          OS_ERR_2USE_MAILBOX                   (172 = 0xAC)
+    100          OS_ERR_2USE_BSEMA                     (173 = 0xAD)
+    101          OS_ERR_2USE_CSEMA                     (174 = 0xAE)
+    102          OS_ERR_2USE_RSEMA                     (175 = 0xAF)
+    103          
+    104          *** Communication errors (OSCOM) **
+    105          OS_ERR_NESTED_RX_INT                  (180 = 0xB4)
+    106          
+    107          *** Fixed block memory pool  ***
+    108          OS_ERR_MEMF_INV                       (190 = 0xBE)
+    109          OS_ERR_MEMF_INV_PTR                   (191 = 0xBF)
+    110          OS_ERR_MEMF_PTR_FREE                  (192 = 0xC0)
+    111          OS_ERR_MEMF_RELEASE                   (193 = 0xC1)
+    112          
+    113          *** Task suspend / resume errors ***
+    114          OS_ERR_SUSPEND_TOO_OFTEN              (200 = 0xC8)
+    115          OS_ERR_RESUME_BEFORE_SUSPEND          (201 = 0xC9)
+    116          
+    117          */
+
+   \                                 In  segment ABSOLUTE, at 0x21fd
+    118          __no_init int RestartCnt             @0x21FD;
+   \                     RestartCnt:
+   \   00000000                      DS8 2
+    119          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    120          void OS_Error(int ErrCode) {
+   \                     OS_Error:
+    121              switch ( ErrCode ) {
+    122              case ZB_REBOOT          :
+    123              case ZB_ERR_MODEM_0     :
+    124              case ZB_ERR_MODEM_1     :
+    125              case ZB_ERR_MODEM_2     :
+    126              case ZB_ERR_UART        :
+    127              case ZB_ERR_EXT_ADC     :
+    128              case ZB_ERR_INT_ADC     :
+    129              case OS_ERR_2USE_TASK   : 
+    130              case OS_ERR_2USE_TIMER  : 
+    131              case OS_ERR_2USE_MAILBOX: 
+    132              case OS_ERR_2USE_BSEMA  : 
+    133              case OS_ERR_2USE_CSEMA  : 
+    134              case OS_ERR_2USE_RSEMA  : 
+    135              case OS_ERR_2USE_MEMF   :
+    136              default:
+    137                  OS_EnterRegion();     /* Avoid further task switches            */
+   \   00000000   9120....           LDS     R18, OS_Global
+   \   00000004   9523               INC     R18
+   \   00000006   9320....           STS     OS_Global, R18
+    138                  OS_DICnt = 0;         /* Allow interrupts so we can communicate */
+   \   0000000A   E020               LDI     R18, 0
+   \   0000000C   9320....           STS     (OS_Global + 1), R18
+    139                  OS_EI();
+   \   00000010   9478               sei
+    140                  OS_Status = (OS_U8)ErrCode;
+   \   00000012   2F20               MOV     R18, R16
+   \   00000014   9320....           STS     OS_Status, R18
+    141                  RestartCnt++;
+   \   00000018   ....               LDI     R30, LOW(RestartCnt)
+   \   0000001A   ....               LDI     R31, (RestartCnt) >> 8
+   \   0000001C   8120               LD      R18, Z
+   \   0000001E   8131               LDD     R19, Z+1
+   \   00000020   5F2F               SUBI    R18, 255
+   \   00000022   4F3F               SBCI    R19, 255
+   \   00000024   8320               ST      Z, R18
+   \   00000026   8331               STD     Z+1, R19
+    142                  while ( OS_Status );
+   \                     ??OS_Error_0:
+   \   00000028   9120....           LDS     R18, OS_Status
+   \   0000002C   2322               TST     R18
+   \   0000002E   F7E1               BRNE    ??OS_Error_0
+    143              }
+    144          }
+   \   00000030   9508               RET
+   \   00000032                      REQUIRE RestartCnt
+    145          
+    146          /****** EOF *********************************************************/
+    147          
+
+   Maximum stack usage in bytes:
+
+   RSTACK Function
+   ------ --------
+      2   OS_Error
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      50  OS_Error
+       2  RestartCnt
+
+ 
+  2 bytes in segment ABSOLUTE
+ 50 bytes in segment CODE
+ 
+ 50 bytes of CODE memory
+  0 bytes of DATA memory (+ 2 bytes shared)
+
+Errors: none
+Warnings: none

@@ -1,0 +1,3090 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  14:42:35 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\tcp_out.c          #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\tcp_out.c --fpu    #
+#                       None -D OS_LIBMODE_SP -D CPU_S3C2410 -D              #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\tcp_out.lst                 #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\tcp_out.r79                  #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\tcp_out.c
+      1          /**
+      2           * @file
+      3           * Transmission Control Protocol, outgoing traffic
+      4           *
+      5           * The output functions of TCP.
+      6           *
+      7           */
+      8          
+      9          /*
+     10           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+     11           * All rights reserved.
+     12           *
+     13           * Redistribution and use in source and binary forms, with or without modification,
+     14           * are permitted provided that the following conditions are met:
+     15           *
+     16           * 1. Redistributions of source code must retain the above copyright notice,
+     17           *    this list of conditions and the following disclaimer.
+     18           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     19           *    this list of conditions and the following disclaimer in the documentation
+     20           *    and/or other materials provided with the distribution.
+     21           * 3. The name of the author may not be used to endorse or promote products
+     22           *    derived from this software without specific prior written permission.
+     23           *
+     24           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     25           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     26           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     27           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     28           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     29           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     30           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     31           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     32           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     33           * OF SUCH DAMAGE.
+     34           *
+     35           * This file is part of the lwIP TCP/IP stack.
+     36           *
+     37           * Author: Adam Dunkels <adam@sics.se>
+     38           *
+     39           */
+     40          
+     41          #include "lwip/opt.h"
+     42          
+     43          #if LWIP_TCP /* don't build if not configured for use in lwipopts.h */
+     44          
+     45          #include "lwip/tcp_impl.h"
+     46          #include "lwip/def.h"
+     47          #include "lwip/mem.h"
+     48          #include "lwip/memp.h"
+     49          #include "lwip/ip_addr.h"
+     50          #include "lwip/netif.h"
+     51          #include "lwip/inet_chksum.h"
+     52          #include "lwip/stats.h"
+     53          #include "lwip/snmp.h"
+     54          #if LWIP_TCP_TIMESTAMPS
+     55          #include "lwip/sys.h"
+     56          #endif
+     57          
+     58          #include <string.h>
+     59          
+     60          /* Define some copy-macros for checksum-on-copy so that the code looks
+     61             nicer by preventing too many ifdef's. */
+     62          #if TCP_CHECKSUM_ON_COPY
+     63          #define TCP_DATA_COPY(dst, src, len, seg) do { \
+     64            tcp_seg_add_chksum(LWIP_CHKSUM_COPY(dst, src, len), \
+     65                               len, &seg->chksum, &seg->chksum_swapped); \
+     66            seg->flags |= TF_SEG_DATA_CHECKSUMMED; } while(0)
+     67          #define TCP_DATA_COPY2(dst, src, len, chksum, chksum_swapped)  \
+     68            tcp_seg_add_chksum(LWIP_CHKSUM_COPY(dst, src, len), len, chksum, chksum_swapped);
+     69          #else /* TCP_CHECKSUM_ON_COPY*/
+     70          #define TCP_DATA_COPY(dst, src, len, seg)                     MEMCPY(dst, src, len)
+     71          #define TCP_DATA_COPY2(dst, src, len, chksum, chksum_swapped) MEMCPY(dst, src, len)
+     72          #endif /* TCP_CHECKSUM_ON_COPY*/
+     73          
+     74          /** Define this to 1 for an extra check that the output checksum is valid
+     75           * (usefule when the checksum is generated by the application, not the stack) */
+     76          #ifndef TCP_CHECKSUM_ON_COPY_SANITY_CHECK
+     77          #define TCP_CHECKSUM_ON_COPY_SANITY_CHECK   0
+     78          #endif
+     79          
+     80          /* Forward declarations.*/
+     81          static void tcp_output_segment(struct tcp_seg *seg, struct tcp_pcb *pcb);
+     82          
+     83          /** Allocate a pbuf and create a tcphdr at p->payload, used for output
+     84           * functions other than the default tcp_output -> tcp_output_segment
+     85           * (e.g. tcp_send_empty_ack, etc.)
+     86           *
+     87           * @param pcb tcp pcb for which to send a packet (used to initialize tcp_hdr)
+     88           * @param optlen length of header-options
+     89           * @param datalen length of tcp data to reserve in pbuf
+     90           * @param seqno_be seqno in network byte order (big-endian)
+     91           * @return pbuf with p->payload being the tcp_hdr
+     92           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     93          static struct pbuf *
+     94          tcp_output_alloc_header(struct tcp_pcb *pcb, u16_t optlen, u16_t datalen,
+     95                                u32_t seqno_be /* already in network byte order */)
+     96          {
+   \                     tcp_output_alloc_header:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0170A0E1           MOV      R7,R1
+   \   0000000C   0200A0E1           MOV      R0,R2
+   \   00000010   0380A0E1           MOV      R8,R3
+     97            struct tcp_hdr *tcphdr;
+     98            struct pbuf *p = pbuf_alloc(PBUF_IP, TCP_HLEN + optlen + datalen, PBUF_RAM);
+   \   00000014   0020A0E3           MOV      R2,#+0
+   \   00000018   070080E0           ADD      R0,R0,R7
+   \   0000001C   141080E2           ADD      R1,R0,#+20
+   \   00000020   0118A0E1           MOV      R1,R1, LSL #+16
+   \   00000024   2118A0E1           MOV      R1,R1, LSR #+16
+   \   00000028   0100A0E3           MOV      R0,#+1
+   \   0000002C   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   00000030   0050B0E1           MOVS     R5,R0
+     99            if (p != NULL) {
+   \   00000034   3300000A           BEQ      ??tcp_output_alloc_header_0
+    100              LWIP_ASSERT("check that first pbuf can hold struct tcp_hdr",
+    101                           (p->len >= TCP_HLEN + optlen));
+    102              tcphdr = (struct tcp_hdr *)p->payload;
+    103              tcphdr->src = htons(pcb->local_port);
+   \   00000038   BA01D4E1           LDRH     R0,[R4, #+26]
+   \   0000003C   046095E5           LDR      R6,[R5, #+4]
+    104              tcphdr->dest = htons(pcb->remote_port);
+    105              tcphdr->seqno = seqno_be;
+    106              tcphdr->ackno = htonl(pcb->rcv_nxt);
+    107              TCPH_HDRLEN_FLAGS_SET(tcphdr, (5 + optlen / 4), TCP_ACK);
+   \   00000040   077CA0E1           LSL      R7,R7,#+24
+   \   00000044   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000048   0000C6E5           STRB     R0,[R6, #+0]
+   \   0000004C   2004A0E1           LSR      R0,R0,#+8
+   \   00000050   0100C6E5           STRB     R0,[R6, #+1]
+   \   00000054   BC01D4E1           LDRH     R0,[R4, #+28]
+   \   00000058   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   0000005C   0200C6E5           STRB     R0,[R6, #+2]
+   \   00000060   2004A0E1           LSR      R0,R0,#+8
+   \   00000064   0300C6E5           STRB     R0,[R6, #+3]
+   \   00000068   0480C6E5           STRB     R8,[R6, #+4]
+   \   0000006C   2804A0E1           LSR      R0,R8,#+8
+   \   00000070   0500C6E5           STRB     R0,[R6, #+5]
+   \   00000074   2004A0E1           LSR      R0,R0,#+8
+   \   00000078   0600C6E5           STRB     R0,[R6, #+6]
+   \   0000007C   2004A0E1           LSR      R0,R0,#+8
+   \   00000080   0700C6E5           STRB     R0,[R6, #+7]
+   \   00000084   280094E5           LDR      R0,[R4, #+40]
+   \   00000088   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   0000008C   0800C6E5           STRB     R0,[R6, #+8]
+   \   00000090   2004A0E1           LSR      R0,R0,#+8
+   \   00000094   0900C6E5           STRB     R0,[R6, #+9]
+   \   00000098   2004A0E1           LSR      R0,R0,#+8
+   \   0000009C   0A00C6E5           STRB     R0,[R6, #+10]
+   \   000000A0   2004A0E1           LSR      R0,R0,#+8
+   \   000000A4   0B00C6E5           STRB     R0,[R6, #+11]
+   \   000000A8   270DA0E1           LSR      R0,R7,#+26
+   \   000000AC   050080E2           ADD      R0,R0,#+5
+   \   000000B0   1010A0E3           MOV      R1,#+16
+   \   000000B4   000681E1           ORR      R0,R1,R0, LSL #+12
+   \   000000B8   0008A0E1           MOV      R0,R0, LSL #+16
+   \   000000BC   2008A0E1           MOV      R0,R0, LSR #+16
+   \   000000C0   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000C4   0C00C6E5           STRB     R0,[R6, #+12]
+   \   000000C8   2004A0E1           LSR      R0,R0,#+8
+   \   000000CC   0D00C6E5           STRB     R0,[R6, #+13]
+    108              tcphdr->wnd = htons(pcb->rcv_ann_wnd);
+   \   000000D0   BE02D4E1           LDRH     R0,[R4, #+46]
+   \   000000D4   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000D8   0E00C6E5           STRB     R0,[R6, #+14]
+   \   000000DC   2004A0E1           LSR      R0,R0,#+8
+   \   000000E0   0F00C6E5           STRB     R0,[R6, #+15]
+    109              tcphdr->chksum = 0;
+   \   000000E4   0000A0E3           MOV      R0,#+0
+   \   000000E8   1000C6E5           STRB     R0,[R6, #+16]
+   \   000000EC   1100C6E5           STRB     R0,[R6, #+17]
+    110              tcphdr->urgp = 0;
+   \   000000F0   1200C6E5           STRB     R0,[R6, #+18]
+   \   000000F4   1300C6E5           STRB     R0,[R6, #+19]
+    111          
+    112              /* If we're sending a packet, update the announced right window edge */
+    113              pcb->rcv_ann_right_edge = pcb->rcv_nxt + pcb->rcv_ann_wnd;
+   \   000000F8   BE12D4E1           LDRH     R1,[R4, #+46]
+   \   000000FC   280094E5           LDR      R0,[R4, #+40]
+   \   00000100   000081E0           ADD      R0,R1,R0
+   \   00000104   300084E5           STR      R0,[R4, #+48]
+    114            }
+    115            return p;
+   \                     ??tcp_output_alloc_header_0:
+   \   00000108   0500A0E1           MOV      R0,R5
+   \   0000010C   F041BDE8           POP      {R4-R8,LR}
+   \   00000110   1EFF2FE1           BX       LR               ;; return
+    116          }
+    117          
+    118          /**
+    119           * Called by tcp_close() to send a segment including FIN flag but not data.
+    120           *
+    121           * @param pcb the tcp_pcb over which to send a segment
+    122           * @return ERR_OK if sent, another err_t otherwise
+    123           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    124          err_t
+    125          tcp_send_fin(struct tcp_pcb *pcb)
+    126          {
+   \                     tcp_send_fin:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    127            /* first, try to add the fin to the last unsent segment */
+    128            if (pcb->unsent != NULL) {
+   \   00000008   6C5094E5           LDR      R5,[R4, #+108]
+   \   0000000C   000055E3           CMP      R5,#+0
+   \   00000010   1E00000A           BEQ      ??tcp_send_fin_0
+    129              struct tcp_seg *last_unsent;
+    130              for (last_unsent = pcb->unsent; last_unsent->next != NULL;
+   \   00000014   000095E5           LDR      R0,[R5, #+0]
+   \   00000018   000050E3           CMP      R0,#+0
+   \   0000001C   0300000A           BEQ      ??tcp_send_fin_1
+    131                   last_unsent = last_unsent->next);
+   \                     ??tcp_send_fin_2:
+   \   00000020   005095E5           LDR      R5,[R5, #+0]
+   \   00000024   000095E5           LDR      R0,[R5, #+0]
+   \   00000028   000050E3           CMP      R0,#+0
+   \   0000002C   FBFFFF1A           BNE      ??tcp_send_fin_2
+    132          
+    133              if ((TCPH_FLAGS(last_unsent->tcphdr) & (TCP_SYN | TCP_FIN | TCP_RST)) == 0) {
+   \                     ??tcp_send_fin_1:
+   \   00000030   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000034   0D10D0E5           LDRB     R1,[R0, #+13]
+   \   00000038   0C00D0E5           LDRB     R0,[R0, #+12]
+   \   0000003C   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000040   ........           _BLF     lwip_ntohs,??lwip_ntohs??rA
+   \   00000044   070010E3           TST      R0,#0x7
+   \   00000048   1000001A           BNE      ??tcp_send_fin_0
+    134                /* no SYN/FIN/RST flag in the header, we can add the FIN flag */
+    135                TCPH_SET_FLAG(last_unsent->tcphdr, TCP_FIN);
+   \   0000004C   0100A0E3           MOV      R0,#+1
+   \   00000050   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000054   0C1095E5           LDR      R1,[R5, #+12]
+   \   00000058   0D20D1E5           LDRB     R2,[R1, #+13]
+   \   0000005C   0C30D1E5           LDRB     R3,[R1, #+12]
+   \   00000060   022483E1           ORR      R2,R3,R2, LSL #+8
+   \   00000064   020080E1           ORR      R0,R0,R2
+   \   00000068   0C00C1E5           STRB     R0,[R1, #+12]
+   \   0000006C   0C1095E5           LDR      R1,[R5, #+12]
+   \   00000070   2004A0E1           LSR      R0,R0,#+8
+   \   00000074   0D00C1E5           STRB     R0,[R1, #+13]
+    136                pcb->flags |= TF_FIN;
+   \   00000078   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   0000007C   200080E3           ORR      R0,R0,#0x20
+   \   00000080   1E00C4E5           STRB     R0,[R4, #+30]
+    137                return ERR_OK;
+   \   00000084   3040BDE8           POP      {R4,R5,LR}
+   \   00000088   0000A0E3           MOV      R0,#+0
+   \   0000008C   1EFF2FE1           BX       LR
+    138              }
+    139            }
+    140            /* no data, no length, flags, copy=1, no optdata */
+    141            return tcp_enqueue_flags(pcb, TCP_FIN);
+   \                     ??tcp_send_fin_0:
+   \   00000090   0110A0E3           MOV      R1,#+1
+   \   00000094   0400A0E1           MOV      R0,R4
+   \   00000098   ........           BL       tcp_enqueue_flags
+   \   0000009C   3040BDE8           POP      {R4,R5,LR}
+   \   000000A0   1EFF2FE1           BX       LR               ;; return
+    142          }
+    143          
+    144          /**
+    145           * Create a TCP segment with prefilled header.
+    146           *
+    147           * Called by tcp_write and tcp_enqueue_flags.
+    148           *
+    149           * @param pcb Protocol control block for the TCP connection.
+    150           * @param p pbuf that is used to hold the TCP header.
+    151           * @param flags TCP flags for header.
+    152           * @param seqno TCP sequence number of this packet
+    153           * @param optflags options to include in TCP header
+    154           * @return a new tcp_seg pointing to p, or NULL.
+    155           * The TCP header is filled in except ackno and wnd.
+    156           * p is freed on failure.
+    157           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    158          static struct tcp_seg *
+    159          tcp_create_segment(struct tcp_pcb *pcb, struct pbuf *p, u8_t flags, u32_t seqno, u8_t optflags)
+    160          {
+   \                     tcp_create_segment:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+   \   00000004   2050DDE5           LDRB     R5,[SP, #+32]
+   \   00000008   0090A0E1           MOV      R9,R0
+   \   0000000C   01A0A0E1           MOV      R10,R1
+   \   00000010   0260A0E1           MOV      R6,R2
+   \   00000014   0380A0E1           MOV      R8,R3
+    161            struct tcp_seg *seg;
+    162            u8_t optlen = LWIP_TCP_OPT_LENGTH(optflags);
+   \   00000018   010015E3           TST      R5,#0x1
+   \   0000001C   0400A013           MOVNE    R0,#+4
+   \   00000020   0000A003           MOVEQ    R0,#+0
+   \   00000024   020015E3           TST      R5,#0x2
+   \   00000028   0C10A013           MOVNE    R1,#+12
+   \   0000002C   0010A003           MOVEQ    R1,#+0
+   \   00000030   007081E0           ADD      R7,R1,R0
+   \   00000034   FF7007E2           AND      R7,R7,#0xFF
+    163          
+    164            if ((seg = (struct tcp_seg *)memp_malloc(MEMP_TCP_SEG)) == NULL) {
+   \   00000038   0400A0E3           MOV      R0,#+4
+   \   0000003C   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000040   0040B0E1           MOVS     R4,R0
+   \   00000044   0200001A           BNE      ??tcp_create_segment_0
+    165              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_create_segment: no memory.\n"));
+    166              pbuf_free(p);
+   \   00000048   0A00A0E1           MOV      R0,R10
+   \   0000004C   ........           _BLF     pbuf_free,??pbuf_free??rA
+    167              return NULL;
+   \   00000050   110000EA           B        ??tcp_create_segment_1
+    168            }
+    169            seg->flags = optflags;
+   \                     ??tcp_create_segment_0:
+   \   00000054   0A50C4E5           STRB     R5,[R4, #+10]
+    170            seg->next = NULL;
+   \   00000058   0050A0E3           MOV      R5,#+0
+   \   0000005C   005084E5           STR      R5,[R4, #+0]
+    171            seg->p = p;
+   \   00000060   04A084E5           STR      R10,[R4, #+4]
+    172            seg->len = p->tot_len - optlen;
+   \   00000064   B800DAE1           LDRH     R0,[R10, #+8]
+    173          #if TCP_OVERSIZE_DBGCHECK
+    174            seg->oversize_left = 0;
+    175          #endif /* TCP_OVERSIZE_DBGCHECK */
+    176          #if TCP_CHECKSUM_ON_COPY
+    177            seg->chksum = 0;
+    178            seg->chksum_swapped = 0;
+    179            /* check optflags */
+    180            LWIP_ASSERT("invalid optflags passed: TF_SEG_DATA_CHECKSUMMED",
+    181                        (optflags & TF_SEG_DATA_CHECKSUMMED) == 0);
+    182          #endif /* TCP_CHECKSUM_ON_COPY */
+    183          
+    184            /* build TCP header */
+    185            if (pbuf_header(p, TCP_HLEN)) {
+   \   00000068   1410A0E3           MOV      R1,#+20
+   \   0000006C   070040E0           SUB      R0,R0,R7
+   \   00000070   B800C4E1           STRH     R0,[R4, #+8]
+   \   00000074   0A00A0E1           MOV      R0,R10
+   \   00000078   ........           _BLF     pbuf_header,??pbuf_header??rA
+   \   0000007C   000050E3           CMP      R0,#+0
+   \   00000080   0800000A           BEQ      ??tcp_create_segment_2
+    186              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_create_segment: no room for TCP header in pbuf.\n"));
+    187              TCP_STATS_INC(tcp.err);
+   \   00000084   ........           LDR      R0,??DataTable2  ;; lwip_stats
+   \   00000088   B41AD0E1           LDRH     R1,[R0, #+164]
+   \   0000008C   011081E2           ADD      R1,R1,#+1
+   \   00000090   B41AC0E1           STRH     R1,[R0, #+164]
+    188              tcp_seg_free(seg);
+   \   00000094   0400A0E1           MOV      R0,R4
+   \   00000098   ........           _BLF     tcp_seg_free,??tcp_seg_free??rA
+    189              return NULL;
+   \                     ??tcp_create_segment_1:
+   \   0000009C   F047BDE8           POP      {R4-R10,LR}
+   \   000000A0   0000A0E3           MOV      R0,#+0
+   \   000000A4   1EFF2FE1           BX       LR
+    190            }
+    191            seg->tcphdr = (struct tcp_hdr *)seg->p->payload;
+   \                     ??tcp_create_segment_2:
+   \   000000A8   040094E5           LDR      R0,[R4, #+4]
+   \   000000AC   040090E5           LDR      R0,[R0, #+4]
+   \   000000B0   0C0084E5           STR      R0,[R4, #+12]
+    192            seg->tcphdr->src = htons(pcb->local_port);
+   \   000000B4   BA01D9E1           LDRH     R0,[R9, #+26]
+   \   000000B8   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000BC   0C1094E5           LDR      R1,[R4, #+12]
+   \   000000C0   0000C1E5           STRB     R0,[R1, #+0]
+   \   000000C4   0C1094E5           LDR      R1,[R4, #+12]
+   \   000000C8   2004A0E1           LSR      R0,R0,#+8
+   \   000000CC   0100C1E5           STRB     R0,[R1, #+1]
+    193            seg->tcphdr->dest = htons(pcb->remote_port);
+   \   000000D0   BC01D9E1           LDRH     R0,[R9, #+28]
+   \   000000D4   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000D8   0C1094E5           LDR      R1,[R4, #+12]
+   \   000000DC   0200C1E5           STRB     R0,[R1, #+2]
+   \   000000E0   0C1094E5           LDR      R1,[R4, #+12]
+   \   000000E4   2004A0E1           LSR      R0,R0,#+8
+   \   000000E8   0300C1E5           STRB     R0,[R1, #+3]
+    194            seg->tcphdr->seqno = htonl(seqno);
+   \   000000EC   0800A0E1           MOV      R0,R8
+   \   000000F0   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   000000F4   0C1094E5           LDR      R1,[R4, #+12]
+   \   000000F8   0400C1E5           STRB     R0,[R1, #+4]
+   \   000000FC   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000100   2004A0E1           LSR      R0,R0,#+8
+   \   00000104   0500C1E5           STRB     R0,[R1, #+5]
+   \   00000108   0C1094E5           LDR      R1,[R4, #+12]
+   \   0000010C   2004A0E1           LSR      R0,R0,#+8
+   \   00000110   0600C1E5           STRB     R0,[R1, #+6]
+   \   00000114   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000118   2004A0E1           LSR      R0,R0,#+8
+   \   0000011C   0700C1E5           STRB     R0,[R1, #+7]
+    195            /* ackno is set in tcp_output */
+    196            TCPH_HDRLEN_FLAGS_SET(seg->tcphdr, (5 + optlen / 4), flags);
+   \   00000120   4701A0E1           ASR      R0,R7,#+2
+   \   00000124   050080E2           ADD      R0,R0,#+5
+   \   00000128   000686E1           ORR      R0,R6,R0, LSL #+12
+   \   0000012C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000130   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000134   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000138   0C1094E5           LDR      R1,[R4, #+12]
+   \   0000013C   0C00C1E5           STRB     R0,[R1, #+12]
+   \   00000140   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000144   2004A0E1           LSR      R0,R0,#+8
+   \   00000148   0D00C1E5           STRB     R0,[R1, #+13]
+    197            /* wnd and chksum are set in tcp_output */
+    198            seg->tcphdr->urgp = 0;
+   \   0000014C   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000150   1250C0E5           STRB     R5,[R0, #+18]
+   \   00000154   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000158   1350C0E5           STRB     R5,[R0, #+19]
+    199            return seg;
+   \   0000015C   0400A0E1           MOV      R0,R4
+   \   00000160   F047BDE8           POP      {R4-R10,LR}
+   \   00000164   1EFF2FE1           BX       LR               ;; return
+    200          } 
+    201          
+    202          /**
+    203           * Allocate a PBUF_RAM pbuf, perhaps with extra space at the end.
+    204           *
+    205           * This function is like pbuf_alloc(layer, length, PBUF_RAM) except
+    206           * there may be extra bytes available at the end.
+    207           *
+    208           * @param layer flag to define header size.
+    209           * @param length size of the pbuf's payload.
+    210           * @param max_length maximum usable size of payload+oversize.
+    211           * @param oversize pointer to a u16_t that will receive the number of usable tail bytes.
+    212           * @param pcb The TCP connection that willo enqueue the pbuf.
+    213           * @param apiflags API flags given to tcp_write.
+    214           * @param first_seg true when this pbuf will be used in the first enqueued segment.
+    215           * @param 
+    216           */
+    217          #if TCP_OVERSIZE
+    218          static struct pbuf *
+    219          tcp_pbuf_prealloc(pbuf_layer layer, u16_t length, u16_t max_length,
+    220                            u16_t *oversize, struct tcp_pcb *pcb, u8_t apiflags,
+    221                            u8_t first_seg)
+    222          {
+    223            struct pbuf *p;
+    224            u16_t alloc = length;
+    225          
+    226          #if LWIP_NETIF_TX_SINGLE_PBUF
+    227            LWIP_UNUSED_ARG(max_length);
+    228            LWIP_UNUSED_ARG(pcb);
+    229            LWIP_UNUSED_ARG(apiflags);
+    230            LWIP_UNUSED_ARG(first_seg);
+    231            /* always create MSS-sized pbufs */
+    232            alloc = max_length;
+    233          #else /* LWIP_NETIF_TX_SINGLE_PBUF */
+    234            if (length < max_length) {
+    235              /* Should we allocate an oversized pbuf, or just the minimum
+    236               * length required? If tcp_write is going to be called again
+    237               * before this segment is transmitted, we want the oversized
+    238               * buffer. If the segment will be transmitted immediately, we can
+    239               * save memory by allocating only length. We use a simple
+    240               * heuristic based on the following information:
+    241               *
+    242               * Did the user set TCP_WRITE_FLAG_MORE?
+    243               *
+    244               * Will the Nagle algorithm defer transmission of this segment?
+    245               */
+    246              if ((apiflags & TCP_WRITE_FLAG_MORE) ||
+    247                  (!(pcb->flags & TF_NODELAY) &&
+    248                   (!first_seg ||
+    249                    pcb->unsent != NULL ||
+    250                    pcb->unacked != NULL))) {
+    251                alloc = LWIP_MIN(max_length, LWIP_MEM_ALIGN_SIZE(length + TCP_OVERSIZE));
+    252              }
+    253            }
+    254          #endif /* LWIP_NETIF_TX_SINGLE_PBUF */
+    255            p = pbuf_alloc(layer, alloc, PBUF_RAM);
+    256            if (p == NULL) {
+    257              return NULL;
+    258            }
+    259            LWIP_ASSERT("need unchained pbuf", p->next == NULL);
+    260            *oversize = p->len - length;
+    261            /* trim p->len to the currently used size */
+    262            p->len = p->tot_len = length;
+    263            return p;
+    264          }
+    265          #else /* TCP_OVERSIZE */
+    266          #define tcp_pbuf_prealloc(layer, length, mx, os, pcb, api, fst) pbuf_alloc((layer), (length), PBUF_RAM)
+    267          #endif /* TCP_OVERSIZE */
+    268          
+    269          #if TCP_CHECKSUM_ON_COPY
+    270          /** Add a checksum of newly added data to the segment */
+    271          static void
+    272          tcp_seg_add_chksum(u16_t chksum, u16_t len, u16_t *seg_chksum,
+    273                             u8_t *seg_chksum_swapped)
+    274          {
+    275            u32_t helper;
+    276            /* add chksum to old chksum and fold to u16_t */
+    277            helper = chksum + *seg_chksum;
+    278            chksum = FOLD_U32T(helper);
+    279            if ((len & 1) != 0) {
+    280              *seg_chksum_swapped = 1 - *seg_chksum_swapped;
+    281              chksum = SWAP_BYTES_IN_WORD(chksum);
+    282            }
+    283            *seg_chksum = chksum;
+    284          }
+    285          #endif /* TCP_CHECKSUM_ON_COPY */
+    286          
+    287          /** Checks if tcp_write is allowed or not (checks state, snd_buf and snd_queuelen).
+    288           *
+    289           * @param pcb the tcp pcb to check for
+    290           * @param len length of data to send (checked agains snd_buf)
+    291           * @return ERR_OK if tcp_write is allowed to proceed, another err_t otherwise
+    292           */
+    293          static err_t
+    294          tcp_write_checks(struct tcp_pcb *pcb, u16_t len)
+    295          {
+    296            /* connection is in invalid state for data transmission? */
+    297            if ((pcb->state != ESTABLISHED) &&
+    298                (pcb->state != CLOSE_WAIT) &&
+    299                (pcb->state != SYN_SENT) &&
+    300                (pcb->state != SYN_RCVD)) {
+    301              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | LWIP_DBG_STATE | LWIP_DBG_LEVEL_SEVERE, ("tcp_write() called in invalid state\n"));
+    302              return ERR_CONN;
+    303            } else if (len == 0) {
+    304              return ERR_OK;
+    305            }
+    306          
+    307            /* fail on too much data */
+    308            if (len > pcb->snd_buf) {
+    309              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 3, ("tcp_write: too much data (len=%"U16_F" > snd_buf=%"U16_F")\n",
+    310                len, pcb->snd_buf));
+    311              pcb->flags |= TF_NAGLEMEMERR;
+    312              return ERR_MEM;
+    313            }
+    314          
+    315            LWIP_DEBUGF(TCP_QLEN_DEBUG, ("tcp_write: queuelen: %"U16_F"\n", (u16_t)pcb->snd_queuelen));
+    316          
+    317            /* If total number of pbufs on the unsent/unacked queues exceeds the
+    318             * configured maximum, return an error */
+    319            /* check for configured max queuelen and possible overflow */
+    320            if ((pcb->snd_queuelen >= TCP_SND_QUEUELEN) || (pcb->snd_queuelen > TCP_SNDQUEUELEN_OVERFLOW)) {
+    321              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 3, ("tcp_write: too long queue %"U16_F" (max %"U16_F")\n",
+    322                pcb->snd_queuelen, TCP_SND_QUEUELEN));
+    323              TCP_STATS_INC(tcp.memerr);
+    324              pcb->flags |= TF_NAGLEMEMERR;
+    325              return ERR_MEM;
+    326            }
+    327            if (pcb->snd_queuelen != 0) {
+    328              LWIP_ASSERT("tcp_write: pbufs on queue => at least one queue non-empty",
+    329                pcb->unacked != NULL || pcb->unsent != NULL);
+    330            } else {
+    331              LWIP_ASSERT("tcp_write: no pbufs on queue => both queues empty",
+    332                pcb->unacked == NULL && pcb->unsent == NULL);
+    333            }
+    334            return ERR_OK;
+    335          }
+    336          
+    337          /**
+    338           * Write data for sending (but does not send it immediately).
+    339           *
+    340           * It waits in the expectation of more data being sent soon (as
+    341           * it can send them more efficiently by combining them together).
+    342           * To prompt the system to send data now, call tcp_output() after
+    343           * calling tcp_write().
+    344           *
+    345           * @param pcb Protocol control block for the TCP connection to enqueue data for.
+    346           * @param arg Pointer to the data to be enqueued for sending.
+    347           * @param len Data length in bytes
+    348           * @param apiflags combination of following flags :
+    349           * - TCP_WRITE_FLAG_COPY (0x01) data will be copied into memory belonging to the stack
+    350           * - TCP_WRITE_FLAG_MORE (0x02) for TCP connection, PSH flag will be set on last segment sent,
+    351           * @return ERR_OK if enqueued, another err_t on error
+    352           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    353          err_t
+    354          tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
+    355          {
+   \                     tcp_write:
+   \   00000000   FE4F2DE9           PUSH     {R1-R11,LR}
+   \   00000004   1CD04DE2           SUB      SP,SP,#+28
+   \   00000008   0050A0E1           MOV      R5,R0
+   \   0000000C   0010A0E3           MOV      R1,#+0
+   \   00000010   00108DE5           STR      R1,[SP, #+0]
+    356            struct pbuf *concat_p = NULL;
+    357            struct tcp_seg *last_unsent = NULL, *seg = NULL, *prev_seg = NULL, *queue = NULL;
+   \   00000014   0140A0E1           MOV      R4,R1
+   \   00000018   18108DE5           STR      R1,[SP, #+24]
+   \   0000001C   04108DE5           STR      R1,[SP, #+4]
+    358            u16_t pos = 0; /* position in 'arg' data */
+    359            u16_t queuelen;
+    360            u8_t optlen = 0;
+    361            u8_t optflags = 0;
+    362          #if TCP_OVERSIZE
+    363            u16_t oversize = 0;
+    364            u16_t oversize_used = 0;
+    365          #endif /* TCP_OVERSIZE */
+    366          #if TCP_CHECKSUM_ON_COPY
+    367            u16_t concat_chksum = 0;
+    368            u8_t concat_chksum_swapped = 0;
+    369            u16_t concat_chksummed = 0;
+    370          #endif /* TCP_CHECKSUM_ON_COPY */
+    371            err_t err;
+    372            /* don't allocate segments bigger than half the maximum window we ever received */
+    373            u16_t mss_local = LWIP_MIN(pcb->mss, pcb->snd_wnd_max/2);
+   \   00000020   B206D5E1           LDRH     R0,[R5, #+98]
+   \   00000024   0190A0E1           MOV      R9,R1
+   \   00000028   01B0A0E1           MOV      R11,R1
+   \   0000002C   0170A0E1           MOV      R7,R1
+   \   00000030   B613D5E1           LDRH     R1,[R5, #+54]
+   \   00000034   A000A0E1           LSR      R0,R0,#+1
+   \   00000038   0060A0E3           MOV      R6,#+0
+   \   0000003C   000051E1           CMP      R1,R0
+   \   00000040   10108D35           STRCC    R1,[SP, #+16]
+   \   00000044   10008D25           STRCS    R0,[SP, #+16]
+    374          
+    375          #if LWIP_NETIF_TX_SINGLE_PBUF
+    376            /* Always copy to try to create single pbufs for TX */
+    377            apiflags |= TCP_WRITE_FLAG_COPY;
+    378          #endif /* LWIP_NETIF_TX_SINGLE_PBUF */
+    379          
+    380            LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_write(pcb=%p, data=%p, len=%"U16_F", apiflags=%"U16_F")\n",
+    381              (void *)pcb, arg, len, (u16_t)apiflags));
+    382            /*
+    383            LWIP_ERROR("tcp_write: arg == NULL (programmer violates API)", 
+    384                       arg != NULL, return ERR_ARG;);
+    385            */
+    386          
+    387            err = tcp_write_checks(pcb, len);
+   \   00000048   1800D5E5           LDRB     R0,[R5, #+24]
+   \   0000004C   040050E3           CMP      R0,#+4
+   \   00000050   07005013           CMPNE    R0,#+7
+   \   00000054   02005013           CMPNE    R0,#+2
+   \   00000058   03005013           CMPNE    R0,#+3
+   \   0000005C   0C00E013           MVNNE    R0,#+12
+   \   00000060   FF00001A           BNE      ??tcp_write_0
+   \   00000064   B002DDE1           LDRH     R0,[SP, #+32]
+   \   00000068   1E20D5E5           LDRB     R2,[R5, #+30]
+   \   0000006C   B886D5E1           LDRH     R8,[R5, #+104]
+   \   00000070   000050E3           CMP      R0,#+0
+   \   00000074   0F00001A           BNE      ??tcp_write_1
+    388            if (err != ERR_OK) {
+    389              return err;
+    390            }
+    391            queuelen = pcb->snd_queuelen;
+    392          
+    393          #if LWIP_TCP_TIMESTAMPS
+    394            if ((pcb->flags & TF_TIMESTAMP)) {
+    395              optflags = TF_SEG_OPTS_TS;
+    396              optlen = LWIP_TCP_OPT_LENGTH(TF_SEG_OPTS_TS);
+    397            }
+    398          #endif /* LWIP_TCP_TIMESTAMPS */
+    399          
+    400          
+    401            /*
+    402             * TCP segmentation is done in three phases with increasing complexity:
+    403             *
+    404             * 1. Copy data directly into an oversized pbuf.
+    405             * 2. Chain a new pbuf to the end of pcb->unsent.
+    406             * 3. Create new segments.
+    407             *
+    408             * We may run out of memory at any point. In that case we must
+    409             * return ERR_MEM and not change anything in pcb. Therefore, all
+    410             * changes are recorded in local variables and committed at the end
+    411             * of the function. Some pcb fields are maintained in local copies:
+    412             *
+    413             * queuelen = pcb->snd_queuelen
+    414             * oversize = pcb->unsent_oversize
+    415             *
+    416             * These variables are set consistently by the phases:
+    417             *
+    418             * seg points to the last segment tampered with.
+    419             *
+    420             * pos records progress as data is segmented.
+    421             */
+    422          
+    423            /* Find the tail of the unsent queue. */
+    424            if (pcb->unsent != NULL) {
+   \                     ??tcp_write_2:
+   \   00000078   6C0095E5           LDR      R0,[R5, #+108]
+   \   0000007C   000050E3           CMP      R0,#+0
+   \   00000080   8A00000A           BEQ      ??tcp_write_3
+    425              u16_t space;
+    426              u16_t unsent_optlen;
+    427          
+    428              /* @todo: this could be sped up by keeping last_unsent in the pcb */
+    429              for (last_unsent = pcb->unsent; last_unsent->next != NULL;
+   \   00000084   0060A0E1           MOV      R6,R0
+   \   00000088   000096E5           LDR      R0,[R6, #+0]
+   \   0000008C   000050E3           CMP      R0,#+0
+   \   00000090   0300000A           BEQ      ??tcp_write_4
+    430                   last_unsent = last_unsent->next);
+   \                     ??tcp_write_5:
+   \   00000094   006096E5           LDR      R6,[R6, #+0]
+   \   00000098   000096E5           LDR      R0,[R6, #+0]
+   \   0000009C   000050E3           CMP      R0,#+0
+   \   000000A0   FBFFFF1A           BNE      ??tcp_write_5
+    431          
+    432              /* Usable space at the end of the last unsent segment */
+    433              unsent_optlen = LWIP_TCP_OPT_LENGTH(last_unsent->flags);
+   \                     ??tcp_write_4:
+   \   000000A4   0A00D6E5           LDRB     R0,[R6, #+10]
+   \   000000A8   010010E3           TST      R0,#0x1
+   \   000000AC   0010A003           MOVEQ    R1,#+0
+   \   000000B0   0410A013           MOVNE    R1,#+4
+   \   000000B4   110000EA           B        ??tcp_write_6
+   \                     ??tcp_write_1:
+   \   000000B8   B606D5E1           LDRH     R0,[R5, #+102]
+   \   000000BC   B012DDE1           LDRH     R1,[SP, #+32]
+   \   000000C0   010050E1           CMP      R0,R1
+   \   000000C4   0300002A           BCS      ??tcp_write_7
+   \   000000C8   800082E3           ORR      R0,R2,#0x80
+   \                     ??tcp_write_8:
+   \   000000CC   1E00C5E5           STRB     R0,[R5, #+30]
+   \   000000D0   0400E0E1           MVN      R0,R4
+   \   000000D4   E20000EA           B        ??tcp_write_0
+   \                     ??tcp_write_7:
+   \   000000D8   100058E3           CMP      R8,#+16
+   \   000000DC   E5FFFF3A           BCC      ??tcp_write_2
+   \   000000E0   30159FE5           LDR      R1,??tcp_write_9  ;; lwip_stats + 156
+   \   000000E4   2C059FE5           LDR      R0,??tcp_write_9  ;; lwip_stats + 156
+   \   000000E8   B010D1E1           LDRH     R1,[R1, #+0]
+   \   000000EC   011081E2           ADD      R1,R1,#+1
+   \   000000F0   B010C0E1           STRH     R1,[R0, #+0]
+   \   000000F4   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   000000F8   800080E3           ORR      R0,R0,#0x80
+   \   000000FC   F2FFFFEA           B        ??tcp_write_8
+    434              space = mss_local - (last_unsent->len + unsent_optlen);
+    435          
+    436              /*
+    437               * Phase 1: Copy data directly into an oversized pbuf.
+    438               *
+    439               * The number of bytes copied is recorded in the oversize_used
+    440               * variable. The actual copying is done at the bottom of the
+    441               * function.
+    442               */
+    443          #if TCP_OVERSIZE
+    444          #if TCP_OVERSIZE_DBGCHECK
+    445              /* check that pcb->unsent_oversize matches last_unsent->unsent_oversize */
+    446              LWIP_ASSERT("unsent_oversize mismatch (pcb vs. last_unsent)",
+    447                          pcb->unsent_oversize == last_unsent->oversize_left);
+    448          #endif /* TCP_OVERSIZE_DBGCHECK */
+    449              oversize = pcb->unsent_oversize;
+   \                     ??tcp_write_6:
+   \   00000100   BAB6D5E1           LDRH     R11,[R5, #+106]
+   \   00000104   10309DE5           LDR      R3,[SP, #+16]
+   \   00000108   020010E3           TST      R0,#0x2
+   \   0000010C   0C00A013           MOVNE    R0,#+12
+   \   00000110   0000A003           MOVEQ    R0,#+0
+   \   00000114   010080E0           ADD      R0,R0,R1
+   \   00000118   B810D6E1           LDRH     R1,[R6, #+8]
+   \   0000011C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000120   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000124   013043E0           SUB      R3,R3,R1
+   \   00000128   000043E0           SUB      R0,R3,R0
+   \   0000012C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000130   2008A0E1           MOV      R0,R0, LSR #+16
+    450              if (oversize > 0) {
+   \   00000134   00005BE3           CMP      R11,#+0
+   \   00000138   0900000A           BEQ      ??tcp_write_10
+    451                LWIP_ASSERT("inconsistent oversize vs. space", oversize_used <= space);
+    452                seg = last_unsent;
+    453                oversize_used = oversize < len ? oversize : len;
+   \   0000013C   B032DDE1           LDRH     R3,[SP, #+32]
+   \   00000140   0640A0E1           MOV      R4,R6
+   \   00000144   03005BE1           CMP      R11,R3
+   \   00000148   0B70A031           MOVCC    R7,R11
+   \   0000014C   0370A021           MOVCS    R7,R3
+    454                pos += oversize_used;
+   \   00000150   0790A0E1           MOV      R9,R7
+    455                oversize -= oversize_used;
+   \   00000154   07B04BE0           SUB      R11,R11,R7
+    456                space -= oversize_used;
+   \   00000158   070040E0           SUB      R0,R0,R7
+   \   0000015C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000160   2008A0E1           MOV      R0,R0, LSR #+16
+    457              }
+    458              /* now we are either finished or oversize is zero */
+    459              LWIP_ASSERT("inconsistend oversize vs. len", (oversize == 0) || (pos == len));
+    460          #endif /* TCP_OVERSIZE */
+    461          
+    462              /*
+    463               * Phase 2: Chain a new pbuf to the end of pcb->unsent.
+    464               *
+    465               * We don't extend segments containing SYN/FIN flags or options
+    466               * (len==0). The new pbuf is kept in concat_p and pbuf_cat'ed at
+    467               * the end.
+    468               */
+    469              if ((pos < len) && (space > 0) && (last_unsent->len > 0)) {
+   \                     ??tcp_write_10:
+   \   00000164   B0A2DDE1           LDRH     R10,[SP, #+32]
+   \   00000168   0938A0E1           MOV      R3,R9, LSL #+16
+   \   0000016C   23085AE1           CMP      R10,R3, LSR #+16
+   \   00000170   4E00009A           BLS      ??tcp_write_3
+   \   00000174   0030B0E1           MOVS     R3,R0
+   \   00000178   00005113           CMPNE    R1,#+0
+   \   0000017C   4B00000A           BEQ      ??tcp_write_3
+    470                u16_t seglen = space < len - pos ? space : len - pos;
+    471                seg = last_unsent;
+    472          
+    473                /* Create a pbuf with a copy or reference to seglen bytes. We
+    474                 * can use PBUF_RAW here since the data appears in the middle of
+    475                 * a segment. A header will never be prepended. */
+    476                if (apiflags & TCP_WRITE_FLAG_COPY) {
+   \   00000180   1CE09DE5           LDR      LR,[SP, #+28]
+   \   00000184   0918A0E1           MOV      R1,R9, LSL #+16
+   \   00000188   2118A0E1           MOV      R1,R1, LSR #+16
+   \   0000018C   01404AE0           SUB      R4,R10,R1
+   \   00000190   0E1081E0           ADD      R1,R1,LR
+   \   00000194   0C108DE5           STR      R1,[SP, #+12]
+   \   00000198   2410DDE5           LDRB     R1,[SP, #+36]
+   \   0000019C   040050E1           CMP      R0,R4
+   \   000001A0   00A0A0B1           MOVLT    R10,R0
+   \   000001A4   09A04AA0           SUBGE    R10,R10,R9
+   \   000001A8   0AA8A0A1           MOVGE    R10,R10, LSL #+16
+   \   000001AC   2AA8A0A1           MOVGE    R10,R10, LSR #+16
+   \   000001B0   0640A0E1           MOV      R4,R6
+   \   000001B4   010011E3           TST      R1,#0x1
+   \   000001B8   2500000A           BEQ      ??tcp_write_11
+    477                  /* Data is copied */
+    478                  if ((concat_p = tcp_pbuf_prealloc(PBUF_RAW, seglen, space, &oversize, pcb, apiflags, 1)) == NULL) {
+   \   000001BC   B8A0CDE1           STRH     R10,[SP, #+8]
+   \   000001C0   B810DDE1           LDRH     R1,[SP, #+8]
+   \   000001C4   000051E1           CMP      R1,R0
+   \   000001C8   1000002A           BCS      ??tcp_write_12
+   \   000001CC   24B0DDE5           LDRB     R11,[SP, #+36]
+   \   000001D0   02001BE3           TST      R11,#0x2
+   \   000001D4   0100001A           BNE      ??tcp_write_13
+   \   000001D8   400012E3           TST      R2,#0x40
+   \   000001DC   0B00001A           BNE      ??tcp_write_12
+   \                     ??tcp_write_13:
+   \   000001E0   1B20A0E3           MOV      R2,#+27
+   \   000001E4   802F82E3           ORR      R2,R2,#0x200
+   \   000001E8   011082E0           ADD      R1,R2,R1
+   \   000001EC   0310C1E3           BIC      R1,R1,#0x3
+   \   000001F0   010050E1           CMP      R0,R1
+   \   000001F4   0010A0B1           MOVLT    R1,R0
+   \   000001F8   040000BA           BLT      ??tcp_write_12
+   \   000001FC   B800DDE1           LDRH     R0,[SP, #+8]
+   \   00000200   FC10A0E3           MOV      R1,#+252
+   \   00000204   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   00000208   000082E0           ADD      R0,R2,R0
+   \   0000020C   001001E0           AND      R1,R1,R0
+   \                     ??tcp_write_12:
+   \   00000210   0020A0E3           MOV      R2,#+0
+   \   00000214   0300A0E3           MOV      R0,#+3
+   \   00000218   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   0000021C   000050E3           CMP      R0,#+0
+   \   00000220   7E00000A           BEQ      ??tcp_write_14
+   \   00000224   BA10D0E1           LDRH     R1,[R0, #+10]
+   \   00000228   B820DDE1           LDRH     R2,[SP, #+8]
+   \   0000022C   02B041E0           SUB      R11,R1,R2
+   \   00000230   0210A0E1           MOV      R1,R2
+   \   00000234   B810C0E1           STRH     R1,[R0, #+8]
+   \   00000238   BA10C0E1           STRH     R1,[R0, #+10]
+   \   0000023C   00008DE5           STR      R0,[SP, #+0]
+    479                    LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2,
+    480                                ("tcp_write : could not allocate memory for pbuf copy size %"U16_F"\n",
+    481                                 seglen));
+    482                    goto memerr;
+    483                  }
+    484          #if TCP_OVERSIZE_DBGCHECK
+    485                  last_unsent->oversize_left += oversize;
+    486          #endif /* TCP_OVERSIZE_DBGCHECK */
+    487                  TCP_DATA_COPY2(concat_p->payload, (u8_t*)arg + pos, seglen, &concat_chksum, &concat_chksum_swapped);
+   \   00000240   0C109DE5           LDR      R1,[SP, #+12]
+   \   00000244   040090E5           LDR      R0,[R0, #+4]
+   \   00000248   0A20A0E1           MOV      R2,R10
+   \   0000024C   ........           _BLF     memcpy,??memcpy??rA
+   \   00000250   090000EA           B        ??tcp_write_15
+    488          #if TCP_CHECKSUM_ON_COPY
+    489                  concat_chksummed += seglen;
+    490          #endif /* TCP_CHECKSUM_ON_COPY */
+    491                } else {
+    492                  /* Data is not copied */
+    493                  if ((concat_p = pbuf_alloc(PBUF_RAW, seglen, PBUF_ROM)) == NULL) {
+   \                     ??tcp_write_11:
+   \   00000254   0120A0E3           MOV      R2,#+1
+   \   00000258   0A18A0E1           MOV      R1,R10, LSL #+16
+   \   0000025C   2118A0E1           MOV      R1,R1, LSR #+16
+   \   00000260   0300A0E3           MOV      R0,#+3
+   \   00000264   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   00000268   00008DE5           STR      R0,[SP, #+0]
+   \   0000026C   000050E3           CMP      R0,#+0
+   \   00000270   6A00000A           BEQ      ??tcp_write_14
+    494                    LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2,
+    495                                ("tcp_write: could not allocate memory for zero-copy pbuf\n"));
+    496                    goto memerr;
+    497                  }
+    498          #if TCP_CHECKSUM_ON_COPY
+    499                  /* calculate the checksum of nocopy-data */
+    500                  tcp_seg_add_chksum(~inet_chksum((u8_t*)arg + pos, seglen), seglen,
+    501                    &concat_chksum, &concat_chksum_swapped);
+    502                  concat_chksummed += seglen;
+    503          #endif /* TCP_CHECKSUM_ON_COPY */
+    504                  /* reference the non-volatile payload data */
+    505                  concat_p->payload = (u8_t*)arg + pos;
+   \   00000274   0C109DE5           LDR      R1,[SP, #+12]
+   \   00000278   041080E5           STR      R1,[R0, #+4]
+    506                }
+    507          
+    508                pos += seglen;
+    509                queuelen += pbuf_clen(concat_p);
+   \                     ??tcp_write_15:
+   \   0000027C   00009DE5           LDR      R0,[SP, #+0]
+   \   00000280   09908AE0           ADD      R9,R10,R9
+   \   00000284   0998A0E1           MOV      R9,R9, LSL #+16
+   \   00000288   2998A0E1           MOV      R9,R9, LSR #+16
+   \   0000028C   ........           _BLF     pbuf_clen,??pbuf_clen??rA
+   \   00000290   088080E0           ADD      R8,R0,R8
+   \   00000294   0888A0E1           MOV      R8,R8, LSL #+16
+   \   00000298   2888A0E1           MOV      R8,R8, LSR #+16
+   \   0000029C   030000EA           B        ??tcp_write_3
+    510              }
+    511            } else {
+    512          #if TCP_OVERSIZE
+    513              LWIP_ASSERT("unsent_oversize mismatch (pcb->unsent is NULL)",
+    514                          pcb->unsent_oversize == 0);
+    515          #endif /* TCP_OVERSIZE */
+    516            }
+    517          
+    518            /*
+    519             * Phase 3: Create new segments.
+    520             *
+    521             * The new segments are chained together in the local 'queue'
+    522             * variable, ready to be appended to pcb->unsent.
+    523             */
+    524            while (pos < len) {
+    525              struct pbuf *p;
+    526              u16_t left = len - pos;
+    527              u16_t max_len = mss_local - optlen;
+    528              u16_t seglen = left > max_len ? max_len : left;
+    529          #if TCP_CHECKSUM_ON_COPY
+    530              u16_t chksum = 0;
+    531              u8_t chksum_swapped = 0;
+    532          #endif /* TCP_CHECKSUM_ON_COPY */
+    533          
+    534              if (apiflags & TCP_WRITE_FLAG_COPY) {
+    535                /* If copy is set, memory should be allocated and data copied
+    536                 * into pbuf */
+    537                if ((p = tcp_pbuf_prealloc(PBUF_TRANSPORT, seglen + optlen, mss_local, &oversize, pcb, apiflags, queue == NULL)) == NULL) {
+    538                  LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_write : could not allocate memory for pbuf copy size %"U16_F"\n", seglen));
+    539                  goto memerr;
+    540                }
+    541                LWIP_ASSERT("tcp_write: check that first pbuf can hold the complete seglen",
+    542                            (p->len >= seglen));
+    543                TCP_DATA_COPY2((char *)p->payload + optlen, (u8_t*)arg + pos, seglen, &chksum, &chksum_swapped);
+    544              } else {
+    545                /* Copy is not set: First allocate a pbuf for holding the data.
+    546                 * Since the referenced data is available at least until it is
+    547                 * sent out on the link (as it has to be ACKed by the remote
+    548                 * party) we can safely use PBUF_ROM instead of PBUF_REF here.
+    549                 */
+    550                struct pbuf *p2;
+    551          #if TCP_OVERSIZE
+    552                LWIP_ASSERT("oversize == 0", oversize == 0);
+    553          #endif /* TCP_OVERSIZE */
+    554                if ((p2 = pbuf_alloc(PBUF_TRANSPORT, seglen, PBUF_ROM)) == NULL) {
+    555                  LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_write: could not allocate memory for zero-copy pbuf\n"));
+    556                  goto memerr;
+    557                }
+    558          #if TCP_CHECKSUM_ON_COPY
+    559                /* calculate the checksum of nocopy-data */
+    560                chksum = ~inet_chksum((u8_t*)arg + pos, seglen);
+    561          #endif /* TCP_CHECKSUM_ON_COPY */
+    562                /* reference the non-volatile payload data */
+    563                p2->payload = (u8_t*)arg + pos;
+    564          
+    565                /* Second, allocate a pbuf for the headers. */
+    566                if ((p = pbuf_alloc(PBUF_TRANSPORT, optlen, PBUF_RAM)) == NULL) {
+    567                  /* If allocation fails, we have to deallocate the data pbuf as
+    568                   * well. */
+    569                  pbuf_free(p2);
+    570                  LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_write: could not allocate memory for header pbuf\n"));
+    571                  goto memerr;
+    572                }
+    573                /* Concatenate the headers and data pbufs together. */
+    574                pbuf_cat(p/*header*/, p2/*data*/);
+    575              }
+    576          
+    577              queuelen += pbuf_clen(p);
+    578          
+    579              /* Now that there are more segments queued, we check again if the
+    580               * length of the queue exceeds the configured maximum or
+    581               * overflows. */
+    582              if ((queuelen > TCP_SND_QUEUELEN) || (queuelen > TCP_SNDQUEUELEN_OVERFLOW)) {
+    583                LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 2, ("tcp_write: queue too long %"U16_F" (%"U16_F")\n", queuelen, TCP_SND_QUEUELEN));
+    584                pbuf_free(p);
+    585                goto memerr;
+    586              }
+    587          
+    588              if ((seg = tcp_create_segment(pcb, p, 0, pcb->snd_lbb + pos, optflags)) == NULL) {
+    589                goto memerr;
+    590              }
+    591          #if TCP_OVERSIZE_DBGCHECK
+    592              seg->oversize_left = oversize;
+    593          #endif /* TCP_OVERSIZE_DBGCHECK */
+    594          #if TCP_CHECKSUM_ON_COPY
+    595              seg->chksum = chksum;
+    596              seg->chksum_swapped = chksum_swapped;
+    597              seg->flags |= TF_SEG_DATA_CHECKSUMMED;
+    598          #endif /* TCP_CHECKSUM_ON_COPY */
+    599          
+    600              /* first segment of to-be-queued data? */
+    601              if (queue == NULL) {
+    602                queue = seg;
+    603              } else {
+    604                /* Attach the segment to the end of the queued segments */
+    605                LWIP_ASSERT("prev_seg != NULL", prev_seg != NULL);
+    606                prev_seg->next = seg;
+    607              }
+    608              /* remember last segment of to-be-queued data for next iteration */
+    609              prev_seg = seg;
+   \                     ??tcp_write_16:
+   \   000002A0   18408DE5           STR      R4,[SP, #+24]
+    610          
+    611              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | LWIP_DBG_TRACE, ("tcp_write: queueing %"U32_F":%"U32_F"\n",
+    612                ntohl(seg->tcphdr->seqno),
+    613                ntohl(seg->tcphdr->seqno) + TCP_TCPLEN(seg)));
+    614          
+    615              pos += seglen;
+   \   000002A4   09908AE0           ADD      R9,R10,R9
+   \   000002A8   0998A0E1           MOV      R9,R9, LSL #+16
+   \   000002AC   2998A0E1           MOV      R9,R9, LSR #+16
+   \                     ??tcp_write_3:
+   \   000002B0   B012DDE1           LDRH     R1,[SP, #+32]
+   \   000002B4   0908A0E1           MOV      R0,R9, LSL #+16
+   \   000002B8   200851E1           CMP      R1,R0, LSR #+16
+   \   000002BC   8B00009A           BLS      ??tcp_write_17
+   \   000002C0   10A09DE5           LDR      R10,[SP, #+16]
+   \   000002C4   1C209DE5           LDR      R2,[SP, #+28]
+   \   000002C8   090041E0           SUB      R0,R1,R9
+   \   000002CC   0008A0E1           MOV      R0,R0, LSL #+16
+   \   000002D0   2008A0E1           MOV      R0,R0, LSR #+16
+   \   000002D4   0AA8A0E1           MOV      R10,R10, LSL #+16
+   \   000002D8   2AA8A0E1           MOV      R10,R10, LSR #+16
+   \   000002DC   00005AE1           CMP      R10,R0
+   \   000002E0   00A0A021           MOVCS    R10,R0
+   \   000002E4   0918A0E1           MOV      R1,R9, LSL #+16
+   \   000002E8   2118A0E1           MOV      R1,R1, LSR #+16
+   \   000002EC   021081E0           ADD      R1,R1,R2
+   \   000002F0   0C108DE5           STR      R1,[SP, #+12]
+   \   000002F4   2400DDE5           LDRB     R0,[SP, #+36]
+   \   000002F8   010010E3           TST      R0,#0x1
+   \   000002FC   3600000A           BEQ      ??tcp_write_18
+   \   00000300   04009DE5           LDR      R0,[SP, #+4]
+   \   00000304   0A40A0E1           MOV      R4,R10
+   \   00000308   000050E3           CMP      R0,#+0
+   \   0000030C   10009DE5           LDR      R0,[SP, #+16]
+   \   00000310   0120A003           MOVEQ    R2,#+1
+   \   00000314   0020A013           MOVNE    R2,#+0
+   \   00000318   0410A0E1           MOV      R1,R4
+   \   0000031C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000320   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000324   000054E1           CMP      R4,R0
+   \   00000328   1900002A           BCS      ??tcp_write_19
+   \   0000032C   2430DDE5           LDRB     R3,[SP, #+36]
+   \   00000330   020013E3           TST      R3,#0x2
+   \   00000334   0900001A           BNE      ??tcp_write_20
+   \   00000338   1E30D5E5           LDRB     R3,[R5, #+30]
+   \   0000033C   400013E3           TST      R3,#0x40
+   \   00000340   1300001A           BNE      ??tcp_write_19
+   \   00000344   000052E3           CMP      R2,#+0
+   \   00000348   0400000A           BEQ      ??tcp_write_20
+   \   0000034C   6C2095E5           LDR      R2,[R5, #+108]
+   \   00000350   000052E3           CMP      R2,#+0
+   \   00000354   70209505           LDREQ    R2,[R5, #+112]
+   \   00000358   00005203           CMPEQ    R2,#+0
+   \   0000035C   0D00000A           BEQ      ??tcp_write_21
+   \                     ??tcp_write_20:
+   \   00000360   0010A0E1           MOV      R1,R0
+   \   00000364   0428A0E1           MOV      R2,R4, LSL #+16
+   \   00000368   2228A0E1           MOV      R2,R2, LSR #+16
+   \   0000036C   1B30A0E3           MOV      R3,#+27
+   \   00000370   803F83E3           ORR      R3,R3,#0x200
+   \   00000374   022083E0           ADD      R2,R3,R2
+   \   00000378   0320C2E3           BIC      R2,R2,#0x3
+   \   0000037C   020051E1           CMP      R1,R2
+   \   00000380   030000BA           BLT      ??tcp_write_19
+   \   00000384   040083E0           ADD      R0,R3,R4
+   \   00000388   FC10A0E3           MOV      R1,#+252
+   \   0000038C   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   00000390   001001E0           AND      R1,R1,R0
+   \                     ??tcp_write_19:
+   \   00000394   0020A0E3           MOV      R2,#+0
+   \                     ??tcp_write_21:
+   \   00000398   0118A0E1           MOV      R1,R1, LSL #+16
+   \   0000039C   2118A0E1           MOV      R1,R1, LSR #+16
+   \   000003A0   0000A0E3           MOV      R0,#+0
+   \   000003A4   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   000003A8   000050E3           CMP      R0,#+0
+   \   000003AC   1B00000A           BEQ      ??tcp_write_14
+   \   000003B0   BA10D0E1           LDRH     R1,[R0, #+10]
+   \   000003B4   B840C0E1           STRH     R4,[R0, #+8]
+   \   000003B8   0A20A0E1           MOV      R2,R10
+   \   000003BC   04B041E0           SUB      R11,R1,R4
+   \   000003C0   B810D0E1           LDRH     R1,[R0, #+8]
+   \   000003C4   0040A0E1           MOV      R4,R0
+   \   000003C8   BA10C0E1           STRH     R1,[R0, #+10]
+   \   000003CC   0C109DE5           LDR      R1,[SP, #+12]
+   \   000003D0   040094E5           LDR      R0,[R4, #+4]
+   \   000003D4   ........           _BLF     memcpy,??memcpy??rA
+   \   000003D8   260000EA           B        ??tcp_write_22
+   \                     ??tcp_write_18:
+   \   000003DC   0120A0E3           MOV      R2,#+1
+   \   000003E0   0A10A0E1           MOV      R1,R10
+   \   000003E4   0000A0E3           MOV      R0,#+0
+   \   000003E8   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   000003EC   14008DE5           STR      R0,[SP, #+20]
+   \   000003F0   000050E3           CMP      R0,#+0
+   \   000003F4   0900000A           BEQ      ??tcp_write_14
+   \   000003F8   0C109DE5           LDR      R1,[SP, #+12]
+   \   000003FC   0020A0E3           MOV      R2,#+0
+   \   00000400   041080E5           STR      R1,[R0, #+4]
+   \   00000404   0010A0E3           MOV      R1,#+0
+   \   00000408   0100A0E1           MOV      R0,R1
+   \   0000040C   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   00000410   0040B0E1           MOVS     R4,R0
+   \   00000414   1500001A           BNE      ??tcp_write_23
+   \   00000418   14009DE5           LDR      R0,[SP, #+20]
+   \                     ??tcp_write_24:
+   \   0000041C   ........           _BLF     pbuf_free,??pbuf_free??rA
+    616            }
+    617          
+    618            /*
+    619             * All three segmentation phases were successful. We can commit the
+    620             * transaction.
+    621             */
+    622          
+    623            /*
+    624             * Phase 1: If data has been added to the preallocated tail of
+    625             * last_unsent, we update the length fields of the pbuf chain.
+    626             */
+    627          #if TCP_OVERSIZE
+    628            if (oversize_used > 0) {
+    629              struct pbuf *p;
+    630              /* Bump tot_len of whole chain, len of tail */
+    631              for (p = last_unsent->p; p; p = p->next) {
+    632                p->tot_len += oversize_used;
+    633                if (p->next == NULL) {
+    634                  TCP_DATA_COPY((char *)p->payload + p->len, arg, oversize_used, last_unsent);
+    635                  p->len += oversize_used;
+    636                }
+    637              }
+    638              last_unsent->len += oversize_used;
+    639          #if TCP_OVERSIZE_DBGCHECK
+    640              LWIP_ASSERT("last_unsent->oversize_left >= oversize_used",
+    641                          last_unsent->oversize_left >= oversize_used);
+    642              last_unsent->oversize_left -= oversize_used;
+    643          #endif /* TCP_OVERSIZE_DBGCHECK */
+    644            }
+    645            pcb->unsent_oversize = oversize;
+    646          #endif /* TCP_OVERSIZE */
+    647          
+    648            /*
+    649             * Phase 2: concat_p can be concatenated onto last_unsent->p
+    650             */
+    651            if (concat_p != NULL) {
+    652              LWIP_ASSERT("tcp_write: cannot concatenate when pcb->unsent is empty",
+    653                (last_unsent != NULL));
+    654              pbuf_cat(last_unsent->p, concat_p);
+    655              last_unsent->len += concat_p->tot_len;
+    656          #if TCP_CHECKSUM_ON_COPY
+    657              if (concat_chksummed) {
+    658                tcp_seg_add_chksum(concat_chksum, concat_chksummed, &last_unsent->chksum,
+    659                  &last_unsent->chksum_swapped);
+    660                last_unsent->flags |= TF_SEG_DATA_CHECKSUMMED;
+    661              }
+    662          #endif /* TCP_CHECKSUM_ON_COPY */
+    663            }
+    664          
+    665            /*
+    666             * Phase 3: Append queue to pcb->unsent. Queue may be NULL, but that
+    667             * is harmless
+    668             */
+    669            if (last_unsent == NULL) {
+    670              pcb->unsent = queue;
+    671            } else {
+    672              last_unsent->next = queue;
+    673            }
+    674          
+    675            /*
+    676             * Finally update the pcb state.
+    677             */
+    678            pcb->snd_lbb += len;
+    679            pcb->snd_buf -= len;
+    680            pcb->snd_queuelen = queuelen;
+    681          
+    682            LWIP_DEBUGF(TCP_QLEN_DEBUG, ("tcp_write: %"S16_F" (after enqueued)\n",
+    683              pcb->snd_queuelen));
+    684            if (pcb->snd_queuelen != 0) {
+    685              LWIP_ASSERT("tcp_write: valid queue length",
+    686                          pcb->unacked != NULL || pcb->unsent != NULL);
+    687            }
+    688          
+    689            /* Set the PSH flag in the last segment that we enqueued. */
+    690            if (seg != NULL && seg->tcphdr != NULL && ((apiflags & TCP_WRITE_FLAG_MORE)==0)) {
+    691              TCPH_SET_FLAG(seg->tcphdr, TCP_PSH);
+    692            }
+    693          
+    694            return ERR_OK;
+    695          memerr:
+    696            pcb->flags |= TF_NAGLEMEMERR;
+   \                     ??tcp_write_14:
+   \   00000420   1E00D5E5           LDRB     R0,[R5, #+30]
+    697            TCP_STATS_INC(tcp.memerr);
+   \   00000424   EC119FE5           LDR      R1,??tcp_write_9  ;; lwip_stats + 156
+   \   00000428   800080E3           ORR      R0,R0,#0x80
+   \   0000042C   1E00C5E5           STRB     R0,[R5, #+30]
+   \   00000430   B010D1E1           LDRH     R1,[R1, #+0]
+   \   00000434   DC019FE5           LDR      R0,??tcp_write_9  ;; lwip_stats + 156
+   \   00000438   011081E2           ADD      R1,R1,#+1
+   \   0000043C   B010C0E1           STRH     R1,[R0, #+0]
+    698          
+    699            if (concat_p != NULL) {
+   \   00000440   00009DE5           LDR      R0,[SP, #+0]
+   \   00000444   000050E3           CMP      R0,#+0
+   \   00000448   0000000A           BEQ      ??tcp_write_25
+    700              pbuf_free(concat_p);
+   \   0000044C   ........           _BLF     pbuf_free,??pbuf_free??rA
+    701            }
+    702            if (queue != NULL) {
+   \                     ??tcp_write_25:
+   \   00000450   04009DE5           LDR      R0,[SP, #+4]
+   \   00000454   000050E3           CMP      R0,#+0
+   \   00000458   0000000A           BEQ      ??tcp_write_26
+    703              tcp_segs_free(queue);
+   \   0000045C   ........           _BLF     tcp_segs_free,??tcp_segs_free??rA
+    704            }
+    705            if (pcb->snd_queuelen != 0) {
+    706              LWIP_ASSERT("tcp_write: valid queue length", pcb->unacked != NULL ||
+    707                pcb->unsent != NULL);
+    708            }
+    709            LWIP_DEBUGF(TCP_QLEN_DEBUG | LWIP_DBG_STATE, ("tcp_write: %"S16_F" (with mem err)\n", pcb->snd_queuelen));
+    710            return ERR_MEM;
+   \                     ??tcp_write_26:
+   \   00000460   0000E0E3           MVN      R0,#+0
+   \                     ??tcp_write_0:
+   \   00000464   28D08DE2           ADD      SP,SP,#+40
+   \   00000468   F04FBDE8           POP      {R4-R11,LR}
+   \   0000046C   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_write_23:
+   \   00000470   14109DE5           LDR      R1,[SP, #+20]
+   \   00000474   ........           _BLF     pbuf_cat,??pbuf_cat??rA
+   \                     ??tcp_write_22:
+   \   00000478   0400A0E1           MOV      R0,R4
+   \   0000047C   ........           _BLF     pbuf_clen,??pbuf_clen??rA
+   \   00000480   088080E0           ADD      R8,R0,R8
+   \   00000484   0888A0E1           MOV      R8,R8, LSL #+16
+   \   00000488   2888A0E1           MOV      R8,R8, LSR #+16
+   \   0000048C   110058E3           CMP      R8,#+17
+   \   00000490   0300002A           BCS      ??tcp_write_27
+   \   00000494   FD00A0E3           MOV      R0,#+253
+   \   00000498   FF0C80E3           ORR      R0,R0,#0xFF00
+   \   0000049C   000058E1           CMP      R8,R0
+   \   000004A0   0100003A           BCC      ??tcp_write_28
+   \                     ??tcp_write_27:
+   \   000004A4   0400A0E1           MOV      R0,R4
+   \   000004A8   DBFFFFEA           B        ??tcp_write_24
+   \                     ??tcp_write_28:
+   \   000004AC   0000A0E3           MOV      R0,#+0
+   \   000004B0   01002DE9           PUSH     {R0}
+   \   000004B4   5C0095E5           LDR      R0,[R5, #+92]
+   \   000004B8   0020A0E3           MOV      R2,#+0
+   \   000004BC   003089E0           ADD      R3,R9,R0
+   \   000004C0   0410A0E1           MOV      R1,R4
+   \   000004C4   0500A0E1           MOV      R0,R5
+   \   000004C8   ........           BL       tcp_create_segment
+   \   000004CC   0040B0E1           MOVS     R4,R0
+   \   000004D0   04D08DE2           ADD      SP,SP,#+4
+   \   000004D4   D1FFFF0A           BEQ      ??tcp_write_14
+   \   000004D8   04009DE5           LDR      R0,[SP, #+4]
+   \   000004DC   000050E3           CMP      R0,#+0
+   \   000004E0   18009D15           LDRNE    R0,[SP, #+24]
+   \   000004E4   04408D05           STREQ    R4,[SP, #+4]
+   \   000004E8   00408015           STRNE    R4,[R0, #+0]
+   \   000004EC   6BFFFFEA           B        ??tcp_write_16
+   \                     ??tcp_write_17:
+   \   000004F0   0700B0E1           MOVS     R0,R7
+   \   000004F4   1700000A           BEQ      ??tcp_write_29
+   \   000004F8   049096E5           LDR      R9,[R6, #+4]
+   \   000004FC   000059E3           CMP      R9,#+0
+   \   00000500   1100000A           BEQ      ??tcp_write_30
+   \                     ??tcp_write_31:
+   \   00000504   B800D9E1           LDRH     R0,[R9, #+8]
+   \   00000508   000087E0           ADD      R0,R7,R0
+   \   0000050C   B800C9E1           STRH     R0,[R9, #+8]
+   \   00000510   000099E5           LDR      R0,[R9, #+0]
+   \   00000514   000050E3           CMP      R0,#+0
+   \   00000518   0800001A           BNE      ??tcp_write_32
+   \   0000051C   BA00D9E1           LDRH     R0,[R9, #+10]
+   \   00000520   1C109DE5           LDR      R1,[SP, #+28]
+   \   00000524   043099E5           LDR      R3,[R9, #+4]
+   \   00000528   0720A0E1           MOV      R2,R7
+   \   0000052C   030080E0           ADD      R0,R0,R3
+   \   00000530   ........           _BLF     memcpy,??memcpy??rA
+   \   00000534   BA00D9E1           LDRH     R0,[R9, #+10]
+   \   00000538   000087E0           ADD      R0,R7,R0
+   \   0000053C   BA00C9E1           STRH     R0,[R9, #+10]
+   \                     ??tcp_write_32:
+   \   00000540   009099E5           LDR      R9,[R9, #+0]
+   \   00000544   000059E3           CMP      R9,#+0
+   \   00000548   EDFFFF1A           BNE      ??tcp_write_31
+   \                     ??tcp_write_30:
+   \   0000054C   B800D6E1           LDRH     R0,[R6, #+8]
+   \   00000550   000087E0           ADD      R0,R7,R0
+   \   00000554   B800C6E1           STRH     R0,[R6, #+8]
+   \                     ??tcp_write_29:
+   \   00000558   BAB6C5E1           STRH     R11,[R5, #+106]
+   \   0000055C   00009DE5           LDR      R0,[SP, #+0]
+   \   00000560   000050E3           CMP      R0,#+0
+   \   00000564   0700000A           BEQ      ??tcp_write_33
+   \   00000568   0010A0E1           MOV      R1,R0
+   \   0000056C   040096E5           LDR      R0,[R6, #+4]
+   \   00000570   ........           _BLF     pbuf_cat,??pbuf_cat??rA
+   \   00000574   00109DE5           LDR      R1,[SP, #+0]
+   \   00000578   B800D6E1           LDRH     R0,[R6, #+8]
+   \   0000057C   B810D1E1           LDRH     R1,[R1, #+8]
+   \   00000580   000081E0           ADD      R0,R1,R0
+   \   00000584   B800C6E1           STRH     R0,[R6, #+8]
+   \                     ??tcp_write_33:
+   \   00000588   04009DE5           LDR      R0,[SP, #+4]
+   \   0000058C   000056E3           CMP      R6,#+0
+   \   00000590   6C008505           STREQ    R0,[R5, #+108]
+   \   00000594   00008615           STRNE    R0,[R6, #+0]
+   \   00000598   B012DDE1           LDRH     R1,[SP, #+32]
+   \   0000059C   5C0095E5           LDR      R0,[R5, #+92]
+   \   000005A0   000054E3           CMP      R4,#+0
+   \   000005A4   000081E0           ADD      R0,R1,R0
+   \   000005A8   5C0085E5           STR      R0,[R5, #+92]
+   \   000005AC   B606D5E1           LDRH     R0,[R5, #+102]
+   \   000005B0   B012DDE1           LDRH     R1,[SP, #+32]
+   \   000005B4   010040E0           SUB      R0,R0,R1
+   \   000005B8   B606C5E1           STRH     R0,[R5, #+102]
+   \   000005BC   B886C5E1           STRH     R8,[R5, #+104]
+   \   000005C0   1000000A           BEQ      ??tcp_write_34
+   \   000005C4   0C0094E5           LDR      R0,[R4, #+12]
+   \   000005C8   000050E3           CMP      R0,#+0
+   \   000005CC   A4FFFF0A           BEQ      ??tcp_write_0
+   \   000005D0   2400DDE5           LDRB     R0,[SP, #+36]
+   \   000005D4   020010E3           TST      R0,#0x2
+   \   000005D8   0A00001A           BNE      ??tcp_write_34
+   \   000005DC   0800A0E3           MOV      R0,#+8
+   \   000005E0   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000005E4   0C1094E5           LDR      R1,[R4, #+12]
+   \   000005E8   0D20D1E5           LDRB     R2,[R1, #+13]
+   \   000005EC   0C30D1E5           LDRB     R3,[R1, #+12]
+   \   000005F0   022483E1           ORR      R2,R3,R2, LSL #+8
+   \   000005F4   020080E1           ORR      R0,R0,R2
+   \   000005F8   0C00C1E5           STRB     R0,[R1, #+12]
+   \   000005FC   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000600   2004A0E1           LSR      R0,R0,#+8
+   \   00000604   0D00C1E5           STRB     R0,[R1, #+13]
+   \                     ??tcp_write_34:
+   \   00000608   28D08DE2           ADD      SP,SP,#+40
+   \   0000060C   F04FBDE8           POP      {R4-R11,LR}
+   \   00000610   0000A0E3           MOV      R0,#+0
+   \   00000614   1EFF2FE1           BX       LR
+   \                     ??tcp_write_9:
+   \   00000618   ........           DC32     lwip_stats + 156
+    711          }
+    712          
+    713          /**
+    714           * Enqueue TCP options for transmission.
+    715           *
+    716           * Called by tcp_connect(), tcp_listen_input(), and tcp_send_ctrl().
+    717           *
+    718           * @param pcb Protocol control block for the TCP connection.
+    719           * @param flags TCP header flags to set in the outgoing segment.
+    720           * @param optdata pointer to TCP options, or NULL.
+    721           * @param optlen length of TCP options in bytes.
+    722           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    723          err_t
+    724          tcp_enqueue_flags(struct tcp_pcb *pcb, u8_t flags)
+    725          {
+   \                     tcp_enqueue_flags:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+    726            struct pbuf *p;
+    727            struct tcp_seg *seg;
+    728            u8_t optflags = 0;
+    729            u8_t optlen = 0;
+    730          
+    731            LWIP_DEBUGF(TCP_QLEN_DEBUG, ("tcp_enqueue_flags: queuelen: %"U16_F"\n", (u16_t)pcb->snd_queuelen));
+    732          
+    733            LWIP_ASSERT("tcp_enqueue_flags: need either TCP_SYN or TCP_FIN in flags (programmer violates API)",
+    734                        (flags & (TCP_SYN | TCP_FIN)) != 0);
+    735          
+    736            /* check for configured max queuelen and possible overflow */
+    737            if ((pcb->snd_queuelen >= TCP_SND_QUEUELEN) || (pcb->snd_queuelen > TCP_SNDQUEUELEN_OVERFLOW)) {
+   \   00000004   ........           LDR      R7,??DataTable2  ;; lwip_stats
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   BC09D7E1           LDRH     R0,[R7, #+156]
+   \   00000010   0150A0E1           MOV      R5,R1
+   \   00000014   B816D4E1           LDRH     R1,[R4, #+104]
+   \   00000018   0060A0E3           MOV      R6,#+0
+   \   0000001C   0080A0E3           MOV      R8,#+0
+   \   00000020   010080E2           ADD      R0,R0,#+1
+   \   00000024   100051E3           CMP      R1,#+16
+   \   00000028   0700002A           BCS      ??tcp_enqueue_flags_0
+    738              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 3, ("tcp_enqueue_flags: too long queue %"U16_F" (max %"U16_F")\n",
+    739                                                 pcb->snd_queuelen, TCP_SND_QUEUELEN));
+    740              TCP_STATS_INC(tcp.memerr);
+    741              pcb->flags |= TF_NAGLEMEMERR;
+    742              return ERR_MEM;
+    743            }
+    744          
+    745            if (flags & TCP_SYN) {
+   \   0000002C   020015E3           TST      R5,#0x2
+   \   00000030   0180A013           MOVNE    R8,#+1
+   \   00000034   0410A013           MOVNE    R1,#+4
+   \   00000038   0010A003           MOVEQ    R1,#+0
+   \   0000003C   020018E3           TST      R8,#0x2
+   \   00000040   0020A003           MOVEQ    R2,#+0
+   \   00000044   0C20A013           MOVNE    R2,#+12
+   \   00000048   040000EA           B        ??tcp_enqueue_flags_1
+   \                     ??tcp_enqueue_flags_0:
+   \   0000004C   BC09C7E1           STRH     R0,[R7, #+156]
+   \   00000050   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   00000054   800080E3           ORR      R0,R0,#0x80
+   \   00000058   1E00C4E5           STRB     R0,[R4, #+30]
+   \                     ??tcp_enqueue_flags_2:
+   \   0000005C   100000EA           B        ??tcp_enqueue_flags_3
+   \                     ??tcp_enqueue_flags_1:
+   \   00000060   011082E0           ADD      R1,R2,R1
+    746              optflags = TF_SEG_OPTS_MSS;
+    747            }
+    748          #if LWIP_TCP_TIMESTAMPS
+    749            if ((pcb->flags & TF_TIMESTAMP)) {
+    750              optflags |= TF_SEG_OPTS_TS;
+    751            }
+    752          #endif /* LWIP_TCP_TIMESTAMPS */
+    753            optlen = LWIP_TCP_OPT_LENGTH(optflags);
+    754          
+    755            /* tcp_enqueue_flags is always called with either SYN or FIN in flags.
+    756             * We need one available snd_buf byte to do that.
+    757             * This means we can't send FIN while snd_buf==0. A better fix would be to
+    758             * not include SYN and FIN sequence numbers in the snd_buf count. */
+    759            if (pcb->snd_buf == 0) {
+   \   00000064   B626D4E1           LDRH     R2,[R4, #+102]
+   \   00000068   000052E3           CMP      R2,#+0
+    760              LWIP_DEBUGF(TCP_OUTPUT_DEBUG | 3, ("tcp_enqueue_flags: no send buffer available\n"));
+    761              TCP_STATS_INC(tcp.memerr);
+   \   0000006C   BC09C701           STRHEQ   R0,[R7, #+156]
+    762              return ERR_MEM;
+   \   00000070   0B00000A           BEQ      ??tcp_enqueue_flags_3
+    763            }
+    764          
+    765            /* Allocate pbuf with room for TCP header + options */
+    766            if ((p = pbuf_alloc(PBUF_TRANSPORT, optlen, PBUF_RAM)) == NULL) {
+   \   00000074   0020A0E3           MOV      R2,#+0
+   \   00000078   FF1001E2           AND      R1,R1,#0xFF
+   \   0000007C   0200A0E1           MOV      R0,R2
+   \   00000080   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   00000084   000050E3           CMP      R0,#+0
+   \   00000088   0800001A           BNE      ??tcp_enqueue_flags_4
+    767              pcb->flags |= TF_NAGLEMEMERR;
+   \                     ??tcp_enqueue_flags_5:
+   \   0000008C   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   00000090   800080E3           ORR      R0,R0,#0x80
+   \   00000094   1E00C4E5           STRB     R0,[R4, #+30]
+    768              TCP_STATS_INC(tcp.memerr);
+   \   00000098   BC09D7E1           LDRH     R0,[R7, #+156]
+   \   0000009C   010080E2           ADD      R0,R0,#+1
+   \   000000A0   BC09C7E1           STRH     R0,[R7, #+156]
+    769              return ERR_MEM;
+   \                     ??tcp_enqueue_flags_3:
+   \   000000A4   0600E0E1           MVN      R0,R6
+   \   000000A8   F041BDE8           POP      {R4-R8,LR}
+   \   000000AC   1EFF2FE1           BX       LR
+    770            }
+    771            LWIP_ASSERT("tcp_enqueue_flags: check that first pbuf can hold optlen",
+    772                        (p->len >= optlen));
+    773          
+    774            /* Allocate memory for tcp_seg, and fill in fields. */
+    775            if ((seg = tcp_create_segment(pcb, p, flags, pcb->snd_lbb, optflags)) == NULL) {
+   \                     ??tcp_enqueue_flags_4:
+   \   000000B0   00012DE9           PUSH     {R8}
+   \   000000B4   5C3094E5           LDR      R3,[R4, #+92]
+   \   000000B8   0520A0E1           MOV      R2,R5
+   \   000000BC   0010A0E1           MOV      R1,R0
+   \   000000C0   0400A0E1           MOV      R0,R4
+   \   000000C4   ........           BL       tcp_create_segment
+   \   000000C8   000050E3           CMP      R0,#+0
+   \   000000CC   04D08DE2           ADD      SP,SP,#+4
+   \   000000D0   EDFFFF0A           BEQ      ??tcp_enqueue_flags_5
+    776              pcb->flags |= TF_NAGLEMEMERR;
+    777              TCP_STATS_INC(tcp.memerr);
+    778              return ERR_MEM;
+    779            }
+    780            LWIP_ASSERT("seg->tcphdr not aligned", ((mem_ptr_t)seg->tcphdr % MEM_ALIGNMENT) == 0);
+    781            LWIP_ASSERT("tcp_enqueue_flags: invalid segment length", seg->len == 0);
+    782          
+    783            LWIP_DEBUGF(TCP_OUTPUT_DEBUG | LWIP_DBG_TRACE,
+    784                        ("tcp_enqueue_flags: queueing %"U32_F":%"U32_F" (0x%"X16_F")\n",
+    785                         ntohl(seg->tcphdr->seqno),
+    786                         ntohl(seg->tcphdr->seqno) + TCP_TCPLEN(seg),
+    787                         (u16_t)flags));
+    788          
+    789            /* Now append seg to pcb->unsent queue */
+    790            if (pcb->unsent == NULL) {
+   \   000000D4   6C1094E5           LDR      R1,[R4, #+108]
+   \   000000D8   000051E3           CMP      R1,#+0
+    791              pcb->unsent = seg;
+   \   000000DC   6C008405           STREQ    R0,[R4, #+108]
+   \   000000E0   0700000A           BEQ      ??tcp_enqueue_flags_6
+    792            } else {
+    793              struct tcp_seg *useg;
+    794              for (useg = pcb->unsent; useg->next != NULL; useg = useg->next);
+   \   000000E4   002091E5           LDR      R2,[R1, #+0]
+   \   000000E8   000052E3           CMP      R2,#+0
+   \   000000EC   0300000A           BEQ      ??tcp_enqueue_flags_7
+   \                     ??tcp_enqueue_flags_8:
+   \   000000F0   001091E5           LDR      R1,[R1, #+0]
+   \   000000F4   002091E5           LDR      R2,[R1, #+0]
+   \   000000F8   000052E3           CMP      R2,#+0
+   \   000000FC   FBFFFF1A           BNE      ??tcp_enqueue_flags_8
+    795              useg->next = seg;
+   \                     ??tcp_enqueue_flags_7:
+   \   00000100   000081E5           STR      R0,[R1, #+0]
+    796            }
+    797          #if TCP_OVERSIZE
+    798            /* The new unsent tail has no space */
+    799            pcb->unsent_oversize = 0;
+   \                     ??tcp_enqueue_flags_6:
+   \   00000104   BA66C4E1           STRH     R6,[R4, #+106]
+    800          #endif /* TCP_OVERSIZE */
+    801          
+    802            /* SYN and FIN bump the sequence number */
+    803            if ((flags & TCP_SYN) || (flags & TCP_FIN)) {
+   \   00000108   030015E3           TST      R5,#0x3
+   \   0000010C   0700000A           BEQ      ??tcp_enqueue_flags_9
+    804              pcb->snd_lbb++;
+   \   00000110   5C1094E5           LDR      R1,[R4, #+92]
+    805              /* optlen does not influence snd_buf */
+    806              pcb->snd_buf--;
+   \   00000114   FF20A0E3           MOV      R2,#+255
+   \   00000118   011081E2           ADD      R1,R1,#+1
+   \   0000011C   5C1084E5           STR      R1,[R4, #+92]
+   \   00000120   B616D4E1           LDRH     R1,[R4, #+102]
+   \   00000124   FF2C82E3           ORR      R2,R2,#0xFF00
+   \   00000128   011082E0           ADD      R1,R2,R1
+   \   0000012C   B616C4E1           STRH     R1,[R4, #+102]
+    807            }
+    808            if (flags & TCP_FIN) {
+   \                     ??tcp_enqueue_flags_9:
+   \   00000130   010015E3           TST      R5,#0x1
+    809              pcb->flags |= TF_FIN;
+   \   00000134   1E10D415           LDRBNE   R1,[R4, #+30]
+   \   00000138   20108113           ORRNE    R1,R1,#0x20
+   \   0000013C   1E10C415           STRBNE   R1,[R4, #+30]
+    810            }
+    811          
+    812            /* update number of segments on the queues */
+    813            pcb->snd_queuelen += pbuf_clen(seg->p);
+   \   00000140   040090E5           LDR      R0,[R0, #+4]
+   \   00000144   ........           _BLF     pbuf_clen,??pbuf_clen??rA
+   \   00000148   B816D4E1           LDRH     R1,[R4, #+104]
+   \   0000014C   010080E0           ADD      R0,R0,R1
+   \   00000150   B806C4E1           STRH     R0,[R4, #+104]
+    814            LWIP_DEBUGF(TCP_QLEN_DEBUG, ("tcp_enqueue_flags: %"S16_F" (after enqueued)\n", pcb->snd_queuelen));
+    815            if (pcb->snd_queuelen != 0) {
+    816              LWIP_ASSERT("tcp_enqueue_flags: invalid queue length",
+    817                pcb->unacked != NULL || pcb->unsent != NULL);
+    818            }
+    819          
+    820            return ERR_OK;
+   \   00000154   F041BDE8           POP      {R4-R8,LR}
+   \   00000158   0000A0E3           MOV      R0,#+0
+   \   0000015C   1EFF2FE1           BX       LR               ;; return
+    821          }
+    822          
+    823          #if LWIP_TCP_TIMESTAMPS
+    824          /* Build a timestamp option (12 bytes long) at the specified options pointer)
+    825           *
+    826           * @param pcb tcp_pcb
+    827           * @param opts option pointer where to store the timestamp option
+    828           */
+    829          static void
+    830          tcp_build_timestamp_option(struct tcp_pcb *pcb, u32_t *opts)
+    831          {
+    832            /* Pad with two NOP options to make everything nicely aligned */
+    833            opts[0] = PP_HTONL(0x0101080A);
+    834            opts[1] = htonl(sys_now());
+    835            opts[2] = htonl(pcb->ts_recent);
+    836          }
+    837          #endif
+    838          
+    839          /** Send an ACK without data.
+    840           *
+    841           * @param pcb Protocol control block for the TCP connection to send the ACK
+    842           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    843          err_t
+    844          tcp_send_empty_ack(struct tcp_pcb *pcb)
+    845          {
+   \                     tcp_send_empty_ack:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    846            struct pbuf *p;
+    847            struct tcp_hdr *tcphdr;
+    848            u8_t optlen = 0;
+    849          
+    850          #if LWIP_TCP_TIMESTAMPS
+    851            if (pcb->flags & TF_TIMESTAMP) {
+    852              optlen = LWIP_TCP_OPT_LENGTH(TF_SEG_OPTS_TS);
+    853            }
+    854          #endif
+    855          
+    856            p = tcp_output_alloc_header(pcb, optlen, 0, htonl(pcb->snd_nxt));
+   \   00000008   500094E5           LDR      R0,[R4, #+80]
+   \   0000000C   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   00000010   0030A0E1           MOV      R3,R0
+   \   00000014   0020A0E3           MOV      R2,#+0
+   \   00000018   0010A0E3           MOV      R1,#+0
+   \   0000001C   0400A0E1           MOV      R0,R4
+   \   00000020   ........           BL       tcp_output_alloc_header
+   \   00000024   0050B0E1           MOVS     R5,R0
+    857            if (p == NULL) {
+    858              LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_output: (ACK) could not allocate pbuf\n"));
+    859              return ERR_BUF;
+   \   00000028   0100E003           MVNEQ    R0,#+1
+   \   0000002C   1A00000A           BEQ      ??tcp_send_empty_ack_0
+    860            }
+    861            tcphdr = (struct tcp_hdr *)p->payload;
+    862            LWIP_DEBUGF(TCP_OUTPUT_DEBUG, 
+    863                        ("tcp_output: sending ACK for %"U32_F"\n", pcb->rcv_nxt));
+    864            /* remove ACK flags from the PCB, as we send an empty ACK now */
+    865            pcb->flags &= ~(TF_ACK_DELAY | TF_ACK_NOW);
+   \   00000030   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   00000034   046095E5           LDR      R6,[R5, #+4]
+    866          
+    867            /* NB. MSS option is only sent on SYNs, so ignore it here */
+    868          #if LWIP_TCP_TIMESTAMPS
+    869            pcb->ts_lastacksent = pcb->rcv_nxt;
+    870          
+    871            if (pcb->flags & TF_TIMESTAMP) {
+    872              tcp_build_timestamp_option(pcb, (u32_t *)(tcphdr + 1));
+    873            }
+    874          #endif 
+    875          
+    876          #if CHECKSUM_GEN_TCP
+    877            tcphdr->chksum = inet_chksum_pseudo(p, &(pcb->local_ip), &(pcb->remote_ip),
+    878                  IP_PROTO_TCP, p->tot_len);
+   \   00000038   0630A0E3           MOV      R3,#+6
+   \   0000003C   FC0000E2           AND      R0,R0,#0xFC
+   \   00000040   1E00C4E5           STRB     R0,[R4, #+30]
+   \   00000044   B800D5E1           LDRH     R0,[R5, #+8]
+   \   00000048   042084E2           ADD      R2,R4,#+4
+   \   0000004C   0410A0E1           MOV      R1,R4
+   \   00000050   01002DE9           PUSH     {R0}
+   \   00000054   0500A0E1           MOV      R0,R5
+   \   00000058   ........           _BLF     inet_chksum_pseudo,??inet_chksum_pseudo??rA
+   \   0000005C   1000C6E5           STRB     R0,[R6, #+16]
+   \   00000060   2004A0E1           LSR      R0,R0,#+8
+   \   00000064   1100C6E5           STRB     R0,[R6, #+17]
+    879          #endif
+    880          #if LWIP_NETIF_HWADDRHINT
+    881            ip_output_hinted(p, &(pcb->local_ip), &(pcb->remote_ip), pcb->ttl, pcb->tos,
+    882                IP_PROTO_TCP, &(pcb->addr_hint));
+    883          #else /* LWIP_NETIF_HWADDRHINT*/
+    884            ip_output(p, &(pcb->local_ip), &(pcb->remote_ip), pcb->ttl, pcb->tos,
+    885                IP_PROTO_TCP);
+   \   00000068   0600A0E3           MOV      R0,#+6
+   \   0000006C   01002DE9           PUSH     {R0}
+   \   00000070   0900D4E5           LDRB     R0,[R4, #+9]
+   \   00000074   042084E2           ADD      R2,R4,#+4
+   \   00000078   0410A0E1           MOV      R1,R4
+   \   0000007C   01002DE9           PUSH     {R0}
+   \   00000080   0A30D4E5           LDRB     R3,[R4, #+10]
+   \   00000084   0500A0E1           MOV      R0,R5
+   \   00000088   ........           _BLF     ip_output,??ip_output??rA
+    886          #endif /* LWIP_NETIF_HWADDRHINT*/
+    887            pbuf_free(p);
+   \   0000008C   0500A0E1           MOV      R0,R5
+   \   00000090   ........           _BLF     pbuf_free,??pbuf_free??rA
+    888          
+    889            return ERR_OK;
+   \   00000094   0000A0E3           MOV      R0,#+0
+   \   00000098   0CD08DE2           ADD      SP,SP,#+12
+   \                     ??tcp_send_empty_ack_0:
+   \   0000009C   7040BDE8           POP      {R4-R6,LR}
+   \   000000A0   1EFF2FE1           BX       LR               ;; return
+    890          }
+    891          
+    892          /**
+    893           * Find out what we can send and send it
+    894           *
+    895           * @param pcb Protocol control block for the TCP connection to send data
+    896           * @return ERR_OK if data has been sent or nothing to send
+    897           *         another err_t on error
+    898           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    899          err_t
+    900          tcp_output(struct tcp_pcb *pcb)
+    901          {
+   \                     tcp_output:
+   \   00000000   F0472DE9           PUSH     {R4-R10,LR}
+   \   00000004   0050A0E1           MOV      R5,R0
+    902            struct tcp_seg *seg, *useg;
+    903            u32_t wnd, snd_nxt;
+    904          #if TCP_CWND_DEBUG
+    905            s16_t i = 0;
+    906          #endif /* TCP_CWND_DEBUG */
+    907          
+    908            /* pcb->state LISTEN not allowed here */
+    909            LWIP_ASSERT("don't call tcp_output for listen-pcbs",
+    910              pcb->state != LISTEN);
+    911          
+    912            /* First, check if we are invoked by the TCP input processing
+    913               code. If so, we do not output anything. Instead, we rely on the
+    914               input processing code to call us when input processing is done
+    915               with. */
+    916            if (tcp_input_pcb == pcb) {
+   \   00000008   60039FE5           LDR      R0,??tcp_output_0  ;; tcp_input_pcb
+   \   0000000C   000090E5           LDR      R0,[R0, #+0]
+   \   00000010   050050E1           CMP      R0,R5
+    917              return ERR_OK;
+   \   00000014   0000A003           MOVEQ    R0,#+0
+   \   00000018   D200000A           BEQ      ??tcp_output_1
+    918            }
+    919          
+    920            wnd = LWIP_MIN(pcb->snd_wnd, pcb->cwnd);
+   \   0000001C   BC04D5E1           LDRH     R0,[R5, #+76]
+   \   00000020   B046D5E1           LDRH     R4,[R5, #+96]
+    921          
+    922            seg = pcb->unsent;
+   \   00000024   6C6095E5           LDR      R6,[R5, #+108]
+   \   00000028   000054E1           CMP      R4,R0
+   \   0000002C   0040A021           MOVCS    R4,R0
+    923          
+    924            /* If the TF_ACK_NOW flag is set and no data will be sent (either
+    925             * because the ->unsent queue is empty or because the window does
+    926             * not allow it), construct an empty ACK segment and send it.
+    927             *
+    928             * If data is to be sent, we will just piggyback the ACK (see below).
+    929             */
+    930            if (pcb->flags & TF_ACK_NOW &&
+    931               (seg == NULL ||
+    932                ntohl(seg->tcphdr->seqno) - pcb->lastack + seg->len > wnd)) {
+   \   00000030   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   00000034   020010E3           TST      R0,#0x2
+   \   00000038   1300000A           BEQ      ??tcp_output_2
+   \   0000003C   000056E3           CMP      R6,#+0
+   \   00000040   0E00000A           BEQ      ??tcp_output_3
+   \   00000044   0C0096E5           LDR      R0,[R6, #+12]
+   \   00000048   0710D0E5           LDRB     R1,[R0, #+7]
+   \   0000004C   0620D0E5           LDRB     R2,[R0, #+6]
+   \   00000050   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000054   0520D0E5           LDRB     R2,[R0, #+5]
+   \   00000058   0400D0E5           LDRB     R0,[R0, #+4]
+   \   0000005C   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000060   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000064   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   00000068   481095E5           LDR      R1,[R5, #+72]
+   \   0000006C   010040E0           SUB      R0,R0,R1
+   \   00000070   B810D6E1           LDRH     R1,[R6, #+8]
+   \   00000074   000081E0           ADD      R0,R1,R0
+   \   00000078   000054E1           CMP      R4,R0
+   \   0000007C   0200002A           BCS      ??tcp_output_2
+    933               return tcp_send_empty_ack(pcb);
+   \                     ??tcp_output_3:
+   \   00000080   0500A0E1           MOV      R0,R5
+   \   00000084   ........           BL       tcp_send_empty_ack
+   \   00000088   B60000EA           B        ??tcp_output_1
+    934            }
+    935          
+    936            /* useg should point to last segment on unacked queue */
+    937            useg = pcb->unacked;
+   \                     ??tcp_output_2:
+   \   0000008C   707095E5           LDR      R7,[R5, #+112]
+    938            if (useg != NULL) {
+   \   00000090   000057E3           CMP      R7,#+0
+   \   00000094   0400000A           BEQ      ??tcp_output_4
+   \   00000098   000000EA           B        ??tcp_output_5
+    939              for (; useg->next != NULL; useg = useg->next);
+   \                     ??tcp_output_6:
+   \   0000009C   0070A0E1           MOV      R7,R0
+   \                     ??tcp_output_5:
+   \   000000A0   000097E5           LDR      R0,[R7, #+0]
+   \   000000A4   000050E3           CMP      R0,#+0
+   \   000000A8   FBFFFF1A           BNE      ??tcp_output_6
+    940            }
+    941          
+    942          #if TCP_OUTPUT_DEBUG
+    943            if (seg == NULL) {
+    944              LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_output: nothing to send (%p)\n",
+    945                                             (void*)pcb->unsent));
+    946            }
+    947          #endif /* TCP_OUTPUT_DEBUG */
+    948          #if TCP_CWND_DEBUG
+    949            if (seg == NULL) {
+    950              LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_output: snd_wnd %"U16_F
+    951                                           ", cwnd %"U16_F", wnd %"U32_F
+    952                                           ", seg == NULL, ack %"U32_F"\n",
+    953                                           pcb->snd_wnd, pcb->cwnd, wnd, pcb->lastack));
+    954            } else {
+    955              LWIP_DEBUGF(TCP_CWND_DEBUG, 
+    956                          ("tcp_output: snd_wnd %"U16_F", cwnd %"U16_F", wnd %"U32_F
+    957                           ", effwnd %"U32_F", seq %"U32_F", ack %"U32_F"\n",
+    958                           pcb->snd_wnd, pcb->cwnd, wnd,
+    959                           ntohl(seg->tcphdr->seqno) - pcb->lastack + seg->len,
+    960                           ntohl(seg->tcphdr->seqno), pcb->lastack));
+    961            }
+    962          #endif /* TCP_CWND_DEBUG */
+    963            /* data available and window allows it to be sent? */
+    964            while (seg != NULL &&
+    965                   ntohl(seg->tcphdr->seqno) - pcb->lastack + seg->len <= wnd) {
+   \                     ??tcp_output_4:
+   \   000000AC   0080A0E3           MOV      R8,#+0
+   \   000000B0   000056E3           CMP      R6,#+0
+   \   000000B4   A400000A           BEQ      ??tcp_output_7
+   \   000000B8   0C0096E5           LDR      R0,[R6, #+12]
+   \   000000BC   0710D0E5           LDRB     R1,[R0, #+7]
+   \   000000C0   0620D0E5           LDRB     R2,[R0, #+6]
+   \   000000C4   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000000C8   0520D0E5           LDRB     R2,[R0, #+5]
+   \   000000CC   0400D0E5           LDRB     R0,[R0, #+4]
+   \   000000D0   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000000D4   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   000000D8   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   000000DC   481095E5           LDR      R1,[R5, #+72]
+   \   000000E0   010040E0           SUB      R0,R0,R1
+   \   000000E4   B810D6E1           LDRH     R1,[R6, #+8]
+   \   000000E8   000081E0           ADD      R0,R1,R0
+   \   000000EC   000054E1           CMP      R4,R0
+   \   000000F0   9500003A           BCC      ??tcp_output_7
+    966              LWIP_ASSERT("RST not expected here!", 
+    967                          (TCPH_FLAGS(seg->tcphdr) & TCP_RST) == 0);
+    968              /* Stop sending if the nagle algorithm would prevent it
+    969               * Don't stop:
+    970               * - if tcp_write had a memory error before (prevent delayed ACK timeout) or
+    971               * - if FIN was already enqueued for this PCB (SYN is always alone in a segment -
+    972               *   either seg->next != NULL or pcb->unacked == NULL;
+    973               *   RST is no sent using tcp_write/tcp_output.
+    974               */
+    975              if((tcp_do_output_nagle(pcb) == 0) &&
+    976                ((pcb->flags & (TF_NAGLEMEMERR | TF_FIN)) == 0)){
+   \   000000F4   700095E5           LDR      R0,[R5, #+112]
+   \   000000F8   000050E3           CMP      R0,#+0
+   \   000000FC   1400000A           BEQ      ??tcp_output_8
+   \   00000100   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   00000104   440010E3           TST      R0,#0x44
+   \   00000108   1100001A           BNE      ??tcp_output_8
+   \   0000010C   6C1095E5           LDR      R1,[R5, #+108]
+   \   00000110   000051E3           CMP      R1,#+0
+   \   00000114   0600000A           BEQ      ??tcp_output_9
+   \   00000118   002091E5           LDR      R2,[R1, #+0]
+   \   0000011C   000052E3           CMP      R2,#+0
+   \   00000120   0B00001A           BNE      ??tcp_output_8
+   \   00000124   B810D1E1           LDRH     R1,[R1, #+8]
+   \   00000128   B623D5E1           LDRH     R2,[R5, #+54]
+   \   0000012C   020051E1           CMP      R1,R2
+   \   00000130   0700002A           BCS      ??tcp_output_8
+   \                     ??tcp_output_9:
+   \   00000134   B616D5E1           LDRH     R1,[R5, #+102]
+   \   00000138   000051E3           CMP      R1,#+0
+   \   0000013C   0400000A           BEQ      ??tcp_output_8
+   \   00000140   B816D5E1           LDRH     R1,[R5, #+104]
+   \   00000144   100051E3           CMP      R1,#+16
+   \   00000148   0100002A           BCS      ??tcp_output_8
+   \   0000014C   A00010E3           TST      R0,#0xA0
+   \   00000150   7D00000A           BEQ      ??tcp_output_7
+    977                break;
+    978              }
+    979          #if TCP_CWND_DEBUG
+    980              LWIP_DEBUGF(TCP_CWND_DEBUG, ("tcp_output: snd_wnd %"U16_F", cwnd %"U16_F", wnd %"U32_F", effwnd %"U32_F", seq %"U32_F", ack %"U32_F", i %"S16_F"\n",
+    981                                      pcb->snd_wnd, pcb->cwnd, wnd,
+    982                                      ntohl(seg->tcphdr->seqno) + seg->len -
+    983                                      pcb->lastack,
+    984                                      ntohl(seg->tcphdr->seqno), pcb->lastack, i));
+    985              ++i;
+    986          #endif /* TCP_CWND_DEBUG */
+    987          
+    988              pcb->unsent = seg->next;
+   \                     ??tcp_output_8:
+   \   00000154   000096E5           LDR      R0,[R6, #+0]
+   \   00000158   6C0085E5           STR      R0,[R5, #+108]
+    989          
+    990              if (pcb->state != SYN_SENT) {
+   \   0000015C   1800D5E5           LDRB     R0,[R5, #+24]
+   \   00000160   020050E3           CMP      R0,#+2
+   \   00000164   0D00000A           BEQ      ??tcp_output_10
+    991                TCPH_SET_FLAG(seg->tcphdr, TCP_ACK);
+   \   00000168   1000A0E3           MOV      R0,#+16
+   \   0000016C   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000170   0C1096E5           LDR      R1,[R6, #+12]
+   \   00000174   0D20D1E5           LDRB     R2,[R1, #+13]
+   \   00000178   0C30D1E5           LDRB     R3,[R1, #+12]
+   \   0000017C   022483E1           ORR      R2,R3,R2, LSL #+8
+   \   00000180   020080E1           ORR      R0,R0,R2
+   \   00000184   0C00C1E5           STRB     R0,[R1, #+12]
+   \   00000188   0C1096E5           LDR      R1,[R6, #+12]
+   \   0000018C   2004A0E1           LSR      R0,R0,#+8
+   \   00000190   0D00C1E5           STRB     R0,[R1, #+13]
+    992                pcb->flags &= ~(TF_ACK_DELAY | TF_ACK_NOW);
+   \   00000194   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   00000198   FC0000E2           AND      R0,R0,#0xFC
+   \   0000019C   1E00C5E5           STRB     R0,[R5, #+30]
+    993              }
+    994          
+    995              tcp_output_segment(seg, pcb);
+   \                     ??tcp_output_10:
+   \   000001A0   0510A0E1           MOV      R1,R5
+   \   000001A4   0600A0E1           MOV      R0,R6
+   \   000001A8   ........           BL       tcp_output_segment
+    996              snd_nxt = ntohl(seg->tcphdr->seqno) + TCP_TCPLEN(seg);
+   \   000001AC   0C0096E5           LDR      R0,[R6, #+12]
+   \   000001B0   0710D0E5           LDRB     R1,[R0, #+7]
+   \   000001B4   0620D0E5           LDRB     R2,[R0, #+6]
+   \   000001B8   01A0A0E3           MOV      R10,#+1
+   \   000001BC   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000001C0   0520D0E5           LDRB     R2,[R0, #+5]
+   \   000001C4   0400D0E5           LDRB     R0,[R0, #+4]
+   \   000001C8   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000001CC   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   000001D0   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   000001D4   0090A0E1           MOV      R9,R0
+   \   000001D8   0C0096E5           LDR      R0,[R6, #+12]
+   \   000001DC   0D10D0E5           LDRB     R1,[R0, #+13]
+   \   000001E0   0C00D0E5           LDRB     R0,[R0, #+12]
+   \   000001E4   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   000001E8   ........           _BLF     lwip_ntohs,??lwip_ntohs??rA
+   \   000001EC   B810D6E1           LDRH     R1,[R6, #+8]
+   \   000001F0   030010E3           TST      R0,#0x3
+   \   000001F4   0100A013           MOVNE    R0,#+1
+   \   000001F8   0000A003           MOVEQ    R0,#+0
+   \   000001FC   010080E0           ADD      R0,R0,R1
+    997              if (TCP_SEQ_LT(pcb->snd_nxt, snd_nxt)) {
+   \   00000200   501095E5           LDR      R1,[R5, #+80]
+   \   00000204   090080E0           ADD      R0,R0,R9
+   \   00000208   001051E0           SUBS     R1,R1,R0
+    998                pcb->snd_nxt = snd_nxt;
+   \   0000020C   50008545           STRMI    R0,[R5, #+80]
+    999              }
+   1000              /* put segment on unacknowledged list if length > 0 */
+   1001              if (TCP_TCPLEN(seg) > 0) {
+   \   00000210   0C0096E5           LDR      R0,[R6, #+12]
+   \   00000214   0D10D0E5           LDRB     R1,[R0, #+13]
+   \   00000218   0C00D0E5           LDRB     R0,[R0, #+12]
+   \   0000021C   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000220   ........           _BLF     lwip_ntohs,??lwip_ntohs??rA
+   \   00000224   030010E3           TST      R0,#0x3
+   \   00000228   B800D6E1           LDRH     R0,[R6, #+8]
+   \   0000022C   00A0A003           MOVEQ    R10,#+0
+   \   00000230   00008AE0           ADD      R0,R10,R0
+   \   00000234   010050E3           CMP      R0,#+1
+   \   00000238   3F0000BA           BLT      ??tcp_output_11
+   1002                seg->next = NULL;
+   \   0000023C   008086E5           STR      R8,[R6, #+0]
+   1003                /* unacked list is empty? */
+   1004                if (pcb->unacked == NULL) {
+   \   00000240   700095E5           LDR      R0,[R5, #+112]
+   \   00000244   000050E3           CMP      R0,#+0
+   \   00000248   0200001A           BNE      ??tcp_output_12
+   1005                  pcb->unacked = seg;
+   \   0000024C   706085E5           STR      R6,[R5, #+112]
+   1006                  useg = seg;
+   \                     ??tcp_output_13:
+   \   00000250   0670A0E1           MOV      R7,R6
+   \   00000254   3A0000EA           B        ??tcp_output_14
+   1007                /* unacked list is not empty? */
+   1008                } else {
+   1009                  /* In the case of fast retransmit, the packet should not go to the tail
+   1010                   * of the unacked queue, but rather somewhere before it. We need to check for
+   1011                   * this case. -STJ Jul 27, 2004 */
+   1012                  if (TCP_SEQ_LT(ntohl(seg->tcphdr->seqno), ntohl(useg->tcphdr->seqno))) {
+   \                     ??tcp_output_12:
+   \   00000258   0C0096E5           LDR      R0,[R6, #+12]
+   \   0000025C   0710D0E5           LDRB     R1,[R0, #+7]
+   \   00000260   0620D0E5           LDRB     R2,[R0, #+6]
+   \   00000264   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000268   0520D0E5           LDRB     R2,[R0, #+5]
+   \   0000026C   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000270   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000274   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000278   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   0000027C   0080A0E1           MOV      R8,R0
+   \   00000280   0C0097E5           LDR      R0,[R7, #+12]
+   \   00000284   0710D0E5           LDRB     R1,[R0, #+7]
+   \   00000288   0620D0E5           LDRB     R2,[R0, #+6]
+   \   0000028C   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000290   0520D0E5           LDRB     R2,[R0, #+5]
+   \   00000294   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000298   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   0000029C   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   000002A0   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   000002A4   000058E0           SUBS     R0,R8,R0
+   \   000002A8   2100005A           BPL      ??tcp_output_15
+   1013                    /* add segment to before tail of unacked list, keeping the list sorted */
+   1014                    struct tcp_seg **cur_seg = &(pcb->unacked);
+   \   000002AC   708085E2           ADD      R8,R5,#+112
+   \   000002B0   000000EA           B        ??tcp_output_16
+   1015                    while (*cur_seg &&
+   1016                      TCP_SEQ_LT(ntohl((*cur_seg)->tcphdr->seqno), ntohl(seg->tcphdr->seqno))) {
+   1017                        cur_seg = &((*cur_seg)->next );
+   \                     ??tcp_output_17:
+   \   000002B4   008098E5           LDR      R8,[R8, #+0]
+   1018                    }
+   \                     ??tcp_output_16:
+   \   000002B8   000098E5           LDR      R0,[R8, #+0]
+   \   000002BC   000050E3           CMP      R0,#+0
+   \   000002C0   1700000A           BEQ      ??tcp_output_18
+   \   000002C4   0C1090E5           LDR      R1,[R0, #+12]
+   \   000002C8   0C2090E5           LDR      R2,[R0, #+12]
+   \   000002CC   0710D1E5           LDRB     R1,[R1, #+7]
+   \   000002D0   0620D2E5           LDRB     R2,[R2, #+6]
+   \   000002D4   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000002D8   0C2090E5           LDR      R2,[R0, #+12]
+   \   000002DC   0C0090E5           LDR      R0,[R0, #+12]
+   \   000002E0   0520D2E5           LDRB     R2,[R2, #+5]
+   \   000002E4   0400D0E5           LDRB     R0,[R0, #+4]
+   \   000002E8   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000002EC   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   000002F0   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   000002F4   0090A0E1           MOV      R9,R0
+   \   000002F8   0C0096E5           LDR      R0,[R6, #+12]
+   \   000002FC   0710D0E5           LDRB     R1,[R0, #+7]
+   \   00000300   0620D0E5           LDRB     R2,[R0, #+6]
+   \   00000304   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000308   0520D0E5           LDRB     R2,[R0, #+5]
+   \   0000030C   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000310   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000314   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000318   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   0000031C   000059E0           SUBS     R0,R9,R0
+   \   00000320   E3FFFF4A           BMI      ??tcp_output_17
+   1019                    seg->next = (*cur_seg);
+   \                     ??tcp_output_18:
+   \   00000324   000098E5           LDR      R0,[R8, #+0]
+   \   00000328   000086E5           STR      R0,[R6, #+0]
+   1020                    (*cur_seg) = seg;
+   \   0000032C   006088E5           STR      R6,[R8, #+0]
+   \   00000330   030000EA           B        ??tcp_output_14
+   1021                  } else {
+   1022                    /* add segment to tail of unacked list */
+   1023                    useg->next = seg;
+   \                     ??tcp_output_15:
+   \   00000334   006087E5           STR      R6,[R7, #+0]
+   1024                    useg = useg->next;
+   \   00000338   C4FFFFEA           B        ??tcp_output_13
+   1025                  }
+   1026                }
+   1027              /* do not queue empty segments on the unacked list */
+   1028              } else {
+   1029                tcp_seg_free(seg);
+   \                     ??tcp_output_11:
+   \   0000033C   0600A0E1           MOV      R0,R6
+   \   00000340   ........           _BLF     tcp_seg_free,??tcp_seg_free??rA
+   1030              }
+   1031              seg = pcb->unsent;
+   \                     ??tcp_output_14:
+   \   00000344   6C6095E5           LDR      R6,[R5, #+108]
+   \   00000348   57FFFFEA           B        ??tcp_output_4
+   1032            }
+   1033          #if TCP_OVERSIZE
+   1034            if (pcb->unsent == NULL) {
+   \                     ??tcp_output_7:
+   \   0000034C   6C0095E5           LDR      R0,[R5, #+108]
+   \   00000350   000050E3           CMP      R0,#+0
+   1035              /* last unsent has been removed, reset unsent_oversize */
+   1036              pcb->unsent_oversize = 0;
+   \   00000354   BA86C501           STRHEQ   R8,[R5, #+106]
+   1037            }
+   1038          #endif /* TCP_OVERSIZE */
+   1039          
+   1040            pcb->flags &= ~TF_NAGLEMEMERR;
+   \   00000358   1E00D5E5           LDRB     R0,[R5, #+30]
+   \   0000035C   7F0000E2           AND      R0,R0,#0x7F
+   \   00000360   1E00C5E5           STRB     R0,[R5, #+30]
+   1041            return ERR_OK;
+   \   00000364   0000A0E3           MOV      R0,#+0
+   \                     ??tcp_output_1:
+   \   00000368   F047BDE8           POP      {R4-R10,LR}
+   \   0000036C   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_output_0:
+   \   00000370   ........           DC32     tcp_input_pcb
+   1042          }
+   1043          
+   1044          /**
+   1045           * Called by tcp_output() to actually send a TCP segment over IP.
+   1046           *
+   1047           * @param seg the tcp_seg to send
+   1048           * @param pcb the tcp_pcb for the TCP connection used to send the segment
+   1049           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1050          static void
+   1051          tcp_output_segment(struct tcp_seg *seg, struct tcp_pcb *pcb)
+   1052          {
+   \                     tcp_output_segment:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+   1053            u16_t len;
+   1054            struct netif *netif;
+   1055            u32_t *opts;
+   1056          
+   1057            /** @bug Exclude retransmitted segments from this count. */
+   1058            snmp_inc_tcpoutsegs();
+   1059          
+   1060            /* The TCP header has already been constructed, but the ackno and
+   1061             wnd fields remain. */
+   1062            seg->tcphdr->ackno = htonl(pcb->rcv_nxt);
+   \   0000000C   280095E5           LDR      R0,[R5, #+40]
+   \   00000010   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   00000014   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000018   0800C1E5           STRB     R0,[R1, #+8]
+   \   0000001C   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000020   2004A0E1           LSR      R0,R0,#+8
+   \   00000024   0900C1E5           STRB     R0,[R1, #+9]
+   \   00000028   0C1094E5           LDR      R1,[R4, #+12]
+   \   0000002C   2004A0E1           LSR      R0,R0,#+8
+   \   00000030   0A00C1E5           STRB     R0,[R1, #+10]
+   \   00000034   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000038   2004A0E1           LSR      R0,R0,#+8
+   \   0000003C   0B00C1E5           STRB     R0,[R1, #+11]
+   1063          
+   1064            /* advertise our receive window size in this TCP segment */
+   1065            seg->tcphdr->wnd = htons(pcb->rcv_ann_wnd);
+   \   00000040   BE02D5E1           LDRH     R0,[R5, #+46]
+   \   00000044   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000048   0C1094E5           LDR      R1,[R4, #+12]
+   \   0000004C   0E00C1E5           STRB     R0,[R1, #+14]
+   \   00000050   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000054   2004A0E1           LSR      R0,R0,#+8
+   \   00000058   0F00C1E5           STRB     R0,[R1, #+15]
+   1066          
+   1067            pcb->rcv_ann_right_edge = pcb->rcv_nxt + pcb->rcv_ann_wnd;
+   \   0000005C   BE12D5E1           LDRH     R1,[R5, #+46]
+   \   00000060   280095E5           LDR      R0,[R5, #+40]
+   \   00000064   000081E0           ADD      R0,R1,R0
+   \   00000068   300085E5           STR      R0,[R5, #+48]
+   1068          
+   1069            /* Add any requested options.  NB MSS option is only set on SYN
+   1070               packets, so ignore it here */
+   1071            opts = (u32_t *)(void *)(seg->tcphdr + 1);
+   \   0000006C   0C0094E5           LDR      R0,[R4, #+12]
+   \   00000070   146080E2           ADD      R6,R0,#+20
+   1072            if (seg->flags & TF_SEG_OPTS_MSS) {
+   \   00000074   0A00D4E5           LDRB     R0,[R4, #+10]
+   \   00000078   010010E3           TST      R0,#0x1
+   \   0000007C   0500000A           BEQ      ??tcp_output_segment_0
+   1073              u16_t mss;
+   1074          #if TCP_CALCULATE_EFF_SEND_MSS
+   1075              mss = tcp_eff_send_mss(TCP_MSS, &pcb->remote_ip);
+   \   00000080   041085E2           ADD      R1,R5,#+4
+   \   00000084   860FA0E3           MOV      R0,#+536
+   \   00000088   ........           _BLF     tcp_eff_send_mss,??tcp_eff_send_mss??rA
+   1076          #else /* TCP_CALCULATE_EFF_SEND_MSS */
+   1077              mss = TCP_MSS;
+   1078          #endif /* TCP_CALCULATE_EFF_SEND_MSS */
+   1079              *opts = TCP_BUILD_MSS_OPTION(mss);
+   \   0000008C   810780E3           ORR      R0,R0,#0x2040000
+   \   00000090   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   00000094   000086E5           STR      R0,[R6, #+0]
+   1080              opts += 1;
+   1081            }
+   1082          #if LWIP_TCP_TIMESTAMPS
+   1083            pcb->ts_lastacksent = pcb->rcv_nxt;
+   1084          
+   1085            if (seg->flags & TF_SEG_OPTS_TS) {
+   1086              tcp_build_timestamp_option(pcb, opts);
+   1087              opts += 3;
+   1088            }
+   1089          #endif
+   1090          
+   1091            /* Set retransmission timer running if it is not currently enabled 
+   1092               This must be set before checking the route. */
+   1093            if (pcb->rtime == -1) {
+   \                     ??tcp_output_segment_0:
+   \   00000098   F403D5E1           LDRSH    R0,[R5, #+52]
+   \   0000009C   0060A0E3           MOV      R6,#+0
+   \   000000A0   0610E0E1           MVN      R1,R6
+   \   000000A4   010050E1           CMP      R0,R1
+   1094              pcb->rtime = 0;
+   \   000000A8   B463C501           STRHEQ   R6,[R5, #+52]
+   1095            }
+   1096          
+   1097            /* If we don't have a local IP address, we get one by
+   1098               calling ip_route(). */
+   1099            if (ip_addr_isany(&(pcb->local_ip))) {
+   \   000000AC   000055E3           CMP      R5,#+0
+   \   000000B0   00009515           LDRNE    R0,[R5, #+0]
+   \   000000B4   00005013           CMPNE    R0,#+0
+   \   000000B8   0500001A           BNE      ??tcp_output_segment_1
+   1100              netif = ip_route(&(pcb->remote_ip));
+   \   000000BC   040085E2           ADD      R0,R5,#+4
+   \   000000C0   ........           _BLF     ip_route,??ip_route??rA
+   1101              if (netif == NULL) {
+   \   000000C4   000050E3           CMP      R0,#+0
+   \   000000C8   3B00000A           BEQ      ??tcp_output_segment_2
+   1102                return;
+   1103              }
+   1104              ip_addr_copy(pcb->local_ip, netif->ip_addr);
+   \   000000CC   040090E5           LDR      R0,[R0, #+4]
+   \   000000D0   000085E5           STR      R0,[R5, #+0]
+   1105            }
+   1106          
+   1107            if (pcb->rttest == 0) {
+   \                     ??tcp_output_segment_1:
+   \   000000D4   380095E5           LDR      R0,[R5, #+56]
+   \   000000D8   000050E3           CMP      R0,#+0
+   \   000000DC   0C00001A           BNE      ??tcp_output_segment_3
+   1108              pcb->rttest = tcp_ticks;
+   \   000000E0   DC009FE5           LDR      R0,??tcp_output_segment_4  ;; tcp_ticks
+   \   000000E4   000090E5           LDR      R0,[R0, #+0]
+   \   000000E8   380085E5           STR      R0,[R5, #+56]
+   1109              pcb->rtseq = ntohl(seg->tcphdr->seqno);
+   \   000000EC   0C0094E5           LDR      R0,[R4, #+12]
+   \   000000F0   0710D0E5           LDRB     R1,[R0, #+7]
+   \   000000F4   0620D0E5           LDRB     R2,[R0, #+6]
+   \   000000F8   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000000FC   0520D0E5           LDRB     R2,[R0, #+5]
+   \   00000100   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000104   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000108   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   0000010C   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   00000110   3C0085E5           STR      R0,[R5, #+60]
+   1110          
+   1111              LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_output_segment: rtseq %"U32_F"\n", pcb->rtseq));
+   1112            }
+   1113            LWIP_DEBUGF(TCP_OUTPUT_DEBUG, ("tcp_output_segment: %"U32_F":%"U32_F"\n",
+   1114                    htonl(seg->tcphdr->seqno), htonl(seg->tcphdr->seqno) +
+   1115                    seg->len));
+   1116          
+   1117            len = (u16_t)((u8_t *)seg->tcphdr - (u8_t *)seg->p->payload);
+   \                     ??tcp_output_segment_3:
+   \   00000114   040094E5           LDR      R0,[R4, #+4]
+   \   00000118   0C1094E5           LDR      R1,[R4, #+12]
+   \   0000011C   043090E5           LDR      R3,[R0, #+4]
+   \   00000120   032041E0           SUB      R2,R1,R3
+   1118          
+   1119            seg->p->len -= len;
+   \   00000124   BA30D0E1           LDRH     R3,[R0, #+10]
+   \   00000128   0228A0E1           MOV      R2,R2, LSL #+16
+   \   0000012C   2228A0E1           MOV      R2,R2, LSR #+16
+   \   00000130   023043E0           SUB      R3,R3,R2
+   \   00000134   BA30C0E1           STRH     R3,[R0, #+10]
+   1120            seg->p->tot_len -= len;
+   \   00000138   B830D0E1           LDRH     R3,[R0, #+8]
+   \   0000013C   022043E0           SUB      R2,R3,R2
+   \   00000140   B820C0E1           STRH     R2,[R0, #+8]
+   1121          
+   1122            seg->p->payload = seg->tcphdr;
+   \   00000144   041080E5           STR      R1,[R0, #+4]
+   1123          
+   1124            seg->tcphdr->chksum = 0;
+   \   00000148   1060C1E5           STRB     R6,[R1, #+16]
+   \   0000014C   0C0094E5           LDR      R0,[R4, #+12]
+   1125          #if CHECKSUM_GEN_TCP
+   1126          #if TCP_CHECKSUM_ON_COPY
+   1127            {
+   1128              u32_t acc;
+   1129          #if TCP_CHECKSUM_ON_COPY_SANITY_CHECK
+   1130              u16_t chksum_slow = inet_chksum_pseudo(seg->p, &(pcb->local_ip),
+   1131                     &(pcb->remote_ip),
+   1132                     IP_PROTO_TCP, seg->p->tot_len);
+   1133          #endif /* TCP_CHECKSUM_ON_COPY_SANITY_CHECK */
+   1134              if ((seg->flags & TF_SEG_DATA_CHECKSUMMED) == 0) {
+   1135                LWIP_ASSERT("data included but not checksummed",
+   1136                  seg->p->tot_len == (TCPH_HDRLEN(seg->tcphdr) * 4));
+   1137              }
+   1138          
+   1139              /* rebuild TCP header checksum (TCP header changes for retransmissions!) */
+   1140              acc = inet_chksum_pseudo_partial(seg->p, &(pcb->local_ip),
+   1141                       &(pcb->remote_ip),
+   1142                       IP_PROTO_TCP, seg->p->tot_len, TCPH_HDRLEN(seg->tcphdr) * 4);
+   1143              /* add payload checksum */
+   1144              if (seg->chksum_swapped) {
+   1145                seg->chksum = SWAP_BYTES_IN_WORD(seg->chksum);
+   1146                seg->chksum_swapped = 0;
+   1147              }
+   1148              acc += (u16_t)~(seg->chksum);
+   1149              seg->tcphdr->chksum = FOLD_U32T(acc);
+   1150          #if TCP_CHECKSUM_ON_COPY_SANITY_CHECK
+   1151              if (chksum_slow != seg->tcphdr->chksum) {
+   1152                LWIP_DEBUGF(TCP_DEBUG | LWIP_DBG_LEVEL_WARNING,
+   1153                            ("tcp_output_segment: calculated checksum is %"X16_F" instead of %"X16_F"\n",
+   1154                            seg->tcphdr->chksum, chksum_slow));
+   1155                seg->tcphdr->chksum = chksum_slow;
+   1156              }
+   1157          #endif /* TCP_CHECKSUM_ON_COPY_SANITY_CHECK */
+   1158            }
+   1159          #else /* TCP_CHECKSUM_ON_COPY */
+   1160            seg->tcphdr->chksum = inet_chksum_pseudo(seg->p, &(pcb->local_ip),
+   1161                   &(pcb->remote_ip),
+   1162                   IP_PROTO_TCP, seg->p->tot_len);
+   \   00000150   0630A0E3           MOV      R3,#+6
+   \   00000154   1160C0E5           STRB     R6,[R0, #+17]
+   \   00000158   040094E5           LDR      R0,[R4, #+4]
+   \   0000015C   042085E2           ADD      R2,R5,#+4
+   \   00000160   B810D0E1           LDRH     R1,[R0, #+8]
+   \   00000164   02002DE9           PUSH     {R1}
+   \   00000168   0510A0E1           MOV      R1,R5
+   \   0000016C   ........           _BLF     inet_chksum_pseudo,??inet_chksum_pseudo??rA
+   \   00000170   0C1094E5           LDR      R1,[R4, #+12]
+   1163          #endif /* TCP_CHECKSUM_ON_COPY */
+   1164          #endif /* CHECKSUM_GEN_TCP */
+   1165            TCP_STATS_INC(tcp.xmit);
+   1166          
+   1167          #if LWIP_NETIF_HWADDRHINT
+   1168            ip_output_hinted(seg->p, &(pcb->local_ip), &(pcb->remote_ip), pcb->ttl, pcb->tos,
+   1169                IP_PROTO_TCP, &(pcb->addr_hint));
+   1170          #else /* LWIP_NETIF_HWADDRHINT*/
+   1171            ip_output(seg->p, &(pcb->local_ip), &(pcb->remote_ip), pcb->ttl, pcb->tos,
+   1172                IP_PROTO_TCP);
+   \   00000174   042085E2           ADD      R2,R5,#+4
+   \   00000178   1000C1E5           STRB     R0,[R1, #+16]
+   \   0000017C   0C1094E5           LDR      R1,[R4, #+12]
+   \   00000180   2004A0E1           LSR      R0,R0,#+8
+   \   00000184   1100C1E5           STRB     R0,[R1, #+17]
+   \   00000188   ........           LDR      R0,??DataTable2  ;; lwip_stats
+   \   0000018C   B019D0E1           LDRH     R1,[R0, #+144]
+   \   00000190   011081E2           ADD      R1,R1,#+1
+   \   00000194   B019C0E1           STRH     R1,[R0, #+144]
+   \   00000198   0600A0E3           MOV      R0,#+6
+   \   0000019C   01002DE9           PUSH     {R0}
+   \   000001A0   0900D5E5           LDRB     R0,[R5, #+9]
+   \   000001A4   0510A0E1           MOV      R1,R5
+   \   000001A8   01002DE9           PUSH     {R0}
+   \   000001AC   0A30D5E5           LDRB     R3,[R5, #+10]
+   \   000001B0   040094E5           LDR      R0,[R4, #+4]
+   \   000001B4   ........           _BLF     ip_output,??ip_output??rA
+   1173          #endif /* LWIP_NETIF_HWADDRHINT*/
+   1174          }
+   \   000001B8   0CD08DE2           ADD      SP,SP,#+12
+   \                     ??tcp_output_segment_2:
+   \   000001BC   7040BDE8           POP      {R4-R6,LR}
+   \   000001C0   1EFF2FE1           BX       LR               ;; return
+   \                     ??tcp_output_segment_4:
+   \   000001C4   ........           DC32     tcp_ticks
+   1175          
+   1176          /**
+   1177           * Send a TCP RESET packet (empty segment with RST flag set) either to
+   1178           * abort a connection or to show that there is no matching local connection
+   1179           * for a received segment.
+   1180           *
+   1181           * Called by tcp_abort() (to abort a local connection), tcp_input() (if no
+   1182           * matching local pcb was found), tcp_listen_input() (if incoming segment
+   1183           * has ACK flag set) and tcp_process() (received segment in the wrong state)
+   1184           *
+   1185           * Since a RST segment is in most cases not sent for an active connection,
+   1186           * tcp_rst() has a number of arguments that are taken from a tcp_pcb for
+   1187           * most other segment output functions.
+   1188           *
+   1189           * @param seqno the sequence number to use for the outgoing segment
+   1190           * @param ackno the acknowledge number to use for the outgoing segment
+   1191           * @param local_ip the local IP address to send the segment from
+   1192           * @param remote_ip the remote IP address to send the segment to
+   1193           * @param local_port the local TCP port to send the segment from
+   1194           * @param remote_port the remote TCP port to send the segment to
+   1195           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1196          void
+   1197          tcp_rst(u32_t seqno, u32_t ackno,
+   1198            ip_addr_t *local_ip, ip_addr_t *remote_ip,
+   1199            u16_t local_port, u16_t remote_port)
+   1200          {
+   \                     tcp_rst:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+   \   00000004   B4A2DDE1           LDRH     R10,[SP, #+36]
+   \   00000008   B8B2DDE1           LDRH     R11,[SP, #+40]
+   \   0000000C   0090A0E1           MOV      R9,R0
+   \   00000010   0180A0E1           MOV      R8,R1
+   \   00000014   0240A0E1           MOV      R4,R2
+   \   00000018   0350A0E1           MOV      R5,R3
+   1201            struct pbuf *p;
+   1202            struct tcp_hdr *tcphdr;
+   1203            p = pbuf_alloc(PBUF_IP, TCP_HLEN, PBUF_RAM);
+   \   0000001C   0020A0E3           MOV      R2,#+0
+   \   00000020   1410A0E3           MOV      R1,#+20
+   \   00000024   0100A0E3           MOV      R0,#+1
+   \   00000028   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   0000002C   0060B0E1           MOVS     R6,R0
+   1204            if (p == NULL) {
+   \   00000030   4500000A           BEQ      ??tcp_rst_0
+   1205                LWIP_DEBUGF(TCP_DEBUG, ("tcp_rst: could not allocate memory for pbuf\n"));
+   1206                return;
+   1207            }
+   1208            LWIP_ASSERT("check that first pbuf can hold struct tcp_hdr",
+   1209                        (p->len >= sizeof(struct tcp_hdr)));
+   1210          
+   1211            tcphdr = (struct tcp_hdr *)p->payload;
+   \   00000034   047096E5           LDR      R7,[R6, #+4]
+   1212            tcphdr->src = htons(local_port);
+   \   00000038   0A00A0E1           MOV      R0,R10
+   \   0000003C   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000040   0000C7E5           STRB     R0,[R7, #+0]
+   \   00000044   2004A0E1           LSR      R0,R0,#+8
+   \   00000048   0100C7E5           STRB     R0,[R7, #+1]
+   1213            tcphdr->dest = htons(remote_port);
+   \   0000004C   0B00A0E1           MOV      R0,R11
+   \   00000050   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000054   0200C7E5           STRB     R0,[R7, #+2]
+   \   00000058   2004A0E1           LSR      R0,R0,#+8
+   \   0000005C   0300C7E5           STRB     R0,[R7, #+3]
+   1214            tcphdr->seqno = htonl(seqno);
+   \   00000060   0900A0E1           MOV      R0,R9
+   \   00000064   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   00000068   0400C7E5           STRB     R0,[R7, #+4]
+   \   0000006C   2004A0E1           LSR      R0,R0,#+8
+   \   00000070   0500C7E5           STRB     R0,[R7, #+5]
+   \   00000074   2004A0E1           LSR      R0,R0,#+8
+   \   00000078   0600C7E5           STRB     R0,[R7, #+6]
+   \   0000007C   2004A0E1           LSR      R0,R0,#+8
+   \   00000080   0700C7E5           STRB     R0,[R7, #+7]
+   1215            tcphdr->ackno = htonl(ackno);
+   \   00000084   0800A0E1           MOV      R0,R8
+   \   00000088   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   0000008C   0800C7E5           STRB     R0,[R7, #+8]
+   \   00000090   2004A0E1           LSR      R0,R0,#+8
+   \   00000094   0900C7E5           STRB     R0,[R7, #+9]
+   \   00000098   2004A0E1           LSR      R0,R0,#+8
+   \   0000009C   0A00C7E5           STRB     R0,[R7, #+10]
+   \   000000A0   2004A0E1           LSR      R0,R0,#+8
+   \   000000A4   0B00C7E5           STRB     R0,[R7, #+11]
+   1216            TCPH_HDRLEN_FLAGS_SET(tcphdr, TCP_HLEN/4, TCP_RST | TCP_ACK);
+   \   000000A8   1400A0E3           MOV      R0,#+20
+   \   000000AC   500C80E3           ORR      R0,R0,#0x5000
+   \   000000B0   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000B4   0C00C7E5           STRB     R0,[R7, #+12]
+   \   000000B8   2004A0E1           LSR      R0,R0,#+8
+   \   000000BC   0D00C7E5           STRB     R0,[R7, #+13]
+   1217            tcphdr->wnd = PP_HTONS(TCP_WND);
+   \   000000C0   0800A0E3           MOV      R0,#+8
+   \   000000C4   0E00C7E5           STRB     R0,[R7, #+14]
+   \   000000C8   6000A0E3           MOV      R0,#+96
+   \   000000CC   0F00C7E5           STRB     R0,[R7, #+15]
+   1218            tcphdr->chksum = 0;
+   \   000000D0   0000A0E3           MOV      R0,#+0
+   \   000000D4   1000C7E5           STRB     R0,[R7, #+16]
+   \   000000D8   1100C7E5           STRB     R0,[R7, #+17]
+   1219            tcphdr->urgp = 0;
+   \   000000DC   1200C7E5           STRB     R0,[R7, #+18]
+   \   000000E0   1300C7E5           STRB     R0,[R7, #+19]
+   1220          
+   1221          #if CHECKSUM_GEN_TCP
+   1222            tcphdr->chksum = inet_chksum_pseudo(p, local_ip, remote_ip,
+   1223                        IP_PROTO_TCP, p->tot_len);
+   \   000000E4   B800D6E1           LDRH     R0,[R6, #+8]
+   \   000000E8   0630A0E3           MOV      R3,#+6
+   \   000000EC   0520A0E1           MOV      R2,R5
+   \   000000F0   01002DE9           PUSH     {R0}
+   \   000000F4   0410A0E1           MOV      R1,R4
+   \   000000F8   0600A0E1           MOV      R0,R6
+   \   000000FC   ........           _BLF     inet_chksum_pseudo,??inet_chksum_pseudo??rA
+   \   00000100   1000C7E5           STRB     R0,[R7, #+16]
+   \   00000104   2004A0E1           LSR      R0,R0,#+8
+   \   00000108   1100C7E5           STRB     R0,[R7, #+17]
+   1224          #endif
+   1225            TCP_STATS_INC(tcp.xmit);
+   \   0000010C   ........           LDR      R0,??DataTable5  ;; lwip_stats
+   1226            snmp_inc_tcpoutrsts();
+   1227             /* Send output with hardcoded TTL since we have no access to the pcb */
+   1228            ip_output(p, local_ip, remote_ip, TCP_TTL, 0, IP_PROTO_TCP);
+   \   00000110   FF30A0E3           MOV      R3,#+255
+   \   00000114   B019D0E1           LDRH     R1,[R0, #+144]
+   \   00000118   0520A0E1           MOV      R2,R5
+   \   0000011C   011081E2           ADD      R1,R1,#+1
+   \   00000120   B019C0E1           STRH     R1,[R0, #+144]
+   \   00000124   0600A0E3           MOV      R0,#+6
+   \   00000128   01002DE9           PUSH     {R0}
+   \   0000012C   0000A0E3           MOV      R0,#+0
+   \   00000130   01002DE9           PUSH     {R0}
+   \   00000134   0410A0E1           MOV      R1,R4
+   \   00000138   0600A0E1           MOV      R0,R6
+   \   0000013C   ........           _BLF     ip_output,??ip_output??rA
+   1229            pbuf_free(p);
+   \   00000140   0600A0E1           MOV      R0,R6
+   \   00000144   ........           _BLF     pbuf_free,??pbuf_free??rA
+   1230            LWIP_DEBUGF(TCP_RST_DEBUG, ("tcp_rst: seqno %"U32_F" ackno %"U32_F".\n", seqno, ackno));
+   1231          }
+   \   00000148   0CD08DE2           ADD      SP,SP,#+12
+   \                     ??tcp_rst_0:
+   \   0000014C   F04FBDE8           POP      {R4-R11,LR}
+   \   00000150   1EFF2FE1           BX       LR               ;; return
+   1232          
+   1233          /**
+   1234           * Requeue all unacked segments for retransmission
+   1235           *
+   1236           * Called by tcp_slowtmr() for slow retransmission.
+   1237           *
+   1238           * @param pcb the tcp_pcb for which to re-enqueue all unacked segments
+   1239           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1240          void
+   1241          tcp_rexmit_rto(struct tcp_pcb *pcb)
+   1242          {
+   \                     tcp_rexmit_rto:
+   \   00000000   00402DE9           PUSH     {LR}
+   1243            struct tcp_seg *seg;
+   1244          
+   1245            if (pcb->unacked == NULL) {
+   \   00000004   701090E5           LDR      R1,[R0, #+112]
+   \   00000008   000051E3           CMP      R1,#+0
+   \   0000000C   1100000A           BEQ      ??tcp_rexmit_rto_0
+   1246              return;
+   1247            }
+   1248          
+   1249            /* Move all unacked segments to the head of the unsent queue */
+   1250            for (seg = pcb->unacked; seg->next != NULL; seg = seg->next);
+   \   00000010   002091E5           LDR      R2,[R1, #+0]
+   \   00000014   000052E3           CMP      R2,#+0
+   \   00000018   0300000A           BEQ      ??tcp_rexmit_rto_1
+   \                     ??tcp_rexmit_rto_2:
+   \   0000001C   001091E5           LDR      R1,[R1, #+0]
+   \   00000020   002091E5           LDR      R2,[R1, #+0]
+   \   00000024   000052E3           CMP      R2,#+0
+   \   00000028   FBFFFF1A           BNE      ??tcp_rexmit_rto_2
+   1251            /* concatenate unsent queue after unacked queue */
+   1252            seg->next = pcb->unsent;
+   \                     ??tcp_rexmit_rto_1:
+   \   0000002C   6C2090E5           LDR      R2,[R0, #+108]
+   \   00000030   002081E5           STR      R2,[R1, #+0]
+   1253            /* unsent queue is the concatenated queue (of unacked, unsent) */
+   1254            pcb->unsent = pcb->unacked;
+   \   00000034   701090E5           LDR      R1,[R0, #+112]
+   \   00000038   6C1080E5           STR      R1,[R0, #+108]
+   1255            /* unacked queue is now empty */
+   1256            pcb->unacked = NULL;
+   \   0000003C   0010A0E3           MOV      R1,#+0
+   \   00000040   701080E5           STR      R1,[R0, #+112]
+   1257            /* last unsent hasn't changed, no need to reset unsent_oversize */
+   1258          
+   1259            /* increment number of retransmissions */
+   1260            ++pcb->nrtx;
+   \   00000044   4620D0E5           LDRB     R2,[R0, #+70]
+   \   00000048   012082E2           ADD      R2,R2,#+1
+   \   0000004C   4620C0E5           STRB     R2,[R0, #+70]
+   1261          
+   1262            /* Don't take any RTT measurements after retransmitting. */
+   1263            pcb->rttest = 0;
+   \   00000050   381080E5           STR      R1,[R0, #+56]
+   1264          
+   1265            /* Do the actual retransmission */
+   1266            tcp_output(pcb);
+   \   00000054   ........           BL       tcp_output
+   1267          }
+   \                     ??tcp_rexmit_rto_0:
+   \   00000058   0040BDE8           POP      {LR}
+   \   0000005C   1EFF2FE1           BX       LR               ;; return
+   1268          
+   1269          /**
+   1270           * Requeue the first unacked segment for retransmission
+   1271           *
+   1272           * Called by tcp_receive() for fast retramsmit.
+   1273           *
+   1274           * @param pcb the tcp_pcb for which to retransmit the first unacked segment
+   1275           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1276          void
+   1277          tcp_rexmit(struct tcp_pcb *pcb)
+   1278          {
+   \                     tcp_rexmit:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1279            struct tcp_seg *seg;
+   1280            struct tcp_seg **cur_seg;
+   1281          
+   1282            if (pcb->unacked == NULL) {
+   \   00000008   705094E5           LDR      R5,[R4, #+112]
+   \   0000000C   000055E3           CMP      R5,#+0
+   \   00000010   2A00000A           BEQ      ??tcp_rexmit_0
+   1283              return;
+   1284            }
+   1285          
+   1286            /* Move the first unacked segment to the unsent queue */
+   1287            /* Keep the unsent queue sorted. */
+   1288            seg = pcb->unacked;
+   1289            pcb->unacked = seg->next;
+   \   00000014   000095E5           LDR      R0,[R5, #+0]
+   1290          
+   1291            cur_seg = &(pcb->unsent);
+   \   00000018   6C6084E2           ADD      R6,R4,#+108
+   \   0000001C   700084E5           STR      R0,[R4, #+112]
+   \   00000020   000000EA           B        ??tcp_rexmit_1
+   1292            while (*cur_seg &&
+   1293              TCP_SEQ_LT(ntohl((*cur_seg)->tcphdr->seqno), ntohl(seg->tcphdr->seqno))) {
+   1294                cur_seg = &((*cur_seg)->next );
+   \                     ??tcp_rexmit_2:
+   \   00000024   006096E5           LDR      R6,[R6, #+0]
+   1295            }
+   \                     ??tcp_rexmit_1:
+   \   00000028   000096E5           LDR      R0,[R6, #+0]
+   \   0000002C   000050E3           CMP      R0,#+0
+   \   00000030   1700000A           BEQ      ??tcp_rexmit_3
+   \   00000034   0C1090E5           LDR      R1,[R0, #+12]
+   \   00000038   0C2090E5           LDR      R2,[R0, #+12]
+   \   0000003C   0710D1E5           LDRB     R1,[R1, #+7]
+   \   00000040   0620D2E5           LDRB     R2,[R2, #+6]
+   \   00000044   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000048   0C2090E5           LDR      R2,[R0, #+12]
+   \   0000004C   0C0090E5           LDR      R0,[R0, #+12]
+   \   00000050   0520D2E5           LDRB     R2,[R2, #+5]
+   \   00000054   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000058   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   0000005C   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000060   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   00000064   0070A0E1           MOV      R7,R0
+   \   00000068   0C0095E5           LDR      R0,[R5, #+12]
+   \   0000006C   0710D0E5           LDRB     R1,[R0, #+7]
+   \   00000070   0620D0E5           LDRB     R2,[R0, #+6]
+   \   00000074   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000078   0520D0E5           LDRB     R2,[R0, #+5]
+   \   0000007C   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000080   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   00000084   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   00000088   ........           _BLF     lwip_ntohl,??lwip_ntohl??rA
+   \   0000008C   000057E0           SUBS     R0,R7,R0
+   \   00000090   E3FFFF4A           BMI      ??tcp_rexmit_2
+   1296            seg->next = *cur_seg;
+   \                     ??tcp_rexmit_3:
+   \   00000094   000096E5           LDR      R0,[R6, #+0]
+   \   00000098   000085E5           STR      R0,[R5, #+0]
+   1297            *cur_seg = seg;
+   \   0000009C   005086E5           STR      R5,[R6, #+0]
+   1298          #if TCP_OVERSIZE
+   1299            if (seg->next == NULL) {
+   \   000000A0   001095E5           LDR      R1,[R5, #+0]
+   \   000000A4   0000A0E3           MOV      R0,#+0
+   \   000000A8   000051E3           CMP      R1,#+0
+   1300              /* the retransmitted segment is last in unsent, so reset unsent_oversize */
+   1301              pcb->unsent_oversize = 0;
+   \   000000AC   BA06C401           STRHEQ   R0,[R4, #+106]
+   1302            }
+   1303          #endif /* TCP_OVERSIZE */
+   1304          
+   1305            ++pcb->nrtx;
+   \   000000B0   4610D4E5           LDRB     R1,[R4, #+70]
+   \   000000B4   011081E2           ADD      R1,R1,#+1
+   \   000000B8   4610C4E5           STRB     R1,[R4, #+70]
+   1306          
+   1307            /* Don't take any rtt measurements after retransmitting. */
+   1308            pcb->rttest = 0;
+   \   000000BC   380084E5           STR      R0,[R4, #+56]
+   1309          
+   1310            /* Do the actual retransmission. */
+   1311            snmp_inc_tcpretranssegs();
+   1312            /* No need to call tcp_output: we are always called from tcp_input()
+   1313               and thus tcp_output directly returns. */
+   1314          }
+   \                     ??tcp_rexmit_0:
+   \   000000C0   F040BDE8           POP      {R4-R7,LR}
+   \   000000C4   1EFF2FE1           BX       LR               ;; return
+   1315          
+   1316          
+   1317          /**
+   1318           * Handle retransmission after three dupacks received
+   1319           *
+   1320           * @param pcb the tcp_pcb for which to retransmit the first unacked segment
+   1321           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1322          void 
+   1323          tcp_rexmit_fast(struct tcp_pcb *pcb)
+   1324          {
+   \                     tcp_rexmit_fast:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1325            if (pcb->unacked != NULL && !(pcb->flags & TF_INFR)) {
+   \   00000008   700094E5           LDR      R0,[R4, #+112]
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   1500000A           BEQ      ??tcp_rexmit_fast_0
+   \   00000014   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   00000018   040010E3           TST      R0,#0x4
+   \   0000001C   1200001A           BNE      ??tcp_rexmit_fast_0
+   1326              /* This is fast retransmit. Retransmit the first unacked segment. */
+   1327              LWIP_DEBUGF(TCP_FR_DEBUG, 
+   1328                          ("tcp_receive: dupacks %"U16_F" (%"U32_F
+   1329                           "), fast retransmit %"U32_F"\n",
+   1330                           (u16_t)pcb->dupacks, pcb->lastack,
+   1331                           ntohl(pcb->unacked->tcphdr->seqno)));
+   1332              tcp_rexmit(pcb);
+   \   00000020   0400A0E1           MOV      R0,R4
+   \   00000024   ........           BL       tcp_rexmit
+   1333          
+   1334              /* Set ssthresh to half of the minimum of the current
+   1335               * cwnd and the advertised window */
+   1336              if (pcb->cwnd > pcb->snd_wnd) {
+   \   00000028   BC04D4E1           LDRH     R0,[R4, #+76]
+   \   0000002C   B016D4E1           LDRH     R1,[R4, #+96]
+   \   00000030   000051E1           CMP      R1,R0
+   1337                pcb->ssthresh = pcb->snd_wnd / 2;
+   \   00000034   A100A031           LSRCC    R0,R1,#+1
+   1338              } else {
+   1339                pcb->ssthresh = pcb->cwnd / 2;
+   1340              }
+   1341              
+   1342              /* The minimum value for ssthresh should be 2 MSS */
+   1343              if (pcb->ssthresh < 2*pcb->mss) {
+   \   00000038   B613D4E1           LDRH     R1,[R4, #+54]
+   \   0000003C   A000A021           LSRCS    R0,R0,#+1
+   \   00000040   810050E1           CMP      R0,R1, LSL #+1
+   1344                LWIP_DEBUGF(TCP_FR_DEBUG, 
+   1345                            ("tcp_receive: The minimum value for ssthresh %"U16_F
+   1346                             " should be min 2 mss %"U16_F"...\n",
+   1347                             pcb->ssthresh, 2*pcb->mss));
+   1348                pcb->ssthresh = 2*pcb->mss;
+   \   00000044   8100A0B1           LSLLT    R0,R1,#+1
+   \   00000048   BE04C4E1           STRH     R0,[R4, #+78]
+   1349              }
+   1350              
+   1351              pcb->cwnd = pcb->ssthresh + 3 * pcb->mss;
+   \   0000004C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000050   2008A0E1           MOV      R0,R0, LSR #+16
+   \   00000054   811081E0           ADD      R1,R1,R1, LSL #+1
+   \   00000058   000081E0           ADD      R0,R1,R0
+   \   0000005C   BC04C4E1           STRH     R0,[R4, #+76]
+   1352              pcb->flags |= TF_INFR;
+   \   00000060   1E00D4E5           LDRB     R0,[R4, #+30]
+   \   00000064   040080E3           ORR      R0,R0,#0x4
+   \   00000068   1E00C4E5           STRB     R0,[R4, #+30]
+   1353            } 
+   1354          }
+   \                     ??tcp_rexmit_fast_0:
+   \   0000006C   1040BDE8           POP      {R4,LR}
+   \   00000070   1EFF2FE1           BX       LR               ;; return
+   1355          
+   1356          
+   1357          /**
+   1358           * Send keepalive packets to keep a connection active although
+   1359           * no data is sent over it.
+   1360           *
+   1361           * Called by tcp_slowtmr()
+   1362           *
+   1363           * @param pcb the tcp_pcb for which to send a keepalive packet
+   1364           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1365          void
+   1366          tcp_keepalive(struct tcp_pcb *pcb)
+   1367          {
+   \                     tcp_keepalive:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1368            struct pbuf *p;
+   1369            struct tcp_hdr *tcphdr;
+   1370          
+   1371            LWIP_DEBUGF(TCP_DEBUG, ("tcp_keepalive: sending KEEPALIVE probe to %"U16_F".%"U16_F".%"U16_F".%"U16_F"\n",
+   1372                                    ip4_addr1_16(&pcb->remote_ip), ip4_addr2_16(&pcb->remote_ip),
+   1373                                    ip4_addr3_16(&pcb->remote_ip), ip4_addr4_16(&pcb->remote_ip)));
+   1374          
+   1375            LWIP_DEBUGF(TCP_DEBUG, ("tcp_keepalive: tcp_ticks %"U32_F"   pcb->tmr %"U32_F" pcb->keep_cnt_sent %"U16_F"\n", 
+   1376                                    tcp_ticks, pcb->tmr, pcb->keep_cnt_sent));
+   1377             
+   1378            p = tcp_output_alloc_header(pcb, 0, 0, htonl(pcb->snd_nxt - 1));
+   \   00000008   500094E5           LDR      R0,[R4, #+80]
+   \   0000000C   010040E2           SUB      R0,R0,#+1
+   \   00000010   ........           _BLF     lwip_htonl,??lwip_htonl??rA
+   \   00000014   0030A0E1           MOV      R3,R0
+   \   00000018   0020A0E3           MOV      R2,#+0
+   \   0000001C   0010A0E3           MOV      R1,#+0
+   \   00000020   0400A0E1           MOV      R0,R4
+   \   00000024   ........           BL       tcp_output_alloc_header
+   \   00000028   0050B0E1           MOVS     R5,R0
+   1379            if(p == NULL) {
+   \   0000002C   1A00000A           BEQ      ??tcp_keepalive_0
+   1380              LWIP_DEBUGF(TCP_DEBUG, 
+   1381                          ("tcp_keepalive: could not allocate memory for pbuf\n"));
+   1382              return;
+   1383            }
+   1384            tcphdr = (struct tcp_hdr *)p->payload;
+   1385          
+   1386          #if CHECKSUM_GEN_TCP
+   1387            tcphdr->chksum = inet_chksum_pseudo(p, &pcb->local_ip, &pcb->remote_ip,
+   1388                                                IP_PROTO_TCP, p->tot_len);
+   \   00000030   B800D5E1           LDRH     R0,[R5, #+8]
+   \   00000034   046095E5           LDR      R6,[R5, #+4]
+   \   00000038   0630A0E3           MOV      R3,#+6
+   \   0000003C   01002DE9           PUSH     {R0}
+   \   00000040   042084E2           ADD      R2,R4,#+4
+   \   00000044   0410A0E1           MOV      R1,R4
+   \   00000048   0500A0E1           MOV      R0,R5
+   \   0000004C   ........           _BLF     inet_chksum_pseudo,??inet_chksum_pseudo??rA
+   \   00000050   1000C6E5           STRB     R0,[R6, #+16]
+   \   00000054   2004A0E1           LSR      R0,R0,#+8
+   \   00000058   1100C6E5           STRB     R0,[R6, #+17]
+   1389          #endif
+   1390            TCP_STATS_INC(tcp.xmit);
+   \   0000005C   ........           LDR      R0,??DataTable5  ;; lwip_stats
+   1391          
+   1392            /* Send output to IP */
+   1393          #if LWIP_NETIF_HWADDRHINT
+   1394            ip_output_hinted(p, &pcb->local_ip, &pcb->remote_ip, pcb->ttl, 0, IP_PROTO_TCP,
+   1395              &(pcb->addr_hint));
+   1396          #else /* LWIP_NETIF_HWADDRHINT*/
+   1397            ip_output(p, &pcb->local_ip, &pcb->remote_ip, pcb->ttl, 0, IP_PROTO_TCP);
+   \   00000060   042084E2           ADD      R2,R4,#+4
+   \   00000064   B019D0E1           LDRH     R1,[R0, #+144]
+   \   00000068   011081E2           ADD      R1,R1,#+1
+   \   0000006C   B019C0E1           STRH     R1,[R0, #+144]
+   \   00000070   0600A0E3           MOV      R0,#+6
+   \   00000074   01002DE9           PUSH     {R0}
+   \   00000078   0000A0E3           MOV      R0,#+0
+   \   0000007C   01002DE9           PUSH     {R0}
+   \   00000080   0A30D4E5           LDRB     R3,[R4, #+10]
+   \   00000084   0410A0E1           MOV      R1,R4
+   \   00000088   0500A0E1           MOV      R0,R5
+   \   0000008C   ........           _BLF     ip_output,??ip_output??rA
+   1398          #endif /* LWIP_NETIF_HWADDRHINT*/
+   1399          
+   1400            pbuf_free(p);
+   \   00000090   0500A0E1           MOV      R0,R5
+   \   00000094   ........           _BLF     pbuf_free,??pbuf_free??rA
+   1401          
+   1402            LWIP_DEBUGF(TCP_DEBUG, ("tcp_keepalive: seqno %"U32_F" ackno %"U32_F".\n",
+   1403                                    pcb->snd_nxt - 1, pcb->rcv_nxt));
+   1404          }
+   \   00000098   0CD08DE2           ADD      SP,SP,#+12
+   \                     ??tcp_keepalive_0:
+   \   0000009C   7040BDE8           POP      {R4-R6,LR}
+   \   000000A0   1EFF2FE1           BX       LR               ;; return
+   1405          
+   1406          
+   1407          /**
+   1408           * Send persist timer zero-window probes to keep a connection active
+   1409           * when a window update is lost.
+   1410           *
+   1411           * Called by tcp_slowtmr()
+   1412           *
+   1413           * @param pcb the tcp_pcb for which to send a zero-window probe packet
+   1414           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1415          void
+   1416          tcp_zero_window_probe(struct tcp_pcb *pcb)
+   1417          {
+   \                     tcp_zero_window_probe:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   1418            struct pbuf *p;
+   1419            struct tcp_hdr *tcphdr;
+   1420            struct tcp_seg *seg;
+   1421            u16_t len;
+   1422            u8_t is_fin;
+   1423          
+   1424            LWIP_DEBUGF(TCP_DEBUG, 
+   1425                        ("tcp_zero_window_probe: sending ZERO WINDOW probe to %"
+   1426                         U16_F".%"U16_F".%"U16_F".%"U16_F"\n",
+   1427                         ip4_addr1_16(&pcb->remote_ip), ip4_addr2_16(&pcb->remote_ip),
+   1428                         ip4_addr3_16(&pcb->remote_ip), ip4_addr4_16(&pcb->remote_ip)));
+   1429          
+   1430            LWIP_DEBUGF(TCP_DEBUG, 
+   1431                        ("tcp_zero_window_probe: tcp_ticks %"U32_F
+   1432                         "   pcb->tmr %"U32_F" pcb->keep_cnt_sent %"U16_F"\n", 
+   1433                         tcp_ticks, pcb->tmr, pcb->keep_cnt_sent));
+   1434          
+   1435            seg = pcb->unacked;
+   \   00000008   705094E5           LDR      R5,[R4, #+112]
+   1436          
+   1437            if(seg == NULL) {
+   \   0000000C   000055E3           CMP      R5,#+0
+   1438              seg = pcb->unsent;
+   \   00000010   6C509405           LDREQ    R5,[R4, #+108]
+   1439            }
+   1440            if(seg == NULL) {
+   \   00000014   000055E3           CMP      R5,#+0
+   \   00000018   4E00000A           BEQ      ??tcp_zero_window_probe_0
+   1441              return;
+   1442            }
+   1443          
+   1444            is_fin = ((TCPH_FLAGS(seg->tcphdr) & TCP_FIN) != 0) && (seg->len == 0);
+   \   0000001C   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000020   0D10D0E5           LDRB     R1,[R0, #+13]
+   \   00000024   0C00D0E5           LDRB     R0,[R0, #+12]
+   \   00000028   010480E1           ORR      R0,R0,R1, LSL #+8
+   \   0000002C   ........           _BLF     lwip_ntohs,??lwip_ntohs??rA
+   \   00000030   010010E3           TST      R0,#0x1
+   \   00000034   0400000A           BEQ      ??tcp_zero_window_probe_1
+   \   00000038   B800D5E1           LDRH     R0,[R5, #+8]
+   \   0000003C   000050E3           CMP      R0,#+0
+   \   00000040   0180A003           MOVEQ    R8,#+1
+   1445            /* we want to send one seqno: either FIN or data (no options) */
+   1446            len = is_fin ? 0 : 1;
+   \   00000044   0020A003           MOVEQ    R2,#+0
+   \   00000048   0100000A           BEQ      ??tcp_zero_window_probe_2
+   \                     ??tcp_zero_window_probe_1:
+   \   0000004C   0080A0E3           MOV      R8,#+0
+   \   00000050   0120A0E3           MOV      R2,#+1
+   1447          
+   1448            p = tcp_output_alloc_header(pcb, 0, len, seg->tcphdr->seqno);
+   \                     ??tcp_zero_window_probe_2:
+   \   00000054   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000058   0710D0E5           LDRB     R1,[R0, #+7]
+   \   0000005C   0630D0E5           LDRB     R3,[R0, #+6]
+   \   00000060   011483E1           ORR      R1,R3,R1, LSL #+8
+   \   00000064   0530D0E5           LDRB     R3,[R0, #+5]
+   \   00000068   0400D0E5           LDRB     R0,[R0, #+4]
+   \   0000006C   011483E1           ORR      R1,R3,R1, LSL #+8
+   \   00000070   013480E1           ORR      R3,R0,R1, LSL #+8
+   \   00000074   0010A0E3           MOV      R1,#+0
+   \   00000078   0400A0E1           MOV      R0,R4
+   \   0000007C   ........           BL       tcp_output_alloc_header
+   \   00000080   0060B0E1           MOVS     R6,R0
+   1449            if(p == NULL) {
+   \   00000084   3300000A           BEQ      ??tcp_zero_window_probe_0
+   1450              LWIP_DEBUGF(TCP_DEBUG, ("tcp_zero_window_probe: no memory for pbuf\n"));
+   1451              return;
+   1452            }
+   1453            tcphdr = (struct tcp_hdr *)p->payload;
+   \   00000088   041096E5           LDR      R1,[R6, #+4]
+   1454          
+   1455            if (is_fin) {
+   \   0000008C   000058E3           CMP      R8,#+0
+   \   00000090   0170A0E1           MOV      R7,R1
+   \   00000094   0C00000A           BEQ      ??tcp_zero_window_probe_3
+   1456              /* FIN segment, no data */
+   1457              TCPH_FLAGS_SET(tcphdr, TCP_ACK | TCP_FIN);
+   \   00000098   1100A0E3           MOV      R0,#+17
+   \   0000009C   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   000000A0   0D10D7E5           LDRB     R1,[R7, #+13]
+   \   000000A4   0C20D7E5           LDRB     R2,[R7, #+12]
+   \   000000A8   011482E1           ORR      R1,R2,R1, LSL #+8
+   \   000000AC   FF20A0E3           MOV      R2,#+255
+   \   000000B0   C02C82E3           ORR      R2,R2,#0xC000
+   \   000000B4   011002E0           AND      R1,R2,R1
+   \   000000B8   010080E1           ORR      R0,R0,R1
+   \   000000BC   0C00C7E5           STRB     R0,[R7, #+12]
+   \   000000C0   2004A0E1           LSR      R0,R0,#+8
+   \   000000C4   0D00C7E5           STRB     R0,[R7, #+13]
+   \   000000C8   080000EA           B        ??tcp_zero_window_probe_4
+   1458            } else {
+   1459              /* Data segment, copy in one byte from the head of the unacked queue */
+   1460              char *d = ((char *)p->payload + TCP_HLEN);
+   1461              /* Depending on whether the segment has already been sent (unacked) or not
+   1462                 (unsent), seg->p->payload points to the IP header or TCP header.
+   1463                 Ensure we copy the first TCP data byte: */
+   1464              pbuf_copy_partial(seg->p, d, 1, seg->p->tot_len - seg->len);
+   \                     ??tcp_zero_window_probe_3:
+   \   000000CC   040095E5           LDR      R0,[R5, #+4]
+   \   000000D0   B830D5E1           LDRH     R3,[R5, #+8]
+   \   000000D4   B820D0E1           LDRH     R2,[R0, #+8]
+   \   000000D8   141081E2           ADD      R1,R1,#+20
+   \   000000DC   033042E0           SUB      R3,R2,R3
+   \   000000E0   0338A0E1           MOV      R3,R3, LSL #+16
+   \   000000E4   2338A0E1           MOV      R3,R3, LSR #+16
+   \   000000E8   0120A0E3           MOV      R2,#+1
+   \   000000EC   ........           _BLF     pbuf_copy_partial,??pbuf_copy_partial??rA
+   1465            }
+   1466          
+   1467          #if CHECKSUM_GEN_TCP
+   1468            tcphdr->chksum = inet_chksum_pseudo(p, &pcb->local_ip, &pcb->remote_ip,
+   1469                                                IP_PROTO_TCP, p->tot_len);
+   \                     ??tcp_zero_window_probe_4:
+   \   000000F0   B800D6E1           LDRH     R0,[R6, #+8]
+   \   000000F4   0630A0E3           MOV      R3,#+6
+   \   000000F8   042084E2           ADD      R2,R4,#+4
+   \   000000FC   01002DE9           PUSH     {R0}
+   \   00000100   0410A0E1           MOV      R1,R4
+   \   00000104   0600A0E1           MOV      R0,R6
+   \   00000108   ........           _BLF     inet_chksum_pseudo,??inet_chksum_pseudo??rA
+   \   0000010C   1000C7E5           STRB     R0,[R7, #+16]
+   \   00000110   2004A0E1           LSR      R0,R0,#+8
+   \   00000114   1100C7E5           STRB     R0,[R7, #+17]
+   1470          #endif
+   1471            TCP_STATS_INC(tcp.xmit);
+   \   00000118   ........           LDR      R0,??DataTable5  ;; lwip_stats
+   1472          
+   1473            /* Send output to IP */
+   1474          #if LWIP_NETIF_HWADDRHINT
+   1475            ip_output_hinted(p, &pcb->local_ip, &pcb->remote_ip, pcb->ttl, 0, IP_PROTO_TCP,
+   1476              &(pcb->addr_hint));
+   1477          #else /* LWIP_NETIF_HWADDRHINT*/
+   1478            ip_output(p, &pcb->local_ip, &pcb->remote_ip, pcb->ttl, 0, IP_PROTO_TCP);
+   \   0000011C   042084E2           ADD      R2,R4,#+4
+   \   00000120   B019D0E1           LDRH     R1,[R0, #+144]
+   \   00000124   011081E2           ADD      R1,R1,#+1
+   \   00000128   B019C0E1           STRH     R1,[R0, #+144]
+   \   0000012C   0600A0E3           MOV      R0,#+6
+   \   00000130   01002DE9           PUSH     {R0}
+   \   00000134   0000A0E3           MOV      R0,#+0
+   \   00000138   01002DE9           PUSH     {R0}
+   \   0000013C   0A30D4E5           LDRB     R3,[R4, #+10]
+   \   00000140   0410A0E1           MOV      R1,R4
+   \   00000144   0600A0E1           MOV      R0,R6
+   \   00000148   ........           _BLF     ip_output,??ip_output??rA
+   1479          #endif /* LWIP_NETIF_HWADDRHINT*/
+   1480          
+   1481            pbuf_free(p);
+   \   0000014C   0600A0E1           MOV      R0,R6
+   \   00000150   ........           _BLF     pbuf_free,??pbuf_free??rA
+   1482          
+   1483            LWIP_DEBUGF(TCP_DEBUG, ("tcp_zero_window_probe: seqno %"U32_F
+   1484                                    " ackno %"U32_F".\n",
+   1485                                    pcb->snd_nxt - 1, pcb->rcv_nxt));
+   1486          }
+   \   00000154   0CD08DE2           ADD      SP,SP,#+12
+   \                     ??tcp_zero_window_probe_0:
+   \   00000158   F041BDE8           POP      {R4-R8,LR}
+   \   0000015C   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable2:
+   \   00000000   ........           DC32     lwip_stats
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable5:
+   \   00000000   ........           DC32     lwip_stats
+   1487          #endif /* LWIP_TCP */
+   1488          
+
+   Maximum stack usage in bytes:
+
+     Function                CSTACK
+     --------                ------
+     tcp_create_segment         32
+     tcp_enqueue_flags          28
+     tcp_keepalive              28
+     tcp_output                 32
+     tcp_output_alloc_header    24
+     tcp_output_segment         28
+     tcp_rexmit                 20
+     tcp_rexmit_fast             8
+     tcp_rexmit_rto              4
+     tcp_rst                    48
+     tcp_send_empty_ack         28
+     tcp_send_fin               12
+     tcp_write                  80
+     tcp_zero_window_probe      36
+
+
+   Segment part sizes:
+
+     Function/Label          Bytes
+     --------------          -----
+     tcp_output_alloc_header  276
+     tcp_send_fin             164
+     tcp_create_segment       360
+     tcp_write               1564
+     tcp_enqueue_flags        352
+     tcp_send_empty_ack       164
+     tcp_output               884
+     tcp_output_segment       456
+     tcp_rst                  340
+     tcp_rexmit_rto            96
+     tcp_rexmit               200
+     tcp_rexmit_fast          116
+     tcp_keepalive            164
+     tcp_zero_window_probe    352
+     ??DataTable2               4
+     ??DataTable5               4
+      Others                  272
+
+ 
+ 5 768 bytes in segment CODE
+ 
+ 5 496 bytes of CODE memory (+ 272 bytes shared)
+
+Errors: none
+Warnings: none

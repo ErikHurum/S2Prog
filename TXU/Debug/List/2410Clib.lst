@@ -1,0 +1,557 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Dec/2022  11:03:41 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\2410Clib.cpp                       #
+#    Command line    =  D:\S2Prog\TXU\src\2410Clib.cpp --fpu None -D         #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\2410Clib.lst                #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\2410Clib.r79                 #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\2410Clib.cpp
+      1          //===================================================================
+      2          // File Name : 2410lib.c
+      3          // Function  : S3C2410 PLL,Uart, LED, Port Init
+      4          // Program   : Shin, On Pil (SOP)
+      5          // Date      : May 14, 2002
+      6          // Version   : 0.0
+      7          // History
+      8          //   0.0 : Programming start (February 20,2002) -> SOP
+      9          //===================================================================
+     10          
+     11          #include "def.h"
+     12          #include "option.h"
+     13          #include "2410addr.h"
+     14          #include "2410lib.h"
+     15          #include "2410slib.h"
+     16          
+     17          #include "TsnConstants.h"
+     18          #include "Anpro10Const.h"
+     19          #include "rtos.h"
+     20          #include <stdarg.h>
+     21          #include <string.h>
+     22          #include <stdlib.h>
+     23          #include <stdio.h>
+     24          #include <ctype.h>
+     25          
+     26          //extern char Image$$RW$$Limit[];
+     27          //void *mallocPt=Image$$RW$$Limit;
+     28          
+     29          //===========================[ PORTS ]===================================================*
+     30          ///////////////////////////////////////////////////
+     31          //
+     32          // From TSNGlobalVariables.cpp
+     33          //
+     34          ///////////////////////////////////////////////////
+     35          
+     36          extern short CurrentDeviceId;
+     37          extern short CurrentDeviceAddress;
+     38          extern int OS_FSys;
+     39          #ifdef S2TXU
+     40          extern short GlobalDeviceHWId;
+     41          #else
+     42          short GlobalDeviceHWId              = 0;
+     43          #endif
+
+   \                                 In segment CODE, align 4, keep-with-next
+     44          void Port_Init(void)
+     45          {
+   \                     Port_Init:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+     46          
+     47              rGPECON = 0x0;
+   \   00000004   4000A0E3           MOV      R0,#+64
+   \   00000008   560480E3           ORR      R0,R0,#0x56000000
+   \   0000000C   0010A0E3           MOV      R1,#+0
+   \   00000010   001080E5           STR      R1,[R0, #+0]
+     48              rGPEUP  = 0x0;
+   \   00000014   082080E3           ORR      R2,R0,#0x8
+   \   00000018   001082E5           STR      R1,[R2, #+0]
+     49              short Tmp = rGPEDAT;
+     50          
+     51              GlobalDeviceHWId  = (rGPEDAT >>14) & 0x3;
+     52          
+     53              switch ( GlobalDeviceHWId ) {
+   \   0000001C   0CC29FE5           LDR      R12,??Port_Init_0  ;; OS_FSys
+   \   00000020   0C529FE5           LDR      R5,??Port_Init_0+0x4  ;; 0x22222222
+   \   00000024   0CA29FE5           LDR      R10,??Port_Init_0+0x8  ;; CurrentDeviceAddress
+   \   00000028   0CB29FE5           LDR      R11,??Port_Init_0+0xC  ;; CurrentDeviceId
+   \   0000002C   043080E3           ORR      R3,R0,#0x4
+   \   00000030   003093E5           LDR      R3,[R3, #+0]
+   \   00000034   043080E3           ORR      R3,R0,#0x4
+   \   00000038   003093E5           LDR      R3,[R3, #+0]
+   \   0000003C   0340A0E3           MOV      R4,#+3
+   \   00000040   233704E0           AND      R3,R4,R3, LSR #+14
+   \   00000044   F4419FE5           LDR      R4,??Port_Init_0+0x10  ;; GlobalDeviceHWId
+   \   00000048   0160A0E3           MOV      R6,#+1
+   \   0000004C   B030C4E1           STRH     R3,[R4, #+0]
+   \   00000050   EC419FE5           LDR      R4,??Port_Init_0+0x14  ;; 0xaba9500
+   \   00000054   5684A0E3           MOV      R8,#+1442840576
+   \   00000058   FF94E0E3           MVN      R9,#-16777216
+   \   0000005C   FE98C9E3           BIC      R9,R9,#0xFE0000
+   \   00000060   047080E3           ORR      R7,R0,#0x4
+   \   00000064   010053E3           CMP      R3,#+1
+   \   00000068   0300009A           BLS      ??Port_Init_1
+   \   0000006C   02E043E2           SUB      LR,R3,#+2
+   \   00000070   01005EE3           CMP      LR,#+1
+   \   00000074   3A00009A           BLS      ??Port_Init_2
+   \   00000078   370000EA           B        ??Port_Init_3
+     54                  case TCU_R1://TCU
+     55                  case TCU_R2://TCU CurrentDeviceId should be 0x21
+     56                      CurrentDeviceId  =  DEVICE_TCU; //EHSMARK
+   \                     ??Port_Init_1:
+   \   0000007C   20E0A0E3           MOV      LR,#+32
+   \   00000080   B0E0CBE1           STRH     LR,[R11, #+0]
+     57                      CurrentDeviceAddress = ~(rGPEDAT >>10) & 0xf;
+   \   00000084   00B097E5           LDR      R11,[R7, #+0]
+   \   00000088   2BB5E0E1           MVN      R11,R11, LSR #+10
+   \   0000008C   0FB00BE2           AND      R11,R11,#0xF
+   \   00000090   B0B0CAE1           STRH     R11,[R10, #+0]
+     58          
+     59                      rGPACON = 0x1ffff;
+   \   00000094   009088E5           STR      R9,[R8, #+0]
+     60          
+     61                      rGPBCON = 0x1;       // REQ0/1 not set here
+   \   00000098   308040E2           SUB      R8,R0,#+48
+   \   0000009C   006088E5           STR      R6,[R8, #+0]
+     62                      rGPBUP  = 0x0;
+   \   000000A0   288040E2           SUB      R8,R0,#+40
+   \   000000A4   001088E5           STR      R1,[R8, #+0]
+     63                      rGPBDAT |= 1;       // OK LED, System not OK yet
+   \   000000A8   2C8040E2           SUB      R8,R0,#+44
+   \   000000AC   009098E5           LDR      R9,[R8, #+0]
+   \   000000B0   019089E3           ORR      R9,R9,#0x1
+   \   000000B4   009088E5           STR      R9,[R8, #+0]
+     64          
+     65          
+     66                      rGPCCON = 0x0;
+   \   000000B8   208040E2           SUB      R8,R0,#+32
+   \   000000BC   001088E5           STR      R1,[R8, #+0]
+     67                      rGPCUP  = 0x0;
+   \   000000C0   188040E2           SUB      R8,R0,#+24
+   \   000000C4   001088E5           STR      R1,[R8, #+0]
+     68          
+     69                      rGPDCON = 0x0;
+   \   000000C8   108040E2           SUB      R8,R0,#+16
+   \   000000CC   001088E5           STR      R1,[R8, #+0]
+     70                      rGPDUP  = 0x0;
+   \   000000D0   088040E2           SUB      R8,R0,#+8
+   \   000000D4   001088E5           STR      R1,[R8, #+0]
+     71                      /*
+     72                      rGPECON = 0x55001;
+     73                      rGPEUP  = 0x0;
+     74                      rGPEDAT = 0x0;
+     75                      */
+     76                      rGPECON = 0x54555;
+   \   000000D8   68819FE5           LDR      R8,??Port_Init_0+0x18  ;; 0x54555
+   \   000000DC   008080E5           STR      R8,[R0, #+0]
+     77                      rGPEUP  = 0x0;
+   \   000000E0   001082E5           STR      R1,[R2, #+0]
+     78                      rGPEDAT = 0x0;
+   \   000000E4   001087E5           STR      R1,[R7, #+0]
+     79          
+     80                      rGPFCON = 0xaaaa;   // Eint 0~7
+   \   000000E8   100080E3           ORR      R0,R0,#0x10
+   \   000000EC   AA20A0E3           MOV      R2,#+170
+   \   000000F0   AA2C82E3           ORR      R2,R2,#0xAA00
+   \   000000F4   002080E5           STR      R2,[R0, #+0]
+     81                      rGPFUP  = 0xff;     // Pullup 0~7
+   \   000000F8   080080E3           ORR      R0,R0,#0x8
+   \   000000FC   FF20A0E3           MOV      R2,#+255
+   \   00000100   ........           STR      R2,[R0], #+8
+     82          
+     83                      rGPGCON = 0x00020002; // EINT8 && EINT16
+   \   00000104   0220A0E3           MOV      R2,#+2
+   \   00000108   802B82E3           ORR      R2,R2,#0x20000
+   \   0000010C   002080E5           STR      R2,[R0, #+0]
+     84                      rGPGUP  = 0x0001; // Pullup int8 & int16    // hkim
+   \   00000110   080080E3           ORR      R0,R0,#0x8
+   \   00000114   ........           STR      R6,[R0], #+8
+     85          
+     86          
+     87                      rGPHCON = 0x1aaa0;
+   \   00000118   682BA0E3           MOV      R2,#+106496
+   \   0000011C   AA2E82E3           ORR      R2,R2,#0xAA0
+   \   00000120   002080E5           STR      R2,[R0, #+0]
+     88                      rGPHDAT &= ~0x100;  // Set not bit 8 for write protect
+   \   00000124   040080E3           ORR      R0,R0,#0x4
+   \   00000128   002090E5           LDR      R2,[R0, #+0]
+   \   0000012C   402FC2E3           BIC      R2,R2,#0x100
+   \   00000130   ........           STR      R2,[R0], #+4
+     89                      rGPHUP  = 0x0;
+   \   00000134   ........           STR      R1,[R0], #+16
+     90                      //External interrupt will be falling edge triggered.
+     91                      rEXTINT0 = 0x42424444;    // EINT[7:0] UART 1-4
+   \   00000138   0C119FE5           LDR      R1,??Port_Init_0+0x1C  ;; 0x42424444
+   \   0000013C   001080E5           STR      R1,[R0, #+0]
+     92                      rEXTINT1 = 0x22222222;    // EINT[15:8]
+   \   00000140   040080E3           ORR      R0,R0,#0x4
+   \   00000144   ........           STR      R5,[R0], #+4
+     93          #ifdef __NET_USE_ACTIVE_HIGH_INTERRUPT__
+     94                      rEXTINT2 = 0x22222229;    // EINT[23:16] // hkim EINT16 active high with filter
+     95          #else
+     96                      rEXTINT2 = 0x22222224;
+   \   00000148   021085E2           ADD      R1,R5,#+2
+   \   0000014C   001080E5           STR      R1,[R0, #+0]
+     97          #endif
+     98                      switch ( GlobalDeviceHWId ) {
+   \   00000150   3400001A           BNE      ??Port_Init_4
+     99                      default:
+    100                      case TCU_R1:
+    101                          OS_FSys = OS_FSYS_180;
+    102                          break;
+    103                      case TCU_R2:
+    104                          OS_FSys = OS_FSYS_202;
+   \   00000154   F4009FE5           LDR      R0,??Port_Init_0+0x20  ;; 0xc167b80
+   \   00000158   00008CE5           STR      R0,[R12, #+0]
+   \                     ??Port_Init_3:
+   \   0000015C   F04FBDE8           POP      {R4-R11,LR}
+   \   00000160   1EFF2FE1           BX       LR
+    105                          break;
+    106                      }
+    107                      break;
+    108                  case TDU_R1://TDU
+    109                  case TDU_R2://TDU CurrentDeviceId should be 0x31
+    110                      CurrentDeviceId      = DEVICE_TDU;
+   \                     ??Port_Init_2:
+   \   00000164   30E0A0E3           MOV      LR,#+48
+   \   00000168   B0E0CBE1           STRH     LR,[R11, #+0]
+    111                      CurrentDeviceAddress = ~(rGPEDAT >>10) & 0xf;
+   \   0000016C   00B097E5           LDR      R11,[R7, #+0]
+    112                      /*
+    113                      if (CurrentDeviceAddress == 0xf) {
+    114                         CurrentDeviceAddress = 0;
+    115                      } 
+    116                      */ 
+    117                      rGPACON = 0x1ffff;
+    118          
+    119                      rGPBCON = 0x0;
+    120                      rGPBUP  = 0x0;
+    121          
+    122                      rGPCCON = 0xaaaaaaaa;
+    123                      rGPCUP  = 0x0;
+    124          
+    125                      rGPDCON = 0xaaaaaaaa;
+    126                      rGPDUP  = 0x0;
+    127          
+    128                      rGPECON = 0x55001;
+    129                      rGPEUP  = 0x0;
+    130                      rGPEDAT = 0x0;
+    131          
+    132                      rGPFCON = 0x0;
+    133                      rGPFUP  = 0x0;
+    134          
+    135                      rGPGCON = 0xff020000; // set touch screen lines on
+    136                      rGPGUP  = 0x0001;
+    137          
+    138                      rGPHCON = 0x1aaa4;
+    139                      rGPHDAT &= ~0x100;  // Set not bit 8 for write protect
+    140                      rGPHUP  = 0x0;
+    141                      //External interrupt will be falling edge triggered.
+    142                      rEXTINT0 = 0x22222222;    // EINT[7:0]
+    143                      rEXTINT1 = 0x22222222;    // EINT[15:8]
+    144                      rEXTINT2 = 0x22222224;    // EINT[23:16]    // hkim EINT16 active high
+    145                      switch ( GlobalDeviceHWId ) {
+   \   00000170   023053E2           SUBS     R3,R3,#+2
+   \   00000174   2BB5E0E1           MVN      R11,R11, LSR #+10
+   \   00000178   0FB00BE2           AND      R11,R11,#0xF
+   \   0000017C   B0B0CAE1           STRH     R11,[R10, #+0]
+   \   00000180   009088E5           STR      R9,[R8, #+0]
+   \   00000184   308040E2           SUB      R8,R0,#+48
+   \   00000188   001088E5           STR      R1,[R8, #+0]
+   \   0000018C   288040E2           SUB      R8,R0,#+40
+   \   00000190   001088E5           STR      R1,[R8, #+0]
+   \   00000194   B8809FE5           LDR      R8,??Port_Init_0+0x24  ;; 0xffffffffaaaaaaaa
+   \   00000198   209040E2           SUB      R9,R0,#+32
+   \   0000019C   008089E5           STR      R8,[R9, #+0]
+   \   000001A0   189040E2           SUB      R9,R0,#+24
+   \   000001A4   001089E5           STR      R1,[R9, #+0]
+   \   000001A8   109040E2           SUB      R9,R0,#+16
+   \   000001AC   008089E5           STR      R8,[R9, #+0]
+   \   000001B0   088040E2           SUB      R8,R0,#+8
+   \   000001B4   001088E5           STR      R1,[R8, #+0]
+   \   000001B8   558A86E3           ORR      R8,R6,#0x55000
+   \   000001BC   008080E5           STR      R8,[R0, #+0]
+   \   000001C0   001082E5           STR      R1,[R2, #+0]
+   \   000001C4   001087E5           STR      R1,[R7, #+0]
+   \   000001C8   100080E3           ORR      R0,R0,#0x10
+   \   000001CC   001080E5           STR      R1,[R0, #+0]
+   \   000001D0   080080E3           ORR      R0,R0,#0x8
+   \   000001D4   ........           STR      R1,[R0], #+8
+   \   000001D8   FF24A0E3           MOV      R2,#-16777216
+   \   000001DC   802B82E3           ORR      R2,R2,#0x20000
+   \   000001E0   002080E5           STR      R2,[R0, #+0]
+   \   000001E4   080080E3           ORR      R0,R0,#0x8
+   \   000001E8   ........           STR      R6,[R0], #+8
+   \   000001EC   6A2BA0E3           MOV      R2,#+108544
+   \   000001F0   A92F82E3           ORR      R2,R2,#0x2A4
+   \   000001F4   002080E5           STR      R2,[R0, #+0]
+   \   000001F8   040080E3           ORR      R0,R0,#0x4
+   \   000001FC   002090E5           LDR      R2,[R0, #+0]
+   \   00000200   01305312           SUBSNE   R3,R3,#+1
+   \   00000204   402FC2E3           BIC      R2,R2,#0x100
+   \   00000208   ........           STR      R2,[R0], #+4
+   \   0000020C   ........           STR      R1,[R0], #+16
+   \   00000210   005080E5           STR      R5,[R0, #+0]
+   \   00000214   040080E3           ORR      R0,R0,#0x4
+   \   00000218   ........           STR      R5,[R0], #+4
+   \   0000021C   021085E2           ADD      R1,R5,#+2
+   \   00000220   001080E5           STR      R1,[R0, #+0]
+   \   00000224   CCFFFF1A           BNE      ??Port_Init_3
+    146                      case TDU_R1:
+    147                          OS_FSys = OS_FSYS_180;
+    148                          break;
+    149                      case TDU_R2:
+    150                          OS_FSys   = OS_FSYS_180;
+   \                     ??Port_Init_4:
+   \   00000228   00408CE5           STR      R4,[R12, #+0]
+    151                          //OS_FSys = OS_FSYS_202;
+    152                          break;
+    153                      }
+    154                      break;
+    155              /*  case 3: // Eval Board
+    156                      rGPACON = 0x7fffff;
+    157          
+    158                      rGPBCON = 0x044555;
+    159                      rGPBUP  = 0x7ff;     // The pull up function is disabled GPB[10:0]
+    160          
+    161                      rGPCCON = 0xaaaaaaaa;
+    162                      rGPCUP  = 0xffff;     // The pull up function is disabled GPC[15:0]
+    163          
+    164                      rGPDCON = 0xaaaaaaaa;
+    165                      rGPDUP  = 0xffff;     // The pull up function is disabled GPD[15:0]
+    166          
+    167                      rGPECON = 0xaaaaaaaa;
+    168                      rGPEUP  = 0xffff;     // The pull up function is disabled GPE[15:0]
+    169          
+    170                      rGPFCON = 0x55aa;
+    171                      rGPFUP  = 0xff;     // The pull up function is disabled GPF[7:0]
+    172          
+    173                      rGPGCON = 0xff95ffba;
+    174                      rGPGUP  = 0xffff;    // The pull up function is disabled GPG[15:0]
+    175          
+    176                      rGPHCON = 0x2afaaa;
+    177                      rGPHUP  = 0x7ff;    // The pull up function is disabled GPH[10:0]
+    178                      //External interrupt will be falling edge triggered.
+    179                      rEXTINT0 = 0x22222222;    // EINT[7:0]
+    180                      rEXTINT1 = 0x22222222;    // EINT[15:8]
+    181                      rEXTINT2 = 0x22222222;    // EINT[23:16]
+    182                      break;
+    183          */
+    184              }
+    185          
+    186          }
+   \                     ??Port_Init_5:
+   \   0000022C   CAFFFFEA           B        ??Port_Init_3
+   \                     ??Port_Init_0:
+   \   00000230   ........           DC32     OS_FSys
+   \   00000234   22222222           DC32     0x22222222
+   \   00000238   ........           DC32     CurrentDeviceAddress
+   \   0000023C   ........           DC32     CurrentDeviceId
+   \   00000240   ........           DC32     GlobalDeviceHWId
+   \   00000244   0095BA0A           DC32     0xaba9500
+   \   00000248   55450500           DC32     0x54555
+   \   0000024C   44444242           DC32     0x42424444
+   \   00000250   807B160C           DC32     0xc167b80
+   \   00000254   AAAAAAAA           DC32     0xffffffffaaaaaaaa
+    187          
+    188          
+    189          //========================*[ Timer ]==============================**
+
+   \                                 In segment CODE, align 4, keep-with-next
+    190          void Timer_Start(int divider)  //0:16us,1:32us 2:64us 3:128us
+    191          {
+    192              rWTDAT = 0xffff;  //Watch-dog timer data register
+   \                     Timer_Start:
+   \   00000000   FF10A0E3           MOV      R1,#+255
+   \   00000004   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   00000008   0420A0E3           MOV      R2,#+4
+   \   0000000C   532482E3           ORR      R2,R2,#0x53000000
+   \   00000010   ........           STR      R1,[R2], #+4
+    193              rWTCNT = 0xffff;  //Watch-dog count register
+   \   00000014   001082E5           STR      R1,[R2, #+0]
+    194          
+    195              //Watch-dog timer enable & interrupt  disable
+    196              rWTCON = ((PCLK/1000000-1)<<8)|(divider<<3) | ((1<<5) | 1 );  //Watch-dog timer control register
+   \   00000018   5314A0E3           MOV      R1,#+1392508928
+   \   0000001C   2120A0E3           MOV      R2,#+33
+   \   00000020   C42D82E3           ORR      R2,R2,#0x3100
+   \   00000024   800182E1           ORR      R0,R2,R0, LSL #+3
+   \   00000028   000081E5           STR      R0,[R1, #+0]
+    197          }
+   \   0000002C   1EFF2FE1           BX       LR               ;; return
+    198          
+    199          //=================================================================
+
+   \                                 In segment CODE, align 4, keep-with-next
+    200          int Timer_Stop(void)
+    201          {
+    202              rWTCON = ((PCLK/1000000-1)<<8);
+   \                     Timer_Stop:
+   \   00000000   5304A0E3           MOV      R0,#+1392508928
+   \   00000004   C41DA0E3           MOV      R1,#+12544
+   \   00000008   001080E5           STR      R1,[R0, #+0]
+    203              return(0xffff - rWTCNT);
+   \   0000000C   0810A0E3           MOV      R1,#+8
+   \   00000010   531481E3           ORR      R1,R1,#0x53000000
+   \   00000014   001091E5           LDR      R1,[R1, #+0]
+   \   00000018   FF00A0E3           MOV      R0,#+255
+   \   0000001C   FF0C80E3           ORR      R0,R0,#0xFF00
+   \   00000020   010040E0           SUB      R0,R0,R1
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+    204          }
+    205          
+    206          
+    207          //========================*[ MPLL ]==============================*
+
+   \                                 In segment CODE, align 4, keep-with-next
+    208          void ChangeMPllValue(int mdiv,int pdiv,int sdiv)
+    209          {
+    210              rMPLLCON = (mdiv<<12) | (pdiv<<4) | sdiv;
+   \                     ChangeMPllValue:
+   \   00000000   0430A0E3           MOV      R3,#+4
+   \   00000004   4C3483E3           ORR      R3,R3,#0x4C000000
+   \   00000008   0112A0E1           LSL      R1,R1,#+4
+   \   0000000C   000681E1           ORR      R0,R1,R0, LSL #+12
+   \   00000010   000082E1           ORR      R0,R2,R0
+   \   00000014   000083E5           STR      R0,[R3, #+0]
+    211          }
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+    212          
+    213          
+    214          //========================[ HCLK, PCLK ]===========================
+
+   \                                 In segment CODE, align 4, keep-with-next
+    215          void ChangeClockDivider(int hdivn,int pdivn)
+    216          {
+   \                     ChangeClockDivider:
+   \   00000000   00402DE9           PUSH     {LR}
+    217              // hdivn,pdivn FCLK:HCLK:PCLK
+    218              //     0,0         1:1:1
+    219              //     0,1         1:1:2
+    220              //     1,0         1:2:2
+    221              //     1,1         1:2:4
+    222              rCLKDIVN = (hdivn<<1) | pdivn;
+   \   00000004   1420A0E3           MOV      R2,#+20
+   \   00000008   4C2482E3           ORR      R2,R2,#0x4C000000
+   \   0000000C   801081E1           ORR      R1,R1,R0, LSL #+1
+   \   00000010   001082E5           STR      R1,[R2, #+0]
+    223          
+    224              if ( hdivn )
+   \   00000014   000050E3           CMP      R0,#+0
+   \   00000018   0100000A           BEQ      ??ChangeClockDivider_0
+    225                  MMU_SetAsyncBusMode();
+   \   0000001C   ........           _BLF     MMU_SetAsyncBusMode,??MMU_SetAsyncBusMode??rA
+   \   00000020   000000EA           B        ??ChangeClockDivider_1
+    226              else
+    227                  MMU_SetFastBusMode();
+   \                     ??ChangeClockDivider_0:
+   \   00000024   ........           _BLF     MMU_SetFastBusMode,??MMU_SetFastBusMode??rA
+    228          }
+   \                     ??ChangeClockDivider_1:
+   \   00000028   0040BDE8           POP      {LR}
+   \   0000002C   1EFF2FE1           BX       LR               ;; return
+    229          
+    230          
+    231          //========================**[ UPLL ]==============================*
+
+   \                                 In segment CODE, align 4, keep-with-next
+    232          void ChangeUPllValue(int mdiv,int pdiv,int sdiv)
+    233          {
+    234              rUPLLCON = (mdiv<<12) | (pdiv<<4) | sdiv;
+   \                     ChangeUPllValue:
+   \   00000000   0830A0E3           MOV      R3,#+8
+   \   00000004   4C3483E3           ORR      R3,R3,#0x4C000000
+   \   00000008   0112A0E1           LSL      R1,R1,#+4
+   \   0000000C   000681E1           ORR      R0,R1,R0, LSL #+12
+   \   00000010   000082E1           ORR      R0,R2,R0
+   \   00000014   000083E5           STR      R0,[R3, #+0]
+    235          }
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+    236          
+    237          
+    238          //========================*[ General Library ]=====================*
+    239          /*
+    240          void * malloc(unsigned nbyte)
+    241          //Very simple; Use malloc() & free() like Stack
+    242          //void *mallocPt=Image$$RW$$Limit;
+    243          {
+    244              void *returnPt = mallocPt;
+    245          
+    246              mallocPt = (int *)mallocPt+nbyte/4+((nbyte%4)>0); //To align 4byte
+    247          
+    248              if( (int)mallocPt > HEAPEND )
+    249              {
+    250                  mallocPt = returnPt;
+    251                  return NULL;
+    252              }
+    253              return returnPt;
+    254          }
+    255          
+    256          
+    257          //-------------------------------------------------------------------
+    258          void free(void *pt)
+    259          {
+    260              mallocPt = pt;
+    261          }
+    262          */
+
+   Maximum stack usage in bytes:
+
+     Function           CSTACK
+     --------           ------
+     ChangeClockDivider     4
+     ChangeMPllValue        0
+     ChangeUPllValue        0
+     Port_Init             36
+     Timer_Start            0
+     Timer_Stop             0
+
+
+   Segment part sizes:
+
+     Function/Label     Bytes
+     --------------     -----
+     Port_Init           600
+     Timer_Start          48
+     Timer_Stop           40
+     ChangeMPllValue      28
+     ChangeClockDivider   48
+     ChangeUPllValue      28
+      Others              48
+
+ 
+ 840 bytes in segment CODE
+ 
+ 792 bytes of CODE memory (+ 48 bytes shared)
+
+Errors: none
+Warnings: none

@@ -1,0 +1,765 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:07 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\anpro_net_util.cpp                 #
+#    Command line    =  D:\S2Prog\TXU\src\anpro_net_util.cpp --fpu None -D   #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\anpro_net_util.lst          #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\anpro_net_util.r79           #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\anpro_net_util.cpp
+      1          #include "lwip/opt.h"
+      2          
+      3          #if LWIP_SOCKET
+      4          
+      5          #include <string.h>
+      6          #include <stdio.h>
+      7          #include <stdlib.h>
+      8          
+      9          #include "anpro_net_util.h"
+     10          
+     11          #include "lwip/mem.h"
+     12          #include "lwip/debug.h"
+     13          #include "lwip/def.h"
+     14          #include "lwip/api.h"
+     15          #include "lwip/stats.h"
+     16          
+     17          #include "app/circ_buffer.h"
+     18          
+     19          #include "TSNIncludes.h"
+     20          
+     21          #define ANPRO_TCP_MAX_SERVER_BACKLOG    5
+     22          
+     23          ////////////////////////////////////////////////////////////////////////////////
+     24          // 
+     25          // general socket utilities
+     26          //
+     27          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+     28          s32_t
+     29          init_anpro_server_socket(u16_t port)
+     30          {
+   \                     ??init_anpro_server_socket:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+   \   00000008   0040A0E1           MOV      R4,R0
+     31            s32_t               listenfd;
+     32            struct sockaddr_in  anpro_saddr;
+     33          
+     34            listenfd = socket(AF_INET, SOCK_STREAM, 0);
+   \   0000000C   0020A0E3           MOV      R2,#+0
+   \   00000010   0110A0E3           MOV      R1,#+1
+   \   00000014   0200A0E3           MOV      R0,#+2
+   \   00000018   ........           _BLF     lwip_socket,??lwip_socket??rA
+   \   0000001C   0050A0E1           MOV      R5,R0
+     35            LWIP_ASSERT("anpro_server_thread: socket() failed.", listenfd >= 0);
+     36          
+     37            memset(&anpro_saddr, 0, sizeof(anpro_saddr));
+   \   00000020   1020A0E3           MOV      R2,#+16
+   \   00000024   0010A0E3           MOV      R1,#+0
+   \   00000028   0D00A0E1           MOV      R0,SP
+   \   0000002C   ........           _BLF     memset,??memset??rA
+     38            anpro_saddr.sin_family        = AF_INET;
+   \   00000030   0210A0E3           MOV      R1,#+2
+   \   00000034   0110CDE5           STRB     R1,[SP, #+1]
+     39            anpro_saddr.sin_addr.s_addr   = PP_HTONL(INADDR_ANY);
+   \   00000038   0010A0E3           MOV      R1,#+0
+   \   0000003C   04108DE5           STR      R1,[SP, #+4]
+     40            anpro_saddr.sin_port          = htons(port);
+   \   00000040   0400A0E1           MOV      R0,R4
+   \   00000044   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000048   B200CDE1           STRH     R0,[SP, #+2]
+     41          
+     42            if(bind(listenfd, (struct sockaddr*)&anpro_saddr, sizeof(anpro_saddr)) == -1)
+   \   0000004C   1020A0E3           MOV      R2,#+16
+   \   00000050   0D10A0E1           MOV      R1,SP
+   \   00000054   0500A0E1           MOV      R0,R5
+   \   00000058   ........           _BLF     lwip_bind,??lwip_bind??rA
+     43            {
+     44              LWIP_ASSERT("anpro_server_thread: bind() failed.", 0);
+     45            }
+     46          
+     47            if(listen(listenfd, ANPRO_TCP_MAX_SERVER_BACKLOG) == -1)
+   \   0000005C   0510A0E3           MOV      R1,#+5
+   \   00000060   0500A0E1           MOV      R0,R5
+   \   00000064   ........           _BLF     lwip_listen,??lwip_listen??rA
+     48            {
+     49              LWIP_ASSERT("anpro_server_thread: listen() failed.", 0);
+     50            }
+     51          
+     52            return listenfd;
+   \   00000068   0500A0E1           MOV      R0,R5
+   \   0000006C   10D08DE2           ADD      SP,SP,#+16
+   \   00000070   3040BDE8           POP      {R4,R5,LR}
+   \   00000074   1EFF2FE1           BX       LR               ;; return
+     53          }
+     54          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     55          s32_t
+     56          init_anpro_client_socket(void)
+     57          {
+   \                     ??init_anpro_client_socket:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+     58            s32_t               clisock;
+     59          
+     60            clisock = socket(AF_INET, SOCK_STREAM, 0);
+   \   00000004   0020A0E3           MOV      R2,#+0
+   \   00000008   0110A0E3           MOV      R1,#+1
+   \   0000000C   0200A0E3           MOV      R0,#+2
+   \   00000010   ........           _BLF     lwip_socket,??lwip_socket??rA
+   \   00000014   0040A0E1           MOV      R4,R0
+     61            LWIP_ASSERT("init_anpro_client_socket: socket() failed.", clisock >= 0);
+     62          
+     63          
+     64            anpro_adjust_client_socket(clisock);
+   \   00000018   ........           BL       ??anpro_adjust_client_socket
+     65            return clisock;
+   \   0000001C   0400A0E1           MOV      R0,R4
+   \   00000020   1040BDE8           POP      {R4,LR}
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+     66          }
+     67          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     68          void
+     69          anpro_select_add_set(s32_t fd, fd_set* set, s32_t* max_fd)
+     70          {
+   \                     ??anpro_select_add_set:
+   \   00000000   10002DE9           PUSH     {R4}
+     71            FD_SET(fd, set);
+   \   00000004   4031A0E1           ASR      R3,R0,#+2
+   \   00000008   A33E80E0           ADD      R3,R0,R3, LSR #+29
+   \   0000000C   C31181E0           ADD      R1,R1,R3, ASR #+3
+   \   00000010   0030D1E5           LDRB     R3,[R1, #+0]
+   \   00000014   01C0A0E3           MOV      R12,#+1
+   \   00000018   074000E2           AND      R4,R0,#0x7
+   \   0000001C   1C3483E1           ORR      R3,R3,R12, LSL R4
+   \   00000020   0030C1E5           STRB     R3,[R1, #+0]
+     72          
+     73            if(*max_fd < fd)
+   \   00000024   001092E5           LDR      R1,[R2, #+0]
+   \   00000028   000051E1           CMP      R1,R0
+     74            {
+     75              *max_fd = fd;
+   \   0000002C   000082B5           STRLT    R0,[R2, #+0]
+     76            }
+     77          }
+   \   00000030   1000BDE8           POP      {R4}
+   \   00000034   1EFF2FE1           BX       LR               ;; return
+     78          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     79          s32_t
+     80          anpro_net_create_eventfd(void)
+     81          {
+   \                     ??anpro_net_create_eventfd:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+     82            s32_t                 udp_sock;
+     83            struct sockaddr_in    my_addr;
+     84          
+     85            udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+   \   00000008   0020A0E3           MOV      R2,#+0
+   \   0000000C   0210A0E3           MOV      R1,#+2
+   \   00000010   0200A0E3           MOV      R0,#+2
+   \   00000014   ........           _BLF     lwip_socket,??lwip_socket??rA
+   \   00000018   0040A0E1           MOV      R4,R0
+     86            LWIP_ASSERT("anpro_server_thread: event_socket() failed.", udp_sock >= 0);
+     87            //
+     88            // bind the udp socket to any port available in local loopback
+     89            // interface
+     90            memset(&my_addr, 0, sizeof(my_addr));
+   \   0000001C   1020A0E3           MOV      R2,#+16
+   \   00000020   0010A0E3           MOV      R1,#+0
+   \   00000024   0D00A0E1           MOV      R0,SP
+   \   00000028   ........           _BLF     memset,??memset??rA
+     91            my_addr.sin_family        = AF_INET;
+     92            my_addr.sin_addr.s_addr   = inet_addr("127.0.0.1");   
+   \   0000002C   34009FE5           LDR      R0,??anpro_net_create_eventfd_1  ;; `?<Constant "127.0.0.1">`
+   \   00000030   0210A0E3           MOV      R1,#+2
+   \   00000034   0110CDE5           STRB     R1,[SP, #+1]
+   \   00000038   ........           _BLF     ipaddr_addr,??ipaddr_addr??rA
+   \   0000003C   04008DE5           STR      R0,[SP, #+4]
+     93            my_addr.sin_port          = 0;      
+   \   00000040   0010A0E3           MOV      R1,#+0
+   \   00000044   B210CDE1           STRH     R1,[SP, #+2]
+     94          
+     95            if(bind(udp_sock, (struct sockaddr*)&my_addr, sizeof(my_addr)) == -1)
+   \   00000048   1020A0E3           MOV      R2,#+16
+   \   0000004C   0D10A0E1           MOV      R1,SP
+   \   00000050   0400A0E1           MOV      R0,R4
+   \   00000054   ........           _BLF     lwip_bind,??lwip_bind??rA
+     96            {
+     97              LWIP_ASSERT("anpro_server_thread: event_socket bind() failed.", 0);
+     98            }
+     99          
+    100            return udp_sock;
+   \   00000058   0400A0E1           MOV      R0,R4
+   \   0000005C   10D08DE2           ADD      SP,SP,#+16
+   \   00000060   1040BDE8           POP      {R4,LR}
+   \   00000064   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_net_create_eventfd_1:
+   \   00000068   ........           DC32     `?<Constant "127.0.0.1">`
+    101          }
+    102          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    103          void
+    104          anpro_adjust_client_socket(s32_t sd)
+    105          {
+   \                     ??anpro_adjust_client_socket:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+   \   00000008   0040A0E1           MOV      R4,R0
+    106            const s32_t     const_int_1   = 1;
+   \   0000000C   0110A0E3           MOV      R1,#+1
+   \   00000010   00108DE5           STR      R1,[SP, #+0]
+    107            s32_t           keep_idle,
+    108                            keep_intvl,
+    109                            keep_cnt,
+    110                            ret;
+    111          
+    112            keep_idle   = 10;   // 60 sec
+   \   00000014   0A10A0E3           MOV      R1,#+10
+   \   00000018   04108DE5           STR      R1,[SP, #+4]
+    113            keep_intvl  = 2;   // 10 sec
+   \   0000001C   0210A0E3           MOV      R1,#+2
+   \   00000020   08108DE5           STR      R1,[SP, #+8]
+    114            keep_cnt    = 5;    // 5 retry
+   \   00000024   0510A0E3           MOV      R1,#+5
+   \   00000028   0C108DE5           STR      R1,[SP, #+12]
+    115          
+    116            // 1. enable keep alive so that we won't get any dead lingering connections
+    117            ret = setsockopt(sd, SOL_SOCKET, SO_KEEPALIVE, &const_int_1, sizeof(const_int_1));
+   \   0000002C   0400A0E3           MOV      R0,#+4
+   \   00000030   01002DE9           PUSH     {R0}
+   \   00000034   04308DE2           ADD      R3,SP,#+4
+   \   00000038   0820A0E3           MOV      R2,#+8
+   \   0000003C   FF10A0E3           MOV      R1,#+255
+   \   00000040   F01E81E3           ORR      R1,R1,#0xF00
+   \   00000044   0400A0E1           MOV      R0,R4
+   \   00000048   ........           _BLF     lwip_setsockopt,??lwip_setsockopt??rA
+    118          
+    119            ret = setsockopt(sd, IPPROTO_TCP, TCP_KEEPALIVE, &const_int_1, sizeof(const_int_1));
+    120            ANPRO10_ASSERT("keepalive enable failed", ret == 0);
+   \   0000004C   0400A0E3           MOV      R0,#+4
+   \   00000050   01002DE9           PUSH     {R0}
+   \   00000054   08308DE2           ADD      R3,SP,#+8
+   \   00000058   0220A0E3           MOV      R2,#+2
+   \   0000005C   0610A0E3           MOV      R1,#+6
+   \   00000060   0400A0E1           MOV      R0,R4
+   \   00000064   ........           _BLF     lwip_setsockopt,??lwip_setsockopt??rA
+   \   00000068   000050E3           CMP      R0,#+0
+   \   0000006C   08D08DE2           ADD      SP,SP,#+8
+   \   00000070   0000000A           BEQ      ??anpro_adjust_client_socket_1
+   \                     ??anpro_adjust_client_socket_2:
+   \   00000074   FEFFFFEA           B        ??anpro_adjust_client_socket_2
+    121          
+    122            ret = setsockopt(sd, IPPROTO_TCP, TCP_KEEPIDLE,   &keep_idle,   sizeof(keep_idle));
+    123            ANPRO10_ASSERT("keep idle set failed", ret == 0);
+   \                     ??anpro_adjust_client_socket_1:
+   \   00000078   0400A0E3           MOV      R0,#+4
+   \   0000007C   01002DE9           PUSH     {R0}
+   \   00000080   08308DE2           ADD      R3,SP,#+8
+   \   00000084   0320A0E3           MOV      R2,#+3
+   \   00000088   0610A0E3           MOV      R1,#+6
+   \   0000008C   0400A0E1           MOV      R0,R4
+   \   00000090   ........           _BLF     lwip_setsockopt,??lwip_setsockopt??rA
+   \   00000094   000050E3           CMP      R0,#+0
+   \   00000098   04D08DE2           ADD      SP,SP,#+4
+   \   0000009C   0000000A           BEQ      ??anpro_adjust_client_socket_3
+   \                     ??anpro_adjust_client_socket_4:
+   \   000000A0   FEFFFFEA           B        ??anpro_adjust_client_socket_4
+    124          
+    125            ret = setsockopt(sd, IPPROTO_TCP, TCP_KEEPINTVL,  &keep_intvl,  sizeof(keep_intvl));
+    126            ANPRO10_ASSERT("keep interval set failed", ret == 0);
+   \                     ??anpro_adjust_client_socket_3:
+   \   000000A4   0400A0E3           MOV      R0,#+4
+   \   000000A8   01002DE9           PUSH     {R0}
+   \   000000AC   0C308DE2           ADD      R3,SP,#+12
+   \   000000B0   0420A0E3           MOV      R2,#+4
+   \   000000B4   0610A0E3           MOV      R1,#+6
+   \   000000B8   0400A0E1           MOV      R0,R4
+   \   000000BC   ........           _BLF     lwip_setsockopt,??lwip_setsockopt??rA
+   \   000000C0   000050E3           CMP      R0,#+0
+   \   000000C4   04D08DE2           ADD      SP,SP,#+4
+   \   000000C8   0000000A           BEQ      ??anpro_adjust_client_socket_5
+   \                     ??anpro_adjust_client_socket_6:
+   \   000000CC   FEFFFFEA           B        ??anpro_adjust_client_socket_6
+    127          
+    128            ret = setsockopt(sd, IPPROTO_TCP, TCP_KEEPCNT,    &keep_cnt,    sizeof(keep_cnt));
+    129            ANPRO10_ASSERT("keep count set failed", ret == 0);
+   \                     ??anpro_adjust_client_socket_5:
+   \   000000D0   0400A0E3           MOV      R0,#+4
+   \   000000D4   01002DE9           PUSH     {R0}
+   \   000000D8   10308DE2           ADD      R3,SP,#+16
+   \   000000DC   0520A0E3           MOV      R2,#+5
+   \   000000E0   0610A0E3           MOV      R1,#+6
+   \   000000E4   0400A0E1           MOV      R0,R4
+   \   000000E8   ........           _BLF     lwip_setsockopt,??lwip_setsockopt??rA
+   \   000000EC   000050E3           CMP      R0,#+0
+   \   000000F0   04D08DE2           ADD      SP,SP,#+4
+   \   000000F4   0000000A           BEQ      ??anpro_adjust_client_socket_7
+   \                     ??anpro_adjust_client_socket_8:
+   \   000000F8   FEFFFFEA           B        ??anpro_adjust_client_socket_8
+    130          
+    131            // put the socket in non-blocking mode so that tx blocking doesn't fuck up
+    132            // the entire server thread
+    133            ioctl(sd, FIONBIO, (char*)&const_int_1);
+   \                     ??anpro_adjust_client_socket_7:
+   \   000000FC   10109FE5           LDR      R1,??anpro_adjust_client_socket_9  ;; 0xffffffff8004667e
+   \   00000100   0D20A0E1           MOV      R2,SP
+   \   00000104   0400A0E1           MOV      R0,R4
+   \   00000108   ........           _BLF     lwip_ioctl,??lwip_ioctl??rA
+    134          }
+   \   0000010C   1F40BDE8           POP      {R0-R4,LR}
+   \   00000110   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro_adjust_client_socket_9:
+   \   00000114   7E660480           DC32     0xffffffff8004667e
+    135          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    136          u8_t
+    137          is_socket_error_would_block(s32_t sd)
+    138          {
+   \                     ??is_socket_error_would_block:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   08D04DE2           SUB      SP,SP,#+8
+    139            int err;
+    140            socklen_t optlen = sizeof(err);
+   \   00000008   0420A0E3           MOV      R2,#+4
+   \   0000000C   04208DE5           STR      R2,[SP, #+4]
+    141          
+    142            // check error number
+    143            lwip_getsockopt(sd, SOL_SOCKET, SO_ERROR, (void*)&err, &optlen);
+   \   00000010   04108DE2           ADD      R1,SP,#+4
+   \   00000014   02002DE9           PUSH     {R1}
+   \   00000018   04308DE2           ADD      R3,SP,#+4
+   \   0000001C   0720A0E3           MOV      R2,#+7
+   \   00000020   402D82E3           ORR      R2,R2,#0x1000
+   \   00000024   081042E2           SUB      R1,R2,#+8
+   \   00000028   ........           _BLF     lwip_getsockopt,??lwip_getsockopt??rA
+    144          
+    145            if(err == EWOULDBLOCK)
+   \   0000002C   04009DE5           LDR      R0,[SP, #+4]
+   \   00000030   04D08DE2           ADD      SP,SP,#+4
+    146            {
+    147              return TRUE;
+    148            }
+    149            return FALSE;
+   \   00000034   0640BDE8           POP      {R1,R2,LR}
+   \   00000038   0B0050E3           CMP      R0,#+11
+   \   0000003C   0100A003           MOVEQ    R0,#+1
+   \   00000040   0000A013           MOVNE    R0,#+0
+   \   00000044   1EFF2FE1           BX       LR               ;; return
+    150          }
+    151          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    152          s32_t
+    153          init_anpro_udp_socket(u16_t port)
+    154          {
+   \                     ??init_anpro_udp_socket:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   10D04DE2           SUB      SP,SP,#+16
+   \   00000008   0040A0E1           MOV      R4,R0
+    155            s32_t                 sock;
+    156            struct sockaddr_in    anpro_saddr;
+    157          
+    158            sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+   \   0000000C   1120A0E3           MOV      R2,#+17
+   \   00000010   0210A0E3           MOV      R1,#+2
+   \   00000014   0200A0E3           MOV      R0,#+2
+   \   00000018   ........           _BLF     lwip_socket,??lwip_socket??rA
+   \   0000001C   0050A0E1           MOV      R5,R0
+    159            LWIP_ASSERT("anpro_server_thread: udp socket() failed.", sock >= 0);
+    160          
+    161            memset(&anpro_saddr, 0, sizeof(anpro_saddr));
+   \   00000020   1020A0E3           MOV      R2,#+16
+   \   00000024   0010A0E3           MOV      R1,#+0
+   \   00000028   0D00A0E1           MOV      R0,SP
+   \   0000002C   ........           _BLF     memset,??memset??rA
+    162            anpro_saddr.sin_family        = AF_INET;
+   \   00000030   0210A0E3           MOV      R1,#+2
+   \   00000034   0110CDE5           STRB     R1,[SP, #+1]
+    163            anpro_saddr.sin_addr.s_addr   = PP_HTONL(INADDR_ANY);
+   \   00000038   0010A0E3           MOV      R1,#+0
+   \   0000003C   04108DE5           STR      R1,[SP, #+4]
+    164            anpro_saddr.sin_port          = htons(port);
+   \   00000040   0400A0E1           MOV      R0,R4
+   \   00000044   ........           _BLF     lwip_htons,??lwip_htons??rA
+   \   00000048   B200CDE1           STRH     R0,[SP, #+2]
+    165          
+    166            if(bind(sock, (struct sockaddr*)&anpro_saddr, sizeof(anpro_saddr)) == -1)
+   \   0000004C   1020A0E3           MOV      R2,#+16
+   \   00000050   0D10A0E1           MOV      R1,SP
+   \   00000054   0500A0E1           MOV      R0,R5
+   \   00000058   ........           _BLF     lwip_bind,??lwip_bind??rA
+    167            {
+    168              LWIP_ASSERT("anpro_server_thread: udp bind() failed.", 0);
+    169            }
+    170            return sock;
+   \   0000005C   0500A0E1           MOV      R0,R5
+   \   00000060   10D08DE2           ADD      SP,SP,#+16
+   \   00000064   3040BDE8           POP      {R4,R5,LR}
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+    171          }
+    172          
+    173          ////////////////////////////////////////////////////////////////////////////////
+    174          // 
+    175          // ANPRO10 Reader
+    176          //
+    177          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    178          void
+    179          anpro10_reader_reset(ANPRO10_Reader* reader)
+    180          {
+    181            reader->state             = ANPRO10_Reader::ANPRO10_RX_Header;
+   \                     ??anpro10_reader_reset:
+   \   00000000   0010A0E3           MOV      R1,#+0
+   \   00000004   0010C0E5           STRB     R1,[R0, #+0]
+   \   00000008   0420A0E3           MOV      R2,#+4
+   \   0000000C   402C82E3           ORR      R2,R2,#0x4000
+   \   00000010   000082E0           ADD      R0,R2,R0
+   \   00000014   001080E5           STR      R1,[R0, #+0]
+    182            reader->buffered_data_len = 0;
+    183            reader->body_len_to_read  = 0;
+   \   00000018   041080E5           STR      R1,[R0, #+4]
+    184          }
+   \   0000001C   1EFF2FE1           BX       LR               ;; return
+    185          
+    186          /**
+    187           * @brief initialize ANPRO10 Reader
+    188           *
+    189           * @param reader reader context to initialize
+    190           * @param callback callback function when a full ANPRO10 message is received
+    191           *
+    192           * @return none
+    193           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    194          void
+    195          anpro10_reader_init(ANPRO10_Reader* reader, anpro10_reader_callback callback)
+    196          {
+   \                     ??anpro10_reader_init:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+    197            anpro10_reader_reset(reader);
+   \   0000000C   ........           BL       ??anpro10_reader_reset
+    198            reader->callback          = callback;
+   \   00000010   0C00A0E3           MOV      R0,#+12
+   \   00000014   400C80E3           ORR      R0,R0,#0x4000
+   \   00000018   045080E7           STR      R5,[R0, +R4]
+    199          }
+   \   0000001C   3040BDE8           POP      {R4,R5,LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+    200          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    201          void
+    202          anpro10_reader_decode(ANPRO10_Reader* reader, u8_t in)
+    203          {
+   \                     ??anpro10_reader_decode:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0400A0E3           MOV      R0,#+4
+   \   0000000C   400C80E3           ORR      R0,R0,#0x4000
+   \   00000010   043080E0           ADD      R3,R0,R4
+   \   00000014   000093E5           LDR      R0,[R3, #+0]
+   \   00000018   012080E2           ADD      R2,R0,#+1
+   \   0000001C   002083E5           STR      R2,[R3, #+0]
+   \   00000020   040080E0           ADD      R0,R0,R4
+   \   00000024   0110C0E5           STRB     R1,[R0, #+1]
+    204            reader->bounce_buffer[reader->buffered_data_len++] = in;
+    205          
+    206            switch(reader->state)
+   \   00000028   0020D4E5           LDRB     R2,[R4, #+0]
+   \   0000002C   10019FE5           LDR      R0,??anpro10_reader_decode_1  ;; CRC
+   \   00000030   0010A0E3           MOV      R1,#+0
+   \   00000034   000052E3           CMP      R2,#+0
+   \   00000038   0200000A           BEQ      ??anpro10_reader_decode_2
+   \   0000003C   012052E2           SUBS     R2,R2,#+1
+   \   00000040   1C00000A           BEQ      ??anpro10_reader_decode_3
+   \   00000044   190000EA           B        ??anpro10_reader_decode_4
+    207            {
+    208            case ANPRO10_Reader::ANPRO10_RX_Header:
+    209              // be careful about alignment shit. NetHeading is 7 bytes long. 
+    210              if(reader->buffered_data_len >= sizeof(struct ANPRO10_PacketHeading))
+   \                     ??anpro10_reader_decode_2:
+   \   00000048   002093E5           LDR      R2,[R3, #+0]
+   \   0000004C   070052E3           CMP      R2,#+7
+   \   00000050   1600003A           BCC      ??anpro10_reader_decode_4
+    211              {
+    212                const struct ANPRO10_PacketHeading* pH =
+    213                             (struct ANPRO10_PacketHeading*)reader->bounce_buffer;
+   \   00000054   012084E2           ADD      R2,R4,#+1
+    214                u8_t csum;
+    215          
+    216          
+    217                csum = anpro10_calc_csum(reader->bounce_buffer, sizeof(struct ANPRO10_PacketHeading) -1);
+   \   00000058   01C084E2           ADD      R12,R4,#+1
+   \   0000005C   00E0A0E3           MOV      LR,#+0
+   \                     ??anpro10_reader_decode_5:
+   \   00000060   0C50DEE7           LDRB     R5,[LR, +R12]
+   \   00000064   01E08EE2           ADD      LR,LR,#+1
+   \   00000068   06005EE3           CMP      LR,#+6
+   \   0000006C   011025E0           EOR      R1,R5,R1
+   \   00000070   0010D1E7           LDRB     R1,[R1, +R0]
+   \   00000074   F9FFFFBA           BLT      ??anpro10_reader_decode_5
+    218                if(csum != pH->HCRC)
+   \   00000078   042082E2           ADD      R2,R2,#+4
+   \   0000007C   0200D2E5           LDRB     R0,[R2, #+2]
+   \   00000080   000051E1           CMP      R1,R0
+   \   00000084   2B00001A           BNE      ??anpro10_reader_decode_6
+    219                {
+    220                  anpro10_reader_reset(reader);
+    221                  return;
+    222                }
+    223          
+    224                reader->body_len_to_read = pH->nob - sizeof(struct ANPRO10_PacketHeading);
+   \   00000088   0100D2E5           LDRB     R0,[R2, #+1]
+   \   0000008C   0010D2E5           LDRB     R1,[R2, #+0]
+   \   00000090   000481E1           ORR      R0,R1,R0, LSL #+8
+   \   00000094   070040E2           SUB      R0,R0,#+7
+   \   00000098   040083E5           STR      R0,[R3, #+4]
+    225                if(reader->body_len_to_read <= 3)
+   \   0000009C   040093E5           LDR      R0,[R3, #+4]
+   \   000000A0   040050E3           CMP      R0,#+4
+   \   000000A4   230000BA           BLT      ??anpro10_reader_decode_6
+    226                { // this shift appears to happen with RS485. anyway
+    227                  anpro10_reader_reset(reader);
+    228                  return;
+    229                }
+    230                reader->state = ANPRO10_Reader::ANPRO10_RX_Body;
+   \   000000A8   0100A0E3           MOV      R0,#+1
+   \   000000AC   0000C4E5           STRB     R0,[R4, #+0]
+   \                     ??anpro10_reader_decode_4:
+   \   000000B0   7040BDE8           POP      {R4-R6,LR}
+   \   000000B4   1EFF2FE1           BX       LR
+    231              }
+    232              break;
+    233          
+    234            case ANPRO10_Reader::ANPRO10_RX_Body:
+    235              if(reader->buffered_data_len >= (reader->body_len_to_read + sizeof(struct ANPRO10_PacketHeading)))
+   \                     ??anpro10_reader_decode_3:
+   \   000000B8   002093E5           LDR      R2,[R3, #+0]
+   \   000000BC   045093E5           LDR      R5,[R3, #+4]
+   \   000000C0   075085E2           ADD      R5,R5,#+7
+   \   000000C4   050052E1           CMP      R2,R5
+   \   000000C8   F8FFFF3A           BCC      ??anpro10_reader_decode_4
+    236              { // bingo. we got the message
+    237                u8_t csum;
+    238                u8_t pcsum;
+    239                const struct ANPRO10_PacketHeading* pH =
+    240                             (struct ANPRO10_PacketHeading*)reader->bounce_buffer;
+   \   000000CC   01C084E2           ADD      R12,R4,#+1
+    241          
+    242                csum = anpro10_calc_csum(reader->bounce_buffer, pH->nob - 2);
+   \   000000D0   0550DCE5           LDRB     R5,[R12, #+5]
+   \   000000D4   04208CE2           ADD      R2,R12,#+4
+   \   000000D8   0020D2E5           LDRB     R2,[R2, #+0]
+   \   000000DC   01E084E2           ADD      LR,R4,#+1
+   \   000000E0   052482E1           ORR      R2,R2,R5, LSL #+8
+   \   000000E4   02C042E2           SUB      R12,R2,#+2
+   \   000000E8   0050A0E3           MOV      R5,#+0
+   \   000000EC   01005CE3           CMP      R12,#+1
+   \   000000F0   040000AA           BGE      ??anpro10_reader_decode_7
+   \   000000F4   050000EA           B        ??anpro10_reader_decode_8
+   \                     ??anpro10_reader_decode_9:
+   \   000000F8   0E60D5E7           LDRB     R6,[R5, +LR]
+   \   000000FC   015085E2           ADD      R5,R5,#+1
+   \   00000100   011026E0           EOR      R1,R6,R1
+   \   00000104   0010D1E7           LDRB     R1,[R1, +R0]
+   \                     ??anpro10_reader_decode_7:
+   \   00000108   0C0055E1           CMP      R5,R12
+   \   0000010C   F9FFFFBA           BLT      ??anpro10_reader_decode_9
+    243          
+    244                pcsum = reader->bounce_buffer[pH->nob -2];
+    245                if(pcsum == csum)
+   \                     ??anpro10_reader_decode_8:
+   \   00000110   040082E0           ADD      R0,R2,R4
+   \   00000114   010050E5           LDRB     R0,[R0, #-1]
+   \   00000118   010050E1           CMP      R0,R1
+   \   0000011C   0500001A           BNE      ??anpro10_reader_decode_6
+    246                { // another bingo
+    247                  reader->callback(reader, reader->bounce_buffer, reader->buffered_data_len);
+   \   00000120   002093E5           LDR      R2,[R3, #+0]
+   \   00000124   083093E5           LDR      R3,[R3, #+8]
+   \   00000128   011084E2           ADD      R1,R4,#+1
+   \   0000012C   0400A0E1           MOV      R0,R4
+   \   00000130   0FE0A0E1           MOV      LR,PC
+   \   00000134   13FF2FE1           BX       R3
+    248                }
+    249                anpro10_reader_reset(reader);
+   \                     ??anpro10_reader_decode_6:
+   \   00000138   0400A0E1           MOV      R0,R4
+   \   0000013C   ........           BL       ??anpro10_reader_reset
+   \                     ??anpro10_reader_decode_10:
+   \   00000140   DAFFFFEA           B        ??anpro10_reader_decode_4
+   \                     ??anpro10_reader_decode_1:
+   \   00000144   ........           DC32     CRC
+    250              }
+    251              break;
+    252            }
+    253          }
+    254          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    255          void
+    256          anpro10_reader_feed(ANPRO10_Reader* reader, const u8_t* msg, s32_t len)
+    257          {
+   \                     ??anpro10_reader_feed:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+   \   00000008   0150A0E1           MOV      R5,R1
+   \   0000000C   0260A0E1           MOV      R6,R2
+    258            s32_t     i;
+    259          
+    260            for(i = 0; i < len; i++)
+   \   00000010   0070A0E3           MOV      R7,#+0
+   \   00000014   010056E3           CMP      R6,#+1
+   \   00000018   050000AA           BGE      ??anpro10_reader_feed_1
+    261            {
+    262              if(reader->buffered_data_len >= ANPRO_READER_BUFFER_SIZE)
+    263              {
+    264                // something is seriously fucked up here.
+    265                anpro10_reader_reset(reader);
+    266                continue;
+    267              }
+    268              anpro10_reader_decode(reader, msg[i]);
+    269            }
+    270          }
+   \                     ??anpro10_reader_feed_2:
+   \   0000001C   F040BDE8           POP      {R4-R7,LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+   \                     ??anpro10_reader_feed_3:
+   \   00000024   0510D7E7           LDRB     R1,[R7, +R5]
+   \   00000028   0400A0E1           MOV      R0,R4
+   \   0000002C   ........           BL       ??anpro10_reader_decode
+   \                     ??anpro10_reader_feed_4:
+   \   00000030   017087E2           ADD      R7,R7,#+1
+   \                     ??anpro10_reader_feed_1:
+   \   00000034   060057E1           CMP      R7,R6
+   \   00000038   F7FFFFAA           BGE      ??anpro10_reader_feed_2
+   \   0000003C   0400A0E3           MOV      R0,#+4
+   \   00000040   400C80E3           ORR      R0,R0,#0x4000
+   \   00000044   040090E7           LDR      R0,[R0, +R4]
+   \   00000048   400C50E3           CMP      R0,#+16384
+   \   0000004C   F4FFFFBA           BLT      ??anpro10_reader_feed_3
+   \   00000050   0400A0E1           MOV      R0,R4
+   \   00000054   ........           BL       ??anpro10_reader_reset
+   \   00000058   F4FFFFEA           B        ??anpro10_reader_feed_4
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "127.0.0.1">`:
+   \   00000000   3132372E302E       DC8 "127.0.0.1"
+   \              302E3100    
+   \   0000000A   0000               DC8 0, 0
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    271          
+    272          #endif //!LWIP_SOCKET
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     __sti__routine()                   0
+     anpro10_reader_decode(ANPRO10_Reader *, u8_t)
+                                       16
+     anpro10_reader_feed(ANPRO10_Reader *, u8_t const *, s32_t)
+                                       20
+     anpro10_reader_init(ANPRO10_Reader *, anpro10_reader_callback)
+                                       12
+     anpro10_reader_reset(ANPRO10_Reader *)
+                                        0
+     anpro_adjust_client_socket(s32_t)
+                                       32
+     anpro_net_create_eventfd()        24
+     anpro_select_add_set(s32_t, fd_set *, s32_t *)
+                                        4
+     init_anpro_client_socket()         8
+     init_anpro_server_socket(u16_t)
+                                       28
+     init_anpro_udp_socket(u16_t)      28
+     is_socket_error_would_block(s32_t)
+                                       16
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     init_anpro_server_socket(u16_t)
+                                     120
+     init_anpro_client_socket()       40
+     anpro_select_add_set(s32_t, fd_set *, s32_t *)
+                                      56
+     anpro_net_create_eventfd()      108
+     anpro_adjust_client_socket(s32_t)
+                                     280
+     is_socket_error_would_block(s32_t)
+                                      72
+     init_anpro_udp_socket(u16_t)    108
+     anpro10_reader_reset(ANPRO10_Reader *)
+                                      32
+     anpro10_reader_init(ANPRO10_Reader *, anpro10_reader_callback)
+                                      36
+     anpro10_reader_decode(ANPRO10_Reader *, u8_t)
+                                     328
+     anpro10_reader_feed(ANPRO10_Reader *, u8_t const *, s32_t)
+                                      92
+     ?<Constant "127.0.0.1">          12
+     __sti__routine()                  4
+      Others                         160
+
+ 
+ 1 432 bytes in segment CODE
+    12 bytes in segment DATA_C
+     4 bytes in segment DIFUNCT
+ 
+ 1 280 bytes of CODE  memory (+ 156 bytes shared)
+    12 bytes of CONST memory
+
+Errors: none
+Warnings: none

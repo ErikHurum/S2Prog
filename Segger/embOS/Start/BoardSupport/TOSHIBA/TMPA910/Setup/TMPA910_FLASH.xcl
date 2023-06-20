@@ -1,0 +1,70 @@
+//*********************************************************************
+//*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+//*        Solutions for real time microcontroller applications       *
+//*********************************************************************
+//*                                                                   *
+//*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+//*                  www.segger.com                                   *
+//*                                                                   *
+//*********************************************************************
+//
+//---------------------------------------------------------------------
+//File   : TMPA910_FLASH.xcl
+//Purpose: Linker file for TMPA910 and IAR embedded workbench V4
+//         Application located in external Flash, runs in SDRAM
+//-------- END-OF-HEADER ----------------------------------------------
+//
+
+-DROMSTART=00000000               // External Flash, mapped to address 0x0
+-DROM_SIZE=2000000                // Total Flash size is 32MB
+-DROMEND=(ROMSTART+ROM_SIZE-1)
+
+-DRAMSTART=(0x40000000+ROM_SIZE)  // External SDRAM, ROMSIZE reserved for Flash image
+-DRAM_SIZE=(0x4000000-ROM_SIZE)   // 64MB - reserved size
+-DRAMEND=(RAMSTART+RAM_SIZE-1)
+
+-DiRAMSTART=F8002000              // Internal RAM, total size = 56KB
+-DiRAMEND=F800FFFF
+
+-D_CSTACK_SIZE=(80*4)
+-D_IRQ_STACK_SIZE=(3*(4*7)+8)     // Nesting level * (Size per interrupt) + margin for alignement
+
+-carm
+//************************************************
+// Address range for reset and exception
+// vectors (INTVEC).
+// The vector area is 32 bytes,
+// an additional 32 bytes is allocated for the
+// constant table used by ldr PC in cstartup.s79.
+//************************************************
+-Z(CODE)INTVEC=ROMSTART-(ROMSTART+FF)
+
+//************************************************
+// Startup code and exception routines (ICODE).
+//************************************************
+-Z(CODE)ICODE,DIFUNCT,SWITAB,CODE,CODE_ID=ROMSTART-ROMEND
+
+//************************************************
+// Various constants and initializers.
+//************************************************
+-Z(CONST)INITTAB,DATA_ID,DATA_C,CHECKSUM=ROMSTART-ROMEND
+
+//************************************************
+// PROGRAM_END has to be located behind all code 
+// and const segments.
+// it is used to determine the program size
+//************************************************
+-Z(CONST)PROGRAM_END=ROMSTART-ROMEND
+
+//************************************************
+// Data segments.
+//************************************************
+// Normal data is placed in RAM
+-Z(DATA)DATA_I,DATA_Z,DATA_N=RAMSTART-RAMEND
+
+// Stacks and code for RAM-Func are placed in internal RAM
+-Z(DATA)CSTACK+_CSTACK_SIZE,IRQ_STACK+_IRQ_STACK_SIZE,CODE_I=iRAMSTART-iRAMEND
+-QCODE_I=CODE_ID
+
+
+

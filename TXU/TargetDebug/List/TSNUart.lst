@@ -1,0 +1,558 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               19/Jan/2017  10:13:08 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\TSNUart.cpp                     #
+#    Command line    =  D:\S2Prog\Shared\Src\TSNUart.cpp --fpu None -D       #
+#                       OS_LIBMODE_DP -D OS_RAMVECT=0 -D CPU_S3C2410 -D      #
+#                       OS_UART=1 -D ANBOOTLOADER -D __ARM_LIBRARY__ -lCN    #
+#                       D:\S2Prog\TXU\TargetDebug\List\ -o                   #
+#                       D:\S2Prog\TXU\TargetDebug\Obj\ -s2 --no_cse          #
+#                       --no_unroll --no_inline --no_code_motion --no_tbaa   #
+#                       --no_clustering --no_scheduling --debug --cpu_mode   #
+#                       arm --endian little --cpu ARM920T --stack_align 4    #
+#                       --interwork -e --eec++ --dlib_config "C:\Program     #
+#                       Files (x86)\IAR Systems\Embedded Workbench           #
+#                       4.0\arm\LIB\dl4tpainl8f.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\MINILZO.108\ -I          #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\INC\"                              #
+#    List file       =  D:\S2Prog\TXU\TargetDebug\List\TSNUart.lst           #
+#    Object file     =  D:\S2Prog\TXU\TargetDebug\Obj\TSNUart.r79            #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\TSNUart.cpp
+      1          #ifdef ANBOOTLOADER
+      2          	#include "RTOS.h"
+      3          	#include "ANPro10Inc.h"
+      4          #else
+      5          	#include "TSNIncludes.h"
+      6          	#pragma hdrstop
+      7          #endif
+      8          //---------------------------------------------------------------------------
+      9          #define  TX_DELAY       50
+     10          
+     11          TSNUart *TSNUart::Channels[MAX_COM_PORTS]={NULL,NULL,NULL,NULL,NULL,NULL,NULL};
+     12          
+     13          TSNUart::TSNUart(int PortNum,unsigned BdRate,unsigned WrdLength,unsigned StpBits,char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr,int MaxTimeChar,bool Relax, int LogP, int LogE)
+     14          {
+     15          	PortNumber              = PortNum;
+     16          	BaudRate                = BdRate;
+     17          	WordLength              = WrdLength;
+     18          	StopBits                = StpBits;
+     19          	Parity                  = Prty;
+     20          	BufferSize              = BufSize;
+     21          	IsMaster                = IsMstr;
+     22          	Device                  = Dev;
+     23          	HWProtocol              = HWProt;
+     24          	SWProtocol              = SWProt;
+     25          	Delay                   = 0;
+     26          	Relaxed                 = false;
+     27          	TimeOut                 = 0;
+     28          	MaxTimeBetweenChar      = MaxTimeChar;
+     29          	LogTime                 = LogP;
+     30          	LogEntries              = LogE;
+     31          	ModbusCmdInputStatus    = MBUS_CMD_READ_COIL_STATUS;
+     32          	ModbusCmdInputRegister  = MBUS_CMD_READ_INPUT_REGISTER;
+     33          	RxTimeOut       		= 0;
+     34          	switch ( Device ) {
+     35          	case C_UART_DEVICE_PC     :
+     36          		RxTimeOut       = 5*60000;
+     37          		BaudRate = DEFAULT_BAUDRATE;
+     38          		break;
+     39          	case C_UART_DEVICE_TDU    :
+     40          		BaudRate = DEFAULT_BAUDRATE;
+     41          		break;
+     42          	case C_UART_DEVICE_TCU    :
+     43          		BaudRate = DEFAULT_BAUDRATE;
+     44          		break;
+     45          	case C_UART_DEVICE_ANPRO3 :
+     46          	case C_UART_DEVICE_ANPRO10:
+     47          	case C_UART_DEVICE_SAAB   :
+     48          		break;
+     49          	case C_UART_DEVICE_ZB     :
+     50          	case C_UART_DEVICE_ZB_RED :
+     51          		BaudRate = 38400;
+     52          		break;
+     53          	case C_UART_DEVICE_MODBUS_MASTER    :
+     54          	case C_UART_DEVICE_MODBUS_SLAVE     :
+     55          	case C_UART_DEVICE_MODBUS_SLAVE_INV :
+     56          	case C_UART_DEVICE_MODBUS_SLAVE_TCP :
+     57          		break;
+     58          	case C_UART_DEVICE_MODBUS_MASTER_INV:
+     59          		ModbusCmdInputRegister = MBUS_CMD_READ_HOLDING_REGISTER;
+     60          		break;
+     61          	case C_UART_DEVICE_TPC:
+     62          		BaudRate = 9600;
+     63          		break;
+     64          	}
+     65              Initiate();
+     66              //TSNUart::Channels[PortNumber] = this;
+     67          }
+     68          
+     69          TSNUart::TSNUart(void)
+     70          {
+     71          #if defined (ANWIN) || defined(ANFLASH)
+     72              BufferSize      = 10*64*1024;
+     73          #else
+     74              BufferSize      = 32*1024;
+     75          #endif
+     76              PortNumber         = 0;
+     77              BaudRate           = 9600;
+     78              WordLength         = 8;
+     79              StopBits           = 1;
+     80              Parity             = 'N';
+     81              IsMaster           = false;
+     82          	Device             = C_UART_DEVICE_PC;
+     83              HWProtocol         = C_UART_HWPRO;
+     84              SWProtocol         = C_UART_SWPRO;
+     85              LogTime            = 0;
+     86              LogEntries         = 0;
+     87          
+     88              Delay              = 0;
+     89              Relaxed            = false;
+     90              TimeOut            = 0;
+     91              MaxTimeBetweenChar = 0;
+     92              Initiate();
+     93          }
+     94          
+     95          TSNUart::~TSNUart(void)
+     96          {
+     97          }
+     98          
+     99          void TSNUart::Initiate(void)
+    100          {
+    101              RxCnt               = 0;
+    102              TxCnt               = 0;
+    103              RxByteCnt           = 0;
+    104              TxByteCnt           = 0;
+    105              RxBytePerSecond     = 0;
+    106              TxBytePerSecond     = 0;
+    107              TxTaskPtr           = NULL;
+    108              SystemMatch         = false;
+    109              RxFIFOSize          = 1;
+    110              TxFIFOSize          = 1;
+    111              EventMask           = 0;
+    112              TxDataPtr           = NULL;
+    113              TxDataPos           = 0;
+    114              TxDataSize          = 0;
+    115          #ifdef S2TXU
+    116              LastRxTime          = (int)OS_Time;
+    117          #else
+    118          	LastRxTime          = 0;
+    119          #endif
+    120              TxRequest           = false;
+    121              ProtocolState       = pNew_Sync;
+    122              TransactionNumber   = 0;
+    123          }
+    124          // Dummy function, never used
+    125          void TSNUart::EnableInt(void)
+    126          {
+    127          
+    128          }
+    129          /*******************************************************************************
+    130          *
+    131          * Tsn16550IntWr - handle a transmitter interrupt
+    132          *
+    133          * This routine handles write interrupts from the UART. It reads a character
+    134          * and puts it in the transmit holding register of the device for transfer.
+    135          *
+    136          * If there are no more characters to transmit, transmission is disabled by
+    137          * clearing the transmit interrupt enable bit in the IER(int enable register).
+    138          *
+    139          * RETURNS: N/A
+    140          *
+    141          */
+    142          
+    143          void TSNUart::Transmit(void)
+    144          {
+    145          }
+    146          
+    147          void TSNUart::ActivateTx(void)
+    148          {
+    149          }
+    150          
+    151          void TSNUart::DeactivateTx(void)
+    152          {
+    153          }
+    154          
+    155          void TSNUart::ActivateIfTxRequest(void)
+    156          {
+    157              if ( TxRequest ) {
+    158          		int RetryCnt = 0;
+    159                  bool CanSend = false;
+    160                  do {
+    161                      TSN_Delay(5*CurrentDeviceAddress);   // Was 2
+    162                      switch ( ProtocolState ) {
+    163                      case pData:
+    164                      case pHeading:
+    165                      case pInRx:
+    166                      case pSync:
+    167                          CanSend = false;
+    168                          break;
+    169                      default:
+    170                          CanSend = true;
+    171                          break;
+    172                      }
+    173                  }while ( !CanSend && RetryCnt++ < 3 );
+    174                  TxRequest   = false;
+    175                  ActivateTx();
+    176              }
+    177          }
+    178          
+    179          /*******************************************************************************
+    180          *
+    181          * Tsn16550IntRd - handle a  receiver interrupt
+    182          *
+    183          * This routine handles read interrupts from the UART.
+    184          *
+    185          * RETURNS: N/A
+    186          *
+    187          */
+    188          
+    189          void TSNUart::Receive(void)
+    190          {
+    191          }
+    192          
+    193          void TSNUart::ClearRxBuffer(void)
+    194          {
+    195          
+    196          }
+    197          
+    198          /*******************************************************************************
+    199          *
+    200          * Tsn16550Int - handle a receiver/transmitter interrupt
+    201          *
+    202          * This routine handles four sources of interrupts from the UART. They are
+    203          * prioritized in the following order by the Interrupt Identification Register:
+    204          * Receiver Line Status, Received Data Ready, Transmit Holding Register Empty
+    205          * and Modem Status.
+    206          *
+    207          * If there is another character to be transmitted, it sends it.  If
+    208          * not, or if a device has never been created for this channel, just
+    209          * disable the interrupt.
+    210          * When a modem status interrupt occurs, the transmit interrupt is enabled if
+    211          * the CTS signal is TRUE.
+    212          *
+    213          * RETURNS: N/A
+    214          */
+    215          
+    216          void TSNUart::HandleInterrupt(void)
+    217          {
+    218          }
+    219          
+    220          bool TSNUart::Send(U8* MyData, int Size, char EventMsk, bool Wait)
+    221          {
+    222              return(false);
+    223          }
+    224          
+    225          
+    226          bool TSNUart::Receive(U8* MyData, int Size, int TimeOut)
+    227          {
+    228          
+    229          //  return(bool)!OS_GetMailTimed(&RxBuf,(char*)MyData,TimeOut);
+    230          	return(false);
+    231          }
+    232          
+    233          void TSNUart::SetTaskPtr(TSN_TASK* TaskPtr)
+    234          {
+    235              TxTaskPtr = TaskPtr;
+    236          }
+    237          
+    238          TSN_TASK* TSNUart::GetTaskPtr(void)
+    239          {
+    240              return((TSN_TASK*)TxTaskPtr);
+    241          }
+    242          
+    243          void TSNUart::SetProtocolState(ComState PState)
+    244          {
+    245              ProtocolState = PState;
+    246          }
+    247          
+    248          
+    249          /*
+    250          bool TSNUart::Configurate(int Key)
+    251          {
+    252              return true;
+    253          }
+    254          */
+    255          /*
+    256          	This is required because object are not konwn in ISR
+    257          */
+    258          extern "C" {
+    259              void HandleUARTInterrupt(int Port)
+    260              {
+    261                  if ( TSNUart::Channels[Port] ) {
+    262                      TSNUart::Channels[Port]->HandleInterrupt();
+    263                  }
+    264              }
+    265          }
+    266          
+    267          ///////////////////////////////////////////////////////////////////
+    268          ///////////////////////////////////////////////////////////////////
+    269          //
+    270          //  Not used in bootloader
+    271          //
+    272          ///////////////////////////////////////////////////////////////////
+    273          ///////////////////////////////////////////////////////////////////
+    274          #ifndef ANBOOTLOADER
+    275          
+    276          ///////////////////////////////////////////////////////////////
+    277          //
+    278          // Routines for the Configuration
+    279          //
+    280          ///////////////////////////////////////////////////////////////
+    281          
+    282          AnsiString TSNUart::MakeConfigString(int ExtraTabs)
+    283          {
+    284              AnsiString LocalString;
+    285              LocalString +=TabStr1+KeyWord(C_UART)+CrLfStr;
+    286              LocalString +=TabStr2+KeyWord(C_UART_PORTNUMBER)+(AnsiString)PortNumber+CrLfStr;
+    287              LocalString +=TabStr2+KeyWord(C_UART_BAUDRATE)+(AnsiString)BaudRate+CrLfStr;
+    288              LocalString +=TabStr2+KeyWord(C_UART_PARITY)+TabStr1+(AnsiString)Parity+CrLfStr;
+    289              LocalString +=TabStr2+KeyWord(C_UART_STOPBITS)+(AnsiString)StopBits+CrLfStr;
+    290              LocalString +=TabStr2+KeyWord(C_UART_WORDLENGTH)+(AnsiString)WordLength+CrLfStr;
+    291          //  LocalString +=(AnsiString) floorf"\t\t"+KeyWord(C_UART_UARTTYPE)+(AnsiString)UartType+CrLfStr;
+    292          	LocalString +=TabStr2+KeyWord(C_UART_HWPRO)+KeyWord(HWProtocol)+CrLfStr;
+    293              LocalString +=TabStr2+KeyWord(C_UART_SWPRO)+KeyWord(SWProtocol)+CrLfStr;
+    294              LocalString +=TabStr2+KeyWord(C_UART_DEVICE)+TabStr1+KeyWord(Device)+CrLfStr;
+    295              if ( Delay ) {
+    296                  LocalString +=TabStr2+KeyWord(C_DELAY)+(AnsiString)Delay+CrLfStr;
+    297              }
+    298              if ( Relaxed ) {
+    299                  LocalString +=TabStr2+KeyWord(C_RELAXED)+CrLfStr;
+    300              }
+    301              if ( TimeOut ) {
+    302                  LocalString +=TabStr2+KeyWord(C_TIMEOUT)+(AnsiString)TimeOut+CrLfStr;
+    303              }
+    304              if ( MaxTimeBetweenChar ) {
+    305                  LocalString +=TabStr2+KeyWord(C_UART_MAX_TIME_BETWEEN_CHAR)+(AnsiString)MaxTimeBetweenChar+CrLfStr;
+    306              }
+    307              if ( LogTime ) {
+    308                  LocalString +=TabStr2+KeyWord(C_LOG_PERIOD)+(AnsiString)(LogTime/1000)+CrLfStr;
+    309              }
+    310              if ( LogEntries ) {
+    311                  LocalString +=TabStr2+KeyWord(C_LOG_ENTRIES)+(AnsiString)LogEntries+CrLfStr;
+    312              }
+    313              if (ModbusCmdInputRegister != MBUS_CMD_READ_INPUT_REGISTER) {
+    314                  LocalString +=TabStr2+KeyWord(C_MODBUS_CMD_INP_REG)+(AnsiString)ModbusCmdInputRegister+CrLfStr;
+    315              }
+    316              if (ModbusCmdInputStatus != MBUS_CMD_READ_COIL_STATUS) {
+    317                  LocalString +=TabStr2+KeyWord(C_MODBUS_CMD_INP_STAT)+(AnsiString)ModbusCmdInputStatus+CrLfStr;
+    318              }
+    319              LocalString +=TabStr1+KeyWord(C_UART_END)+CrLfStr;
+    320              LocalString += CrLfStr;
+    321              return(LocalString);
+    322          }
+    323          //---------------------------------------------------------------------------
+    324          
+    325          bool TSNUart::LoadConfigString(TSNConfigString &ConfigString)
+    326          {
+    327              bool NoError = true;
+    328          	int ErrorLine=0;
+    329              int Key;
+    330              do {
+    331                  AnsiString InputKeyWord= ConfigString.NextWord(ErrorLine);
+    332                  if ( ErrorLine ) {
+    333                      if ( ErrorLine != EOF ) {
+    334                          GiveConfigWarning("Uart",ErrorLine);
+    335                      }
+    336                  } else {
+    337                      Key = FindConfigKey(InputKeyWord);
+    338                      switch ( Key ) {
+    339                      default:
+    340                          GiveConfigWarning("Uart",InputKeyWord,ConfigString.LineCount);
+    341                          break;
+    342                      case C_UART_PORTNUMBER:
+    343                          PortNumber = ConfigString.ReadLong(ErrorLine);
+    344                          NoError = !ErrorLine;
+    345                          break;
+    346                      case C_UART_BAUDRATE:
+    347                          BaudRate = ConfigString.ReadLong(ErrorLine);
+    348                          NoError = !ErrorLine;
+    349                          break;
+    350                      case C_UART_PARITY:
+    351                          {
+    352                              AnsiString TempStr = ConfigString.NextWord(ErrorLine);
+    353                              NoError = !ErrorLine;
+    354                              if ( NoError ) strncpy(&Parity,TempStr.c_str(),1);
+    355                          }
+    356                          break;
+    357                      case C_UART_STOPBITS:
+    358                          StopBits = ConfigString.ReadLong(ErrorLine);
+    359                          NoError = !ErrorLine;
+    360                          break;
+    361                      case C_UART_WORDLENGTH:
+    362                          WordLength = ConfigString.ReadLong(ErrorLine);
+    363                          NoError = !ErrorLine;
+    364          				break;
+    365          /*              case C_UART_UARTTYPE:
+    366                              {
+    367                                  UartType = ConfigString.ReadLong(ErrorLine);
+    368                                  NoError = !ErrorLine;
+    369                              }
+    370                              break;    */
+    371                      case C_UART_MAX_TIME_BETWEEN_CHAR:
+    372                          MaxTimeBetweenChar = ConfigString.ReadLong(ErrorLine);
+    373                          NoError = !ErrorLine;
+    374                          break;
+    375                      case C_UART_HWPRO:
+    376                          {
+    377                              AnsiString TempStr = ConfigString.NextWord(ErrorLine);
+    378                              NoError = !ErrorLine;
+    379                              if ( NoError ) HWProtocol = FindConfigKey(TempStr);
+    380                          }
+    381                          break;
+    382                      case C_UART_SWPRO:
+    383                          {
+    384                              AnsiString TempStr = ConfigString.NextWord(ErrorLine);
+    385                              NoError = !ErrorLine;
+    386                              if ( NoError ) SWProtocol = FindConfigKey(TempStr);
+    387                          }
+    388                          break;
+    389                      case C_UART_DEVICE:
+    390                          {
+    391                              AnsiString TempStr = ConfigString.NextWord(ErrorLine);
+    392                              NoError = !ErrorLine;
+    393                              if ( NoError ) {
+    394                                  Device = FindConfigKey(TempStr);
+    395                              }
+    396                          }
+    397                          break;
+    398                      case C_DELAY:
+    399                          Delay = ConfigString.ReadLong(ErrorLine);
+    400          				break;
+    401                      case C_RELAXED:
+    402                          Relaxed = true;
+    403                          break;
+    404                      case C_TIMEOUT:
+    405                          TimeOut = ConfigString.ReadLong(ErrorLine);
+    406                          break;
+    407                      case C_LOG_PERIOD:
+    408                          {
+    409                              int tmpLogTime = ConfigString.ReadLong(ErrorLine);
+    410                              NoError = !ErrorLine;
+    411                              if ( NoError ) {
+    412                                  LogTime = 1000*tmpLogTime;
+    413                              }
+    414                          }
+    415                          break;
+    416                      case C_LOG_ENTRIES:
+    417                          LogEntries = ConfigString.ReadLong(ErrorLine);
+    418                          break;
+    419                      case C_MODBUS_CMD_INP_STAT:
+    420                          {
+    421                              int Cmd = ConfigString.ReadInteger(ErrorLine);
+    422                              switch(Cmd) {
+    423                              default:
+    424                                  GiveConfigWarning("Modbus Read Input Status: Unknown command!",ErrorLine);
+    425                              case MBUS_CMD_READ_COIL_STATUS:
+    426                                  ModbusCmdInputStatus = MBUS_CMD_READ_COIL_STATUS;
+    427                                  break;
+    428                              case MBUS_CMD_READ_INPUT_STATUS:
+    429                                  ModbusCmdInputStatus = MBUS_CMD_READ_INPUT_STATUS;
+    430                              }
+    431                          }
+    432                          break;
+    433                      case C_MODBUS_CMD_INP_REG :
+    434                          {
+    435                              int Cmd = ConfigString.ReadInteger(ErrorLine);
+    436          					switch(Cmd) {
+    437                              default:
+    438                                  GiveConfigWarning("Modbus Read Register: Unknown command!",ErrorLine);
+    439                              case MBUS_CMD_READ_INPUT_REGISTER:
+    440                                  ModbusCmdInputRegister = MBUS_CMD_READ_INPUT_REGISTER;
+    441                                  break;
+    442                              case MBUS_CMD_READ_HOLDING_REGISTER:
+    443          						ModbusCmdInputRegister = MBUS_CMD_READ_HOLDING_REGISTER;
+    444          						break;
+    445                              }
+    446                          }
+    447                          break;
+    448                      case C_UART_END:
+    449                          break;
+    450                      }
+    451                  }
+    452              }while ( NoError && ( ErrorLine != EOF )&& ( Key != C_UART_END ) );
+    453              switch ( Device ) {
+    454              case C_UART_DEVICE_TDU    :
+    455                  BaudRate = DEFAULT_BAUDRATE;
+    456              case C_UART_DEVICE_PC     :
+    457              case C_UART_DEVICE_TCU    :
+    458                  break;
+    459              case C_UART_DEVICE_ANPRO3 :
+    460              case C_UART_DEVICE_ANPRO10:
+    461              case C_UART_DEVICE_SAAB   :
+    462                  break;
+    463              case C_UART_DEVICE_ZB     :
+    464              case C_UART_DEVICE_ZB_RED :
+    465                  BaudRate = 38400;
+    466                  break;
+    467          	case C_UART_DEVICE_MODBUS_MASTER    :
+    468          	case C_UART_DEVICE_MODBUS_SLAVE     :
+    469          	case C_UART_DEVICE_MODBUS_SLAVE_INV :
+    470          	case C_UART_DEVICE_MODBUS_SLAVE_TCP :
+    471          		break;
+    472          	case C_UART_DEVICE_MODBUS_MASTER_INV:
+    473          		ModbusCmdInputRegister = MBUS_CMD_READ_HOLDING_REGISTER;
+    474          		break;
+    475          	case C_UART_DEVICE_TPC:
+    476                  BaudRate = 9600;
+    477                  break;
+    478              }
+    479              return(NoError);
+    480          }
+    481          #endif
+    482          //---------------------------------------------------------------------------
+    483          
+    484          float TSNUart::RxPercent(void)
+    485          {
+    486              return(100.0*((float)RxBytePerSecond*(1+WordLength+StopBits)/((float)BaudRate*UART_BYTE_COUNT_TIME/MSEC_TO_SEC)));
+    487          
+    488          }
+    489          float TSNUart::TxPercent(void)
+    490          {
+    491              return(100.0*((float)TxBytePerSecond*(1+WordLength+StopBits)/((float)BaudRate*UART_BYTE_COUNT_TIME/MSEC_TO_SEC)));
+    492          }
+    493          
+    494          bool TSNUart::HasMore(void)
+    495          {
+    496              return(true);
+    497          }
+    498          
+    499          
+    500          void  TSNUart::SetRxTimeOut(int TimeOut)
+    501          {
+    502              RxTimeOut = TimeOut;
+    503          }
+    504          
+    505          #ifdef S2TXU
+    506          #pragma diag_suppress=Pa082
+    507          #endif
+    508          bool TSNUart::IsRxTimeOut(void)
+    509          {
+    510              bool TimeOut = false;
+    511          #ifdef S2TXU
+    512              if ( RxTimeOut ) {
+    513                  if ( abs(OS_Time-LastRxTime) > RxTimeOut ) {
+    514                      TimeOut= true;
+    515                  }
+    516              }
+    517          #endif
+    518              return TimeOut;
+    519          }
+    520          
+    521          
+
+Errors: 3
+Warnings: none

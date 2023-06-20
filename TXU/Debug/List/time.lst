@@ -1,0 +1,100 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:20:21 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\CStartup\time.c                        #
+#    Command line    =  D:\S2Prog\TXU\CStartup\time.c --fpu None -D          #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\time.lst                    #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\time.r79                     #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\CStartup\time.c
+      1          /*******************
+      2           *
+      3           * Copyright 1998-2003 IAR Systems. All rights reserved.
+      4           *
+      5           * $Revision: 1.4 $
+      6           *
+      7           * This is the default implementation of the "time" function of the
+      8           * standard library.  It can be replaced with a system-specific
+      9           * implementation.
+     10           *
+     11           * The "time" function returns the current calendar time.  (time_t)-1
+     12           * should be returned if the calendar time is not available.  The time
+     13           * is measured in seconds since the first of January 1970.
+     14           *
+     15           ********************/
+     16          
+     17          #include <time.h>
+     18          extern 	volatile time_t CurrentTime;
+     19          #pragma module_name = "?time"
+     20          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     21          time_t (time)(time_t *t)
+     22          {
+     23            if (t)
+   \                     time:
+   \   00000000   10109FE5           LDR      R1,??time_0      ;; CurrentTime
+   \   00000004   000050E3           CMP      R0,#+0
+     24            {
+     25              *t = CurrentTime;
+   \   00000008   00209115           LDRNE    R2,[R1, #+0]
+   \   0000000C   00208015           STRNE    R2,[R0, #+0]
+     26          
+     27            }
+     28            return CurrentTime;
+   \   00000010   000091E5           LDR      R0,[R1, #+0]
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+   \                     ??time_0:
+   \   00000018   ........           DC32     CurrentTime
+     29          }
+
+   Maximum stack usage in bytes:
+
+     Function CSTACK
+     -------- ------
+     time         0
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+     time             28
+      Others           4
+
+ 
+ 32 bytes in segment CODE
+ 
+ 28 bytes of CODE memory (+ 4 bytes shared)
+
+Errors: none
+Warnings: none

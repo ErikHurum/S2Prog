@@ -1,0 +1,569 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            14/Sep/2017  15:21:25
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.70
+#
+#    Source file  =  E:\VMShare\anzb_hart\hart\Src\ad7171.c
+#    Command line =  
+#        E:\VMShare\anzb_hart\hart\Src\ad7171.c --cpu=m1280 -ms -o
+#        E:\VMShare\anzb_hart\hart\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1 -lCN
+#        E:\VMShare\anzb_hart\hart\Debug\List -y --initializers_in_flash
+#        --no_cse --no_inline --no_code_motion --no_cross_call --no_clustering
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        E:\VMShare\anzb_hart\hart\INC\ -I E:\VMShare\working\trunk\Shared\Inc\
+#        --eeprom_size 4096 --clib -On
+#    List file    =  E:\VMShare\anzb_hart\hart\Debug\List\ad7171.lst
+#    Object file  =  E:\VMShare\anzb_hart\hart\Debug\Obj\ad7171.r90
+#
+###############################################################################
+
+E:\VMShare\anzb_hart\hart\Src\ad7171.c
+      1          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0x102
+   \   union <unnamed> volatile __ext_io _A_PORTH
+   \                     _A_PORTH:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x101
+   \   union <unnamed> volatile __ext_io _A_DDRH
+   \                     _A_DDRH:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x100
+   \   union <unnamed> volatile __ext_io _A_PINH
+   \                     _A_PINH:
+   \   00000000                      DS8 1
+      2          #include "version.h"
+      3          #include "inavr.h"
+      4          #include "RTOS.h"
+      5          
+      6          #include "constants.h"
+      7          
+      8          #define AD7171_ACTIVATE_RESET       1
+      9          #define AD7171_DEACTIVATE_RESET     0
+     10          
+     11          #define AD7171_CLK_HIGH             1
+     12          #define AD7171_CLK_LOW              0
+     13          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     14          static void
+     15          ad7171_control_reset(unsigned char reset)
+   \                     ad7171_control_reset:
+     16          {
+   \   00000000   938A               ST      -Y, R24
+   \   00000002   2F80               MOV     R24, R16
+     17            if(reset)
+   \   00000004   2388               TST     R24
+   \   00000006   F141               BREQ    ??ad7171_control_reset_0
+     18            {
+     19              ClrBit(PORTH, 0x40);
+   \   00000008   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000000C   7F00               ANDI    R16, 0xF0
+   \   0000000E   2300               TST     R16
+   \   00000010   F021               BREQ    ??ad7171_control_reset_1
+   \   00000012   E909               LDI     R16, 153
+   \   00000014   E010               LDI     R17, 0
+   \   00000016   ........           CALL    OS_Error
+   \                     ??ad7171_control_reset_1:
+   \   0000001A   94F8               CLI
+   \   0000001C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000020   9503               INC     R16
+   \   00000022   9300....           STS     (OS_Counters + 1), R16
+   \   00000026   91000102           LDS     R16, 258
+   \   0000002A   7B0F               ANDI    R16, 0xBF
+   \   0000002C   93000102           STS     258, R16
+   \   00000030   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000034   7F00               ANDI    R16, 0xF0
+   \   00000036   2300               TST     R16
+   \   00000038   F021               BREQ    ??ad7171_control_reset_2
+   \   0000003A   E909               LDI     R16, 153
+   \   0000003C   E010               LDI     R17, 0
+   \   0000003E   ........           CALL    OS_Error
+   \                     ??ad7171_control_reset_2:
+   \   00000042   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000046   950A               DEC     R16
+   \   00000048   9300....           STS     (OS_Counters + 1), R16
+   \   0000004C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000050   2300               TST     R16
+   \   00000052   F549               BRNE    ??ad7171_control_reset_3
+   \   00000054   9478               SEI
+   \   00000056   C027               RJMP    ??ad7171_control_reset_3
+     20            }
+     21            else
+     22            {
+     23              SetBit(PORTH, 0x40);
+   \                     ??ad7171_control_reset_0:
+   \   00000058   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000005C   7F00               ANDI    R16, 0xF0
+   \   0000005E   2300               TST     R16
+   \   00000060   F021               BREQ    ??ad7171_control_reset_4
+   \   00000062   E909               LDI     R16, 153
+   \   00000064   E010               LDI     R17, 0
+   \   00000066   ........           CALL    OS_Error
+   \                     ??ad7171_control_reset_4:
+   \   0000006A   94F8               CLI
+   \   0000006C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000070   9503               INC     R16
+   \   00000072   9300....           STS     (OS_Counters + 1), R16
+   \   00000076   91000102           LDS     R16, 258
+   \   0000007A   6400               ORI     R16, 0x40
+   \   0000007C   93000102           STS     258, R16
+   \   00000080   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000084   7F00               ANDI    R16, 0xF0
+   \   00000086   2300               TST     R16
+   \   00000088   F021               BREQ    ??ad7171_control_reset_5
+   \   0000008A   E909               LDI     R16, 153
+   \   0000008C   E010               LDI     R17, 0
+   \   0000008E   ........           CALL    OS_Error
+   \                     ??ad7171_control_reset_5:
+   \   00000092   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000096   950A               DEC     R16
+   \   00000098   9300....           STS     (OS_Counters + 1), R16
+   \   0000009C   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000A0   2300               TST     R16
+   \   000000A2   F409               BRNE    ??ad7171_control_reset_3
+   \   000000A4   9478               SEI
+     24            }
+     25          }
+   \                     ??ad7171_control_reset_3:
+   \   000000A6   9189               LD      R24, Y+
+   \   000000A8   9508               RET
+   \   000000AA                      REQUIRE _A_PORTH
+     26          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     27          static unsigned char
+     28          ad7171_poll_data_ready(void)
+   \                     ad7171_poll_data_ready:
+     29          {
+   \   00000000   938A               ST      -Y, R24
+     30            unsigned char count = 0;
+   \   00000002   E080               LDI     R24, 0
+     31          
+     32            //
+     33            // max 10ms retry should be enough
+     34            // since conversion factor is 8ms
+     35            //
+     36            do
+     37            {
+     38              if((PINH & 0x20) == 0)
+   \                     ??ad7171_poll_data_ready_0:
+   \   00000004   9100....           LDS     R16, _A_PINH
+   \   00000008   2F10               MOV     R17, R16
+   \   0000000A   FD15               SBRC    R17, 5
+   \   0000000C   C002               RJMP    ??ad7171_poll_data_ready_1
+     39              {
+     40                return 1;
+   \   0000000E   E001               LDI     R16, 1
+   \   00000010   C008               RJMP    ??ad7171_poll_data_ready_2
+     41              }
+     42              OS_Delay(1);
+   \                     ??ad7171_poll_data_ready_1:
+   \   00000012   E001               LDI     R16, 1
+   \   00000014   E010               LDI     R17, 0
+   \   00000016   ........           CALL    OS_Delay
+     43              count++;
+   \   0000001A   9583               INC     R24
+     44            } while(count < 18);
+   \   0000001C   3182               CPI     R24, 18
+   \   0000001E   F390               BRCS    ??ad7171_poll_data_ready_0
+     45          
+     46            // conversion fail
+     47            return 0;
+   \   00000020   E000               LDI     R16, 0
+   \                     ??ad7171_poll_data_ready_2:
+   \   00000022   9189               LD      R24, Y+
+   \   00000024   9508               RET
+   \   00000026                      REQUIRE _A_PINH
+     48          }
+     49          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     50          static inline void
+     51          ad7171_spi_clk(unsigned char hi)
+   \                     ad7171_spi_clk:
+     52          {
+   \   00000000   938A               ST      -Y, R24
+   \   00000002   2F80               MOV     R24, R16
+     53            if(hi)
+   \   00000004   2388               TST     R24
+   \   00000006   F141               BREQ    ??ad7171_spi_clk_0
+     54            {
+     55              SetBit(PORTH, 0x10);
+   \   00000008   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000000C   7F00               ANDI    R16, 0xF0
+   \   0000000E   2300               TST     R16
+   \   00000010   F021               BREQ    ??ad7171_spi_clk_1
+   \   00000012   E909               LDI     R16, 153
+   \   00000014   E010               LDI     R17, 0
+   \   00000016   ........           CALL    OS_Error
+   \                     ??ad7171_spi_clk_1:
+   \   0000001A   94F8               CLI
+   \   0000001C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000020   9503               INC     R16
+   \   00000022   9300....           STS     (OS_Counters + 1), R16
+   \   00000026   91000102           LDS     R16, 258
+   \   0000002A   6100               ORI     R16, 0x10
+   \   0000002C   93000102           STS     258, R16
+   \   00000030   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000034   7F00               ANDI    R16, 0xF0
+   \   00000036   2300               TST     R16
+   \   00000038   F021               BREQ    ??ad7171_spi_clk_2
+   \   0000003A   E909               LDI     R16, 153
+   \   0000003C   E010               LDI     R17, 0
+   \   0000003E   ........           CALL    OS_Error
+   \                     ??ad7171_spi_clk_2:
+   \   00000042   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000046   950A               DEC     R16
+   \   00000048   9300....           STS     (OS_Counters + 1), R16
+   \   0000004C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000050   2300               TST     R16
+   \   00000052   F549               BRNE    ??ad7171_spi_clk_3
+   \   00000054   9478               SEI
+   \   00000056   C027               RJMP    ??ad7171_spi_clk_3
+     56            }
+     57            else
+     58            {
+     59              ClrBit(PORTH, 0x10);
+   \                     ??ad7171_spi_clk_0:
+   \   00000058   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000005C   7F00               ANDI    R16, 0xF0
+   \   0000005E   2300               TST     R16
+   \   00000060   F021               BREQ    ??ad7171_spi_clk_4
+   \   00000062   E909               LDI     R16, 153
+   \   00000064   E010               LDI     R17, 0
+   \   00000066   ........           CALL    OS_Error
+   \                     ??ad7171_spi_clk_4:
+   \   0000006A   94F8               CLI
+   \   0000006C   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000070   9503               INC     R16
+   \   00000072   9300....           STS     (OS_Counters + 1), R16
+   \   00000076   91000102           LDS     R16, 258
+   \   0000007A   7E0F               ANDI    R16, 0xEF
+   \   0000007C   93000102           STS     258, R16
+   \   00000080   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000084   7F00               ANDI    R16, 0xF0
+   \   00000086   2300               TST     R16
+   \   00000088   F021               BREQ    ??ad7171_spi_clk_5
+   \   0000008A   E909               LDI     R16, 153
+   \   0000008C   E010               LDI     R17, 0
+   \   0000008E   ........           CALL    OS_Error
+   \                     ??ad7171_spi_clk_5:
+   \   00000092   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000096   950A               DEC     R16
+   \   00000098   9300....           STS     (OS_Counters + 1), R16
+   \   0000009C   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000A0   2300               TST     R16
+   \   000000A2   F409               BRNE    ??ad7171_spi_clk_3
+   \   000000A4   9478               SEI
+     60            }
+     61          }
+   \                     ??ad7171_spi_clk_3:
+   \   000000A6   9189               LD      R24, Y+
+   \   000000A8   9508               RET
+   \   000000AA                      REQUIRE _A_PORTH
+     62          
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     63          static unsigned char
+     64          ad7171_read_adc_data_spi(unsigned int* data)
+   \                     ad7171_read_adc_data_spi:
+     65          {
+   \   00000000   ........           CALL    ?PROLOGUE6_L09
+   \   00000004                      REQUIRE ?Register_R4_is_cg_reg
+   \   00000004                      REQUIRE ?Register_R5_is_cg_reg
+   \   00000004   01D8               MOVW    R27:R26, R17:R16
+     66            unsigned char   count = 0;
+   \   00000006   2444               CLR     R4
+     67            unsigned int    tmp  = 0;
+   \   00000008   E080               LDI     R24, 0
+   \   0000000A   E090               LDI     R25, 0
+     68            unsigned char   status = 0;
+   \   0000000C   2455               CLR     R5
+     69            
+     70            
+     71            for(count = 0; count < 24; count++)
+   \   0000000E   2444               CLR     R4
+   \                     ??ad7171_read_adc_data_spi_0:
+   \   00000010   E108               LDI     R16, 24
+   \   00000012   1640               CP      R4, R16
+   \   00000014   F520               BRCC    ??ad7171_read_adc_data_spi_1
+     72            {
+     73              //
+     74              // from AD7171 datasheet
+     75              // clock pusle should be minimum 100ns
+     76              //
+     77              
+     78              ad7171_spi_clk(AD7171_CLK_LOW);
+   \   00000016   E000               LDI     R16, 0
+   \   00000018   ....               RCALL   ad7171_spi_clk
+     79              asm("nop");
+   \   0000001A   0000               nop
+     80              asm("nop");
+   \   0000001C   0000               nop
+     81              asm("nop");
+   \   0000001E   0000               nop
+     82              ad7171_spi_clk(AD7171_CLK_HIGH);
+   \   00000020   E001               LDI     R16, 1
+   \   00000022   ....               RCALL   ad7171_spi_clk
+     83              
+     84              if(count < 16)
+   \   00000024   E100               LDI     R16, 16
+   \   00000026   1640               CP      R4, R16
+   \   00000028   F470               BRCC    ??ad7171_read_adc_data_spi_2
+     85              {
+     86                tmp <<= 1;
+   \   0000002A   0F88               LSL     R24
+   \   0000002C   1F99               ROL     R25
+     87                tmp |= ((PINH & 0x20) == 0x00 ? 0x0 : 0x1);
+   \   0000002E   9100....           LDS     R16, _A_PINH
+   \   00000032   2F10               MOV     R17, R16
+   \   00000034   FF15               SBRS    R17, 5
+   \   00000036   C002               RJMP    ??ad7171_read_adc_data_spi_3
+   \   00000038   E001               LDI     R16, 1
+   \   0000003A   C001               RJMP    ??ad7171_read_adc_data_spi_4
+   \                     ??ad7171_read_adc_data_spi_3:
+   \   0000003C   E000               LDI     R16, 0
+   \                     ??ad7171_read_adc_data_spi_4:
+   \   0000003E   E010               LDI     R17, 0
+   \   00000040   2B80               OR      R24, R16
+   \   00000042   2B91               OR      R25, R17
+   \   00000044   C00A               RJMP    ??ad7171_read_adc_data_spi_5
+     88              }
+     89              else
+     90              {
+     91                status <<= 1;
+   \                     ??ad7171_read_adc_data_spi_2:
+   \   00000046   0C55               LSL     R5
+     92                status |= ((PINH & 0x20) == 0x00 ? 0x0 : 0x1);
+   \   00000048   9100....           LDS     R16, _A_PINH
+   \   0000004C   2F10               MOV     R17, R16
+   \   0000004E   FF15               SBRS    R17, 5
+   \   00000050   C002               RJMP    ??ad7171_read_adc_data_spi_6
+   \   00000052   E001               LDI     R16, 1
+   \   00000054   C001               RJMP    ??ad7171_read_adc_data_spi_7
+   \                     ??ad7171_read_adc_data_spi_6:
+   \   00000056   E000               LDI     R16, 0
+   \                     ??ad7171_read_adc_data_spi_7:
+   \   00000058   2A50               OR      R5, R16
+     93              }
+     94            }
+   \                     ??ad7171_read_adc_data_spi_5:
+   \   0000005A   9443               INC     R4
+   \   0000005C   CFD9               RJMP    ??ad7171_read_adc_data_spi_0
+     95            
+     96            if(status != 0x1d)
+   \                     ??ad7171_read_adc_data_spi_1:
+   \   0000005E   E10D               LDI     R16, 29
+   \   00000060   1650               CP      R5, R16
+   \   00000062   F011               BREQ    ??ad7171_read_adc_data_spi_8
+     97            {
+     98              return 0;
+   \   00000064   E000               LDI     R16, 0
+   \   00000066   C004               RJMP    ??ad7171_read_adc_data_spi_9
+     99            }
+    100          
+    101            *data = tmp;
+   \                     ??ad7171_read_adc_data_spi_8:
+   \   00000068   938D               ST      X+, R24
+   \   0000006A   939C               ST      X, R25
+   \   0000006C   9711               SBIW    R27:R26, 1
+    102            return 1;
+   \   0000006E   E001               LDI     R16, 1
+   \                     ??ad7171_read_adc_data_spi_9:
+   \   00000070   E0E6               LDI     R30, 6
+   \   00000072   ........           JMP     ?EPILOGUE_B6_L09
+   \   00000076                      REQUIRE _A_PINH
+    103          }
+    104          
+    105          ////////////////////////////////////////////////////////////////////////////////
+    106          //
+    107          // public interfaces
+    108          //
+    109          ////////////////////////////////////////////////////////////////////////////////
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    110          void
+    111          ad7171_hw_init(void)
+   \                     ad7171_hw_init:
+    112          {
+    113            ////////////////////////////////////////////////
+    114            //
+    115            // Signal   : AD-CLK, AD-DATA, AD-RST
+    116            // Pin      : PH4-6
+    117            // Dir      : 
+    118            // Purpose  : AD7171 interface
+    119            //
+    120            // AD-CLK   : OUTPUT, SPI Clock
+    121            // AD-DATA  : Innput, 
+    122            //            During Conversion, acts as conversion complete
+    123            //            During SPI Transaction,  acts as SPI MISO
+    124            // AD-RST   : Output, ADC Reset
+    125            //
+    126            ////////////////////////////////////////////////
+    127            DDRH &= ~0x20;    // PH5 as input
+   \   00000000   91000101           LDS     R16, 257
+   \   00000004   7D0F               ANDI    R16, 0xDF
+   \   00000006   93000101           STS     257, R16
+    128            DDRH |=  0x50;    // PH4, PH6 as output
+   \   0000000A   9100....           LDS     R16, _A_DDRH
+   \   0000000E   6500               ORI     R16, 0x50
+   \   00000010   9300....           STS     _A_DDRH, R16
+    129          
+    130            //
+    131            // clock is high when idle
+    132            //
+    133            ad7171_spi_clk(AD7171_CLK_HIGH);
+   \   00000014   E001               LDI     R16, 1
+   \   00000016   ....               RCALL   ad7171_spi_clk
+    134            
+    135            //
+    136            // put the chip in reset state
+    137            //
+    138            ad7171_control_reset(AD7171_ACTIVATE_RESET);  
+   \   00000018   E001               LDI     R16, 1
+   \   0000001A   ....               RCALL   ad7171_control_reset
+    139            // XXX
+    140            // max 100ns 
+    141            //
+    142          }
+   \   0000001C   9508               RET
+   \   0000001E                      REQUIRE _A_DDRH
+    143          
+    144          //
+    145          // This is a synchronous function
+    146          //
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    147          unsigned char
+    148          ad7171_read_adc(unsigned int* data)
+   \                     ad7171_read_adc:
+    149          {
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   01C8               MOVW    R25:R24, R17:R16
+    150            ad7171_control_reset(AD7171_DEACTIVATE_RESET);
+   \   00000006   E000               LDI     R16, 0
+   \   00000008   ....               RCALL   ad7171_control_reset
+    151            asm("nop");
+   \   0000000A   0000               nop
+    152            asm("nop");
+   \   0000000C   0000               nop
+    153            asm("nop");
+   \   0000000E   0000               nop
+    154            //OS_Delay(1);
+    155            ad7171_control_reset(AD7171_ACTIVATE_RESET);
+   \   00000010   E001               LDI     R16, 1
+   \   00000012   ....               RCALL   ad7171_control_reset
+    156            asm("nop");
+   \   00000014   0000               nop
+    157            asm("nop");
+   \   00000016   0000               nop
+    158            asm("nop");
+   \   00000018   0000               nop
+    159            //OS_Delay(1);
+    160            ad7171_control_reset(AD7171_DEACTIVATE_RESET);
+   \   0000001A   E000               LDI     R16, 0
+   \   0000001C   ....               RCALL   ad7171_control_reset
+    161          
+    162            // minimum 1ms required to power up
+    163          
+    164            //
+    165            // 24ms required for settling
+    166            // converion time is 8 ms
+    167            //
+    168            // we will wait 24 + 8 * 3 as settling time
+    169            //
+    170            OS_Delay(23);
+   \   0000001E   E107               LDI     R16, 23
+   \   00000020   E010               LDI     R17, 0
+   \   00000022   ........           CALL    OS_Delay
+    171          
+    172            if(ad7171_poll_data_ready()  == 0)
+   \   00000026   ....               RCALL   ad7171_poll_data_ready
+   \   00000028   2300               TST     R16
+   \   0000002A   F411               BRNE    ??ad7171_read_adc_0
+    173            {
+    174              // conversion fail
+    175              return 0;
+   \   0000002C   E000               LDI     R16, 0
+   \   0000002E   C009               RJMP    ??ad7171_read_adc_1
+    176            }
+    177          
+    178            //
+    179            // read 24 bit data
+    180            // this should be done before the next 8ms
+    181            //
+    182            if(ad7171_read_adc_data_spi(data) == 0)
+   \                     ??ad7171_read_adc_0:
+   \   00000030   018C               MOVW    R17:R16, R25:R24
+   \   00000032   ....               RCALL   ad7171_read_adc_data_spi
+   \   00000034   2300               TST     R16
+   \   00000036   F411               BRNE    ??ad7171_read_adc_2
+    183            {
+    184              // data error
+    185              return 0;
+   \   00000038   E000               LDI     R16, 0
+   \   0000003A   C003               RJMP    ??ad7171_read_adc_1
+    186            }
+    187          
+    188            ad7171_control_reset(AD7171_ACTIVATE_RESET);
+   \                     ??ad7171_read_adc_2:
+   \   0000003C   E001               LDI     R16, 1
+   \   0000003E   ....               RCALL   ad7171_control_reset
+    189            return 1;
+   \   00000040   E001               LDI     R16, 1
+   \                     ??ad7171_read_adc_1:
+   \   00000042   9189               LD      R24, Y+
+   \   00000044   9199               LD      R25, Y+
+   \   00000046   9508               RET
+    190          }
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      1      2   ad7171_control_reset
+        1      2   -> OS_Error
+      0      2   ad7171_hw_init
+        0      2   -> ad7171_control_reset
+        0      2   -> ad7171_spi_clk
+      1      2   ad7171_poll_data_ready
+        1      2   -> OS_Delay
+      2      2   ad7171_read_adc
+        2      2   -> OS_Delay
+        2      2   -> ad7171_control_reset
+        2      2   -> ad7171_poll_data_ready
+        2      2   -> ad7171_read_adc_data_spi
+      6      2   ad7171_read_adc_data_spi
+        6      2   -> ad7171_spi_clk
+      1      2   ad7171_spi_clk
+        1      2   -> OS_Error
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+       1  _A_DDRH
+       1  _A_PINH
+       1  _A_PORTH
+     170  ad7171_control_reset
+      30  ad7171_hw_init
+      38  ad7171_poll_data_ready
+      72  ad7171_read_adc
+     118  ad7171_read_adc_data_spi
+     170  ad7171_spi_clk
+
+ 
+   3 bytes in segment ABSOLUTE
+ 598 bytes in segment CODE
+ 
+ 598 bytes of CODE memory
+   0 bytes of DATA memory (+ 3 bytes shared)
+
+Errors: none
+Warnings: none

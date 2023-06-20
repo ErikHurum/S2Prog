@@ -1,0 +1,2449 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  14:41:49 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\netif\cs8900if.c        #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\netif\cs8900if.c --fpu  #
+#                       None -D OS_LIBMODE_SP -D CPU_S3C2410 -D              #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s2 --no_cse --no_unroll    #
+#                       --no_inline --no_code_motion --no_tbaa               #
+#                       --no_clustering --no_scheduling --debug --cpu_mode   #
+#                       arm --endian little --cpu ARM920T --stack_align 4    #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#    List file       =  D:\S2Prog\TXU\Debug\List\cs8900if.lst                #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\cs8900if.r79                 #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\netif\cs8900if.c
+      1          ////////////////////////////////////////////////////////////////////////////////
+      2          //
+      3          // Cirrus CS8900 10BT ethernet chip driver for LwIP on emBOS.
+      4          //
+      5          // Revision History
+      6          // - May/17/2016 : major revamp. still shitty but mostly working. -hkim-
+      7          //
+      8          ////////////////////////////////////////////////////////////////////////////////
+      9          #include "RTOS.H"
+     10          #include "2410addr.h"
+     11          #include "2410lib.h"
+     12          
+     13          #include "lwip/debug.h"
+     14          #include "lwip/opt.h"
+     15          #include "lwip/def.h"
+     16          #include "lwip/mem.h"
+     17          #include "lwip/pbuf.h"
+     18          #include "lwip/stats.h"
+     19          #include "lwip/sys.h"
+     20          #include "netif/etharp.h"
+     21          #include "netif/cs8900if.h"
+     22          #ifdef SNMP
+     23              #include "snmp.h"
+     24              #include "mib2if.h"
+     25          #endif
+     26          
+     27          
+     28          
+     29          
+     30          ////////////////////////////////////////////////////////////////////////////////
+     31          //
+     32          // internal structure definitions
+     33          //
+     34          ////////////////////////////////////////////////////////////////////////////////
+     35          #ifdef __CS8900_USE_TX_QUEUE
+     36          
+     37              #ifndef __CS8900_USE_CRITICAL_SECTION
+     38                  #error "__CS8900_USE_CRITICAL_SECTION should be enabled to use TX QUEUE"
+     39              #endif
+     40          
+     41              #include "app/list.h"
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs void INIT_LIST_HEAD(struct list_head *)
+   \                     INIT_LIST_HEAD:
+   \   00000000   000080E5           STR      R0,[R0, #+0]
+   \   00000004   040080E5           STR      R0,[R0, #+4]
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs void __list_add(struct list_head *, struct list_head *, struct list_head *)
+   \                     __list_add:
+   \   00000000   040082E5           STR      R0,[R2, #+4]
+   \   00000004   002080E5           STR      R2,[R0, #+0]
+   \   00000008   041080E5           STR      R1,[R0, #+4]
+   \   0000000C   000081E5           STR      R0,[R1, #+0]
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs void list_add_tail(struct list_head *, struct list_head *)
+   \                     list_add_tail:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0150B0E1           MOVS     R5,R1
+   \   0000000C   0520B0E1           MOVS     R2,R5
+   \   00000010   041095E5           LDR      R1,[R5, #+4]
+   \   00000014   0400B0E1           MOVS     R0,R4
+   \   00000018   ........           BL       __list_add
+   \   0000001C   3040BDE8           POP      {R4,R5,LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs void __list_del(struct list_head *, struct list_head *)
+   \                     __list_del:
+   \   00000000   040081E5           STR      R0,[R1, #+4]
+   \   00000004   001080E5           STR      R1,[R0, #+0]
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs void __list_del_entry(struct list_head *)
+   \                     __list_del_entry:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   001094E5           LDR      R1,[R4, #+0]
+   \   0000000C   040094E5           LDR      R0,[R4, #+4]
+   \   00000010   ........           BL       __list_del
+   \   00000014   1040BDE8           POP      {R4,LR}
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs void list_del_init(struct list_head *)
+   \                     list_del_init:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           BL       __list_del_entry
+   \   00000010   0400B0E1           MOVS     R0,R4
+   \   00000014   ........           BL       INIT_LIST_HEAD
+   \   00000018   1040BDE8           POP      {R4,LR}
+   \   0000001C   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __code __interwork __atpcs int list_empty(struct list_head const *)
+   \                     list_empty:
+   \   00000000   001090E5           LDR      R1,[R0, #+0]
+   \   00000004   000051E1           CMP      R1,R0
+   \   00000008   0100001A           BNE      ??list_empty_0
+   \   0000000C   0100A0E3           MOV      R0,#+1
+   \   00000010   000000EA           B        ??list_empty_1
+   \                     ??list_empty_0:
+   \   00000014   0000A0E3           MOV      R0,#+0
+   \                     ??list_empty_1:
+   \   00000018   1EFF2FE1           BX       LR               ;; return
+     42          
+     43              #define CS8900_MAX_ETH_FRAME_SIZE   1532      // 4 byte alignment with some room
+     44              #define CS8900_MAX_TX_QUEUE_SIZE    16
+     45          
+     46          typedef struct {
+     47              struct list_head   le;
+     48              u32_t              len;
+     49              u8_t               buffer[CS8900_MAX_ETH_FRAME_SIZE];
+     50          } CS8900TXBuf;
+     51          
+
+   \                                 In segment DATA_Z, align 1, align-sorted
+     52          static volatile u8_t    _tx_busy;
+   \                     _tx_busy:
+   \   00000000                      DS8 1
+     53          #endif
+     54          
+     55          ////////////////////////////////////////////////////////////////////////////////
+     56          //
+     57          // module private prototypes
+     58          //
+     59          ////////////////////////////////////////////////////////////////////////////////
+     60          static void cs8900_service(struct netif *netif);
+     61          static void cs8900_reset(void);
+     62          static void cs8900_set_macaddr(struct netif *netif);
+     63          static void cs8900_chip_init(struct netif *netif);
+     64          static void cs8900_init(struct netif *netif);
+     65          static err_t cs8900_output(struct netif *netif, struct pbuf *p);
+     66          static struct pbuf* cs8900_input(struct netif *netif);
+     67          static void cs8900if_input(struct netif *netif);
+     68          
+     69          #ifdef __CS8900_DEBUG__
+     70          static void cs8900_debug(void);
+     71          #endif
+     72          
+     73          #ifdef __CS8900_USE_CRITICAL_SECTION
+     74          static void cs8900_critical_section_init(void);
+     75          static void cs8900_enter_critical(void);
+     76          static void cs8900_leave_critical(void);
+     77          #endif
+     78          
+     79          #ifdef __CS8900_USE_TX_QUEUE
+     80          static void cs8900_init_tx_queue(void);
+     81          static void cs8900_copy_pbuf_to_tx_buffer(struct pbuf *p, CS8900TXBuf *txbuf);
+     82          static void cs8900_tx_txbuf(struct cs8900if *cs8900if, CS8900TXBuf *txbuf);
+     83          static int cs8900_copy_pbuf_to_tx_queue(struct pbuf *p);
+     84          static CS8900TXBuf* cs8900_get_next_txbuf(void);
+     85          static void cs8900_free_tx_buf(CS8900TXBuf *txbuf);
+     86          static void cs8900_serve_tx_ready(struct cs8900if *cs8900if);
+     87          #endif
+     88          
+     89          ////////////////////////////////////////////////////////////////////////////////
+     90          //
+     91          // module private variables
+     92          //
+     93          ////////////////////////////////////////////////////////////////////////////////
+     94          static unsigned char sector16[30] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+     95          static unsigned char *eth_oui = &sector16[0];
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     96          static struct cs8900if    _g_cs8900_if;
+   \                     _g_cs8900_if:
+   \   00000000                      DS8 108
+     97          
+     98          #ifdef __CS8900_USE_CRITICAL_SECTION
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     99          static sys_sem_t    _cs8900_critical_lock;
+   \                     _cs8900_critical_lock:
+   \   00000000                      DS8 8
+    100          #endif
+    101          
+    102          #ifdef __CS8900_USE_TX_QUEUE
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+    103          static CS8900TXBuf          _tx_buffers[CS8900_MAX_TX_QUEUE_SIZE];
+   \                     _tx_buffers:
+   \   00000000                      DS8 24704
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+    104          static struct list_head     _free_tx_queue;
+   \                     _free_tx_queue:
+   \   00000000                      DS8 8
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+    105          static struct list_head     _tx_queue;
+   \                     _tx_queue:
+   \   00000000                      DS8 8
+    106          #endif
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+    107          volatile int         _num_pkts_in_tx_queue = 0;      // just for debug
+   \                     _num_pkts_in_tx_queue:
+   \   00000000                      DS8 4
+    108          
+    109          ////////////////////////////////////////////////////////////////////////////////
+    110          //
+    111          // utilities to access CS8900 registers
+    112          //
+    113          ////////////////////////////////////////////////////////////////////////////////
+    114          /**
+    115           * @brief read from cs8900 registers
+    116           * 
+    117           * @param[out] regno register to read value from
+    118           * @return register value
+    119           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    120          static inline u16_t
+    121          cs8900_readreg(u16_t regno) {
+   \                     cs8900_readreg:
+   \   00000000   0010B0E1           MOVS     R1,R0
+    122              u16_t   t;
+    123          
+    124              PACKETPP = regno;
+   \   00000004   ........           LDR      R2,??DataTable22  ;; 0x2900030a
+   \   00000008   B010C2E1           STRH     R1,[R2, #+0]
+    125              t = PPDATA;
+   \   0000000C   A425A0E3           MOV      R2,#+687865856
+   \   00000010   C32F82E3           ORR      R2,R2,#0x30C
+   \   00000014   B020D2E1           LDRH     R2,[R2, #+0]
+   \   00000018   0200B0E1           MOVS     R0,R2
+    126              return t;
+   \   0000001C   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000020   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+    127          }
+    128          
+    129          /**
+    130           * @brief write to cs8900 registers
+    131           * 
+    132           * @param[out] regno register to write value to
+    133           * @param[out] value to write to register
+    134           * @return none
+    135           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    136          static inline void
+    137          cs8900_writereg(u16_t regno, u16_t value) {
+    138              PACKETPP = regno;
+   \                     cs8900_writereg:
+   \   00000000   ........           LDR      R2,??DataTable22  ;; 0x2900030a
+   \   00000004   B000C2E1           STRH     R0,[R2, #+0]
+    139              PPDATA = value;
+   \   00000008   A425A0E3           MOV      R2,#+687865856
+   \   0000000C   C32F82E3           ORR      R2,R2,#0x30C
+   \   00000010   B010C2E1           STRH     R1,[R2, #+0]
+    140          }
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+    141          
+    142          /*
+    143           * @brief initialize cs8900 stats to zero
+    144           *
+    145           * @param[in] cs8900if cs8900if structure
+    146           * @return none
+    147           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    148          static inline void
+    149          cs8900_reset_stats(struct cs8900if *cs8900if) {
+    150              cs8900if->loop_cnt            = 0;
+   \                     cs8900_reset_stats:
+   \   00000000   0010A0E3           MOV      R1,#+0
+   \   00000004   041080E5           STR      R1,[R0, #+4]
+    151              cs8900if->interrupts          = 0;
+   \   00000008   0010A0E3           MOV      R1,#+0
+   \   0000000C   081080E5           STR      R1,[R0, #+8]
+    152              cs8900if->missed              = 0;
+   \   00000010   0010A0E3           MOV      R1,#+0
+   \   00000014   0C1080E5           STR      R1,[R0, #+12]
+    153              cs8900if->collisions          = 0;
+   \   00000018   0010A0E3           MOV      R1,#+0
+   \   0000001C   101080E5           STR      R1,[R0, #+16]
+    154              cs8900if->tx_packets          = 0;
+   \   00000020   0010A0E3           MOV      R1,#+0
+   \   00000024   141080E5           STR      R1,[R0, #+20]
+    155              cs8900if->tx_bytes            = 0;
+   \   00000028   0010A0E3           MOV      R1,#+0
+   \   0000002C   181080E5           STR      R1,[R0, #+24]
+    156              cs8900if->rx_packets          = 0;
+   \   00000030   0010A0E3           MOV      R1,#+0
+   \   00000034   1C1080E5           STR      R1,[R0, #+28]
+    157              cs8900if->rx_bytes            = 0;
+   \   00000038   0010A0E3           MOV      R1,#+0
+   \   0000003C   201080E5           STR      R1,[R0, #+32]
+    158              cs8900if->rx_len_zero         = 0;
+   \   00000040   0010A0E3           MOV      R1,#+0
+   \   00000044   281080E5           STR      R1,[R0, #+40]
+    159              cs8900if->rx_pbuf_alloc_fail  = 0;
+   \   00000048   0010A0E3           MOV      R1,#+0
+   \   0000004C   2C1080E5           STR      R1,[R0, #+44]
+    160              cs8900if->rx_lwip_input_err   = 0;
+   \   00000050   0010A0E3           MOV      R1,#+0
+   \   00000054   301080E5           STR      R1,[R0, #+48]
+    161              cs8900if->tx_line_status_err  = 0;
+   \   00000058   0010A0E3           MOV      R1,#+0
+   \   0000005C   341080E5           STR      R1,[R0, #+52]
+    162              cs8900if->tx_timeout          = 0;
+   \   00000060   0010A0E3           MOV      R1,#+0
+   \   00000064   381080E5           STR      R1,[R0, #+56]
+    163              cs8900if->loop_exit_by_limit  = 0;
+   \   00000068   0010A0E3           MOV      R1,#+0
+   \   0000006C   3C1080E5           STR      R1,[R0, #+60]
+    164              cs8900if->tx_buffering        = 0;
+   \   00000070   0010A0E3           MOV      R1,#+0
+   \   00000074   401080E5           STR      R1,[R0, #+64]
+    165          
+    166              cs8900if->tx_errors           = 0;
+   \   00000078   0010A0E3           MOV      R1,#+0
+   \   0000007C   441080E5           STR      R1,[R0, #+68]
+    167              cs8900if->tx_carrier_errors   = 0;
+   \   00000080   0010A0E3           MOV      R1,#+0
+   \   00000084   481080E5           STR      R1,[R0, #+72]
+    168              cs8900if->tx_heartbeat_errors = 0;
+   \   00000088   0010A0E3           MOV      R1,#+0
+   \   0000008C   4C1080E5           STR      R1,[R0, #+76]
+    169              cs8900if->tx_window_errors    = 0;
+   \   00000090   0010A0E3           MOV      R1,#+0
+   \   00000094   501080E5           STR      R1,[R0, #+80]
+    170              cs8900if->tx_aborted_errors   = 0;
+   \   00000098   0010A0E3           MOV      R1,#+0
+   \   0000009C   541080E5           STR      R1,[R0, #+84]
+    171              cs8900if->tx_underrun         = 0;
+   \   000000A0   0010A0E3           MOV      R1,#+0
+   \   000000A4   581080E5           STR      R1,[R0, #+88]
+    172          
+    173              cs8900if->rx_not_ok           = 0;
+   \   000000A8   0010A0E3           MOV      R1,#+0
+   \   000000AC   5C1080E5           STR      R1,[R0, #+92]
+    174              cs8900if->rx_length_errors    = 0;
+   \   000000B0   0010A0E3           MOV      R1,#+0
+   \   000000B4   601080E5           STR      R1,[R0, #+96]
+    175              cs8900if->rx_crc_errors       = 0;
+   \   000000B8   0010A0E3           MOV      R1,#+0
+   \   000000BC   641080E5           STR      R1,[R0, #+100]
+    176              cs8900if->rx_frame_errors     = 0;
+   \   000000C0   0010A0E3           MOV      R1,#+0
+   \   000000C4   681080E5           STR      R1,[R0, #+104]
+    177          }
+   \   000000C8   1EFF2FE1           BX       LR               ;; return
+    178          
+    179          #ifdef __CS8900_USE_TX_QUEUE
+    180          ////////////////////////////////////////////////////////////////////////////////
+    181          //
+    182          // TX Queue Management
+    183          //
+    184          ////////////////////////////////////////////////////////////////////////////////
+    185          /**
+    186           * @brief initialize tx queue for cs8900
+    187           * 
+    188           * @param none
+    189           * @return none
+    190           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    191          static void
+    192          cs8900_init_tx_queue(void) {
+   \                     cs8900_init_tx_queue:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+    193              CS8900TXBuf *tx_buf;
+    194          
+    195              INIT_LIST_HEAD(&_tx_queue);
+   \   00000004   ........           LDR      R0,??DataTable12  ;; _tx_queue
+   \   00000008   ........           BL       INIT_LIST_HEAD
+    196              INIT_LIST_HEAD(&_free_tx_queue);
+   \   0000000C   ........           LDR      R0,??DataTable13  ;; _free_tx_queue
+   \   00000010   ........           BL       INIT_LIST_HEAD
+    197          
+    198              _num_pkts_in_tx_queue = 0;
+   \   00000014   ........           LDR      R0,??DataTable15  ;; _num_pkts_in_tx_queue
+   \   00000018   0010A0E3           MOV      R1,#+0
+   \   0000001C   001080E5           STR      R1,[R0, #+0]
+    199          
+    200              for ( int i = 0; i < CS8900_MAX_TX_QUEUE_SIZE; i++ ) {
+   \   00000020   0050A0E3           MOV      R5,#+0
+   \                     ??cs8900_init_tx_queue_0:
+   \   00000024   100055E3           CMP      R5,#+16
+   \   00000028   0B0000AA           BGE      ??cs8900_init_tx_queue_1
+    201                  tx_buf = &_tx_buffers[i];
+   \   0000002C   0800A0E3           MOV      R0,#+8
+   \   00000030   600E80E3           ORR      R0,R0,#0x600
+   \   00000034   28109FE5           LDR      R1,??cs8900_init_tx_queue_2  ;; _tx_buffers
+   \   00000038   901521E0           MLA      R1,R0,R5,R1
+   \   0000003C   0140B0E1           MOVS     R4,R1
+    202          
+    203                  INIT_LIST_HEAD(&tx_buf->le);
+   \   00000040   0400B0E1           MOVS     R0,R4
+   \   00000044   ........           BL       INIT_LIST_HEAD
+    204                  list_add_tail(&tx_buf->le, &_free_tx_queue);
+   \   00000048   ........           LDR      R1,??DataTable13  ;; _free_tx_queue
+   \   0000004C   0400B0E1           MOVS     R0,R4
+   \   00000050   ........           BL       list_add_tail
+    205              }
+   \   00000054   015095E2           ADDS     R5,R5,#+1
+   \   00000058   F1FFFFEA           B        ??cs8900_init_tx_queue_0
+    206          }
+   \                     ??cs8900_init_tx_queue_1:
+   \   0000005C   3040BDE8           POP      {R4,R5,LR}
+   \   00000060   1EFF2FE1           BX       LR               ;; return
+   \                     ??cs8900_init_tx_queue_2:
+   \   00000064   ........           DC32     _tx_buffers
+    207          
+    208          /**
+    209           * @brief copies pbuf to tx buffer
+    210           *
+    211           * @param[in] p pbuf to copy from
+    212           * @param[in] txbuf tx buffer to copy pbuf to
+    213           *
+    214           * @return none
+    215           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    216          static void
+    217          cs8900_copy_pbuf_to_tx_buffer(struct pbuf *p, CS8900TXBuf *txbuf) {
+   \                     cs8900_copy_pbuf_to_tx_buffer:
+   \   00000000   30002DE9           PUSH     {R4,R5}
+    218              struct pbuf *q;
+    219            u16_t         *buf_ptr  = (u16_t *)txbuf->buffer;
+   \   00000004   0C4091E2           ADDS     R4,R1,#+12
+   \   00000008   0430B0E1           MOVS     R3,R4
+    220          
+    221            for ( q = p; q != NULL; q = q->next ) {
+   \   0000000C   0020B0E1           MOVS     R2,R0
+   \                     ??cs8900_copy_pbuf_to_tx_buffer_0:
+   \   00000010   000052E3           CMP      R2,#+0
+   \   00000014   1000000A           BEQ      ??cs8900_copy_pbuf_to_tx_buffer_1
+    222              register u16_t i;
+    223              register u16_t *ptr = (u16_t *)q->payload;
+   \   00000018   045092E5           LDR      R5,[R2, #+4]
+   \   0000001C   0540B0E1           MOVS     R4,R5
+    224          
+    225              for(i = 0; i < q->len; i += 2)
+   \   00000020   0050A0E3           MOV      R5,#+0
+   \   00000024   05C0B0E1           MOVS     R12,R5
+   \                     ??cs8900_copy_pbuf_to_tx_buffer_2:
+   \   00000028   BA50D2E1           LDRH     R5,[R2, #+10]
+   \   0000002C   0CC8A0E1           MOV      R12,R12, LSL #+16
+   \   00000030   2CC8B0E1           MOVS     R12,R12, LSR #+16
+   \   00000034   05005CE1           CMP      R12,R5
+   \   00000038   0500002A           BCS      ??cs8900_copy_pbuf_to_tx_buffer_3
+    226              {
+    227                *buf_ptr++ = *ptr++;
+   \   0000003C   B050D4E1           LDRH     R5,[R4, #+0]
+   \   00000040   B050C3E1           STRH     R5,[R3, #+0]
+   \   00000044   024094E2           ADDS     R4,R4,#+2
+   \   00000048   023093E2           ADDS     R3,R3,#+2
+    228              }
+   \   0000004C   02C09CE2           ADDS     R12,R12,#+2
+   \   00000050   F4FFFFEA           B        ??cs8900_copy_pbuf_to_tx_buffer_2
+    229            }
+   \                     ??cs8900_copy_pbuf_to_tx_buffer_3:
+   \   00000054   002092E5           LDR      R2,[R2, #+0]
+   \   00000058   ECFFFFEA           B        ??cs8900_copy_pbuf_to_tx_buffer_0
+    230          
+    231              txbuf->len = p->tot_len;
+   \                     ??cs8900_copy_pbuf_to_tx_buffer_1:
+   \   0000005C   B840D0E1           LDRH     R4,[R0, #+8]
+   \   00000060   084081E5           STR      R4,[R1, #+8]
+    232          }
+   \   00000064   3000BDE8           POP      {R4,R5}
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+    233          
+    234          /**
+    235           * @brief sends txbuf to cs8900 for tx
+    236           *        Note: BUSSTATUS should be tx ready before calling this function
+    237           *
+    238           * @param[in] cs8900if cs8900 if to send packet to
+    239           * @param[in] txbuf tx buffer to transmit
+    240           *
+    241           * @return none
+    242           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    243          static void
+    244          cs8900_tx_txbuf(struct cs8900if *cs8900if, CS8900TXBuf *txbuf) {
+   \                     cs8900_tx_txbuf:
+   \   00000000   10002DE9           PUSH     {R4}
+    245              register int   i;
+    246            register u16_t *buf_ptr  = (u16_t *)txbuf->buffer;
+   \   00000004   0CC091E2           ADDS     R12,R1,#+12
+   \   00000008   0C30B0E1           MOVS     R3,R12
+    247          
+    248              for (i = 0; i < txbuf->len; i++ ) {
+   \   0000000C   00C0A0E3           MOV      R12,#+0
+   \   00000010   0C20B0E1           MOVS     R2,R12
+   \                     ??cs8900_tx_txbuf_0:
+   \   00000014   08C091E5           LDR      R12,[R1, #+8]
+   \   00000018   0C0052E1           CMP      R2,R12
+   \   0000001C   0600002A           BCS      ??cs8900_tx_txbuf_1
+    249                  RXTXREG = *buf_ptr++;
+   \   00000020   A4C5A0E3           MOV      R12,#+687865856
+   \   00000024   C0CF8CE3           ORR      R12,R12,#0x300
+   \   00000028   B040D3E1           LDRH     R4,[R3, #+0]
+   \   0000002C   B040CCE1           STRH     R4,[R12, #+0]
+   \   00000030   023093E2           ADDS     R3,R3,#+2
+    250              }
+   \   00000034   012092E2           ADDS     R2,R2,#+1
+   \   00000038   F5FFFFEA           B        ??cs8900_tx_txbuf_0
+    251              cs8900if->tx_bytes += txbuf->len;
+   \                     ??cs8900_tx_txbuf_1:
+   \   0000003C   184090E5           LDR      R4,[R0, #+24]
+   \   00000040   08C091E5           LDR      R12,[R1, #+8]
+   \   00000044   04409CE0           ADDS     R4,R12,R4
+   \   00000048   184080E5           STR      R4,[R0, #+24]
+    252              cs8900if->tx_packets++;
+   \   0000004C   144090E5           LDR      R4,[R0, #+20]
+   \   00000050   014094E2           ADDS     R4,R4,#+1
+   \   00000054   144080E5           STR      R4,[R0, #+20]
+    253          
+    254          #ifdef SNMP
+    255              if_add_ifOutOctets(p->tot_len);
+    256          #endif
+    257          }
+   \   00000058   1000BDE8           POP      {R4}
+   \   0000005C   1EFF2FE1           BX       LR               ;; return
+    258          
+    259          
+    260          /**
+    261           * @brief extracts txbuf from free queue, copies pbuf data
+    262           *        and puts the txbuf to txqueue for tx
+    263           *        XXX : this should be called with _cs8900_critical_lock held
+    264           *
+    265           * @param p pbuf to copy to
+    266           * @return 0 on success, -1 on failure
+    267           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    268          static int
+    269          cs8900_copy_pbuf_to_tx_queue(struct pbuf *p) {
+   \                     cs8900_copy_pbuf_to_tx_queue:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    270              CS8900TXBuf *txbuf;
+    271          
+    272              if ( list_empty(&_free_tx_queue) ) {
+   \   00000008   ........           LDR      R0,??DataTable13  ;; _free_tx_queue
+   \   0000000C   ........           BL       list_empty
+   \   00000010   000050E3           CMP      R0,#+0
+   \   00000014   0100000A           BEQ      ??cs8900_copy_pbuf_to_tx_queue_0
+    273                  // no free tx buffer available
+    274                  return -1;
+   \   00000018   0000E0E3           MVN      R0,#+0
+   \   0000001C   100000EA           B        ??cs8900_copy_pbuf_to_tx_queue_1
+    275              }
+    276          
+    277              txbuf = list_first_entry(&_free_tx_queue, CS8900TXBuf, le);
+   \                     ??cs8900_copy_pbuf_to_tx_queue_0:
+   \   00000020   ........           LDR      R0,??DataTable13  ;; _free_tx_queue
+   \   00000024   000090E5           LDR      R0,[R0, #+0]
+   \   00000028   0050B0E1           MOVS     R5,R0
+    278              list_del_init(&txbuf->le);
+   \   0000002C   0500B0E1           MOVS     R0,R5
+   \   00000030   ........           BL       list_del_init
+    279          
+    280              cs8900_copy_pbuf_to_tx_buffer(p, txbuf);
+   \   00000034   0510B0E1           MOVS     R1,R5
+   \   00000038   0400B0E1           MOVS     R0,R4
+   \   0000003C   ........           BL       cs8900_copy_pbuf_to_tx_buffer
+    281          
+    282              list_add_tail(&txbuf->le, &_tx_queue);
+   \   00000040   ........           LDR      R1,??DataTable12  ;; _tx_queue
+   \   00000044   0500B0E1           MOVS     R0,R5
+   \   00000048   ........           BL       list_add_tail
+    283          
+    284              _num_pkts_in_tx_queue++;
+   \   0000004C   ........           LDR      R0,??DataTable15  ;; _num_pkts_in_tx_queue
+   \   00000050   ........           LDR      R1,??DataTable15  ;; _num_pkts_in_tx_queue
+   \   00000054   001091E5           LDR      R1,[R1, #+0]
+   \   00000058   011091E2           ADDS     R1,R1,#+1
+   \   0000005C   001080E5           STR      R1,[R0, #+0]
+    285              return 0;
+   \   00000060   0000A0E3           MOV      R0,#+0
+   \                     ??cs8900_copy_pbuf_to_tx_queue_1:
+   \   00000064   3040BDE8           POP      {R4,R5,LR}
+   \   00000068   1EFF2FE1           BX       LR               ;; return
+    286          }
+    287          
+    288          /**
+    289           * @brief gets next tx buffer to tx from txqueue
+    290           *        XXX : this should be called with driver lock held
+    291           *
+    292           * @return next txbuf from tx queue
+    293           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    294          static CS8900TXBuf*
+    295          cs8900_get_next_txbuf(void) {
+   \                     cs8900_get_next_txbuf:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+    296              CS8900TXBuf *txbuf;
+    297          
+    298              if ( list_empty(&_tx_queue) ) {
+   \   00000004   ........           LDR      R0,??DataTable12  ;; _tx_queue
+   \   00000008   ........           BL       list_empty
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0100000A           BEQ      ??cs8900_get_next_txbuf_0
+    299                  return NULL;
+   \   00000014   0000A0E3           MOV      R0,#+0
+   \   00000018   030000EA           B        ??cs8900_get_next_txbuf_1
+    300              }
+    301          
+    302              txbuf = list_first_entry(&_tx_queue, CS8900TXBuf, le);
+   \                     ??cs8900_get_next_txbuf_0:
+   \   0000001C   ........           LDR      R0,??DataTable12  ;; _tx_queue
+   \   00000020   000090E5           LDR      R0,[R0, #+0]
+   \   00000024   0040B0E1           MOVS     R4,R0
+    303          
+    304              return txbuf;
+   \   00000028   0400B0E1           MOVS     R0,R4
+   \                     ??cs8900_get_next_txbuf_1:
+   \   0000002C   1040BDE8           POP      {R4,LR}
+   \   00000030   1EFF2FE1           BX       LR               ;; return
+    305          }
+    306          
+    307          /**
+    308           * @brief removex txbuf from txqueue and puts it back to free list
+    309           *
+    310           * @param[in] txbuf tx buffer to free
+    311           *
+    312           * @return none
+    313           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    314          static void
+    315          cs8900_free_tx_buf(CS8900TXBuf *txbuf) {
+   \                     cs8900_free_tx_buf:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    316              // remove from txqueue
+    317              list_del_init(&txbuf->le);
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           BL       list_del_init
+    318          
+    319              // add it to free queue
+    320              list_add_tail(&txbuf->le, &_free_tx_queue);
+   \   00000010   ........           LDR      R1,??DataTable13  ;; _free_tx_queue
+   \   00000014   0400B0E1           MOVS     R0,R4
+   \   00000018   ........           BL       list_add_tail
+    321              _num_pkts_in_tx_queue--;
+   \   0000001C   ........           LDR      R0,??DataTable15  ;; _num_pkts_in_tx_queue
+   \   00000020   ........           LDR      R1,??DataTable15  ;; _num_pkts_in_tx_queue
+   \   00000024   001091E5           LDR      R1,[R1, #+0]
+   \   00000028   011051E2           SUBS     R1,R1,#+1
+   \   0000002C   001080E5           STR      R1,[R0, #+0]
+    322          }
+   \   00000030   1040BDE8           POP      {R4,LR}
+   \   00000034   1EFF2FE1           BX       LR               ;; return
+    323          #endif
+    324          
+    325          ////////////////////////////////////////////////////////////////////////////////
+    326          //
+    327          // for CS8900 RX/TX Locking
+    328          //
+    329          ////////////////////////////////////////////////////////////////////////////////
+    330          #ifdef __CS8900_USE_CRITICAL_SECTION
+    331          /**
+    332           * @brief initialize critical section to prevent simultaneous rx/tx
+    333           * @return none
+    334           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    335          static void
+    336          cs8900_critical_section_init(void) {
+   \                     cs8900_critical_section_init:
+   \   00000000   00402DE9           PUSH     {LR}
+    337              if ( sys_sem_new(&_cs8900_critical_lock, 1) != ERR_OK ) {
+   \   00000004   0110A0E3           MOV      R1,#+1
+   \   00000008   ........           LDR      R0,??DataTable18  ;; _cs8900_critical_lock
+   \   0000000C   ........           _BLF     sys_sem_new,??sys_sem_new??rA
+   \   00000010   000050E3           CMP      R0,#+0
+   \   00000014   0000000A           BEQ      ??cs8900_critical_section_init_0
+    338                  // we are fucked up.
+    339                  // what is the best way to debug this?
+    340                  // just do infite loop so we can find this bug
+    341                  while ( 1 ) {}
+   \                     ??cs8900_critical_section_init_1:
+   \   00000018   FEFFFFEA           B        ??cs8900_critical_section_init_1
+    342              }
+    343          }
+   \                     ??cs8900_critical_section_init_0:
+   \   0000001C   0040BDE8           POP      {LR}
+   \   00000020   1EFF2FE1           BX       LR               ;; return
+    344          
+    345          /**
+    346           * @brief enter cs8900 critical section to prevent simultaneous rx/tx
+    347           * @return none
+    348           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    349          static void
+    350          cs8900_enter_critical(void) {
+   \                     cs8900_enter_critical:
+   \   00000000   00402DE9           PUSH     {LR}
+    351              sys_sem_wait(&_cs8900_critical_lock);
+   \   00000004   0010A0E3           MOV      R1,#+0
+   \   00000008   ........           LDR      R0,??DataTable18  ;; _cs8900_critical_lock
+   \   0000000C   ........           _BLF     sys_arch_sem_wait,??sys_arch_sem_wait??rA
+    352          }
+   \   00000010   0040BDE8           POP      {LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+    353          
+    354          /**
+    355           * @brief leave cs8900 critical section to prevent simultaneous rx/tx
+    356           * @return none
+    357           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    358          static void
+    359          cs8900_leave_critical(void) {
+   \                     cs8900_leave_critical:
+   \   00000000   00402DE9           PUSH     {LR}
+    360              sys_sem_signal(&_cs8900_critical_lock);
+   \   00000004   ........           LDR      R0,??DataTable18  ;; _cs8900_critical_lock
+   \   00000008   ........           _BLF     sys_sem_signal,??sys_sem_signal??rA
+    361          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    362          #endif
+    363          
+    364          ////////////////////////////////////////////////////////////////////////////////
+    365          //
+    366          // utilities for debugging
+    367          //
+    368          ////////////////////////////////////////////////////////////////////////////////
+    369          /**
+    370           * @brief simple debug routine to dump cs8900 registers.
+    371           *        segger jlink is quite inconvenient to print out debug messages. so
+    372           *        instead of doing that, put a break point here and inspect reach value.
+    373           * 
+    374           * @return none
+    375           */
+    376          #ifdef __CS8900_DEBUG__
+    377          static void
+    378          cs8900_debug(void) {
+    379              u16_t   t;
+    380          
+    381              t = SWAP_U16(cs8900_readreg(CS_PP_EISA));       // EISA registration number
+    382              t = SWAP_U16(cs8900_readreg(CS_PP_PRODID));     // product ID including revision
+    383              t = cs8900_readreg(CS_PP_IOBASE);               // IO base
+    384              t = cs8900_readreg(CS_PP_INTNUM);               // interrupt number
+    385              t = cs8900_readreg(CS_PP_DMACHANN);             // dma channel number
+    386              t = cs8900_readreg(CS_PP_EEPROM_CMD);           // eeprom command register
+    387          
+    388              t = cs8900_readreg(CS_PP_IA1);                  // mac addr 0/1
+    389              t = cs8900_readreg(CS_PP_IA2);                  // mac addr 2/3
+    390              t = cs8900_readreg(CS_PP_IA3);                  // mac addr 4/5
+    391          
+    392          
+    393              t = cs8900_readreg(CS_PP_RXCFG);
+    394              t = cs8900_readreg(CS_PP_TXCFG);
+    395              t = cs8900_readreg(CS_PP_BUFCFG);
+    396              t = cs8900_readreg(CS_PP_BUSCTL);
+    397          
+    398              // t = cs8900_readreg(CS_PP_ISQ);
+    399              t = cs8900_readreg(CS_PP_RXEVENT);
+    400              t = cs8900_readreg(CS_PP_TX_EVENT);
+    401              t = cs8900_readreg(CS_PP_BUF_EVENT);
+    402              t = cs8900_readreg(CS_PP_LINESTATUS);
+    403          
+    404              t = cs8900_readreg(CS_PP_SELFTEST);
+    405              t = cs8900_readreg(CS_PP_BUSSTATUS);
+    406              (void)t;  // hate warnings
+    407          }
+    408          #endif
+    409          
+    410          ////////////////////////////////////////////////////////////////////////////////
+    411          //
+    412          // chip initialization utilities
+    413          //
+    414          ////////////////////////////////////////////////////////////////////////////////
+    415          /**
+    416           * @brief resets cs8900 by asserting POWER_ON_RESET through S/W register
+    417           * 
+    418           * @return none
+    419           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    420          static void cs8900_reset(void) {
+   \                     cs8900_reset:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+    421              int StartTime = OS_Time;
+   \   00000004   A0009FE5           LDR      R0,??cs8900_reset_0  ;; OS_Time
+   \   00000008   000090E5           LDR      R0,[R0, #+0]
+   \   0000000C   0040B0E1           MOVS     R4,R0
+    422          #ifdef __CS8900_USE_CRITICAL_SECTION
+    423              cs8900_enter_critical();
+   \   00000010   ........           BL       cs8900_enter_critical
+    424          #endif
+    425              cs8900_writereg(CS_PP_SELFCTL, POWER_ON_RESET);
+   \   00000014   4010A0E3           MOV      R1,#+64
+   \   00000018   450FA0E3           MOV      R0,#+276
+   \   0000001C   ........           BL       cs8900_writereg
+    426              OS_Delay(30);
+   \   00000020   1E00A0E3           MOV      R0,#+30
+   \   00000024   ........           _BLF     OS_Delay,??OS_Delay??rA
+    427          
+    428              while ( (cs8900_readreg(CS_PP_SELFTEST) & INIT_DONE) == 0 &&
+    429                      ((OS_Time - StartTime) < 1000) ) {
+   \                     ??cs8900_reset_1:
+   \   00000028   3600A0E3           MOV      R0,#+54
+   \   0000002C   400F80E3           ORR      R0,R0,#0x100
+   \   00000030   ........           BL       cs8900_readreg
+   \   00000034   800010E3           TST      R0,#0x80
+   \   00000038   0400001A           BNE      ??cs8900_reset_2
+   \   0000003C   68009FE5           LDR      R0,??cs8900_reset_0  ;; OS_Time
+   \   00000040   000090E5           LDR      R0,[R0, #+0]
+   \   00000044   040050E0           SUBS     R0,R0,R4
+   \   00000048   FA0F50E3           CMP      R0,#+1000
+   \   0000004C   F5FFFFBA           BLT      ??cs8900_reset_1
+    430                  // wait for reset complete or timeout
+    431              }
+    432          
+    433              cs8900_writereg(CS_PP_RXCFG,    0);
+   \                     ??cs8900_reset_2:
+   \   00000050   0010A0E3           MOV      R1,#+0
+   \   00000054   0200A0E3           MOV      R0,#+2
+   \   00000058   400F80E3           ORR      R0,R0,#0x100
+   \   0000005C   ........           BL       cs8900_writereg
+    434              cs8900_writereg(CS_PP_TXCFG,    0);
+   \   00000060   0010A0E3           MOV      R1,#+0
+   \   00000064   0600A0E3           MOV      R0,#+6
+   \   00000068   400F80E3           ORR      R0,R0,#0x100
+   \   0000006C   ........           BL       cs8900_writereg
+    435              cs8900_writereg(CS_PP_BUFCFG,   0);
+   \   00000070   0010A0E3           MOV      R1,#+0
+   \   00000074   0A00A0E3           MOV      R0,#+10
+   \   00000078   400F80E3           ORR      R0,R0,#0x100
+   \   0000007C   ........           BL       cs8900_writereg
+    436              cs8900_writereg(CS_PP_BUSCTL,   0);
+   \   00000080   0010A0E3           MOV      R1,#+0
+   \   00000084   1600A0E3           MOV      R0,#+22
+   \   00000088   400F80E3           ORR      R0,R0,#0x100
+   \   0000008C   ........           BL       cs8900_writereg
+    437              cs8900_writereg(CS_PP_LINECTL,  0);
+   \   00000090   0010A0E3           MOV      R1,#+0
+   \   00000094   1200A0E3           MOV      R0,#+18
+   \   00000098   400F80E3           ORR      R0,R0,#0x100
+   \   0000009C   ........           BL       cs8900_writereg
+    438          #ifdef __CS8900_USE_CRITICAL_SECTION
+    439              cs8900_leave_critical();
+   \   000000A0   ........           BL       cs8900_leave_critical
+    440          #endif
+    441          }
+   \   000000A4   1040BDE8           POP      {R4,LR}
+   \   000000A8   1EFF2FE1           BX       LR               ;; return
+   \                     ??cs8900_reset_0:
+   \   000000AC   ........           DC32     OS_Time
+    442          
+    443          /**
+    444           * @brief sets predefined mac address to cs8900.
+    445           * 
+    446           * @param[in] netif lwip network interface to work with
+    447           * @return none
+    448           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    449          static void
+    450          cs8900_set_macaddr(struct netif *netif) {
+   \                     cs8900_set_macaddr:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    451              struct cs8900if *cs8900if;
+    452          
+    453              cs8900if = (struct cs8900if *)netif->state;
+   \   00000008   1C0094E5           LDR      R0,[R4, #+28]
+   \   0000000C   0050B0E1           MOVS     R5,R0
+    454              cs8900_writereg(CS_PP_IA1, ((u16_t)cs8900if->ethaddr->addr[0] | (u16_t)(cs8900if->ethaddr->addr[1] << 8U)));
+   \   00000010   000095E5           LDR      R0,[R5, #+0]
+   \   00000014   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000018   001095E5           LDR      R1,[R5, #+0]
+   \   0000001C   0110D1E5           LDRB     R1,[R1, #+1]
+   \   00000020   011490E1           ORRS     R1,R0,R1, LSL #+8
+   \   00000024   0118A0E1           MOV      R1,R1, LSL #+16
+   \   00000028   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   0000002C   560FA0E3           MOV      R0,#+344
+   \   00000030   ........           BL       cs8900_writereg
+    455              cs8900_writereg(CS_PP_IA2, ((u16_t)cs8900if->ethaddr->addr[2] | (u16_t)(cs8900if->ethaddr->addr[3] << 8U)));
+   \   00000034   000095E5           LDR      R0,[R5, #+0]
+   \   00000038   0200D0E5           LDRB     R0,[R0, #+2]
+   \   0000003C   001095E5           LDR      R1,[R5, #+0]
+   \   00000040   0310D1E5           LDRB     R1,[R1, #+3]
+   \   00000044   011490E1           ORRS     R1,R0,R1, LSL #+8
+   \   00000048   0118A0E1           MOV      R1,R1, LSL #+16
+   \   0000004C   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   00000050   5A00A0E3           MOV      R0,#+90
+   \   00000054   400F80E3           ORR      R0,R0,#0x100
+   \   00000058   ........           BL       cs8900_writereg
+    456              cs8900_writereg(CS_PP_IA3, ((u16_t)cs8900if->ethaddr->addr[4] | (u16_t)(cs8900if->ethaddr->addr[5] << 8U)));
+   \   0000005C   000095E5           LDR      R0,[R5, #+0]
+   \   00000060   0400D0E5           LDRB     R0,[R0, #+4]
+   \   00000064   001095E5           LDR      R1,[R5, #+0]
+   \   00000068   0510D1E5           LDRB     R1,[R1, #+5]
+   \   0000006C   011490E1           ORRS     R1,R0,R1, LSL #+8
+   \   00000070   0118A0E1           MOV      R1,R1, LSL #+16
+   \   00000074   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   00000078   570FA0E3           MOV      R0,#+348
+   \   0000007C   ........           BL       cs8900_writereg
+    457          }
+   \   00000080   3040BDE8           POP      {R4,R5,LR}
+   \   00000084   1EFF2FE1           BX       LR               ;; return
+    458          
+    459          /**
+    460           * @brief initialize cs8900
+    461           * 
+    462           * @param[in] netif lwip network interface to initialize with
+    463           * @return none
+    464           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    465          static void
+    466          cs8900_chip_init(struct netif *netif) {
+   \                     cs8900_chip_init:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    467          
+    468              u16_t   t;
+    469          
+    470              cs8900_writereg(CS_PP_INTNUM, 0x04);
+   \   00000008   0410A0E3           MOV      R1,#+4
+   \   0000000C   2200A0E3           MOV      R0,#+34
+   \   00000010   ........           BL       cs8900_writereg
+    471          
+    472              cs8900_writereg(CS_PP_RXCFG, RX_OK_ENBL | RX_CRC_ERROR_ENBL);
+   \   00000014   441DA0E3           MOV      R1,#+4352
+   \   00000018   0200A0E3           MOV      R0,#+2
+   \   0000001C   400F80E3           ORR      R0,R0,#0x100
+   \   00000020   ........           BL       cs8900_writereg
+    473              cs8900_writereg(CS_PP_RXCTL, DEF_RX_ACCEPT);
+   \   00000024   D01EA0E3           MOV      R1,#+3328
+   \   00000028   410FA0E3           MOV      R0,#+260
+   \   0000002C   ........           BL       cs8900_writereg
+    474          
+    475          #ifdef __CS8900_USE_TX_QUEUE
+    476              cs8900_writereg(CS_PP_TXCFG,  TX_LOST_CRS_ENBL    |
+    477                              TX_SQE_ERROR_ENBL   |
+    478                              TX_OK_ENBL          |
+    479                              TX_LATE_COL_ENBL    |
+    480                              TX_JBR_ENBL         |
+    481                              TX_ANY_COL_ENBL     |
+    482                              TX_16_COL_ENBL);
+   \   00000030   C010A0E3           MOV      R1,#+192
+   \   00000034   8F1C81E3           ORR      R1,R1,#0x8F00
+   \   00000038   0600A0E3           MOV      R0,#+6
+   \   0000003C   400F80E3           ORR      R0,R0,#0x100
+   \   00000040   ........           BL       cs8900_writereg
+    483              //cs8900_writereg(CS_PP_TXCFG,  0);
+    484          #else
+    485              cs8900_writereg(CS_PP_TXCFG,  0);
+    486          #endif
+    487          
+    488          #if __CS8900_USE_FULL_DUPLEX
+    489              cs8900_writereg(CS_PP_TESTCTL, 0x4000);
+    490          #endif
+    491          
+    492          #if 1
+    493              t = cs8900_readreg(CS_PP_SELFCTL);
+   \   00000044   450FA0E3           MOV      R0,#+276
+   \   00000048   ........           BL       cs8900_readreg
+   \   0000004C   0050B0E1           MOVS     R5,R0
+    494              if ( (t & (HCB1 | HCB1_ENBL)) == (HCB1 | HCB1_ENBL) ) {
+   \   00000050   0500B0E1           MOVS     R0,R5
+   \   00000054   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000058   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   0000005C   A00C10E2           ANDS     R0,R0,#0xA000
+   \   00000060   A00C50E3           CMP      R0,#+40960
+   \   00000064   0300001A           BNE      ??cs8900_chip_init_0
+    495                  cs8900_writereg(CS_PP_SELFCTL, HCB1_ENBL | HCB1);
+   \   00000068   A01CA0E3           MOV      R1,#+40960
+   \   0000006C   450FA0E3           MOV      R0,#+276
+   \   00000070   ........           BL       cs8900_writereg
+   \   00000074   020000EA           B        ??cs8900_chip_init_1
+    496              } else {
+    497                  cs8900_writereg(CS_PP_SELFCTL, HCB1_ENBL);
+   \                     ??cs8900_chip_init_0:
+   \   00000078   801DA0E3           MOV      R1,#+8192
+   \   0000007C   450FA0E3           MOV      R0,#+276
+   \   00000080   ........           BL       cs8900_writereg
+    498              }
+    499              OS_Delay(50);
+   \                     ??cs8900_chip_init_1:
+   \   00000084   3200A0E3           MOV      R0,#+50
+   \   00000088   ........           _BLF     OS_Delay,??OS_Delay??rA
+    500          #endif
+    501          
+    502          #ifdef __CS8900_USE_TX_QUEUE
+    503              cs8900_writereg(CS_PP_BUFCFG, (READY_FOR_TX_ENBL           |
+    504                                             TX_UNDERRUN_ENBL            |
+    505                                             RX_MISS_COUNT_OVRFLOW_ENBL  |
+    506                                             TX_COL_COUNT_OVRFLOW_ENBL));
+   \   0000008C   CC1DA0E3           MOV      R1,#+13056
+   \   00000090   0A00A0E3           MOV      R0,#+10
+   \   00000094   400F80E3           ORR      R0,R0,#0x100
+   \   00000098   ........           BL       cs8900_writereg
+    507          #else
+    508              cs8900_writereg(CS_PP_BUFCFG, (
+    509                                             RX_MISS_COUNT_OVRFLOW_ENBL |
+    510                                             TX_COL_COUNT_OVRFLOW_ENBL));
+    511          #endif
+    512          
+    513              cs8900_writereg(CS_PP_BUSCTL, ENABLE_IRQ);
+   \   0000009C   801CA0E3           MOV      R1,#+32768
+   \   000000A0   1600A0E3           MOV      R0,#+22
+   \   000000A4   400F80E3           ORR      R0,R0,#0x100
+   \   000000A8   ........           BL       cs8900_writereg
+    514              cs8900_writereg(CS_PP_LINECTL, SERIAL_RX_ON | SERIAL_TX_ON);
+   \   000000AC   C010A0E3           MOV      R1,#+192
+   \   000000B0   1200A0E3           MOV      R0,#+18
+   \   000000B4   400F80E3           ORR      R0,R0,#0x100
+   \   000000B8   ........           BL       cs8900_writereg
+    515          
+    516              // clear isq before enabling interrupts
+    517              do {
+    518                  t = ISQ;
+   \                     ??cs8900_chip_init_2:
+   \   000000BC   A405A0E3           MOV      R0,#+687865856
+   \   000000C0   C20F80E3           ORR      R0,R0,#0x308
+   \   000000C4   B000D0E1           LDRH     R0,[R0, #+0]
+   \   000000C8   0050B0E1           MOVS     R5,R0
+    519              } while ( t != 0 );
+   \   000000CC   0558A0E1           MOV      R5,R5, LSL #+16
+   \   000000D0   2558B0E1           MOVS     R5,R5, LSR #+16
+   \   000000D4   000055E3           CMP      R5,#+0
+   \   000000D8   F7FFFF1A           BNE      ??cs8900_chip_init_2
+    520          
+    521              cs8900_writereg(CS_PP_INTNUM, 0xfff8);
+   \   000000DC   F810A0E3           MOV      R1,#+248
+   \   000000E0   FF1C81E3           ORR      R1,R1,#0xFF00
+   \   000000E4   2200A0E3           MOV      R0,#+34
+   \   000000E8   ........           BL       cs8900_writereg
+    522          }
+   \   000000EC   3040BDE8           POP      {R4,R5,LR}
+   \   000000F0   1EFF2FE1           BX       LR               ;; return
+    523          
+    524          /**
+    525           * @brief CS8900 chip initializer. first resets the chip, then sets
+    526           *        mac address, then set up the chip so we can send/receive
+    527           *        packets and interrupts.
+    528           * 
+    529           * @param[in] netif lwip network interface to initialize with
+    530           * @return none
+    531           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    532          static void
+    533          cs8900_init(struct netif *netif) {
+   \                     cs8900_init:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    534              struct cs8900if *cs8900if = (struct cs8900if *)netif->state;
+   \   00000008   1C0094E5           LDR      R0,[R4, #+28]
+   \   0000000C   0050B0E1           MOVS     R5,R0
+    535          
+    536              cs8900_reset();
+   \   00000010   ........           BL       cs8900_reset
+    537          #ifdef __CS8900_DEBUG__
+    538              cs8900_debug();
+    539          #endif
+    540              cs8900_set_macaddr(netif);
+   \   00000014   0400B0E1           MOVS     R0,R4
+   \   00000018   ........           BL       cs8900_set_macaddr
+    541              cs8900_chip_init(netif);
+   \   0000001C   0400B0E1           MOVS     R0,R4
+   \   00000020   ........           BL       cs8900_chip_init
+    542          #ifdef __CS8900_DEBUG__
+    543              cs8900_debug();
+    544          #endif
+    545          }
+   \   00000024   3040BDE8           POP      {R4,R5,LR}
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+    546          
+    547          ////////////////////////////////////////////////////////////////////////////////
+    548          //
+    549          // CS8900 TX
+    550          //
+    551          ////////////////////////////////////////////////////////////////////////////////
+    552          /**
+    553           * @brief mark tx busy status
+    554           *
+    555           * @param[in] tx_busy, 0 for not busy, 1 for busy
+    556           * 
+    557           * @return none
+    558           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    559          static inline void
+    560          cs8900_set_tx_busy(u8_t tx_busy) {
+    561              _tx_busy = tx_busy;
+   \                     cs8900_set_tx_busy:
+   \   00000000   ........           LDR      R1,??DataTable20  ;; _tx_busy
+   \   00000004   0000C1E5           STRB     R0,[R1, #+0]
+    562          }
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+    563          
+    564          /**
+    565           * @brief check tx busy status
+    566           *
+    567           * @return 1 if busy, 0 if not busy
+    568           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    569          static inline u8_t
+    570          cs8900_is_tx_busy(void) {
+    571              return _tx_busy;
+   \                     cs8900_is_tx_busy:
+   \   00000000   ........           LDR      R0,??DataTable20  ;; _tx_busy
+   \   00000004   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+    572          }
+    573          
+    574          /**
+    575           * @brief set tx command for cs8900
+    576           * 
+    577           * @param[in] len packet lenght to tx
+    578           *
+    579           * @return none
+    580           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    581          static inline void
+    582          cs8900_set_tx_bid(u16_t len) {
+   \                     cs8900_set_tx_bid:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    583              cs8900_set_tx_busy(1);
+   \   00000008   0100A0E3           MOV      R0,#+1
+   \   0000000C   ........           BL       cs8900_set_tx_busy
+    584              TXCMD     = CS8900_DEFAULT_TX_CMD;
+   \   00000010   A405A0E3           MOV      R0,#+687865856
+   \   00000014   C10F80E3           ORR      R0,R0,#0x304
+   \   00000018   4010A0E3           MOV      R1,#+64
+   \   0000001C   B010C0E1           STRH     R1,[R0, #+0]
+    585              TXLENGTH  = len;
+   \   00000020   08009FE5           LDR      R0,??cs8900_set_tx_bid_0  ;; 0x29000306
+   \   00000024   B040C0E1           STRH     R4,[R0, #+0]
+    586          }
+   \   00000028   1040BDE8           POP      {R4,LR}
+   \   0000002C   1EFF2FE1           BX       LR               ;; return
+   \                     ??cs8900_set_tx_bid_0:
+   \   00000030   06030029           DC32     0x29000306
+    587          
+    588          /**
+    589           * @brief check if tx is possible
+    590           *
+    591           * @return 1 if possible, 0 if not
+    592           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    593          static inline int
+    594          cs8900_check_for_tx_ready(void) {
+   \                     cs8900_check_for_tx_ready:
+   \   00000000   00402DE9           PUSH     {LR}
+    595              if ( (cs8900_readreg(CS_PP_BUSSTATUS) & READY_FOR_TX_NOW) == 0 ) {
+   \   00000004   4E0FA0E3           MOV      R0,#+312
+   \   00000008   ........           BL       cs8900_readreg
+   \   0000000C   400F10E3           TST      R0,#0x100
+   \   00000010   0100001A           BNE      ??cs8900_check_for_tx_ready_0
+    596                  return 0;
+   \   00000014   0000A0E3           MOV      R0,#+0
+   \   00000018   000000EA           B        ??cs8900_check_for_tx_ready_1
+    597              }
+    598              return 1;
+   \                     ??cs8900_check_for_tx_ready_0:
+   \   0000001C   0100A0E3           MOV      R0,#+1
+   \                     ??cs8900_check_for_tx_ready_1:
+   \   00000020   0040BDE8           POP      {LR}
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+    599          }
+    600          
+    601          /**
+    602           * @brief check ethernet line status
+    603           *
+    604           * @return 1 if link is up, 0 if link is down
+    605           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    606          static inline int
+    607          cs8900_check_line_status(void) {
+   \                     cs8900_check_line_status:
+   \   00000000   00402DE9           PUSH     {LR}
+    608              if ( (cs8900_readreg(CS_PP_LINESTATUS) & 0x0080U) == 0 ) {
+   \   00000004   4D0FA0E3           MOV      R0,#+308
+   \   00000008   ........           BL       cs8900_readreg
+   \   0000000C   800010E3           TST      R0,#0x80
+   \   00000010   0100001A           BNE      ??cs8900_check_line_status_0
+    609                  return 0;
+   \   00000014   0000A0E3           MOV      R0,#+0
+   \   00000018   000000EA           B        ??cs8900_check_line_status_1
+    610              }
+    611              return 1;
+   \                     ??cs8900_check_line_status_0:
+   \   0000001C   0100A0E3           MOV      R0,#+1
+   \                     ??cs8900_check_line_status_1:
+   \   00000020   0040BDE8           POP      {LR}
+   \   00000024   1EFF2FE1           BX       LR               ;; return
+    612          }
+    613          
+    614          /**
+    615           * @brief write pbuf to cs8900
+    616           *
+    617           * @param[in] cs8900if cs8900if to send pbuf to
+    618           * @param[in] p pbuf to tx
+    619           * 
+    620           * @return none
+    621           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    622          static void
+    623          cs8900_write_pbuf(struct cs8900if *cs8900if, struct pbuf *p) {
+   \                     cs8900_write_pbuf:
+   \   00000000   30002DE9           PUSH     {R4,R5}
+    624              struct pbuf *q;
+    625          
+    626              for ( q = p; q != NULL; q = q->next ) {
+   \   00000004   0120B0E1           MOVS     R2,R1
+   \                     ??cs8900_write_pbuf_0:
+   \   00000008   000052E3           CMP      R2,#+0
+   \   0000000C   1500000A           BEQ      ??cs8900_write_pbuf_1
+    627                  register u16_t i;
+    628                  register u16_t *ptr = (u16_t *)q->payload;
+   \   00000010   044092E5           LDR      R4,[R2, #+4]
+   \   00000014   04C0B0E1           MOVS     R12,R4
+    629          
+    630                  for ( i = 0; i < q->len; i += 2 ) {
+   \   00000018   0040A0E3           MOV      R4,#+0
+   \   0000001C   0430B0E1           MOVS     R3,R4
+   \                     ??cs8900_write_pbuf_2:
+   \   00000020   BA40D2E1           LDRH     R4,[R2, #+10]
+   \   00000024   0338A0E1           MOV      R3,R3, LSL #+16
+   \   00000028   2338B0E1           MOVS     R3,R3, LSR #+16
+   \   0000002C   040053E1           CMP      R3,R4
+   \   00000030   0600002A           BCS      ??cs8900_write_pbuf_3
+    631                      RXTXREG = *ptr++;
+   \   00000034   A445A0E3           MOV      R4,#+687865856
+   \   00000038   C04F84E3           ORR      R4,R4,#0x300
+   \   0000003C   B050DCE1           LDRH     R5,[R12, #+0]
+   \   00000040   B050C4E1           STRH     R5,[R4, #+0]
+   \   00000044   02C09CE2           ADDS     R12,R12,#+2
+    632                  }
+   \   00000048   023093E2           ADDS     R3,R3,#+2
+   \   0000004C   F3FFFFEA           B        ??cs8900_write_pbuf_2
+    633          
+    634                  cs8900if->tx_bytes += q->len;
+   \                     ??cs8900_write_pbuf_3:
+   \   00000050   184090E5           LDR      R4,[R0, #+24]
+   \   00000054   BA50D2E1           LDRH     R5,[R2, #+10]
+   \   00000058   044095E0           ADDS     R4,R5,R4
+   \   0000005C   184080E5           STR      R4,[R0, #+24]
+    635          
+    636          #ifdef SNMP
+    637                  if_add_ifOutOctets(p->tot_len);
+    638          #endif
+    639              }
+   \   00000060   002092E5           LDR      R2,[R2, #+0]
+   \   00000064   E7FFFFEA           B        ??cs8900_write_pbuf_0
+    640          }
+   \                     ??cs8900_write_pbuf_1:
+   \   00000068   3000BDE8           POP      {R4,R5}
+   \   0000006C   1EFF2FE1           BX       LR               ;; return
+    641          
+    642          #ifndef __CS8900_USE_TX_QUEUE
+    643          /**
+    644           * @brief sends packet to cs8900.
+    645           *        This one is called mostly in LwIP tcp stack task context.
+    646           *        Also during initialization, this is called in network start-up
+    647           *        task context for graduitous ARP and DHCP.
+    648           *        This is the TX core
+    649           * 
+    650           * @param[in] netif lwip netif to send packet to
+    651           * @param[in] p pbuf packet to send to cs8900
+    652           * @return err_t status indicating tx success or failure
+    653           */
+    654          static err_t
+    655          cs8900_output(struct netif *netif, struct pbuf *p) {
+    656              struct cs8900if *cs8900if = (struct cs8900if *)netif->state;
+    657              int                 tries = 0;
+    658          
+    659          #ifdef __CS8900_USE_CRITICAL_SECTION
+    660              cs8900_enter_critical();
+    661          #endif
+    662          
+    663              if ( cs8900_check_line_status() == 0 ) {
+    664                  cs8900if->tx_line_status_err++;
+    665                  goto error;
+    666              }
+    667          
+    668              cs8900_set_tx_bid(p->tot_len);
+    669          
+    670              while ( cs8900_check_for_tx_ready() == 0 && (tries++ < 100) ) {
+    671                  //OS_Delay(50);
+    672                  // nada
+    673              }
+    674          
+    675              if ( tries < 100 ) {
+    676                  cs8900_write_pbuf(cs8900if, p);
+    677                  cs8900if->tx_packets++;
+    678              } else {
+    679                  TXLENGTH = 0;
+    680                  cs8900if->tx_timeout++;
+    681              }
+    682          
+    683          #ifdef __CS8900_USE_CRITICAL_SECTION
+    684              cs8900_leave_critical();
+    685          #endif
+    686          
+    687              return ERR_OK;
+    688          
+    689          error:
+    690          #ifdef __CS8900_USE_CRITICAL_SECTION
+    691              cs8900_leave_critical();
+    692          #endif
+    693              return ERR_CONN;
+    694          }
+    695          
+    696          #else
+    697          
+    698          /**
+    699           * @brief sends packet to cs8900.
+    700           *        This one is called mostly in LwIP tcp stack task context.
+    701           *        Also during initialization, this is called in network start-up
+    702           *        task context for graduitous ARP and DHCP.
+    703           *        This is the TX core
+    704           * 
+    705           * @param[in] netif lwip netif to send packet to
+    706           * @param[in] p pbuf packet to send to cs8900
+    707           * @return err_t status indicating tx success or failure
+    708           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    709          static err_t
+    710          cs8900_output(struct netif *netif, struct pbuf *p) {
+   \                     cs8900_output:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   \   00000008   0150B0E1           MOVS     R5,R1
+    711              struct cs8900if *cs8900if = (struct cs8900if *)netif->state;
+   \   0000000C   1C0094E5           LDR      R0,[R4, #+28]
+   \   00000010   0060B0E1           MOVS     R6,R0
+    712              err_t               ret;
+    713          
+    714              cs8900_enter_critical();
+   \   00000014   ........           BL       cs8900_enter_critical
+    715          
+    716              if ( cs8900_check_line_status() == 0 ) {
+   \   00000018   ........           BL       cs8900_check_line_status
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   0500001A           BNE      ??cs8900_output_0
+    717                  cs8900if->tx_line_status_err++;
+   \   00000024   340096E5           LDR      R0,[R6, #+52]
+   \   00000028   010090E2           ADDS     R0,R0,#+1
+   \   0000002C   340086E5           STR      R0,[R6, #+52]
+    718                  goto error;
+    719              }
+    720          
+    721              if ( cs8900_is_tx_busy() ) {
+    722                  // in case tx busy, just queue the packet
+    723                  cs8900if->tx_buffering++;
+    724                  if ( cs8900_copy_pbuf_to_tx_queue(p) == 0 ) {
+    725                      ret = ERR_OK;
+    726                  } else {
+    727                      cs8900if->tx_errors++;
+    728                      ret = ERR_CONN;
+    729                  }
+    730          
+    731                  cs8900_leave_critical();
+    732                  return ret;
+    733              }
+    734          
+    735              cs8900_set_tx_bid(p->tot_len);
+    736          
+    737              ret = ERR_OK;
+    738          
+    739              if ( cs8900_check_for_tx_ready() == 0 ) {
+    740                  // can't tx right away.
+    741                  // put pbuf to tx queue
+    742                  if ( cs8900_copy_pbuf_to_tx_queue(p) != 0 ) {
+    743                      cs8900if->tx_errors++;
+    744                      ret = ERR_CONN;
+    745                  } else {
+    746                      cs8900if->tx_buffering++;
+    747                  }
+    748              } else {
+    749                  cs8900_write_pbuf(cs8900if, p);
+    750                  cs8900if->tx_packets++;
+    751              }
+    752          
+    753          #ifdef __CS8900_USE_CRITICAL_SECTION
+    754              cs8900_leave_critical();
+    755          #endif
+    756          
+    757              return ret;
+    758          
+    759          error:
+    760          #ifdef __CS8900_USE_CRITICAL_SECTION
+    761              cs8900_leave_critical();
+   \   00000030   ........           BL       cs8900_leave_critical
+    762          #endif
+    763              return ERR_CONN;
+   \   00000034   0C00E0E3           MVN      R0,#+12
+   \   00000038   310000EA           B        ??cs8900_output_1
+   \                     ??cs8900_output_0:
+   \   0000003C   ........           BL       cs8900_is_tx_busy
+   \   00000040   000050E3           CMP      R0,#+0
+   \   00000044   1100000A           BEQ      ??cs8900_output_2
+   \   00000048   400096E5           LDR      R0,[R6, #+64]
+   \   0000004C   010090E2           ADDS     R0,R0,#+1
+   \   00000050   400086E5           STR      R0,[R6, #+64]
+   \   00000054   0500B0E1           MOVS     R0,R5
+   \   00000058   ........           BL       cs8900_copy_pbuf_to_tx_queue
+   \   0000005C   000050E3           CMP      R0,#+0
+   \   00000060   0200001A           BNE      ??cs8900_output_3
+   \   00000064   0000A0E3           MOV      R0,#+0
+   \   00000068   0070B0E1           MOVS     R7,R0
+   \   0000006C   040000EA           B        ??cs8900_output_4
+   \                     ??cs8900_output_3:
+   \   00000070   440096E5           LDR      R0,[R6, #+68]
+   \   00000074   010090E2           ADDS     R0,R0,#+1
+   \   00000078   440086E5           STR      R0,[R6, #+68]
+   \   0000007C   0C00E0E3           MVN      R0,#+12
+   \   00000080   0070B0E1           MOVS     R7,R0
+   \                     ??cs8900_output_4:
+   \   00000084   ........           BL       cs8900_leave_critical
+   \   00000088   0700B0E1           MOVS     R0,R7
+   \   0000008C   1C0000EA           B        ??cs8900_output_1
+   \                     ??cs8900_output_2:
+   \   00000090   B800D5E1           LDRH     R0,[R5, #+8]
+   \   00000094   ........           BL       cs8900_set_tx_bid
+   \   00000098   0000A0E3           MOV      R0,#+0
+   \   0000009C   0070B0E1           MOVS     R7,R0
+   \   000000A0   ........           BL       cs8900_check_for_tx_ready
+   \   000000A4   000050E3           CMP      R0,#+0
+   \   000000A8   0D00001A           BNE      ??cs8900_output_5
+   \   000000AC   0500B0E1           MOVS     R0,R5
+   \   000000B0   ........           BL       cs8900_copy_pbuf_to_tx_queue
+   \   000000B4   000050E3           CMP      R0,#+0
+   \   000000B8   0500000A           BEQ      ??cs8900_output_6
+   \   000000BC   440096E5           LDR      R0,[R6, #+68]
+   \   000000C0   010090E2           ADDS     R0,R0,#+1
+   \   000000C4   440086E5           STR      R0,[R6, #+68]
+   \   000000C8   0C00E0E3           MVN      R0,#+12
+   \   000000CC   0070B0E1           MOVS     R7,R0
+   \   000000D0   090000EA           B        ??cs8900_output_7
+   \                     ??cs8900_output_6:
+   \   000000D4   400096E5           LDR      R0,[R6, #+64]
+   \   000000D8   010090E2           ADDS     R0,R0,#+1
+   \   000000DC   400086E5           STR      R0,[R6, #+64]
+   \   000000E0   050000EA           B        ??cs8900_output_7
+   \                     ??cs8900_output_5:
+   \   000000E4   0510B0E1           MOVS     R1,R5
+   \   000000E8   0600B0E1           MOVS     R0,R6
+   \   000000EC   ........           BL       cs8900_write_pbuf
+   \   000000F0   140096E5           LDR      R0,[R6, #+20]
+   \   000000F4   010090E2           ADDS     R0,R0,#+1
+   \   000000F8   140086E5           STR      R0,[R6, #+20]
+   \                     ??cs8900_output_7:
+   \   000000FC   ........           BL       cs8900_leave_critical
+   \   00000100   0700B0E1           MOVS     R0,R7
+   \                     ??cs8900_output_1:
+   \   00000104   F040BDE8           POP      {R4-R7,LR}
+   \   00000108   1EFF2FE1           BX       LR               ;; return
+    764          }
+    765          
+    766          /**
+    767           * @brief handle tx ready event.
+    768           *        if there is a packet in the tx queue, extracts it out and sends it to cs8900
+    769           *        if there is next packet waiting, prepare for another tx ready event
+    770           *
+    771           * @param[in] cs8900if cs8900if that tx ready event originates from
+    772           * 
+    773           * @return none
+    774           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    775          static void
+    776          cs8900_serve_tx_ready(struct cs8900if *cs8900if) {
+   \                     cs8900_serve_tx_ready:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    777              CS8900TXBuf *txbuf;
+    778          
+    779              txbuf = cs8900_get_next_txbuf();
+   \   00000008   ........           BL       cs8900_get_next_txbuf
+   \   0000000C   0050B0E1           MOVS     R5,R0
+    780              if ( txbuf == NULL ) {
+   \   00000010   000055E3           CMP      R5,#+0
+   \   00000014   0400000A           BEQ      ??cs8900_serve_tx_ready_0
+    781                  return;
+    782              }
+    783          
+    784              cs8900_tx_txbuf(cs8900if, txbuf);
+   \   00000018   0510B0E1           MOVS     R1,R5
+   \   0000001C   0400B0E1           MOVS     R0,R4
+   \   00000020   ........           BL       cs8900_tx_txbuf
+    785              cs8900_free_tx_buf(txbuf);
+   \   00000024   0500B0E1           MOVS     R0,R5
+   \   00000028   ........           BL       cs8900_free_tx_buf
+    786          
+    787          #if 0
+    788              while((txbuf = cs8900_get_next_txbuf()) != NULL){
+    789                  cs8900_set_tx_bid(txbuf->len);
+    790          
+    791                  if(!cs8900_check_for_tx_ready()){
+    792                      // can't tx right away
+    793                      return;
+    794                  }
+    795                  cs8900_tx_txbuf(cs8900if, txbuf);
+    796                  cs8900_free_tx_buf(txbuf);
+    797              }
+    798          #endif
+    799          }
+   \                     ??cs8900_serve_tx_ready_0:
+   \   0000002C   3040BDE8           POP      {R4,R5,LR}
+   \   00000030   1EFF2FE1           BX       LR               ;; return
+    800          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    801          static void cs8900_serve_tx_complete(struct cs8900if *cs8900if) {
+   \                     cs8900_serve_tx_complete:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    802              // bid for tx
+    803              CS8900TXBuf *txbuf;
+    804          
+    805              cs8900_set_tx_busy(0);
+   \   00000008   0000A0E3           MOV      R0,#+0
+   \   0000000C   ........           BL       cs8900_set_tx_busy
+    806          
+    807              txbuf = cs8900_get_next_txbuf();
+   \   00000010   ........           BL       cs8900_get_next_txbuf
+   \   00000014   0050B0E1           MOVS     R5,R0
+    808              if ( txbuf == NULL ) {
+   \   00000018   000055E3           CMP      R5,#+0
+   \   0000001C   0B00000A           BEQ      ??cs8900_serve_tx_complete_0
+    809                  return;
+    810              }
+    811          
+    812              cs8900_set_tx_bid(txbuf->len);
+   \   00000020   080095E5           LDR      R0,[R5, #+8]
+   \   00000024   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000028   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   0000002C   ........           BL       cs8900_set_tx_bid
+    813          
+    814              if ( !cs8900_check_for_tx_ready() ) {
+   \   00000030   ........           BL       cs8900_check_for_tx_ready
+   \   00000034   000050E3           CMP      R0,#+0
+   \   00000038   0400000A           BEQ      ??cs8900_serve_tx_complete_0
+    815                  // can't tx right away
+    816                  // wait for tx ready interrupt
+    817                  return;
+    818              }
+    819          
+    820              cs8900_tx_txbuf(cs8900if, txbuf);
+   \   0000003C   0510B0E1           MOVS     R1,R5
+   \   00000040   0400B0E1           MOVS     R0,R4
+   \   00000044   ........           BL       cs8900_tx_txbuf
+    821              cs8900_free_tx_buf(txbuf);
+   \   00000048   0500B0E1           MOVS     R0,R5
+   \   0000004C   ........           BL       cs8900_free_tx_buf
+    822          }
+   \                     ??cs8900_serve_tx_complete_0:
+   \   00000050   3040BDE8           POP      {R4,R5,LR}
+   \   00000054   1EFF2FE1           BX       LR               ;; return
+    823          #endif
+    824          
+    825          ////////////////////////////////////////////////////////////////////////////////
+    826          //
+    827          // CS8900 RX
+    828          //
+    829          ////////////////////////////////////////////////////////////////////////////////
+    830          /**
+    831           * @brief counts rx errors
+    832           *
+    833           * @param[in] status rx event status
+    834           * @param[in] cs8900if cs8900 network interface structure
+    835           *
+    836           * @reutrn none
+    837           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    838          static void cs8900_count_rx_errors(u16_t status, struct cs8900if *cs8900if) {
+    839              cs8900if->rx_not_ok++;
+   \                     cs8900_count_rx_errors:
+   \   00000000   5C2091E5           LDR      R2,[R1, #+92]
+   \   00000004   012092E2           ADDS     R2,R2,#+1
+   \   00000008   5C2081E5           STR      R2,[R1, #+92]
+    840          
+    841              if ( status & RX_RUNT ) cs8900if->rx_length_errors++;
+   \   0000000C   800D10E3           TST      R0,#0x2000
+   \   00000010   0200000A           BEQ      ??cs8900_count_rx_errors_0
+   \   00000014   602091E5           LDR      R2,[R1, #+96]
+   \   00000018   012092E2           ADDS     R2,R2,#+1
+   \   0000001C   602081E5           STR      R2,[R1, #+96]
+    842          
+    843              if ( status & RX_EXTRA_DATA ) cs8900if->rx_length_errors++;
+   \                     ??cs8900_count_rx_errors_0:
+   \   00000020   400C10E3           TST      R0,#0x4000
+   \   00000024   0200000A           BEQ      ??cs8900_count_rx_errors_1
+   \   00000028   602091E5           LDR      R2,[R1, #+96]
+   \   0000002C   012092E2           ADDS     R2,R2,#+1
+   \   00000030   602081E5           STR      R2,[R1, #+96]
+    844          
+    845              if ( (status & RX_CRC_ERROR) && !(status & (RX_EXTRA_DATA | RX_RUNT)) ) cs8900if->rx_crc_errors++;
+   \                     ??cs8900_count_rx_errors_1:
+   \   00000034   702C10E2           ANDS     R2,R0,#0x7000
+   \   00000038   400D52E3           CMP      R2,#+4096
+   \   0000003C   0200001A           BNE      ??cs8900_count_rx_errors_2
+   \   00000040   642091E5           LDR      R2,[R1, #+100]
+   \   00000044   012092E2           ADDS     R2,R2,#+1
+   \   00000048   642081E5           STR      R2,[R1, #+100]
+    846          
+    847              if ( status & RX_DRIBBLE ) cs8900if->rx_frame_errors++;
+   \                     ??cs8900_count_rx_errors_2:
+   \   0000004C   800010E3           TST      R0,#0x80
+   \   00000050   0200000A           BEQ      ??cs8900_count_rx_errors_3
+   \   00000054   682091E5           LDR      R2,[R1, #+104]
+   \   00000058   012092E2           ADDS     R2,R2,#+1
+   \   0000005C   682081E5           STR      R2,[R1, #+104]
+    848          }
+   \                     ??cs8900_count_rx_errors_3:
+   \   00000060   1EFF2FE1           BX       LR               ;; return
+    849          
+    850          /**
+    851           * @brief reads received packet from cs8900 and and
+    852           *        creates new pbuf
+    853           *        This is the RX core.
+    854           * 
+    855           * @param[in] netif lwip netif to receive packet from
+    856           * @return allocated pbuf with received data or NULL in case of error 
+    857           *  
+    858           * Optimize bug here. When optimize level > 3 
+    859           */
+    860          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    861          static struct pbuf* cs8900_input(struct netif *netif) {
+   \                     cs8900_input:
+   \   00000000   F04F2DE9           PUSH     {R4-R11,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    862              struct pbuf  *p = 0,
+   \   00000008   0000A0E3           MOV      R0,#+0
+   \   0000000C   0050B0E1           MOVS     R5,R0
+    863                                *q;
+    864            u16_t               len = 0,
+   \   00000010   0000A0E3           MOV      R0,#+0
+   \   00000014   0070B0E1           MOVS     R7,R0
+    865                                event_type,
+    866                                i;
+    867            u16_t*              ptr;
+    868            struct cs8900if *cs8900if = (struct cs8900if *)netif->state;
+   \   00000018   1C0094E5           LDR      R0,[R4, #+28]
+   \   0000001C   00B0B0E1           MOVS     R11,R0
+    869          
+    870              // read RxStatus
+    871            event_type  = RXTXREG;
+   \   00000020   A405A0E3           MOV      R0,#+687865856
+   \   00000024   C00F80E3           ORR      R0,R0,#0x300
+   \   00000028   B000D0E1           LDRH     R0,[R0, #+0]
+   \   0000002C   0080B0E1           MOVS     R8,R0
+    872            len         = RXTXREG;
+   \   00000030   A405A0E3           MOV      R0,#+687865856
+   \   00000034   C00F80E3           ORR      R0,R0,#0x300
+   \   00000038   B000D0E1           LDRH     R0,[R0, #+0]
+   \   0000003C   0070B0E1           MOVS     R7,R0
+    873          
+    874              if ( (event_type & RX_OK) == 0 ) {
+   \   00000040   400F18E3           TST      R8,#0x100
+   \   00000044   0F00001A           BNE      ??cs8900_input_0
+    875                  cs8900_writereg(CS_PP_RXCFG, cs8900_readreg(CS_PP_RXCFG) | SKIP_1);
+   \   00000048   0200A0E3           MOV      R0,#+2
+   \   0000004C   400F80E3           ORR      R0,R0,#0x100
+   \   00000050   ........           BL       cs8900_readreg
+   \   00000054   401090E3           ORRS     R1,R0,#0x40
+   \   00000058   0118A0E1           MOV      R1,R1, LSL #+16
+   \   0000005C   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   00000060   0200A0E3           MOV      R0,#+2
+   \   00000064   400F80E3           ORR      R0,R0,#0x100
+   \   00000068   ........           BL       cs8900_writereg
+    876                  cs8900_count_rx_errors(event_type, cs8900if);
+   \   0000006C   0B10B0E1           MOVS     R1,R11
+   \   00000070   0800B0E1           MOVS     R0,R8
+   \   00000074   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000078   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   0000007C   ........           BL       cs8900_count_rx_errors
+    877                  return NULL;
+   \   00000080   0000A0E3           MOV      R0,#+0
+   \   00000084   370000EA           B        ??cs8900_input_1
+    878              }
+    879          
+    880              // positive length?
+    881              if ( len > 0 ) {
+   \                     ??cs8900_input_0:
+   \   00000088   0778A0E1           MOV      R7,R7, LSL #+16
+   \   0000008C   2778B0E1           MOVS     R7,R7, LSR #+16
+   \   00000090   010057E3           CMP      R7,#+1
+   \   00000094   2F00003A           BCC      ??cs8900_input_2
+    882                  cs8900if->rx_packets++;
+   \   00000098   1C009BE5           LDR      R0,[R11, #+28]
+   \   0000009C   010090E2           ADDS     R0,R0,#+1
+   \   000000A0   1C008BE5           STR      R0,[R11, #+28]
+    883                  cs8900if->rx_bytes += len;
+   \   000000A4   20009BE5           LDR      R0,[R11, #+32]
+   \   000000A8   0710B0E1           MOVS     R1,R7
+   \   000000AC   0118A0E1           MOV      R1,R1, LSL #+16
+   \   000000B0   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   000000B4   000091E0           ADDS     R0,R1,R0
+   \   000000B8   20008BE5           STR      R0,[R11, #+32]
+    884                  p = pbuf_alloc(PBUF_LINK, len, PBUF_POOL);
+   \   000000BC   0320A0E3           MOV      R2,#+3
+   \   000000C0   0710B0E1           MOVS     R1,R7
+   \   000000C4   0118A0E1           MOV      R1,R1, LSL #+16
+   \   000000C8   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   000000CC   0200A0E3           MOV      R0,#+2
+   \   000000D0   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   000000D4   0050B0E1           MOVS     R5,R0
+    885          
+    886                  if ( p != 0) {
+   \   000000D8   000055E3           CMP      R5,#+0
+   \   000000DC   1800000A           BEQ      ??cs8900_input_3
+    887                      for ( q = p; q != 0; q = q->next ) {
+   \   000000E0   0560B0E1           MOVS     R6,R5
+   \                     ??cs8900_input_4:
+   \   000000E4   000056E3           CMP      R6,#+0
+   \   000000E8   1D00000A           BEQ      ??cs8900_input_5
+    888                  ptr = q->payload;
+   \   000000EC   040096E5           LDR      R0,[R6, #+4]
+   \   000000F0   00A0B0E1           MOVS     R10,R0
+    889                  for (i = 0; i < (q->len + 1) / 2; i++ ) {
+   \   000000F4   0000A0E3           MOV      R0,#+0
+   \   000000F8   0090B0E1           MOVS     R9,R0
+   \                     ??cs8900_input_6:
+   \   000000FC   0920B0E1           MOVS     R2,R9
+   \   00000100   0228A0E1           MOV      R2,R2, LSL #+16
+   \   00000104   2228B0E1           MOVS     R2,R2, LSR #+16
+   \   00000108   BA00D6E1           LDRH     R0,[R6, #+10]
+   \   0000010C   010090E2           ADDS     R0,R0,#+1
+   \   00000110   0210A0E3           MOV      R1,#+2
+   \   00000114   ........           _BLF     ??div32_a,??rA??div32_a
+   \   00000118   010052E1           CMP      R2,R1
+   \   0000011C   060000AA           BGE      ??cs8900_input_7
+    890                              *ptr = RXTXREG;
+   \   00000120   A405A0E3           MOV      R0,#+687865856
+   \   00000124   C00F80E3           ORR      R0,R0,#0x300
+   \   00000128   B000D0E1           LDRH     R0,[R0, #+0]
+   \   0000012C   B000CAE1           STRH     R0,[R10, #+0]
+    891                              ptr++;
+   \   00000130   02A09AE2           ADDS     R10,R10,#+2
+    892                          }
+   \   00000134   019099E2           ADDS     R9,R9,#+1
+   \   00000138   EFFFFFEA           B        ??cs8900_input_6
+    893                      }
+   \                     ??cs8900_input_7:
+   \   0000013C   006096E5           LDR      R6,[R6, #+0]
+   \   00000140   E7FFFFEA           B        ??cs8900_input_4
+    894                  } else {
+    895                      cs8900if->rx_pbuf_alloc_fail++;
+   \                     ??cs8900_input_3:
+   \   00000144   2C009BE5           LDR      R0,[R11, #+44]
+   \   00000148   010090E2           ADDS     R0,R0,#+1
+   \   0000014C   2C008BE5           STR      R0,[R11, #+44]
+    896                return NULL;
+   \   00000150   0000A0E3           MOV      R0,#+0
+   \   00000154   030000EA           B        ??cs8900_input_1
+    897              }
+    898              } else {
+    899                  cs8900if->rx_len_zero++;
+   \                     ??cs8900_input_2:
+   \   00000158   28009BE5           LDR      R0,[R11, #+40]
+   \   0000015C   010090E2           ADDS     R0,R0,#+1
+   \   00000160   28008BE5           STR      R0,[R11, #+40]
+    900              }
+    901              return p;
+   \                     ??cs8900_input_5:
+   \   00000164   0500B0E1           MOVS     R0,R5
+   \                     ??cs8900_input_1:
+   \   00000168   F04FBDE8           POP      {R4-R11,LR}
+   \   0000016C   1EFF2FE1           BX       LR               ;; return
+    902          }
+    903          
+    904          /**
+    905           * @brief reads received packet from CS8900, allocate pbuf and initialize it.
+    906           *        If all goes ok, it tries to send up the pbuf to LwIP stack.
+    907           * 
+    908           * @param[in] netif lwip netif to receive packet from
+    909           * @return none
+    910           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    911          static void cs8900if_input(struct netif *netif) {
+   \                     cs8900if_input:
+   \   00000000   70402DE9           PUSH     {R4-R6,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    912              struct pbuf *p;
+    913              struct cs8900if *cs8900if = (struct cs8900if *)netif->state;
+   \   00000008   1C0094E5           LDR      R0,[R4, #+28]
+   \   0000000C   0060B0E1           MOVS     R6,R0
+    914          
+    915              p = cs8900_input(netif);
+   \   00000010   0400B0E1           MOVS     R0,R4
+   \   00000014   ........           BL       cs8900_input
+   \   00000018   0050B0E1           MOVS     R5,R0
+    916          
+    917              if ( p == NULL ) {
+   \   0000001C   000055E3           CMP      R5,#+0
+   \   00000020   0B00000A           BEQ      ??cs8900if_input_0
+    918                  return;
+    919              }
+    920          
+    921              if ( netif->input(p, netif) != ERR_OK ) {
+   \   00000024   0410B0E1           MOVS     R1,R4
+   \   00000028   0500B0E1           MOVS     R0,R5
+   \   0000002C   102094E5           LDR      R2,[R4, #+16]
+   \   00000030   0FE0A0E1           MOV      LR,PC
+   \   00000034   12FF2FE1           BX       R2
+   \   00000038   000050E3           CMP      R0,#+0
+   \   0000003C   0400000A           BEQ      ??cs8900if_input_0
+    922                  cs8900if->rx_lwip_input_err++;
+   \   00000040   300096E5           LDR      R0,[R6, #+48]
+   \   00000044   010090E2           ADDS     R0,R0,#+1
+   \   00000048   300086E5           STR      R0,[R6, #+48]
+    923                  pbuf_free(p);
+   \   0000004C   0500B0E1           MOVS     R0,R5
+   \   00000050   ........           _BLF     pbuf_free,??pbuf_free??rA
+   \                     ??cs8900if_input_0:
+   \   00000054   7040BDE8           POP      {R4-R6,LR}
+   \   00000058   1EFF2FE1           BX       LR               ;; return
+    924              }
+    925          }
+    926          
+    927          ////////////////////////////////////////////////////////////////////////////////
+    928          //
+    929          // CS8900 Interrupt Handling
+    930          //
+    931          ////////////////////////////////////////////////////////////////////////////////
+    932          /**
+    933           * @brief this is the IRQ handling core for CS8900.
+    934           *        It just tries to read all the events from CS8900 event queue and handle
+    935           *        rx/tx events until there is no more event to process.
+    936           * 
+    937           * @param[in] netif to read events from
+    938           * @return none
+    939           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    940          static void cs8900_service(struct netif *netif) {
+   \                     cs8900_service:
+   \   00000000   F0412DE9           PUSH     {R4-R8,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+    941              struct cs8900if *cs8900if = (struct cs8900if *)(netif->state);
+   \   00000008   1C0094E5           LDR      R0,[R4, #+28]
+   \   0000000C   0050B0E1           MOVS     R5,R0
+    942            u16_t irq_status = 0x0000U,
+   \   00000010   0000A0E3           MOV      R0,#+0
+   \   00000014   0060B0E1           MOVS     R6,R0
+    943                              event_source,
+    944                              tmp;
+    945          
+    946            cs8900if->loop_cnt++;
+   \   00000018   040095E5           LDR      R0,[R5, #+4]
+   \   0000001C   010090E2           ADDS     R0,R0,#+1
+   \   00000020   040085E5           STR      R0,[R5, #+4]
+    947          #ifdef __CS8900_USE_CRITICAL_SECTION
+    948              cs8900_enter_critical();
+   \   00000024   ........           BL       cs8900_enter_critical
+    949          #endif
+    950          
+    951              irq_status = ISQ;
+   \   00000028   A405A0E3           MOV      R0,#+687865856
+   \   0000002C   C20F80E3           ORR      R0,R0,#0x308
+   \   00000030   B000D0E1           LDRH     R0,[R0, #+0]
+   \   00000034   0060B0E1           MOVS     R6,R0
+    952          
+    953            while (irq_status) {
+   \                     ??cs8900_service_0:
+   \   00000038   0668A0E1           MOV      R6,R6, LSL #+16
+   \   0000003C   2668B0E1           MOVS     R6,R6, LSR #+16
+   \   00000040   000056E3           CMP      R6,#+0
+   \   00000044   5600000A           BEQ      ??cs8900_service_1
+    954                  event_source = irq_status & 0x003F;
+   \   00000048   3F0016E2           ANDS     R0,R6,#0x3F
+   \   0000004C   0070B0E1           MOVS     R7,R0
+    955          
+    956                  switch ( event_source ) {
+   \   00000050   0700B0E1           MOVS     R0,R7
+   \   00000054   040050E3           CMP      R0,#+4
+   \   00000058   0800000A           BEQ      ??cs8900_service_2
+   \   0000005C   080050E3           CMP      R0,#+8
+   \   00000060   0900000A           BEQ      ??cs8900_service_3
+   \   00000064   0C0050E3           CMP      R0,#+12
+   \   00000068   2B00000A           BEQ      ??cs8900_service_4
+   \   0000006C   100050E3           CMP      R0,#+16
+   \   00000070   3500000A           BEQ      ??cs8900_service_5
+   \   00000074   120050E3           CMP      R0,#+18
+   \   00000078   3C00000A           BEQ      ??cs8900_service_6
+   \   0000007C   430000EA           B        ??cs8900_service_7
+    957                  case ISQ_RECEIVER_EVENT:
+    958                      cs8900if_input(netif);
+   \                     ??cs8900_service_2:
+   \   00000080   0400B0E1           MOVS     R0,R4
+   \   00000084   ........           BL       cs8900if_input
+   \   00000088   400000EA           B        ??cs8900_service_7
+    959                      break;
+    960                  case ISQ_TRANSMITTER_EVENT:
+    961                      cs8900_serve_tx_complete(cs8900if);
+   \                     ??cs8900_service_3:
+   \   0000008C   0500B0E1           MOVS     R0,R5
+   \   00000090   ........           BL       cs8900_serve_tx_complete
+    962                      if ( (irq_status & (TX_OK |
+    963                                          TX_LOST_CRS |
+    964                                          TX_SQE_ERROR |
+    965                                          TX_LATE_COL |
+    966                                          TX_16_COL)) != TX_OK ) {
+   \   00000094   0600B0E1           MOVS     R0,R6
+   \   00000098   0008A0E1           MOV      R0,R0, LSL #+16
+   \   0000009C   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   000000A0   C010A0E3           MOV      R1,#+192
+   \   000000A4   831C81E3           ORR      R1,R1,#0x8300
+   \   000000A8   000011E0           ANDS     R0,R1,R0
+   \   000000AC   400F50E3           CMP      R0,#+256
+   \   000000B0   3600000A           BEQ      ??cs8900_service_7
+    967                          if ( (irq_status & TX_OK) == 0 ) cs8900if->tx_errors++;
+   \   000000B4   400F16E3           TST      R6,#0x100
+   \   000000B8   0200001A           BNE      ??cs8900_service_8
+   \   000000BC   440095E5           LDR      R0,[R5, #+68]
+   \   000000C0   010090E2           ADDS     R0,R0,#+1
+   \   000000C4   440085E5           STR      R0,[R5, #+68]
+    968                          if ( irq_status & TX_LOST_CRS ) cs8900if->tx_carrier_errors++;
+   \                     ??cs8900_service_8:
+   \   000000C8   400016E3           TST      R6,#0x40
+   \   000000CC   0200000A           BEQ      ??cs8900_service_9
+   \   000000D0   480095E5           LDR      R0,[R5, #+72]
+   \   000000D4   010090E2           ADDS     R0,R0,#+1
+   \   000000D8   480085E5           STR      R0,[R5, #+72]
+    969                          if ( irq_status & TX_SQE_ERROR ) cs8900if->tx_heartbeat_errors++;
+   \                     ??cs8900_service_9:
+   \   000000DC   800016E3           TST      R6,#0x80
+   \   000000E0   0200000A           BEQ      ??cs8900_service_10
+   \   000000E4   4C0095E5           LDR      R0,[R5, #+76]
+   \   000000E8   010090E2           ADDS     R0,R0,#+1
+   \   000000EC   4C0085E5           STR      R0,[R5, #+76]
+    970                          if ( irq_status & TX_LATE_COL ) cs8900if->tx_window_errors++;
+   \                     ??cs8900_service_10:
+   \   000000F0   800F16E3           TST      R6,#0x200
+   \   000000F4   0200000A           BEQ      ??cs8900_service_11
+   \   000000F8   500095E5           LDR      R0,[R5, #+80]
+   \   000000FC   010090E2           ADDS     R0,R0,#+1
+   \   00000100   500085E5           STR      R0,[R5, #+80]
+    971                          if ( irq_status & TX_16_COL ) cs8900if->tx_aborted_errors++;
+   \                     ??cs8900_service_11:
+   \   00000104   800C16E3           TST      R6,#0x8000
+   \   00000108   2000000A           BEQ      ??cs8900_service_7
+   \   0000010C   540095E5           LDR      R0,[R5, #+84]
+   \   00000110   010090E2           ADDS     R0,R0,#+1
+   \   00000114   540085E5           STR      R0,[R5, #+84]
+   \   00000118   1C0000EA           B        ??cs8900_service_7
+    972                      }
+    973                      break;
+    974          
+    975                  case ISQ_BUFFER_EVENT:
+    976          #ifdef __CS8900_USE_TX_QUEUE
+    977                      if ( irq_status & READY_FOR_TX ) {
+   \                     ??cs8900_service_4:
+   \   0000011C   400F16E3           TST      R6,#0x100
+   \   00000120   0100000A           BEQ      ??cs8900_service_12
+    978                          cs8900_serve_tx_ready(cs8900if);
+   \   00000124   0500B0E1           MOVS     R0,R5
+   \   00000128   ........           BL       cs8900_serve_tx_ready
+    979                      }
+    980          
+    981                      if ( irq_status & TX_UNDERRUN ) {
+   \                     ??cs8900_service_12:
+   \   0000012C   800F16E3           TST      R6,#0x200
+   \   00000130   1600000A           BEQ      ??cs8900_service_7
+    982                          cs8900if->tx_underrun++;
+   \   00000134   580095E5           LDR      R0,[R5, #+88]
+   \   00000138   010090E2           ADDS     R0,R0,#+1
+   \   0000013C   580085E5           STR      R0,[R5, #+88]
+    983                          cs8900_serve_tx_complete(cs8900if);
+   \   00000140   0500B0E1           MOVS     R0,R5
+   \   00000144   ........           BL       cs8900_serve_tx_complete
+   \   00000148   100000EA           B        ??cs8900_service_7
+    984                      }
+    985          #endif
+    986                      break;
+    987          #if 1
+    988                  case ISQ_RX_MISS_EVENT:
+    989                      cs8900if->missed += (irq_status >> 6);
+   \                     ??cs8900_service_5:
+   \   0000014C   0C0095E5           LDR      R0,[R5, #+12]
+   \   00000150   0668A0E1           MOV      R6,R6, LSL #+16
+   \   00000154   2668B0E1           MOVS     R6,R6, LSR #+16
+   \   00000158   2613B0E1           LSRS     R1,R6,#+6
+   \   0000015C   0118A0E1           MOV      R1,R1, LSL #+16
+   \   00000160   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   00000164   000091E0           ADDS     R0,R1,R0
+   \   00000168   0C0085E5           STR      R0,[R5, #+12]
+   \   0000016C   070000EA           B        ??cs8900_service_7
+    990                      break;
+    991                  case ISQ_TX_COL_EVENT:
+    992                      cs8900if->collisions += (irq_status >> 6);
+   \                     ??cs8900_service_6:
+   \   00000170   100095E5           LDR      R0,[R5, #+16]
+   \   00000174   0668A0E1           MOV      R6,R6, LSL #+16
+   \   00000178   2668B0E1           MOVS     R6,R6, LSR #+16
+   \   0000017C   2613B0E1           LSRS     R1,R6,#+6
+   \   00000180   0118A0E1           MOV      R1,R1, LSL #+16
+   \   00000184   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   00000188   000091E0           ADDS     R0,R1,R0
+   \   0000018C   100085E5           STR      R0,[R5, #+16]
+    993                      break;
+    994          #endif
+    995                  }
+    996                  irq_status = ISQ;
+   \                     ??cs8900_service_7:
+   \   00000190   A405A0E3           MOV      R0,#+687865856
+   \   00000194   C20F80E3           ORR      R0,R0,#0x308
+   \   00000198   B000D0E1           LDRH     R0,[R0, #+0]
+   \   0000019C   0060B0E1           MOVS     R6,R0
+   \   000001A0   A4FFFFEA           B        ??cs8900_service_0
+    997              }
+    998          
+    999              PACKETPP = CS_PP_RXMISS;
+   \                     ??cs8900_service_1:
+   \   000001A4   ........           LDR      R0,??DataTable22  ;; 0x2900030a
+   \   000001A8   4C1FA0E3           MOV      R1,#+304
+   \   000001AC   B010C0E1           STRH     R1,[R0, #+0]
+   1000              tmp = (PPDATA >> 6);
+   \   000001B0   A405A0E3           MOV      R0,#+687865856
+   \   000001B4   C30F80E3           ORR      R0,R0,#0x30C
+   \   000001B8   B000D0E1           LDRH     R0,[R0, #+0]
+   \   000001BC   0008A0E1           MOV      R0,R0, LSL #+16
+   \   000001C0   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   000001C4   2003B0E1           LSRS     R0,R0,#+6
+   \   000001C8   0080B0E1           MOVS     R8,R0
+   1001              cs8900if->missed += tmp;
+   \   000001CC   0C0095E5           LDR      R0,[R5, #+12]
+   \   000001D0   0810B0E1           MOVS     R1,R8
+   \   000001D4   0118A0E1           MOV      R1,R1, LSL #+16
+   \   000001D8   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   000001DC   000091E0           ADDS     R0,R1,R0
+   \   000001E0   0C0085E5           STR      R0,[R5, #+12]
+   1002          
+   1003              PACKETPP = CS_PP_TXCOL;
+   \   000001E4   ........           LDR      R0,??DataTable22  ;; 0x2900030a
+   \   000001E8   3210A0E3           MOV      R1,#+50
+   \   000001EC   401F81E3           ORR      R1,R1,#0x100
+   \   000001F0   B010C0E1           STRH     R1,[R0, #+0]
+   1004              tmp = (PPDATA >> 6);
+   \   000001F4   A405A0E3           MOV      R0,#+687865856
+   \   000001F8   C30F80E3           ORR      R0,R0,#0x30C
+   \   000001FC   B000D0E1           LDRH     R0,[R0, #+0]
+   \   00000200   0008A0E1           MOV      R0,R0, LSL #+16
+   \   00000204   2008B0E1           MOVS     R0,R0, LSR #+16
+   \   00000208   2003B0E1           LSRS     R0,R0,#+6
+   \   0000020C   0080B0E1           MOVS     R8,R0
+   1005              cs8900if->collisions += tmp;
+   \   00000210   100095E5           LDR      R0,[R5, #+16]
+   \   00000214   0810B0E1           MOVS     R1,R8
+   \   00000218   0118A0E1           MOV      R1,R1, LSL #+16
+   \   0000021C   2118B0E1           MOVS     R1,R1, LSR #+16
+   \   00000220   000091E0           ADDS     R0,R1,R0
+   \   00000224   100085E5           STR      R0,[R5, #+16]
+   1006          #ifdef __CS8900_USE_CRITICAL_SECTION
+   1007              cs8900_leave_critical();
+   \   00000228   ........           BL       cs8900_leave_critical
+   1008          #endif
+   1009          
+   1010          #ifdef __NET_USE_ACTIVE_HIGH_INTERRUPT__
+   1011              rEINTMASK &= ~BIT_SUB_EINT16;
+   1012          // unmask network interrupt
+   1013          #endif
+   1014          }
+   \   0000022C   F041BDE8           POP      {R4-R8,LR}
+   \   00000230   1EFF2FE1           BX       LR               ;; return
+   1015          
+   1016          ////////////////////////////////////////////////////////////////////////////////
+   1017          //
+   1018          // module public interfaces
+   1019          //
+   1020          ////////////////////////////////////////////////////////////////////////////////
+   1021          /**
+   1022           * @brief just a public interface to handle CS8900 events in cs8900 task
+   1023           *        pretty much stupid legacy code but I leave it here 
+   1024           * 
+   1025           * @param[in] netif lwip to deal with
+   1026           * @return none
+   1027           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1028          void
+   1029          cs8900if_service(struct netif *netif) {
+   \                     cs8900if_service:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   1030              cs8900_service(netif);
+   \   00000008   0400B0E1           MOVS     R0,R4
+   \   0000000C   ........           BL       cs8900_service
+   1031          }
+   \   00000010   1040BDE8           POP      {R4,LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+   1032          
+   1033          /**
+   1034           * @brief tries to deplete CS8900 event queue
+   1035           *        It's called during cs8900 driver task startup 
+   1036           *        and runs with interrupts disabled.
+   1037           * 
+   1038           * @return none
+   1039           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1040          void
+   1041          cs8900_deplete_event_queue(void) {
+   \                     cs8900_deplete_event_queue:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   1042              u16_t   t;
+   1043          
+   1044              OS_IncDI();
+   \   00000004   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   00000008   ........           LDR      R0,??DataTable30  ;; OS_Counters + 1
+   \   0000000C   ........           LDR      R1,??DataTable30  ;; OS_Counters + 1
+   \   00000010   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000014   011091E2           ADDS     R1,R1,#+1
+   \   00000018   0010C0E5           STRB     R1,[R0, #+0]
+   1045              do {
+   1046                  t = cs8900_readreg(CS_PP_ISQ);
+   \                     ??cs8900_deplete_event_queue_0:
+   \   0000001C   480FA0E3           MOV      R0,#+288
+   \   00000020   ........           BL       cs8900_readreg
+   \   00000024   0040B0E1           MOVS     R4,R0
+   1047              } while ( t != 0 );
+   \   00000028   000054E3           CMP      R4,#+0
+   \   0000002C   FAFFFF1A           BNE      ??cs8900_deplete_event_queue_0
+   1048              OS_DecRI();
+   \   00000030   ........           LDR      R0,??DataTable30  ;; OS_Counters + 1
+   \   00000034   0000D0E5           LDRB     R0,[R0, #+0]
+   \   00000038   010050E2           SUBS     R0,R0,#+1
+   \   0000003C   ........           LDR      R1,??DataTable30  ;; OS_Counters + 1
+   \   00000040   0000C1E5           STRB     R0,[R1, #+0]
+   \   00000044   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   00000048   000050E3           CMP      R0,#+0
+   \   0000004C   0000001A           BNE      ??cs8900_deplete_event_queue_1
+   \   00000050   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+   1049          }
+   \                     ??cs8900_deplete_event_queue_1:
+   \   00000054   1040BDE8           POP      {R4,LR}
+   \   00000058   1EFF2FE1           BX       LR               ;; return
+   1050          
+   1051          /**
+   1052           * @brief public interface to initialize  CS8900 driver and chip.
+   1053           *        This is a callback function to LwIP network initialization code
+   1054           *        and called during LwIP network initialization in Network startup
+   1055           *         task context
+   1056           * @param[in] netif lwip to deal with
+   1057           * @return err_t indicating success or failure
+   1058           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+   1059          err_t
+   1060          cs8900if_init(struct netif *netif) {
+   \                     cs8900if_init:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040B0E1           MOVS     R4,R0
+   1061              struct cs8900if *cs8900if;
+   1062          
+   1063              //cs8900if = mem_malloc(sizeof(struct cs8900if));
+   1064              cs8900if = &_g_cs8900_if;
+   \   00000008   BC009FE5           LDR      R0,??cs8900if_init_0  ;; _g_cs8900_if
+   \   0000000C   0050B0E1           MOVS     R5,R0
+   1065              if ( cs8900if == NULL ) return ERR_MEM;
+   \   00000010   000055E3           CMP      R5,#+0
+   \   00000014   0100001A           BNE      ??cs8900if_init_1
+   \   00000018   0000E0E3           MVN      R0,#+0
+   \   0000001C   280000EA           B        ??cs8900if_init_2
+   1066          
+   1067              netif->state      = cs8900if;
+   \                     ??cs8900if_init_1:
+   \   00000020   1C5084E5           STR      R5,[R4, #+28]
+   1068              netif->name[0] = IFNAME0;
+   \   00000024   6500A0E3           MOV      R0,#+101
+   \   00000028   2A00C4E5           STRB     R0,[R4, #+42]
+   1069              netif->name[1] = IFNAME1;
+   \   0000002C   6E00A0E3           MOV      R0,#+110
+   \   00000030   2B00C4E5           STRB     R0,[R4, #+43]
+   1070              netif->output     = etharp_output;
+   \   00000034   94009FE5           LDR      R0,??cs8900if_init_0+0x4  ;; etharp_output
+   \   00000038   140084E5           STR      R0,[R4, #+20]
+   1071              netif->linkoutput = cs8900_output;
+   \   0000003C   90009FE5           LDR      R0,??cs8900if_init_0+0x8  ;; cs8900_output
+   \   00000040   180084E5           STR      R0,[R4, #+24]
+   1072          
+   1073              cs8900if->ethaddr       = (struct eth_addr *)&(netif->hwaddr[0]);
+   \   00000044   230094E2           ADDS     R0,R4,#+35
+   \   00000048   000085E5           STR      R0,[R5, #+0]
+   1074              cs8900_reset_stats(cs8900if);
+   \   0000004C   0500B0E1           MOVS     R0,R5
+   \   00000050   ........           BL       cs8900_reset_stats
+   1075          
+   1076              netif->hwaddr_len       = ETHARP_HWADDR_LEN;
+   \   00000054   0600A0E3           MOV      R0,#+6
+   \   00000058   2200C4E5           STRB     R0,[R4, #+34]
+   1077              netif->mtu              = 1500;
+   \   0000005C   DC00A0E3           MOV      R0,#+220
+   \   00000060   500E80E3           ORR      R0,R0,#0x500
+   \   00000064   B002C4E1           STRH     R0,[R4, #+32]
+   1078              netif->flags            = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
+   \   00000068   3200A0E3           MOV      R0,#+50
+   \   0000006C   2900C4E5           STRB     R0,[R4, #+41]
+   1079          
+   1080          #ifdef __CS8900_USE_CRITICAL_SECTION
+   1081              cs8900_critical_section_init();
+   \   00000070   ........           BL       cs8900_critical_section_init
+   1082          #endif
+   1083          
+   1084          #ifdef __CS8900_USE_TX_QUEUE
+   1085              cs8900_init_tx_queue();
+   \   00000074   ........           BL       cs8900_init_tx_queue
+   1086          #endif
+   1087          
+   1088              OS_IncDI();
+   \   00000078   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   0000007C   ........           LDR      R0,??DataTable30  ;; OS_Counters + 1
+   \   00000080   ........           LDR      R1,??DataTable30  ;; OS_Counters + 1
+   \   00000084   0010D1E5           LDRB     R1,[R1, #+0]
+   \   00000088   011091E2           ADDS     R1,R1,#+1
+   \   0000008C   0010C0E5           STRB     R1,[R0, #+0]
+   1089              cs8900_init(netif);
+   \   00000090   0400B0E1           MOVS     R0,R4
+   \   00000094   ........           BL       cs8900_init
+   1090              {
+   1091                  extern void StartNetDriverTask(void);
+   1092          
+   1093                  StartNetDriverTask();
+   \   00000098   ........           _BLF     StartNetDriverTask,??StartNetDriverTask??rA
+   1094              }
+   1095              OS_DecRI();
+   \   0000009C   ........           LDR      R0,??DataTable30  ;; OS_Counters + 1
+   \   000000A0   0000D0E5           LDRB     R0,[R0, #+0]
+   \   000000A4   010050E2           SUBS     R0,R0,#+1
+   \   000000A8   ........           LDR      R1,??DataTable30  ;; OS_Counters + 1
+   \   000000AC   0000C1E5           STRB     R0,[R1, #+0]
+   \   000000B0   FF0010E2           ANDS     R0,R0,#0xFF      ;; Zero extend
+   \   000000B4   000050E3           CMP      R0,#+0
+   \   000000B8   0000001A           BNE      ??cs8900if_init_3
+   \   000000BC   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+   1096          
+   1097              return ERR_OK;
+   \                     ??cs8900if_init_3:
+   \   000000C0   0000A0E3           MOV      R0,#+0
+   \                     ??cs8900if_init_2:
+   \   000000C4   3040BDE8           POP      {R4,R5,LR}
+   \   000000C8   1EFF2FE1           BX       LR               ;; return
+   \                     ??cs8900if_init_0:
+   \   000000CC   ........           DC32     _g_cs8900_if
+   \   000000D0   ........           DC32     etharp_output
+   \   000000D4   ........           DC32     cs8900_output
+   1098          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable12:
+   \   00000000   ........           DC32     _tx_queue
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable13:
+   \   00000000   ........           DC32     _free_tx_queue
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable15:
+   \   00000000   ........           DC32     _num_pkts_in_tx_queue
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable18:
+   \   00000000   ........           DC32     _cs8900_critical_lock
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable20:
+   \   00000000   ........           DC32     _tx_busy
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable22:
+   \   00000000   0A030029           DC32     0x2900030a
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable30:
+   \   00000000   ........           DC32     OS_Counters + 1
+
+   Maximum stack usage in bytes:
+
+     Function                      CSTACK
+     --------                      ------
+     INIT_LIST_HEAD                    0
+     __list_add                        0
+     __list_del                        0
+     __list_del_entry                  8
+     cs8900_check_for_tx_ready         4
+     cs8900_check_line_status          4
+     cs8900_chip_init                 12
+     cs8900_copy_pbuf_to_tx_buffer     8
+     cs8900_copy_pbuf_to_tx_queue     12
+     cs8900_count_rx_errors            0
+     cs8900_critical_section_init      4
+     cs8900_deplete_event_queue        8
+     cs8900_enter_critical             4
+     cs8900_free_tx_buf                8
+     cs8900_get_next_txbuf             8
+     cs8900_init                      12
+     cs8900_init_tx_queue             12
+     cs8900_input                     36
+     cs8900_is_tx_busy                 0
+     cs8900_leave_critical             4
+     cs8900_output                    20
+     cs8900_readreg                    0
+     cs8900_reset                      8
+     cs8900_reset_stats                0
+     cs8900_serve_tx_complete         12
+     cs8900_serve_tx_ready            12
+     cs8900_service                   24
+     cs8900_set_macaddr               12
+     cs8900_set_tx_bid                 8
+     cs8900_set_tx_busy                0
+     cs8900_tx_txbuf                   4
+     cs8900_write_pbuf                 8
+     cs8900_writereg                   0
+     cs8900if_init                    12
+     cs8900if_input                   16
+     cs8900if_service                  8
+     list_add_tail                    12
+     list_del_init                     8
+     list_empty                        0
+
+
+   Segment part sizes:
+
+     Function/Label                Bytes
+     --------------                -----
+     INIT_LIST_HEAD                   12
+     __list_add                       20
+     list_add_tail                    36
+     __list_del                       12
+     __list_del_entry                 28
+     list_del_init                    32
+     list_empty                       28
+     _tx_busy                          1
+     _g_cs8900_if                    108
+     _cs8900_critical_lock             8
+     _tx_buffers                   24704
+     _free_tx_queue                    8
+     _tx_queue                         8
+     _num_pkts_in_tx_queue             4
+     cs8900_readreg                   40
+     cs8900_writereg                  24
+     cs8900_reset_stats              204
+     cs8900_init_tx_queue            104
+     cs8900_copy_pbuf_to_tx_buffer   108
+     cs8900_tx_txbuf                  96
+     cs8900_copy_pbuf_to_tx_queue    108
+     cs8900_get_next_txbuf            52
+     cs8900_free_tx_buf               56
+     cs8900_critical_section_init     36
+     cs8900_enter_critical            24
+     cs8900_leave_critical            20
+     cs8900_reset                    176
+     cs8900_set_macaddr              136
+     cs8900_chip_init                244
+     cs8900_init                      44
+     cs8900_set_tx_busy               12
+     cs8900_is_tx_busy                12
+     cs8900_set_tx_bid                52
+     cs8900_check_for_tx_ready        40
+     cs8900_check_line_status         40
+     cs8900_write_pbuf               112
+     cs8900_output                   268
+     cs8900_serve_tx_ready            52
+     cs8900_serve_tx_complete         88
+     cs8900_count_rx_errors          100
+     cs8900_input                    368
+     cs8900if_input                   92
+     cs8900_service                  564
+     cs8900if_service                 24
+     cs8900_deplete_event_queue       92
+     cs8900if_init                   216
+     ??DataTable12                     4
+     ??DataTable13                     4
+     ??DataTable15                     4
+     ??DataTable18                     4
+     ??DataTable20                     4
+     ??DataTable22                     4
+     ??DataTable30                     4
+      Others                         288
+
+ 
+  4 076 bytes in segment CODE
+ 24 841 bytes in segment DATA_Z
+     12 bytes in segment INITTAB
+ 
+  3 800 bytes of CODE memory (+ 288 bytes shared)
+ 24 841 bytes of DATA memory
+
+Errors: none
+Warnings: 2

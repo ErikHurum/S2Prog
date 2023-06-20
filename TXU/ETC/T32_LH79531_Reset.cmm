@@ -1,0 +1,92 @@
+reset
+sys.d
+sys.u
+
+;  Setup MCU, default privilege
+;  Default Segment privilege config (b5..b0);
+;  All segments full access, Not cacheable, not Bufferable
+D.S SD:0xffffAC60 %LE %LONG 0x0000003C 
+
+;D.S SD:0xffffAC84 %LE %LONG 0x00800000  ;  Setup start addr. of internal SRAM  to 0x800000
+
+
+;  Setup MCU, internal SRAM mode
+;  0x03 = Cache enable, Ram Enable, Split Mode
+;D.S SD:0xffffAC80 %LE %LONG 0x33
+D.S SD:0xffffAC80 %LE %LONG 0x0    ; Cache not used
+ 
+
+;  Setup Memory protection unit
+;  Segment start addresses (b31..b10); b9..b0 have to be 0
+;  Section 0 starts at 0
+;  Segment size definition (b4..b0);
+;  Section 0, size 1MB
+
+;  0 -> None area
+;  1 -> 1kb
+;  ...
+;  a -> 512kb
+;  b -> 1MB
+;  c -> 2MB
+;  d -> 4MB
+
+D.S SD:0xffffAC00 %LE %LONG 0x00000000   ; RAM0 start is 0
+D.S SD:0xffffAC20 %LE %LONG 0x0000000d   ; RAM0 size 4 MB
+D.S SD:0xffffAC04 %LE %LONG 0x00400000   ; ROM  start is 
+D.S SD:0xffffAC24 %LE %LONG 0x0000000d   ; ROM  size  4 MB 
+D.S SD:0xffffAC08 %LE %LONG 0x00800000   ; RAM1 start is 800000 (physical 1MB)
+D.S SD:0xffffAC28 %LE %LONG 0x0000000c   ; RAM1 size 2 MB (mirrored at 0, 0x400000)
+D.S SD:0xffffAC0C %LE %LONG 0x00A00000   ; LCD RAM start is A00000 (physical 1MB)
+D.S SD:0xffffAC2C %LE %LONG 0x0000000c   ; LCD RAM size 2 MB (mirrored at 0, 0x400000)
+
+
+;  Segment privilege config (b5..b0);
+;  All segments full access, Not cacheable, not Bufferable
+;  
+;  bit 0:  Cacheable,  0 means non cacheable
+;  bit 1:  Bufferable, 0 means non bufferable
+;  bit 2:  Read access Supervisor
+;  bit 3:  Write access Supervisor
+;  bit 4:  Read access User
+;  bit 5:  Write access User
+
+D.S SD:0xffffAC40 %LE %LONG 0x0000003d    ; RAM0 is cacheable
+D.S SD:0xffffAC44 %LE %LONG 0x0000003C    ; ROM  is NON cacheable because of BTL !
+D.S SD:0xffffAC48 %LE %LONG 0x0000003D    ; RAM1 is cacheable
+D.S SD:0xffffAC4C %LE %LONG 0x0000003C    ; LCD RAM is not cacheable
+
+;  Setup EBI control registers
+;  Segment map registers
+;  CE0 mapped to 0, enabled, size 1MB
+;  All other segments disabled
+;
+;  7 -> 1 MB
+;  8 -> 2 MB
+;  9 -> 4 MB
+;  A -> 8 MB
+;  B -> 16MB
+
+D.S SD:0xffffA400 %LE %LONG 0x80400009      ; ROM: EBI (CS0 = ROM), Enabled, Start at 400000, size 4MB 
+D.S SD:0xffffA404 %LE %LONG 0x8000000B      ; RAM: EBI (CS1 = RAM), Enabled, Start at 000000, size 16MB
+
+;  Memory controller setup for ROM at segment 0
+;D.S SD:0xffffA420 %LE %LONG 0x001F47BD       ; ROM Timing values 3 cycles RD/WR does not work
+;D.S SD:0xffffA420 %LE %LONG 0x000FE79C       ; ROM Timing values 4 cycles RD/WR , 1 idle, fastest CE
+;D.S SD:0xffffA420 %LE %LONG 0x001F479C       ; ROM Timing values 4 cycles RD/WR 
+;D.S SD:0xffffA420 %LE %LONG 0x001F477B       ; ROM Timing values 5 cycles RD/WR
+;D.S SD:0xffffA420 %LE %LONG 0x001F475A       ; ROM Timing values 6 cycles RD/WR
+D.S SD:0xffffA420 %LE %LONG 0x001F4739       ; ROM Timing values 7 cycles RD/WR
+
+;  Memory controller setup for SRAM at segment 1
+;D.S SD:0xffffA424 %LE %LONG 0x001F47BD       ; RAM Timing values 3 cycles RD/WR does not work
+;D.S SD:0xffffA424 %LE %LONG 0x000FE79C       ; RAM Timing values 4 cycles RD/WR , 1 idle, fastest CE
+;D.S SD:0xffffA424 %LE %LONG 0x001F479C       ; RAM Timing values 4 cycles RD/WR 
+D.S SD:0xffffA424 %LE %LONG 0x001F477B       ; RAM Timing values 5 cycles RD/WR
+;D.S SD:0xffffA424 %LE %LONG 0x001F475A       ; RAM Timing values 6 cycles RD/WR
+;D.S SD:0xffffA424 %LE %LONG 0x001F4739       ; RAM Timing values 7 cycles RD/WR
+
+
+
+
+
+

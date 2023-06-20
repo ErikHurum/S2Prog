@@ -1,0 +1,969 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.4.1668 for Microchip AVR       12/Jul/2021  09:53:18
+# Copyright 1996-2021 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Src\UsartInt.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW696E.tmp
+#        (D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Src\UsartInt.c --cpu=m128a -ms
+#        -o D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\Obj -D OS_LIBMODE_R -D
+#        OS_UART=-1 -lCN D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\List -y
+#        --initializers_in_flash --no_cse --no_inline --no_code_motion
+#        --no_cross_call --no_clustering --no_tbaa --debug
+#        -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\INC\\ -I
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\..\..\SHARED\INC\\
+#        --eeprom_size 4096 --clib -On)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\List\UsartInt.lst
+#    Object file  =  
+#        D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Debug\Obj\UsartInt.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\AN_SGCNV\SW\AN-ZBXXX\ANZB\Src\UsartInt.c
+      1          /****************************************************************************************
+      2          / USART1 functions and interrupt
+      3          /   This routines sync and check the ANPRO10
+      4          /   Uart1Pro.c handle the package
+      5          /
+      6          ***************************************************************************************/
+      7          
+      8          
+      9          #include "iom128a.h"
+
+   \                                 In  segment ABSOLUTE, at 0x9c
+   \   union <unnamed> volatile __io _A_UDR1
+   \                     _A_UDR1:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x9b
+   \   union <unnamed> volatile __io _A_UCSR1A
+   \                     _A_UCSR1A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x9a
+   \   union <unnamed> volatile __io _A_UCSR1B
+   \                     _A_UCSR1B:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2c
+   \   union <unnamed> volatile __io _A_UDR0
+   \                     _A_UDR0:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2b
+   \   union <unnamed> volatile __io _A_UCSR0A
+   \                     _A_UCSR0A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2a
+   \   union <unnamed> volatile __io _A_UCSR0B
+   \                     _A_UCSR0B:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x23
+   \   union <unnamed> volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+     10          #include "stdio.h"
+     11          #include "math.h"
+     12          #include "externals.h"
+     13          #include "version.h"
+     14          
+     15          #if (OS_UART != 0)
+     16          
+     17          // USART0
+     18          #pragma vector=USART0_RX_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     19          __interrupt void IntHandler_RX_USART0( void ){   
+   \                     IntHandler_RX_USART0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+     20          
+     21              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+     22              OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_RX_USART0_0
+   \   00000046   9478               SEI
+     23              if ( UCSR0A & __BIT_MASK( DOR0 ) ) {                // Overrun error? 
+   \                     ??IntHandler_RX_USART0_0:
+   \   00000048   B10B               IN      R16, 0x0B
+     24              }
+     25          
+     26              if ( UCSR0A & __BIT_MASK( FE0 ) ) {                 // Framing error? 
+   \   0000004A   B11B               IN      R17, 0x0B
+     27              }
+     28          
+     29              while ( UCSR0A & __BIT_MASK( RXC0)  ) {                // New byte avaiable?
+   \                     ??IntHandler_RX_USART0_1:
+   \   0000004C   9B5F               SBIS    0x0B, 0x07
+   \   0000004E   C06E               RJMP    ??IntHandler_RX_USART0_2
+     30                  UART[0].pRxBuffer[ UART[0].RxFirst ] = UDR0;    // Read the character 
+   \   00000050   B10C               IN      R16, 0x0C
+   \   00000052   91E0....           LDS     R30, (UART + 10)
+   \   00000056   91F0....           LDS     R31, (UART + 11)
+   \   0000005A   9120....           LDS     R18, (UART + 12)
+   \   0000005E   9130....           LDS     R19, (UART + 13)
+   \   00000062   0FE2               ADD     R30, R18
+   \   00000064   1FF3               ADC     R31, R19
+   \   00000066   8300               ST      Z, R16
+     31          
+     32                  if (UART[0].RxState != HANDLE) {                // ok to receive? 
+   \   00000068   9100....           LDS     R16, (UART + 18)
+   \   0000006C   300A               CPI     R16, 10
+   \   0000006E   F371               BREQ    ??IntHandler_RX_USART0_1
+     33                      switch (UART[0].RxState) {                   // Yes, check state
+   \   00000070   9100....           LDS     R16, (UART + 18)
+   \   00000074   2300               TST     R16
+   \   00000076   F009               BREQ    $+2+2
+   \   00000078   C041               RJMP    ??IntHandler_RX_USART0_3
+     34                      case SYNC :
+     35                          if ( UART[0].pRxBuffer[ UART[0].RxFirst ] == ANPRO10_SYN) {
+   \   0000007A   91E0....           LDS     R30, (UART + 10)
+   \   0000007E   91F0....           LDS     R31, (UART + 11)
+   \   00000082   9100....           LDS     R16, (UART + 12)
+   \   00000086   9110....           LDS     R17, (UART + 13)
+   \   0000008A   0FE0               ADD     R30, R16
+   \   0000008C   1FF1               ADC     R31, R17
+   \   0000008E   8100               LD      R16, Z
+   \   00000090   3106               CPI     R16, 22
+   \   00000092   F461               BRNE    ??IntHandler_RX_USART0_4
+     36                              UART[0].SyncCnt ++ ;                 // count sync
+   \   00000094   9100....           LDS     R16, (UART + 19)
+   \   00000098   9503               INC     R16
+   \   0000009A   9300....           STS     (UART + 19), R16
+     37                              UART[0].RxFirst = 0;                 // start at start of buff
+   \   0000009E   E000               LDI     R16, 0
+   \   000000A0   9300....           STS     (UART + 12), R16
+   \   000000A4   E000               LDI     R16, 0
+   \   000000A6   9300....           STS     (UART + 13), R16
+   \   000000AA   CFD0               RJMP    ??IntHandler_RX_USART0_1
+     38                          } else if ((UART[0].SyncCnt >= 2) && 
+     39                                     (UART[0].pRxBuffer[ UART[0].RxFirst ] == ANPRO10_SOH)) {       // minimum two sync bytes
+   \                     ??IntHandler_RX_USART0_4:
+   \   000000AC   9100....           LDS     R16, (UART + 19)
+   \   000000B0   3002               CPI     R16, 2
+   \   000000B2   F100               BRCS    ??IntHandler_RX_USART0_5
+   \   000000B4   91E0....           LDS     R30, (UART + 10)
+   \   000000B8   91F0....           LDS     R31, (UART + 11)
+   \   000000BC   9100....           LDS     R16, (UART + 12)
+   \   000000C0   9110....           LDS     R17, (UART + 13)
+   \   000000C4   0FE0               ADD     R30, R16
+   \   000000C6   1FF1               ADC     R31, R17
+   \   000000C8   8100               LD      R16, Z
+   \   000000CA   3001               CPI     R16, 1
+   \   000000CC   F499               BRNE    ??IntHandler_RX_USART0_5
+     40                              UART[0].SyncCnt = 0 ;                // reset counter
+   \   000000CE   E000               LDI     R16, 0
+   \   000000D0   9300....           STS     (UART + 19), R16
+     41                              UART[0].RxState = HEADER ;
+   \   000000D4   E001               LDI     R16, 1
+   \   000000D6   9300....           STS     (UART + 18), R16
+     42                              UART[0].RxLast = 0 ;
+   \   000000DA   E000               LDI     R16, 0
+   \   000000DC   9300....           STS     (UART + 14), R16
+   \   000000E0   E000               LDI     R16, 0
+   \   000000E2   9300....           STS     (UART + 15), R16
+     43                              UART[0].RxTimeout = RX_TO_TIME ;    // reset timeout
+   \   000000E6   EF0A               LDI     R16, 250
+   \   000000E8   9300....           STS     (UART + 20), R16
+   \   000000EC   E000               LDI     R16, 0
+   \   000000EE   9300....           STS     (UART + 21), R16
+   \   000000F2   CFAC               RJMP    ??IntHandler_RX_USART0_1
+     44                          } else {
+     45                              UART[0].SyncCnt = 0 ;                // start over once more
+   \                     ??IntHandler_RX_USART0_5:
+   \   000000F4   E000               LDI     R16, 0
+   \   000000F6   9300....           STS     (UART + 19), R16
+     46                          }
+     47                          break;
+   \   000000FA   CFA8               RJMP    ??IntHandler_RX_USART0_1
+     48                      default :
+     49                          if ((++UART[0].RxFirst) > RXSIZE_UART) { // Point to next location
+   \                     ??IntHandler_RX_USART0_3:
+   \   000000FC   ....               LDI     R30, LOW(UART)
+   \   000000FE   ....               LDI     R31, (UART) >> 8
+   \   00000100   8504               LDD     R16, Z+12
+   \   00000102   8515               LDD     R17, Z+13
+   \   00000104   5F0F               SUBI    R16, 255
+   \   00000106   4F1F               SBCI    R17, 255
+   \   00000108   8704               STD     Z+12, R16
+   \   0000010A   8715               STD     Z+13, R17
+   \   0000010C   9100....           LDS     R16, (UART + 12)
+   \   00000110   9110....           LDS     R17, (UART + 13)
+   \   00000114   3907               CPI     R16, 151
+   \   00000116   E020               LDI     R18, 0
+   \   00000118   0712               CPC     R17, R18
+   \   0000011A   F020               BRCS    ??IntHandler_RX_USART0_6
+     50                              GoToSyncUART(0) ;                       // go to sync mode
+   \   0000011C   E000               LDI     R16, 0
+   \   0000011E   ........           CALL    GoToSyncUART
+   \   00000122   CF94               RJMP    ??IntHandler_RX_USART0_1
+     51                          } else {
+     52                              ReceivePacketUart(0) ;              // Check package
+   \                     ??IntHandler_RX_USART0_6:
+   \   00000124   E000               LDI     R16, 0
+   \   00000126   ........           CALL    ReceivePacketUart
+     53                          }
+     54                          break ;   
+   \   0000012A   CF90               RJMP    ??IntHandler_RX_USART0_1
+     55                      }
+     56                  }
+     57              }
+     58              OS_LeaveIntStack();
+   \                     ??IntHandler_RX_USART0_2:
+   \   0000012C   94F8               CLI
+   \   0000012E   ........           CALL    OS__LeaveIntStack
+     59              OS_LeaveInterruptNoSwitch();
+   \   00000132   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000136   950A               DEC     R16
+   \   00000138   9300....           STS     (OS_Counters + 1), R16
+   \   0000013C   9100....           LDS     R16, OS_Counters
+   \   00000140   950A               DEC     R16
+   \   00000142   9300....           STS     OS_Counters, R16
+     60          } 
+   \   00000146   BF9B               OUT     0x3B, R25
+   \   00000148   BF8F               OUT     0x3F, R24
+   \   0000014A   9109               LD      R16, Y+
+   \   0000014C   9119               LD      R17, Y+
+   \   0000014E   9129               LD      R18, Y+
+   \   00000150   9139               LD      R19, Y+
+   \   00000152   9149               LD      R20, Y+
+   \   00000154   9159               LD      R21, Y+
+   \   00000156   9169               LD      R22, Y+
+   \   00000158   9179               LD      R23, Y+
+   \   0000015A   9009               LD      R0, Y+
+   \   0000015C   9019               LD      R1, Y+
+   \   0000015E   9029               LD      R2, Y+
+   \   00000160   9039               LD      R3, Y+
+   \   00000162   91E9               LD      R30, Y+
+   \   00000164   91F9               LD      R31, Y+
+   \   00000166   9189               LD      R24, Y+
+   \   00000168   9199               LD      R25, Y+
+   \   0000016A   9518               RETI
+   \   0000016C                      REQUIRE _A_UCSR0A
+   \   0000016C                      REQUIRE _A_UDR0
+     61          
+     62          
+     63          #pragma vector=USART0_TX_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     64          __interrupt void IntHandler_TX_USART0( void ){   
+   \                     IntHandler_TX_USART0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+     65          
+     66             OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+     67             OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_TX_USART0_0
+   \   00000046   9478               SEI
+     68              
+     69              UCSR0B &= ~(__BIT_MASK( TXCIE0)) ;            // transmission end, disable int.
+   \                     ??IntHandler_TX_USART0_0:
+   \   00000048   9856               CBI     0x0A, 0x06
+     70              PORTE &= ~0x04 ;                              // TXE0 off
+   \   0000004A   981A               CBI     0x03, 0x02
+     71              OS_StopTimer(&TimerUSART0);                    // and stop timer
+   \   0000004C   ....               LDI     R16, LOW(TimerUSART0)
+   \   0000004E   ....               LDI     R17, (TimerUSART0) >> 8
+   \   00000050   ........           CALL    OS_StopTimer
+     72              GoToSyncUART(0) ;                                    // go to sync modus for recive
+   \   00000054   E000               LDI     R16, 0
+   \   00000056   ........           CALL    GoToSyncUART
+     73              
+     74              OS_LeaveIntStack();
+   \   0000005A   94F8               CLI
+   \   0000005C   ........           CALL    OS__LeaveIntStack
+     75              OS_LeaveInterruptNoSwitch();
+   \   00000060   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000064   950A               DEC     R16
+   \   00000066   9300....           STS     (OS_Counters + 1), R16
+   \   0000006A   9100....           LDS     R16, OS_Counters
+   \   0000006E   950A               DEC     R16
+   \   00000070   9300....           STS     OS_Counters, R16
+     76          }
+   \   00000074   BF9B               OUT     0x3B, R25
+   \   00000076   BF8F               OUT     0x3F, R24
+   \   00000078   9109               LD      R16, Y+
+   \   0000007A   9119               LD      R17, Y+
+   \   0000007C   9129               LD      R18, Y+
+   \   0000007E   9139               LD      R19, Y+
+   \   00000080   9149               LD      R20, Y+
+   \   00000082   9159               LD      R21, Y+
+   \   00000084   9169               LD      R22, Y+
+   \   00000086   9179               LD      R23, Y+
+   \   00000088   9009               LD      R0, Y+
+   \   0000008A   9019               LD      R1, Y+
+   \   0000008C   9029               LD      R2, Y+
+   \   0000008E   9039               LD      R3, Y+
+   \   00000090   91E9               LD      R30, Y+
+   \   00000092   91F9               LD      R31, Y+
+   \   00000094   9189               LD      R24, Y+
+   \   00000096   9199               LD      R25, Y+
+   \   00000098   9518               RETI
+   \   0000009A                      REQUIRE _A_UCSR0B
+   \   0000009A                      REQUIRE _A_PORTE
+     77          
+     78          
+     79          #pragma vector = USART0_UDRE_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     80          __interrupt void IntHandler_UDRE_USART0( void ){   
+   \                     IntHandler_UDRE_USART0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+     81          
+     82              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+     83              OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_UDRE_USART0_0
+   \   00000046   9478               SEI
+     84              if ( UART[0].TxCount-- > 0 ) {
+   \                     ??IntHandler_UDRE_USART0_0:
+   \   00000048   9100....           LDS     R16, (UART + 6)
+   \   0000004C   9110....           LDS     R17, (UART + 7)
+   \   00000050   01F8               MOVW    R31:R30, R17:R16
+   \   00000052   9731               SBIW    R31:R30, 1
+   \   00000054   93E0....           STS     (UART + 6), R30
+   \   00000058   93F0....           STS     (UART + 7), R31
+   \   0000005C   2B01               OR      R16, R17
+   \   0000005E   F0A9               BREQ    ??IntHandler_UDRE_USART0_1
+     85                  UDR0 = UART[0].pTxBuffer[ UART[0].TxLast ];     // Send a character
+   \   00000060   9100....           LDS     R16, (UART + 4)
+   \   00000064   9110....           LDS     R17, (UART + 5)
+   \   00000068   91E0....           LDS     R30, UART
+   \   0000006C   91F0....           LDS     R31, (UART + 1)
+   \   00000070   0FE0               ADD     R30, R16
+   \   00000072   1FF1               ADC     R31, R17
+   \   00000074   8100               LD      R16, Z
+   \   00000076   B90C               OUT     0x0C, R16
+     86                  UART[0].TxLast++;
+   \   00000078   ....               LDI     R30, LOW(UART)
+   \   0000007A   ....               LDI     R31, (UART) >> 8
+   \   0000007C   8104               LDD     R16, Z+4
+   \   0000007E   8115               LDD     R17, Z+5
+   \   00000080   5F0F               SUBI    R16, 255
+   \   00000082   4F1F               SBCI    R17, 255
+   \   00000084   8304               STD     Z+4, R16
+   \   00000086   8315               STD     Z+5, R17
+   \   00000088   C003               RJMP    ??IntHandler_UDRE_USART0_2
+     87              } else{                                             // Last byte sent?
+     88                    UCSR0B &= ~(__BIT_MASK( UDRIE0)) ;            // transmission end, disable int.
+   \                     ??IntHandler_UDRE_USART0_1:
+   \   0000008A   9855               CBI     0x0A, 0x05
+     89                    UCSR0A |= (__BIT_MASK( TXC0)) ;               // Clear int bit in TXC.
+   \   0000008C   9A5E               SBI     0x0B, 0x06
+     90                    UCSR0B |= __BIT_MASK( TXCIE0) ;               // Enable TXC int.
+   \   0000008E   9A56               SBI     0x0A, 0x06
+     91              }           
+     92              OS_LeaveIntStack();
+   \                     ??IntHandler_UDRE_USART0_2:
+   \   00000090   94F8               CLI
+   \   00000092   ........           CALL    OS__LeaveIntStack
+     93              OS_LeaveInterruptNoSwitch();
+   \   00000096   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000009A   950A               DEC     R16
+   \   0000009C   9300....           STS     (OS_Counters + 1), R16
+   \   000000A0   9100....           LDS     R16, OS_Counters
+   \   000000A4   950A               DEC     R16
+   \   000000A6   9300....           STS     OS_Counters, R16
+     94          } 
+   \   000000AA   BF9B               OUT     0x3B, R25
+   \   000000AC   BF8F               OUT     0x3F, R24
+   \   000000AE   9109               LD      R16, Y+
+   \   000000B0   9119               LD      R17, Y+
+   \   000000B2   9129               LD      R18, Y+
+   \   000000B4   9139               LD      R19, Y+
+   \   000000B6   9149               LD      R20, Y+
+   \   000000B8   9159               LD      R21, Y+
+   \   000000BA   9169               LD      R22, Y+
+   \   000000BC   9179               LD      R23, Y+
+   \   000000BE   9009               LD      R0, Y+
+   \   000000C0   9019               LD      R1, Y+
+   \   000000C2   9029               LD      R2, Y+
+   \   000000C4   9039               LD      R3, Y+
+   \   000000C6   91E9               LD      R30, Y+
+   \   000000C8   91F9               LD      R31, Y+
+   \   000000CA   9189               LD      R24, Y+
+   \   000000CC   9199               LD      R25, Y+
+   \   000000CE   9518               RETI
+   \   000000D0                      REQUIRE _A_UDR0
+   \   000000D0                      REQUIRE _A_UCSR0B
+   \   000000D0                      REQUIRE _A_UCSR0A
+     95          #endif
+     96          
+     97          // USART1
+     98          #pragma vector=USART1_RX_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     99          __interrupt void IntHandler_RX_USART1( void ){   
+   \                     IntHandler_RX_USART1:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+    100          
+    101              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+    102              OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_RX_USART1_0
+   \   00000046   9478               SEI
+    103              if ( UCSR1A & __BIT_MASK( DOR1 ) ) {                // Overrun error? 
+   \                     ??IntHandler_RX_USART1_0:
+   \   00000048   9100....           LDS     R16, _A_UCSR1A
+    104              }
+    105          
+    106              if ( UCSR1A & __BIT_MASK( FE1 ) ) {                 // Framing error? 
+   \   0000004C   9110....           LDS     R17, _A_UCSR1A
+    107              }
+    108          
+    109              while ( UCSR1A & __BIT_MASK( RXC1)  ) {                // New byte avaiable?
+   \                     ??IntHandler_RX_USART1_1:
+   \   00000050   9100....           LDS     R16, _A_UCSR1A
+   \   00000054   2F10               MOV     R17, R16
+   \   00000056   FF17               SBRS    R17, 7
+   \   00000058   C06F               RJMP    ??IntHandler_RX_USART1_2
+    110                  UART[1].pRxBuffer[ UART[1].RxFirst ] = UDR1;    // Read the character 
+   \   0000005A   9100....           LDS     R16, _A_UDR1
+   \   0000005E   91E0....           LDS     R30, (UART + 36)
+   \   00000062   91F0....           LDS     R31, (UART + 37)
+   \   00000066   9120....           LDS     R18, (UART + 38)
+   \   0000006A   9130....           LDS     R19, (UART + 39)
+   \   0000006E   0FE2               ADD     R30, R18
+   \   00000070   1FF3               ADC     R31, R19
+   \   00000072   8300               ST      Z, R16
+    111          
+    112                  if (UART[1].RxState != HANDLE) {                // ok to receive? 
+   \   00000074   9100....           LDS     R16, (UART + 44)
+   \   00000078   300A               CPI     R16, 10
+   \   0000007A   F351               BREQ    ??IntHandler_RX_USART1_1
+    113                      switch (UART[1].RxState) {                   // Yes, check state
+   \   0000007C   9100....           LDS     R16, (UART + 44)
+   \   00000080   2300               TST     R16
+   \   00000082   F009               BREQ    $+2+2
+   \   00000084   C041               RJMP    ??IntHandler_RX_USART1_3
+    114                      case SYNC :
+    115                          if ( UART[1].pRxBuffer[ UART[1].RxFirst ] == ANPRO10_SYN) {
+   \   00000086   91E0....           LDS     R30, (UART + 36)
+   \   0000008A   91F0....           LDS     R31, (UART + 37)
+   \   0000008E   9100....           LDS     R16, (UART + 38)
+   \   00000092   9110....           LDS     R17, (UART + 39)
+   \   00000096   0FE0               ADD     R30, R16
+   \   00000098   1FF1               ADC     R31, R17
+   \   0000009A   8100               LD      R16, Z
+   \   0000009C   3106               CPI     R16, 22
+   \   0000009E   F461               BRNE    ??IntHandler_RX_USART1_4
+    116                              UART[1].SyncCnt ++ ;                 // count sync
+   \   000000A0   9100....           LDS     R16, (UART + 45)
+   \   000000A4   9503               INC     R16
+   \   000000A6   9300....           STS     (UART + 45), R16
+    117                              UART[1].RxFirst = 0;                 // start at start of buff
+   \   000000AA   E000               LDI     R16, 0
+   \   000000AC   9300....           STS     (UART + 38), R16
+   \   000000B0   E000               LDI     R16, 0
+   \   000000B2   9300....           STS     (UART + 39), R16
+   \   000000B6   CFCC               RJMP    ??IntHandler_RX_USART1_1
+    118                          } else if ((UART[1].SyncCnt >= 2) && 
+    119                                     (UART[1].pRxBuffer[ UART[1].RxFirst ] == ANPRO10_SOH)) {       // minimum two sync bytes
+   \                     ??IntHandler_RX_USART1_4:
+   \   000000B8   9100....           LDS     R16, (UART + 45)
+   \   000000BC   3002               CPI     R16, 2
+   \   000000BE   F100               BRCS    ??IntHandler_RX_USART1_5
+   \   000000C0   91E0....           LDS     R30, (UART + 36)
+   \   000000C4   91F0....           LDS     R31, (UART + 37)
+   \   000000C8   9100....           LDS     R16, (UART + 38)
+   \   000000CC   9110....           LDS     R17, (UART + 39)
+   \   000000D0   0FE0               ADD     R30, R16
+   \   000000D2   1FF1               ADC     R31, R17
+   \   000000D4   8100               LD      R16, Z
+   \   000000D6   3001               CPI     R16, 1
+   \   000000D8   F499               BRNE    ??IntHandler_RX_USART1_5
+    120                              UART[1].SyncCnt = 0 ;                // reset counter
+   \   000000DA   E000               LDI     R16, 0
+   \   000000DC   9300....           STS     (UART + 45), R16
+    121                              UART[1].RxState = HEADER ;
+   \   000000E0   E001               LDI     R16, 1
+   \   000000E2   9300....           STS     (UART + 44), R16
+    122                              UART[1].RxLast = 0 ;
+   \   000000E6   E000               LDI     R16, 0
+   \   000000E8   9300....           STS     (UART + 40), R16
+   \   000000EC   E000               LDI     R16, 0
+   \   000000EE   9300....           STS     (UART + 41), R16
+    123                              UART[1].RxTimeout = RX_TO_TIME ;      // reset timeout
+   \   000000F2   EF0A               LDI     R16, 250
+   \   000000F4   9300....           STS     (UART + 46), R16
+   \   000000F8   E000               LDI     R16, 0
+   \   000000FA   9300....           STS     (UART + 47), R16
+   \   000000FE   CFA8               RJMP    ??IntHandler_RX_USART1_1
+    124                          } else {
+    125                              UART[1].SyncCnt = 0 ;                // start over once more
+   \                     ??IntHandler_RX_USART1_5:
+   \   00000100   E000               LDI     R16, 0
+   \   00000102   9300....           STS     (UART + 45), R16
+    126                          }
+    127                          break;
+   \   00000106   CFA4               RJMP    ??IntHandler_RX_USART1_1
+    128                      default :
+    129                          if ((++UART[1].RxFirst) > RXSIZE_UART) { // Point to next location
+   \                     ??IntHandler_RX_USART1_3:
+   \   00000108   ....               LDI     R30, LOW(UART)
+   \   0000010A   ....               LDI     R31, (UART) >> 8
+   \   0000010C   A106               LDD     R16, Z+38
+   \   0000010E   A117               LDD     R17, Z+39
+   \   00000110   5F0F               SUBI    R16, 255
+   \   00000112   4F1F               SBCI    R17, 255
+   \   00000114   A306               STD     Z+38, R16
+   \   00000116   A317               STD     Z+39, R17
+   \   00000118   9100....           LDS     R16, (UART + 38)
+   \   0000011C   9110....           LDS     R17, (UART + 39)
+   \   00000120   3907               CPI     R16, 151
+   \   00000122   E020               LDI     R18, 0
+   \   00000124   0712               CPC     R17, R18
+   \   00000126   F020               BRCS    ??IntHandler_RX_USART1_6
+    130                              GoToSyncUART(1) ;                    // go to sync mode
+   \   00000128   E001               LDI     R16, 1
+   \   0000012A   ........           CALL    GoToSyncUART
+   \   0000012E   CF90               RJMP    ??IntHandler_RX_USART1_1
+    131                          } else {
+    132                              ReceivePacketUart(1) ;              // Check package
+   \                     ??IntHandler_RX_USART1_6:
+   \   00000130   E001               LDI     R16, 1
+   \   00000132   ........           CALL    ReceivePacketUart
+    133                          }
+    134                          break ;   
+   \   00000136   CF8C               RJMP    ??IntHandler_RX_USART1_1
+    135                      }
+    136                  }
+    137              }
+    138             OS_LeaveIntStack();
+   \                     ??IntHandler_RX_USART1_2:
+   \   00000138   94F8               CLI
+   \   0000013A   ........           CALL    OS__LeaveIntStack
+    139             OS_LeaveInterruptNoSwitch();
+   \   0000013E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000142   950A               DEC     R16
+   \   00000144   9300....           STS     (OS_Counters + 1), R16
+   \   00000148   9100....           LDS     R16, OS_Counters
+   \   0000014C   950A               DEC     R16
+   \   0000014E   9300....           STS     OS_Counters, R16
+    140          } 
+   \   00000152   BF9B               OUT     0x3B, R25
+   \   00000154   BF8F               OUT     0x3F, R24
+   \   00000156   9109               LD      R16, Y+
+   \   00000158   9119               LD      R17, Y+
+   \   0000015A   9129               LD      R18, Y+
+   \   0000015C   9139               LD      R19, Y+
+   \   0000015E   9149               LD      R20, Y+
+   \   00000160   9159               LD      R21, Y+
+   \   00000162   9169               LD      R22, Y+
+   \   00000164   9179               LD      R23, Y+
+   \   00000166   9009               LD      R0, Y+
+   \   00000168   9019               LD      R1, Y+
+   \   0000016A   9029               LD      R2, Y+
+   \   0000016C   9039               LD      R3, Y+
+   \   0000016E   91E9               LD      R30, Y+
+   \   00000170   91F9               LD      R31, Y+
+   \   00000172   9189               LD      R24, Y+
+   \   00000174   9199               LD      R25, Y+
+   \   00000176   9518               RETI
+   \   00000178                      REQUIRE _A_UCSR1A
+   \   00000178                      REQUIRE _A_UDR1
+    141          
+    142          
+    143          #pragma vector=USART1_TX_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    144          __interrupt void IntHandler_TX_USART1( void ){   
+   \                     IntHandler_TX_USART1:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+    145          
+    146              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+    147              OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_TX_USART1_0
+   \   00000046   9478               SEI
+    148              UCSR1B &= ~(__BIT_MASK( TXCIE1)) ;            // transmission end, disable int.
+   \                     ??IntHandler_TX_USART1_0:
+   \   00000048   9100009A           LDS     R16, 154
+   \   0000004C   7B0F               ANDI    R16, 0xBF
+   \   0000004E   9300009A           STS     154, R16
+    149              PORTE &= ~0x08 ;                              // TXE1 off
+   \   00000052   981B               CBI     0x03, 0x03
+    150              OS_StopTimer(&TimerUSART1);                    // and stop timer
+   \   00000054   ....               LDI     R16, LOW(TimerUSART1)
+   \   00000056   ....               LDI     R17, (TimerUSART1) >> 8
+   \   00000058   ........           CALL    OS_StopTimer
+    151              GoToSyncUART(1) ;                                    // go to sync modus for recive
+   \   0000005C   E001               LDI     R16, 1
+   \   0000005E   ........           CALL    GoToSyncUART
+    152              OS_LeaveIntStack();
+   \   00000062   94F8               CLI
+   \   00000064   ........           CALL    OS__LeaveIntStack
+    153              OS_LeaveInterruptNoSwitch();
+   \   00000068   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000006C   950A               DEC     R16
+   \   0000006E   9300....           STS     (OS_Counters + 1), R16
+   \   00000072   9100....           LDS     R16, OS_Counters
+   \   00000076   950A               DEC     R16
+   \   00000078   9300....           STS     OS_Counters, R16
+    154          }
+   \   0000007C   BF9B               OUT     0x3B, R25
+   \   0000007E   BF8F               OUT     0x3F, R24
+   \   00000080   9109               LD      R16, Y+
+   \   00000082   9119               LD      R17, Y+
+   \   00000084   9129               LD      R18, Y+
+   \   00000086   9139               LD      R19, Y+
+   \   00000088   9149               LD      R20, Y+
+   \   0000008A   9159               LD      R21, Y+
+   \   0000008C   9169               LD      R22, Y+
+   \   0000008E   9179               LD      R23, Y+
+   \   00000090   9009               LD      R0, Y+
+   \   00000092   9019               LD      R1, Y+
+   \   00000094   9029               LD      R2, Y+
+   \   00000096   9039               LD      R3, Y+
+   \   00000098   91E9               LD      R30, Y+
+   \   0000009A   91F9               LD      R31, Y+
+   \   0000009C   9189               LD      R24, Y+
+   \   0000009E   9199               LD      R25, Y+
+   \   000000A0   9518               RETI
+   \   000000A2                      REQUIRE _A_UCSR1B
+   \   000000A2                      REQUIRE _A_PORTE
+    155          
+    156          
+    157          #pragma vector = USART1_UDRE_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    158          __interrupt void IntHandler_UDRE_USART1( void ){   
+   \                     IntHandler_UDRE_USART1:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+    159          
+    160             OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+    161             OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_UDRE_USART1_0
+   \   00000046   9478               SEI
+    162               if ( UART[1].TxCount-- > 0 ) {
+   \                     ??IntHandler_UDRE_USART1_0:
+   \   00000048   9100....           LDS     R16, (UART + 32)
+   \   0000004C   9110....           LDS     R17, (UART + 33)
+   \   00000050   01F8               MOVW    R31:R30, R17:R16
+   \   00000052   9731               SBIW    R31:R30, 1
+   \   00000054   93E0....           STS     (UART + 32), R30
+   \   00000058   93F0....           STS     (UART + 33), R31
+   \   0000005C   2B01               OR      R16, R17
+   \   0000005E   F0B1               BREQ    ??IntHandler_UDRE_USART1_1
+    163                  UDR1 = UART[1].pTxBuffer[ UART[1].TxLast ];  // Send a character
+   \   00000060   91E0....           LDS     R30, (UART + 26)
+   \   00000064   91F0....           LDS     R31, (UART + 27)
+   \   00000068   9100....           LDS     R16, (UART + 30)
+   \   0000006C   9110....           LDS     R17, (UART + 31)
+   \   00000070   0FE0               ADD     R30, R16
+   \   00000072   1FF1               ADC     R31, R17
+   \   00000074   8100               LD      R16, Z
+   \   00000076   9300....           STS     _A_UDR1, R16
+    164                  UART[1].TxLast++;
+   \   0000007A   ....               LDI     R30, LOW(UART)
+   \   0000007C   ....               LDI     R31, (UART) >> 8
+   \   0000007E   8D06               LDD     R16, Z+30
+   \   00000080   8D17               LDD     R17, Z+31
+   \   00000082   5F0F               SUBI    R16, 255
+   \   00000084   4F1F               SBCI    R17, 255
+   \   00000086   8F06               STD     Z+30, R16
+   \   00000088   8F17               STD     Z+31, R17
+   \   0000008A   C00F               RJMP    ??IntHandler_UDRE_USART1_2
+    165               } else {
+    166                  UCSR1B &= ~(__BIT_MASK( UDRIE1)) ;            // transmission end, disable int.
+   \                     ??IntHandler_UDRE_USART1_1:
+   \   0000008C   9100009A           LDS     R16, 154
+   \   00000090   7D0F               ANDI    R16, 0xDF
+   \   00000092   9300009A           STS     154, R16
+    167                  UCSR1A |= (__BIT_MASK( TXC1)) ;               // Clear int bit in TXC.
+   \   00000096   9100009B           LDS     R16, 155
+   \   0000009A   6400               ORI     R16, 0x40
+   \   0000009C   9300009B           STS     155, R16
+    168                  UCSR1B |= __BIT_MASK( TXCIE1) ;               // Enable TXC int.
+   \   000000A0   9100009A           LDS     R16, 154
+   \   000000A4   6400               ORI     R16, 0x40
+   \   000000A6   9300009A           STS     154, R16
+    169               }
+    170              OS_LeaveIntStack();
+   \                     ??IntHandler_UDRE_USART1_2:
+   \   000000AA   94F8               CLI
+   \   000000AC   ........           CALL    OS__LeaveIntStack
+    171              OS_LeaveInterruptNoSwitch();
+   \   000000B0   9100....           LDS     R16, (OS_Counters + 1)
+   \   000000B4   950A               DEC     R16
+   \   000000B6   9300....           STS     (OS_Counters + 1), R16
+   \   000000BA   9100....           LDS     R16, OS_Counters
+   \   000000BE   950A               DEC     R16
+   \   000000C0   9300....           STS     OS_Counters, R16
+    172          } 
+   \   000000C4   BF9B               OUT     0x3B, R25
+   \   000000C6   BF8F               OUT     0x3F, R24
+   \   000000C8   9109               LD      R16, Y+
+   \   000000CA   9119               LD      R17, Y+
+   \   000000CC   9129               LD      R18, Y+
+   \   000000CE   9139               LD      R19, Y+
+   \   000000D0   9149               LD      R20, Y+
+   \   000000D2   9159               LD      R21, Y+
+   \   000000D4   9169               LD      R22, Y+
+   \   000000D6   9179               LD      R23, Y+
+   \   000000D8   9009               LD      R0, Y+
+   \   000000DA   9019               LD      R1, Y+
+   \   000000DC   9029               LD      R2, Y+
+   \   000000DE   9039               LD      R3, Y+
+   \   000000E0   91E9               LD      R30, Y+
+   \   000000E2   91F9               LD      R31, Y+
+   \   000000E4   9189               LD      R24, Y+
+   \   000000E6   9199               LD      R25, Y+
+   \   000000E8   9518               RETI
+   \   000000EA                      REQUIRE _A_UDR1
+   \   000000EA                      REQUIRE _A_UCSR1B
+   \   000000EA                      REQUIRE _A_UCSR1A
+
+   \                                 In  segment INTVEC, offset 0x48, root
+   \                     `??IntHandler_RX_USART0::??INTVEC 72`:
+   \   00000048   ........           JMP     IntHandler_RX_USART0
+
+   \                                 In  segment INTVEC, offset 0x4c, root
+   \                     `??IntHandler_UDRE_USART0::??INTVEC 76`:
+   \   0000004C   ........           JMP     IntHandler_UDRE_USART0
+
+   \                                 In  segment INTVEC, offset 0x50, root
+   \                     `??IntHandler_TX_USART0::??INTVEC 80`:
+   \   00000050   ........           JMP     IntHandler_TX_USART0
+
+   \                                 In  segment INTVEC, offset 0x78, root
+   \                     `??IntHandler_RX_USART1::??INTVEC 120`:
+   \   00000078   ........           JMP     IntHandler_RX_USART1
+
+   \                                 In  segment INTVEC, offset 0x7c, root
+   \                     `??IntHandler_UDRE_USART1::??INTVEC 124`:
+   \   0000007C   ........           JMP     IntHandler_UDRE_USART1
+
+   \                                 In  segment INTVEC, offset 0x80, root
+   \                     `??IntHandler_TX_USART1::??INTVEC 128`:
+   \   00000080   ........           JMP     IntHandler_TX_USART1
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     16      2   IntHandler_RX_USART0
+       16      2   -> GoToSyncUART
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+       16      2   -> ReceivePacketUart
+     16      2   IntHandler_RX_USART1
+       16      2   -> GoToSyncUART
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+       16      2   -> ReceivePacketUart
+     16      2   IntHandler_TX_USART0
+       16      2   -> GoToSyncUART
+       16      2   -> OS_StopTimer
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+     16      2   IntHandler_TX_USART1
+       16      2   -> GoToSyncUART
+       16      2   -> OS_StopTimer
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+     16      2   IntHandler_UDRE_USART0
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+     16      2   IntHandler_UDRE_USART1
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+     364  IntHandler_RX_USART0
+       4  IntHandler_RX_USART0::??INTVEC 72
+     376  IntHandler_RX_USART1
+       4  IntHandler_RX_USART1::??INTVEC 120
+     154  IntHandler_TX_USART0
+       4  IntHandler_TX_USART0::??INTVEC 80
+     162  IntHandler_TX_USART1
+       4  IntHandler_TX_USART1::??INTVEC 128
+     208  IntHandler_UDRE_USART0
+       4  IntHandler_UDRE_USART0::??INTVEC 76
+     234  IntHandler_UDRE_USART1
+       4  IntHandler_UDRE_USART1::??INTVEC 124
+       1  _A_PORTE
+       1  _A_UCSR0A
+       1  _A_UCSR0B
+       1  _A_UCSR1A
+       1  _A_UCSR1B
+       1  _A_UDR0
+       1  _A_UDR1
+
+ 
+     7 bytes in segment ABSOLUTE
+ 1 498 bytes in segment CODE
+    24 bytes in segment INTVEC
+ 
+ 1 498 bytes of CODE memory (+ 24 bytes shared)
+     0 bytes of DATA memory (+  7 bytes shared)
+
+Errors: none
+Warnings: none

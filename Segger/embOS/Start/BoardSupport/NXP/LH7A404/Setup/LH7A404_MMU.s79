@@ -1,0 +1,233 @@
+;*********************************************************************
+;*              SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+;*      Solutions for real time microcontroller applications         *
+;*********************************************************************
+;*                                                                   *
+;*      (C) 2002-2007    SEGGER Microcontroller Systeme GmbH         *
+;*                       www.segger.com                              *
+;*                                                                   *
+;*********************************************************************
+;
+;---------------------------------------------------------------------
+;File   : LH7A400_MMU.s79
+;Purpose: Cache and MMU specifics for the LH7A400
+;-------  END-OF-HEADER  ---------------------------------------------
+;
+        rseg CODE:CODE(2)
+        code32
+
+        ;
+        ; Setup the MMU.
+        ;
+        PUBLIC MMUSetup
+MMUSetup:
+; setup CPU to use cache
+        mrc p15, 0, r0, c1, c0, 0      ; Read cache control register
+        ldr r1, =~0x1307               ; Disable cache & MMU
+        and r0, r0, r1
+        mcr p15, 0, r0, c1, c0, 0      ; Write cache control register
+
+; Flush the cache and TLB.
+        ldr r0, =0x00000000
+        mcr p15, 0, r0, c7, c7, 0      ; invalidate I and D cache
+        mcr p15, 0, r0, c8, c7, 0      ; invalidate both I and D TLBs
+
+; Set domain access control register for all 16 domains.
+        ldr r0, =0x55555555
+        mcr p15, 0, r0, c3, c0, 0
+
+; Set MMU page table.
+        mrc p15, 0, r0, c2, c0, 0
+        ldr r0, =page_table
+        mcr p15, 0, r0, c2, c0, 0
+
+; Enable the MMU and I/D caches.
+        mrc p15, 0, r0, c1, c0, 0
+        ldr r1, =0x4000727F
+        orr r0, r0, r1
+        mcr     p15, 0, r0, c1, c0, 0
+
+; Two NOP instructions to wait for translation to start.
+        mov r0, r0
+        mov r0, r0
+;return
+        bx  lr
+
+/*********************************************************************
+*
+*       Page table
+*
+**********************************************************************
+*/
+  rseg ICODE:CODE(14) ; Align page table at 16k
+  data
+
+page_table:
+
+desc set 0x00000c92
+  rept 16
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0x000
+  rept  (2*256)-16
+     dcd desc
+  endr
+
+desc set 0x20000c9e
+  rept   16
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0x000
+  rept   (2*256)-16
+     dcd desc
+  endr
+
+desc set 0x40000c92
+  rept   16
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0x000
+  rept   256-16
+     dcd desc
+  endr
+
+desc set 0x50000c92
+  rept   16
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0x000
+  rept   256-16
+     dcd desc
+  endr
+
+     dcd 0x00000000
+     dcd 0x00000000
+     dcd 0x60200c92
+     dcd 0x00000000
+     dcd 0x60400c92
+
+desc set 0x000
+  rept  256 - 5
+    dcd desc
+  endr
+
+     dcd 0x70000c92
+     dcd 0x00000000
+     dcd 0x70200c92
+     dcd 0x00000000
+     dcd 0x70400c92
+     dcd 0x00000000
+     dcd 0x70600c92
+     dcd 0x00000000
+     dcd 0x70800c92
+     dcd 0x00000000
+     dcd 0x70a00c92
+     dcd 0x00000000
+     dcd 0x70c00c92
+     dcd 0x00000000
+     dcd 0x70e00c92
+     dcd 0x00000000
+     dcd 0x71000c92
+     dcd 0x00000000
+     dcd 0x71200c92
+     dcd 0x00000000
+     dcd 0x71400c92
+     dcd 0x00000000
+     dcd 0x71600c92
+     dcd 0x00000000
+     dcd 0x71800c92
+     dcd 0x00000000
+     dcd 0x71a00c92
+
+desc set 0x000
+  rept 256 - 27
+    dcd desc
+  endr
+
+     dcd 0x80000c92
+desc set 0x000
+  rept (3*256) - 1
+    dcd desc
+  endr
+
+     dcd 0xb0000c9e
+desc set 0x000
+  rept 256 - 1
+    dcd desc
+  endr
+
+
+desc set 0xc0000c9e
+  rept    3
+     dcd desc
+desc set desc + 0x100000
+  endr
+//     dcd 0xc0300c9a
+     dcd 0xc0300c92
+
+desc set 0xc1000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0xc4000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0xc5000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0xc8000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0xc9000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0xcc000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0xcd000c9e
+  rept    4
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0x000
+  rept   (4*256)-32-1
+     dcd desc
+  endr
+#if   defined (TARGET_JTAG)      // Used for debugging.
+     dcd 0xc0000c9e
+#else
+     dcd 0xb0000c9e
+#endif
+  end
+
+      END
+
+
+
+

@@ -1,0 +1,109 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:15
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\Main.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\Main.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\Main.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\Main.r90.iar_deps
+#    Locale                =  C
+#    List file             =  D:\S2Prog\IO\ANZB-1281\Debug\List\Main\Main.lst
+#    Object file           =  D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\Main.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\Main.c
+      1          /**********************************************************
+      2          *  
+      3          *   Main file for AN-ZB* program       
+      4          *  
+      5          ***********************************************************/
+      6          
+      7          #ifdef __ATMEGA_1280__
+      8          #include	"iom1280.h"
+      9          #endif
+     10          
+     11          #ifdef __ATMEGA_1281__
+     12          #include	"iom1281.h"
+     13          #endif
+     14          #include "stdio.h"
+     15          #include "math.h"
+     16          #include "variables.h"
+     17          #include "version.h"
+     18          #include "inavr.h"
+     19          #include "string.h"
+     20          
+     21          
+     22          OS_STACKPTR int Stack0[80], Stack1[80], Stack3[50], Stack10[89], Stack11[89]; /* Task stacks */
+     23          OS_TASK     TCB_USART0, TCB_USART1, TCB_WATCHDOG, TCB_RS485Ctl, TCB_RS485Rec, TCB_AD7715;               /* Task-control-blocks */
+     24          OS_RSEMA    UARTSEND;
+     25          OS_TIMER    TimerUSART0, TimerUSART1, TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
+     26          
+     27          /**********************************************************
+     28          *
+     29          *       main
+     30          *
+     31          **********************************************************/
+     32          
+     33          void main(void) {
+     34          
+     35              asm("WDR");                             // Enable watchdog here because the OS hang some times during startup
+     36              WDTCR = 0x1f;
+     37              WDTCR = 0x0f;
+     38              asm("WDR");                             // kick the dog!!
+     39          
+     40              OS_InitKern();        /* initialize OS                 */
+     41              OS_InitHW();          /* initialize Hardware for OS    */
+     42              InitSystem();           // init the system according to board
+     43          
+     44          
+     45              OS_CREATERSEMA(&UARTSEND);                          // semaphore for sending on UARTs
+     46              OS_CREATETASK(&TCB_USART0, "USART0", Usart0Handler, 110, Stack0);
+     47              OS_CREATETIMER(&TimerUSART0, TimoutUSART0, 200);                 // Start timeout timer RX on
+     48              OS_CREATETIMER(&TimerUSART0On, TimoutUSART0On, 5);                 // Start on timer TX on
+     49              OS_CREATETASK(&TCB_USART1, "USART1", Usart1Handler, 100, Stack1);
+     50              OS_CREATETIMER(&TimerUSART1, TimoutUSART1, 200);                 // Start timeout timer RX on
+     51              OS_CREATETIMER(&TimerUSART1On, TimoutUSART1On, 5);                 // Start on timer TX on
+     52          
+     53              switch (UnitID) {                                    // Starting taasks for modules:
+     54              case 0x00:                                          // AN-ZB485 
+     55                  OS_CREATETASK(&TCB_RS485Ctl, "ExtRS485_Control", ExtRS485Ctl, 80, Stack10);
+     56                  OS_CREATETIMER(&TimerUART0, TimoutUART0, 200);                 // Start timeout timer RX on
+     57                  OS_CREATETASK(&TCB_RS485Rec, "ExtRS485_Receive", ExtRS485Rec, 90, Stack11);
+     58                  OS_CREATETIMER(&TimerUART1, TimoutUART1, 200);                 // Start timeout timer RX on
+     59                  break;
+     60              case 0x01:                                          // AN-ZBANA 
+     61                  OS_CREATETASK(&TCB_AD7715, "AD7715", AD7715,  90, Stack10);
+     62                  break;
+     63              }
+     64              OS_CREATETASK(&TCB_WATCHDOG, "Watch dog", WatchDogHandler, 50, Stack3);
+     65              OS_Start();                                         // Start multitasking
+     66          }
+     67          
+
+Errors: 6
+Warnings: none

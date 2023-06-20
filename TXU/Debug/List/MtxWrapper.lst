@@ -1,0 +1,238 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:14:35 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\DLIB\MtxWrapper.c                      #
+#    Command line    =  D:\S2Prog\TXU\DLIB\MtxWrapper.c --fpu None -D        #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\MtxWrapper.lst              #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\MtxWrapper.r79               #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\DLIB\MtxWrapper.c
+      1          /***************************************************
+      2           *
+      3           * Callback interface to the library threads manager.
+      4           *
+      5           * Copyright (C) 2006 IAR Systems.  All rights reserved.
+      6           *
+      7           * $Revision: 1.1.2.1 $
+      8           *
+      9           * This is an experimental interface to allow a RTOS kernel
+     10           * to register thread safe support with the prebuilt libraries.
+     11           *
+     12           * System locking is enable (malloc/free).
+     13           * File locking is not enabled.
+     14           * TLS (locking of library static data) is not enabled.
+     15           *
+     16           ***************************************************/
+     17          
+     18          #include <stddef.h>
+     19          #include <DLib_Threads.h>
+     20          #include <MtxWrapper.h>
+     21          #include "RTOS.h"
+     22          #include "stdio.h"   /* Needed to determine _MAX_LOCK and FOPEN_MAX */
+     23          /*********************************************************************
+     24          *
+     25          *       Configuration
+     26          *
+     27          *********************************************************************/
+     28          
+     29          #define _MAX_SEMA (_MAX_LOCK + FOPEN_MAX)
+     30          
+     31          /*********************************************************************
+     32          *
+     33          *       Static data
+     34          *
+     35          *********************************************************************/
+     36          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     37          static OS_RSEMA _aRSema[_MAX_SEMA];
+     38          static int _RSemaCnt = 0;
+   \                     _RSemaCnt:
+   \   00000000                      DS8 4
+   \   00000004                      DS8 368
+     39          #pragma diag_suppress=Pe550
+     40          
+     41          static _MtxFuncPtr mtxinit;
+     42          static _MtxFuncPtr mtxdst;
+     43          static _MtxFuncPtr mtxlock;
+     44          static _MtxFuncPtr mtxunlock;
+     45          /* Call callback if registered */
+     46          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     47          void _Mtxinit(_Rmtx *pMtx)
+     48          {
+   \                     _Mtxinit:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+     49            if (_RSemaCnt < _MAX_SEMA) {
+   \   00000004   38509FE5           LDR      R5,??_Mtxinit_0  ;; _RSemaCnt
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   000095E5           LDR      R0,[R5, #+0]
+   \   00000010   170050E3           CMP      R0,#+23
+   \   00000014   080000AA           BGE      ??_Mtxinit_1
+     50              OS_CreateRSema(&_aRSema[_RSemaCnt]);
+   \   00000018   000285E0           ADD      R0,R5,R0, LSL #+4
+   \   0000001C   040080E2           ADD      R0,R0,#+4
+   \   00000020   ........           _BLF     OS_CreateRSema,??OS_CreateRSema??rA
+     51              *pMtx = (void*) &_aRSema[_RSemaCnt];
+   \   00000024   000095E5           LDR      R0,[R5, #+0]
+   \   00000028   001285E0           ADD      R1,R5,R0, LSL #+4
+   \   0000002C   041081E2           ADD      R1,R1,#+4
+   \   00000030   001084E5           STR      R1,[R4, #+0]
+     52              _RSemaCnt++;
+   \   00000034   010080E2           ADD      R0,R0,#+1
+   \   00000038   000085E5           STR      R0,[R5, #+0]
+     53            }
+     54          }
+   \                     ??_Mtxinit_1:
+   \   0000003C   3040BDE8           POP      {R4,R5,LR}
+   \   00000040   1EFF2FE1           BX       LR               ;; return
+   \                     ??_Mtxinit_0:
+   \   00000044   ........           DC32     _RSemaCnt
+     55          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     56          void _Mtxdst(_Rmtx *pMtx)
+     57          {
+   \                     _Mtxdst:
+   \   00000000   00402DE9           PUSH     {LR}
+     58            OS_DeleteRSema((OS_RSEMA*) *pMtx);
+   \   00000004   000090E5           LDR      R0,[R0, #+0]
+   \   00000008   ........           _BLF     OS_DeleteRSema,??OS_DeleteRSema??rA
+     59          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     60          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     61          void _Mtxlock(_Rmtx *pMtx)
+     62          {
+   \                     _Mtxlock:
+   \   00000000   00402DE9           PUSH     {LR}
+     63            OS_Use((OS_RSEMA*) *pMtx);
+   \   00000004   000090E5           LDR      R0,[R0, #+0]
+   \   00000008   ........           _BLF     OS_Use,??OS_Use??rA
+     64          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     65          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     66          void _Mtxunlock(_Rmtx *pMtx)
+     67          {
+   \                     _Mtxunlock:
+   \   00000000   00402DE9           PUSH     {LR}
+     68            OS_Unuse((OS_RSEMA*) *pMtx);
+   \   00000004   000090E5           LDR      R0,[R0, #+0]
+   \   00000008   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+     69          }
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     70          
+     71          /* Functions to register the callbacks */
+     72          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     73          void _MtxinitRegister(_MtxFuncPtr func)
+     74          {
+     75            mtxinit = func;
+     76          }
+   \                     _MtxinitRegister:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     77          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     78          void _MtxdstRegister(_MtxFuncPtr func)
+     79          {
+     80            mtxdst = func;
+     81          }
+   \                     _MtxdstRegister:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     82          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     83          void _MtxlockRegister(_MtxFuncPtr func)
+     84          {
+     85            mtxlock = func;
+     86          }
+   \                     _MtxlockRegister:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     87          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     88          void _MtxunlockRegister(_MtxFuncPtr func)
+     89          {
+     90            mtxunlock = func;
+     91          }
+   \                     _MtxunlockRegister:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     92          
+
+   Maximum stack usage in bytes:
+
+     Function           CSTACK
+     --------           ------
+     _Mtxdst                4
+     _MtxdstRegister        0
+     _Mtxinit              12
+     _MtxinitRegister       0
+     _Mtxlock               4
+     _MtxlockRegister       0
+     _Mtxunlock             4
+     _MtxunlockRegister     0
+
+
+   Segment part sizes:
+
+     Function/Label     Bytes
+     --------------     -----
+     _RSemaCnt           372
+     _Mtxinit             72
+     _Mtxdst              20
+     _Mtxlock             20
+     _Mtxunlock           20
+     _MtxinitRegister      4
+     _MtxdstRegister       4
+     _MtxlockRegister      4
+     _MtxunlockRegister    4
+      Others              92
+
+ 
+ 228 bytes in segment CODE
+ 372 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 148 bytes of CODE memory (+ 92 bytes shared)
+ 372 bytes of DATA memory
+
+Errors: none
+Warnings: none

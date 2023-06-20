@@ -1,0 +1,82 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004 - 2005   SEGGER Microcontroller Systeme GmbH        *
+*                                                                    *
+*        www.segger.com   Support: support@segger.com                *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : AT91SAM9261_Flash.mac
+Purpose : Setup file for EWARM and AT91SAM9261 CPU Flash target.
+          Feel free to modify this file acc. to your target system.
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+_InitPLL() {
+  //  _PMC_MOR = ((48/8) << 8) + 0x01; // Startup time = 48 slow clocks, Main oscillator enable
+  __writeMemory32(0x00000601,0xFFFFFC20,"Memory");          // Enable SPI0
+
+
+  //while ((_PMC_SR & _PMC_MOSCS) == 0) {
+  __sleep(100);
+
+  //
+  // Initialize PLL A for Main clock
+  //
+  // _PMC_CKGR_PLLAR = PLLA_Val;
+  __writeMemory32(0x206ca00a,0xFFFFFC28,"Memory");          // Setup PLL A
+  //
+  // Wait until PLLA locks
+  //
+  //  while((_PMC_SR & _PMC_LOCKA) == 0) {
+  __sleep(100);
+
+  //
+  // Wait until the master clock is stable
+  //
+  // while((_PMC_SR & _PMC_MCKRDY) == 0) {
+  __sleep(100);
+
+  //
+  // Initialize PLL B for USB clock
+  //
+  // _PMC_CKGR_PLLBR = PLLB_Val;         // Setup PLL B
+  __writeMemory32(0x1033200a,0xFFFFFC2C,"Memory");          // Setup PLL A
+  //
+  // Wait until PLLB locks
+  //
+  // while((_PMC_SR & _PMC_LOCKB) == 0)  {
+  __sleep(100);
+  //
+  // Wait until the master clock is stable
+  //
+  // while ((_PMC_SR & _PMC_MCKRDY) == 0) {
+  __sleep(100);
+  //
+  // Select PLL A clock as clock source
+  //
+  // _PMC_MCKR = MCKR_Val;
+  __writeMemory32(0x00000102,0xFFFFFC30,"Memory");          // Setup PLL A
+  //
+  // Wait until the master clock is stable */
+  //
+  //  while((_PMC_SR & _PMC_MCKRDY) == 0) {
+  __sleep(100);
+
+}
+
+execUserReset() {
+  __message("execUserReset");
+  __hwReset(0);
+  _InitPLL();
+}
+
+execUserPreload() {
+  __message("execUserPreload");
+  __hwReset(500);
+  _InitPLL();
+}

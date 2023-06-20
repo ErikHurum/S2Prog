@@ -1,0 +1,160 @@
+#include <vcl.h>
+#include "ANWinInc.h"
+//#include "ProtocolInfoUnit.h"
+#pragma hdrstop
+#include "MainUnit.h"
+#include "AlarmLogUnit.h"
+USEFORM("ProtocolInfoUnit.cpp", ProtocolInfoForm);
+
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma link "ChildUnit"
+#pragma link "DBAccess"
+#pragma link "LiteAccess"
+#pragma link "LiteCall"
+#pragma link "LiteConsts"
+#pragma link "MemDS"
+#pragma link "RzDBNav"
+#pragma link "RzPanel"
+#pragma link "RzDBNav"
+#pragma link "RzPanel"
+#pragma link "frxClass"
+#pragma link "frxCross"
+#pragma link "CRGrid"
+#pragma resource "*.dfm"
+TAlarmLogForm *AlarmLogForm;
+//---------------------------------------------------------------------------
+__fastcall TAlarmLogForm::TAlarmLogForm(TComponent* Owner)
+	: TChildForm(Owner)
+{
+	OrderBy   =  "Id";
+	SortOrder =  " DESC";
+}
+//---------------------------------------------------------------------------
+void __fastcall TAlarmLogForm::FormCreate(TObject *Sender)
+{
+	TChildForm::FormCreate(Sender);
+	LiteQuery1->Active = true;
+	FindInitialDates(Sender);
+}
+//---------------------------------------------------------------------------
+void __fastcall TAlarmLogForm::BitBtn1Click(TObject *Sender)
+{
+	TBitBtn *btnPtr = (TBitBtn*)Sender;
+	btnPtr->Enabled = false;
+	frxReportAlarmLogList->ShowReport(true);
+	btnPtr->Enabled = true;
+
+}
+//---------------------------------------------------------------------------
+
+
+void __fastcall TAlarmLogForm::FromDateTimePickerChange(TObject *Sender)
+{
+	//LiteQuery1->Close();
+	long firstDate = DateTimeToUnix( FromDateTimePicker->Date	, true );
+	long lastDate  = DateTimeToUnix( ToDateTimePicker->Date		, true );
+
+	AnsiString SQLText = "SELECT *\r\n";
+	SQLText += "from AlarmLog\r\n";
+	SQLText += "where EventTimeGMT between ";
+	SQLText += firstDate;
+	SQLText += " and ";
+	SQLText += lastDate;
+	// retrieve data
+	LiteQuery1->SQL->Text = SQLText;
+	LiteQuery1->Execute();
+	//SetSorting(OrderBy);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TAlarmLogForm::FindInitialDates(TObject *Sender)
+{
+	//LiteQuery1->Close();
+
+	AnsiString SQLText = "SELECT * FROM AlarmLog";
+//	SQLText += " WHERE EventTimeGMT between ";
+	SQLText += " Limit 1";
+	// retrieve data
+	LiteQuery1->SQL->Text = SQLText;
+	LiteQuery1->Execute();
+	TDateTime DateT = LiteQuery1->FieldByName("EventTimeGMT")->AsDateTime;
+	FromDateTimePicker->MinDate  = DateT-1;
+	FromDateTimePicker->Date     = DateT;
+	ToDateTimePicker->MinDate    = DateT-1;
+	FromDateTimePicker->DateTime = DateT;
+	ToDateTimePicker->DateTime   = Now();
+	ToDateTimePicker->Date       = Now();
+
+	//LiteQuery1->Close();
+
+	LiteQuery1->SQL->Text = "SELECT * FROM AlarmLog";
+	LiteQuery1->IndexFieldNames = "Id DESC";
+	LiteQuery1->Execute();
+}
+
+
+
+
+void __fastcall TAlarmLogForm::DBGridAlarmLogTitleClick(TColumn *Column)
+{
+	//SetSorting(Column->FieldName);
+
+}
+//---------------------------------------------------------------------------
+void __fastcall TAlarmLogForm::SetSorting(AnsiString IndexFieldName)
+{
+	if (OrderBy == IndexFieldName) {
+		if (SortOrder == " ASC") {
+			SortOrder = " DESC";
+		}else{
+			SortOrder = " ASC";
+		}
+		IndexFieldName += SortOrder;
+		if (OrderBy == "Id"){
+			IndexFieldName += ";";
+		}else if (OrderBy == "Location"){
+			IndexFieldName += " CIS; Id ASC";
+		}else if (OrderBy == "Description"){
+			IndexFieldName += " CIS; Location ASC CIS";
+		}else if (OrderBy == "EventTimeGMT"){
+			IndexFieldName += "; Id DESC; ";
+		}
+	}else{
+		OrderBy = IndexFieldName;
+		if (OrderBy == "Id"){
+			IndexFieldName = "Id DESC";
+			SortOrder = " DESC";
+		}else if (OrderBy == "Location"){
+			IndexFieldName = "Location ASC CIS; Id ASC";
+			SortOrder = " ASC";
+		}else if (OrderBy == "Description"){
+			IndexFieldName = "Description ASC CIS; Location ASC CIS";
+			SortOrder = " ASC";
+		}else if (OrderBy == "EventTimeGMT"){
+			IndexFieldName = "EventTimeGMT DESC; Id ASC; ";
+			SortOrder = " DESC";
+		} else{
+			if (SortOrder == " ASC") {
+				SortOrder = " DESC";
+			}else{
+				SortOrder = " ASC";
+			}
+			IndexFieldName += SortOrder+";";
+		}
+
+	}
+	LiteQuery1->IndexFieldNames = IndexFieldName;
+
+}
+//---------------------------------------------------------------------------
+
+
+void __fastcall TAlarmLogForm::FormClose(TObject *Sender, TCloseAction &Action)
+{
+	LiteQuery1->Active = false;
+	Action = caFree;
+}
+//---------------------------------------------------------------------------
+
+

@@ -1,0 +1,73 @@
+;*********************************************************************
+;*                SEGGER MICROCONTROLLER SYSTEME GmbH                *
+;*        Solutions for real time microcontroller applications       *
+;*********************************************************************
+;*                                                                   *
+;*      (C) 2005- 2007 SEGGER Microcontroller Systeme GmbH           *
+;*                  www.segger.com                                   *
+;*                                                                   *
+;*********************************************************************
+;
+;---------------------------------------------------------------------
+;File   : Startup.s79
+;Purpose: Startup file for embOS and IAR embedded workbench V4
+;-------- END-OF-HEADER ----------------------------------------------
+;
+
+        MODULE  ?RESET
+
+        RSEG    PROGRAM_END
+        RSEG    CSTACK:DATA(2)
+        RSEG    IRQ_STACK:DATA(2)
+        COMMON  INTVEC:CODE:NOROOT(2)
+        PUBLIC  __program_start
+        EXTERN  IRQ_Handler
+        EXTERN  ?main
+        CODE32  ; Always ARM mode after reset
+
+        org 0x00
+__program_start:     b   ?cstartup            ; RESET handler
+undef_handler:       b   undef_handler        ; Handler for undefined instructions
+swi_handler:         b   swi_handler          ; Handler for Software interrupts.
+prefetch_handler:    b   prefetch_handler     ; Handle Errors(Aborts) on instruction fetch
+data_handler:        b   data_handler         ; Handle Errors(Aborts) on data read or write
+
+        org 0x14
+        DCD          SFB(PROGRAM_END)         ; PROGRAM_END has to be located behind all code
+                                              ; and const segments by linker
+
+        org 0x18
+                     ldr pc,=IRQ_Handler      ; IRQ handler
+fiq_handler:         b   fiq_handler          ; FIQ handler
+
+        LTORG                                 ; Constant table entries (for ldr pc) will be placed at 0x20
+
+/**********************************************************************
+* ?CSTARTUP
+*
+* Execution starts here.
+* After a reset, the mode is ARM, Supervisor, interrupts disabled.
+*/
+        RSEG    ICODE:CODE:NOROOT(2)
+
+?cstartup:
+        mrc     p15, 0, r0, c1, c0,0                ; read cp15 control register (cp15 r1) in r0
+        ldr     r3, =0xC0001084                     ; Reset bit: Cache disable, Little Endian end fast bus mode
+        ldr     r4, =0x40004000                     ; Set bit: Round Robin replacement
+        bic     r0, r0, r3
+        orr     r0, r0, r4
+        mcr     p15, 0, r0, c1, c0,0                ; write r0 into cp15 control register (cp15 r1)
+
+        msr     cpsr_c,#0xd2                        ; Change mode to IRQ mode, FIQ and IRQ disabled
+        ldr     sp,=SFE(IRQ_STACK) & 0xFFFFFFF8     ; End of IRQ_STACK
+        msr     cpsr_c,#0xDF                        ; Change mode to SYS mode, FIQ and IRQ disabled
+        ldr     sp,=SFE(CSTACK) & 0xFFFFFFF8        ; End of CSTACK
+; Jump to startup code in library
+        ldr     r0,=?main
+        bx      r0
+
+        LTORG
+        ENDMOD
+        END
+
+; ***** EOF **********************************************************

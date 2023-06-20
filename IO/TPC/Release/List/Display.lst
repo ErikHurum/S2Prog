@@ -1,0 +1,1459 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            23/Jan/2017  16:07:48
+# Copyright 1996-2015 IAR Systems AB.
+# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+#
+#    Source file  =  D:\S2Prog\IO\TPC\Src\Display.c
+#    Command line =  
+#        D:\S2Prog\IO\TPC\Src\Display.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\TPC\Release\Obj -D OS_LIBMODE_S -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\TPC\Release\List -y --initializers_in_flash --no_tbaa
+#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\TPC\INC\ -I
+#        D:\S2Prog\IO\TPC\..\..\SHARED\INC\ --eeprom_size 4096 --clib -Ohs
+#    List file    =  D:\S2Prog\IO\TPC\Release\List\Display.lst
+#    Object file  =  D:\S2Prog\IO\TPC\Release\Obj\Display.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\TPC\Src\Display.c
+      1          /****************************************************************************************
+      2          /  Display. routines
+      3          /
+      4          ***************************************************************************************/
+      5          #include "iom128.h"
+
+   \                                 In  segment ABSOLUTE, at 0x32
+   \   union <unnamed> volatile __io _A_PORTD
+   \                     _A_PORTD:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x35
+   \   union <unnamed> volatile __io _A_PORTC
+   \                     _A_PORTC:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x38
+   \   union <unnamed> volatile __io _A_PORTB
+   \                     _A_PORTB:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3b
+   \   union <unnamed> volatile __io _A_PORTA
+   \                     _A_PORTA:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x65
+   \   union <unnamed> volatile __io _A_PORTG
+   \                     _A_PORTG:
+   \   00000000                      DS8 1
+      6          #include "stdio.h"
+      7          #include "math.h"
+      8          #include "externals.h"
+      9          #include "version.h"
+     10          #include "inavr.h"
+     11          #include "string.h"
+     12          
+     13          
+     14          /*************************************************************************
+     15          *   (This is a task)
+     16          *  Info-rmation
+     17          *
+     18          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     19          void Info(void) {
+   \                     Info:
+   \   00000000   9727               SBIW    R29:R28, 7
+     20              char Buf[7];
+     21          
+     22              Buf[0] = 'V';
+   \   00000002   E506               LDI     R16, 86
+   \   00000004   8308               ST      Y, R16
+     23              Buf[1] = '-';
+   \   00000006   E20D               LDI     R16, 45
+   \   00000008   8309               STD     Y+1, R16
+     24              CharToAscii(PROG_VERSION, &Buf[2]);
+   \   0000000A   019E               MOVW    R19:R18, R29:R28
+   \   0000000C   5F2E               SUBI    R18, 254
+   \   0000000E   4F3F               SBCI    R19, 255
+   \   00000010   E10C               LDI     R16, 28
+   \   00000012   ........           CALL    CharToAscii
+     25              Buf[5] = 0;
+   \   00000016   E000               LDI     R16, 0
+   \   00000018   830D               STD     Y+5, R16
+     26              PrintComError(Buf, ALARM_OFF);      //AStmark test only
+   \   0000001A   018E               MOVW    R17:R16, R29:R28
+   \   0000001C   ........           CALL    strlen
+   \   00000020   9300....           STS     (Disp + 200), R16
+   \   00000024   8108               LD      R16, Y
+   \   00000026   9300....           STS     (Disp + 201), R16
+   \   0000002A   8109               LDD     R16, Y+1
+   \   0000002C   9300....           STS     (Disp + 202), R16
+   \   00000030   810A               LDD     R16, Y+2
+   \   00000032   9300....           STS     (Disp + 203), R16
+   \   00000036   810B               LDD     R16, Y+3
+   \   00000038   9300....           STS     (Disp + 204), R16
+   \   0000003C   810C               LDD     R16, Y+4
+   \   0000003E   9300....           STS     (Disp + 205), R16
+   \   00000042   810D               LDD     R16, Y+5
+   \   00000044   9300....           STS     (Disp + 206), R16
+   \   00000048   9100....           LDS     R16, UnitID
+   \   0000004C   2300               TST     R16
+   \   0000004E   F041               BREQ    ??Info_0
+   \   00000050   950A               DEC     R16
+   \   00000052   F469               BRNE    ??Info_1
+   \   00000054   E000               LDI     R16, 0
+   \   00000056   9300....           STS     (Disp + 1500), R16
+   \   0000005A   9300....           STS     (Disp + 1506), R16
+   \   0000005E   C007               RJMP    ??Info_1
+   \                     ??Info_0:
+   \   00000060   E000               LDI     R16, 0
+   \   00000062   9300....           STS     (Disp + 1000), R16
+   \   00000066   9300....           STS     (Disp + 1530), R16
+   \   0000006A   9300....           STS     (Disp + 1630), R16
+   \                     ??Info_1:
+   \   0000006E   E000               LDI     R16, 0
+   \   00000070   9300....           STS     (Disp + 1751), R16
+   \   00000074   9300....           STS     (Disp + 1752), R16
+   \   00000078   9100....           LDS     R16, (Disp + 1752)
+   \   0000007C   9503               INC     R16
+   \   0000007E   9300....           STS     (Disp + 1753), R16
+   \   00000082   E000               LDI     R16, 0
+   \   00000084   ....               RCALL   printLoDi
+     27              OS_Delay(4000);
+   \   00000086   EA00               LDI     R16, 160
+   \   00000088   E01F               LDI     R17, 15
+   \   0000008A   ........           CALL    OS_Delay
+     28              CharToAscii(MyPriAddress, &Buf[0]);
+   \   0000008E   019E               MOVW    R19:R18, R29:R28
+   \   00000090   9100....           LDS     R16, MyPriAddress
+   \   00000094   ........           CALL    CharToAscii
+     29              Buf[0] = Buf[1];                    // rotate left due to max 2 char in address
+   \   00000098   8109               LDD     R16, Y+1
+   \   0000009A   8308               ST      Y, R16
+     30              Buf[1] = Buf[2];
+   \   0000009C   810A               LDD     R16, Y+2
+   \   0000009E   8309               STD     Y+1, R16
+     31              Buf[2] = ' ';
+   \   000000A0   E200               LDI     R16, 32
+   \   000000A2   830A               STD     Y+2, R16
+     32              CharToAscii(MySecAddress, &Buf[3]);
+   \   000000A4   019E               MOVW    R19:R18, R29:R28
+   \   000000A6   5F2D               SUBI    R18, 253
+   \   000000A8   4F3F               SBCI    R19, 255
+   \   000000AA   9100....           LDS     R16, MySecAddress
+   \   000000AE   ........           CALL    CharToAscii
+     33              Buf[6] = 0;
+   \   000000B2   E000               LDI     R16, 0
+   \   000000B4   830E               STD     Y+6, R16
+     34              PrintComError(Buf, ALARM_OFF);      //AStmark test only
+   \   000000B6   018E               MOVW    R17:R16, R29:R28
+   \   000000B8   ........           CALL    strlen
+   \   000000BC   9300....           STS     (Disp + 200), R16
+   \   000000C0   8108               LD      R16, Y
+   \   000000C2   9300....           STS     (Disp + 201), R16
+   \   000000C6   8109               LDD     R16, Y+1
+   \   000000C8   9300....           STS     (Disp + 202), R16
+   \   000000CC   810A               LDD     R16, Y+2
+   \   000000CE   9300....           STS     (Disp + 203), R16
+   \   000000D2   810B               LDD     R16, Y+3
+   \   000000D4   9300....           STS     (Disp + 204), R16
+   \   000000D8   810C               LDD     R16, Y+4
+   \   000000DA   9300....           STS     (Disp + 205), R16
+   \   000000DE   810D               LDD     R16, Y+5
+   \   000000E0   9300....           STS     (Disp + 206), R16
+   \   000000E4   9100....           LDS     R16, UnitID
+   \   000000E8   2300               TST     R16
+   \   000000EA   F041               BREQ    ??Info_2
+   \   000000EC   950A               DEC     R16
+   \   000000EE   F469               BRNE    ??Info_3
+   \   000000F0   E000               LDI     R16, 0
+   \   000000F2   9300....           STS     (Disp + 1500), R16
+   \   000000F6   9300....           STS     (Disp + 1506), R16
+   \   000000FA   C007               RJMP    ??Info_3
+   \                     ??Info_2:
+   \   000000FC   E000               LDI     R16, 0
+   \   000000FE   9300....           STS     (Disp + 1000), R16
+   \   00000102   9300....           STS     (Disp + 1530), R16
+   \   00000106   9300....           STS     (Disp + 1630), R16
+   \                     ??Info_3:
+   \   0000010A   E000               LDI     R16, 0
+   \   0000010C   9300....           STS     (Disp + 1751), R16
+   \   00000110   9300....           STS     (Disp + 1752), R16
+   \   00000114   9100....           LDS     R16, (Disp + 1752)
+   \   00000118   9503               INC     R16
+   \   0000011A   9300....           STS     (Disp + 1753), R16
+   \   0000011E   E000               LDI     R16, 0
+   \   00000120   ....               RCALL   printLoDi
+     35          
+     36              while ( 1 ) {
+     37                  OS_WaitEvent(1);  // wait for keyhit
+   \                     ??Info_4:
+   \   00000122   E001               LDI     R16, 1
+   \   00000124   ........           CALL    OS_WaitEvent
+     38                  kbd_delay_cnt = true;
+   \   00000128   E001               LDI     R16, 1
+   \   0000012A   9300....           STS     kbd_delay_cnt, R16
+     39                  OS_Delay(250);
+   \   0000012E   EF0A               LDI     R16, 250
+   \   00000130   E010               LDI     R17, 0
+   \   00000132   ........           CALL    OS_Delay
+     40                  kbd_delay_cnt = false;
+   \   00000136   E000               LDI     R16, 0
+   \   00000138   9300....           STS     kbd_delay_cnt, R16
+   \   0000013C   CFF2               RJMP    ??Info_4
+     41              }
+     42          }
+     43          
+     44          /*************************************************************************
+     45          *   (This is a task)
+     46          *  Display blink
+     47          *
+     48          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     49          void DisplayBlink(void) {
+   \                     DisplayBlink:
+   \                     ??DisplayBlink_0:
+     50          
+     51              while ( 1 ) {
+     52                  OS_Delay(125);
+   \   00000000   E70D               LDI     R16, 125
+   \   00000002   E010               LDI     R17, 0
+   \   00000004   ........           CALL    OS_Delay
+     53                  BlinkStatus = 0x7f;
+   \   00000008   E70F               LDI     R16, 127
+   \   0000000A   9300....           STS     BlinkStatus, R16
+     54                  OS_Delay(125 * 3);
+   \   0000000E   E707               LDI     R16, 119
+   \   00000010   E011               LDI     R17, 1
+   \   00000012   ........           CALL    OS_Delay
+     55                  BlinkStatus = 0x00;
+   \   00000016   E000               LDI     R16, 0
+   \   00000018   9300....           STS     BlinkStatus, R16
+   \   0000001C   CFF1               RJMP    ??DisplayBlink_0
+     56              }
+     57          }
+     58          
+     59          /*************************************************************************
+     60          *   (This is a task)
+     61          *  Display handler
+     62          *
+     63          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     64          void DisplayHandler(void) {
+   \                     DisplayHandler:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   ....               LDI     R26, LOW(??pointer)
+   \   00000006   ....               LDI     R27, (??pointer) >> 8
+   \   00000008   C009               RJMP    ??DisplayHandler_0
+     65              static char pointer = 0, alarmLEDImg = 0;
+     66          
+     67              while ( 1 ) {
+     68                  OS_Delay(1);
+     69          
+     70                  switch ( UnitID ) {
+     71                      /*     case TPC350:
+     72                               PDR5 &= ~0x7f ;                                     // display driver off
+     73                               if (Disp.image[pointer + 25] & 0x80) {                // Upper sergment and flashing ??
+     74                                   PDR6 = (~(Disp.image[pointer + 25] & flash)& 0x7f  ) ;
+     75                               } else {
+     76                                   PDR6 = (~Disp.image[pointer + 25] & 0x7f ) ;
+     77                               }
+     78                               PDR6 |= 0x80 ;                                      // write pulse
+     79                               PDR6 &= ~0x80 ;
+     80                               if (Disp.image[pointer] & 0x80) {                     // Lower segment and flashing ??
+     81                                   PDR6 = (~(Disp.image[pointer] & flash)& 0x7f  ) ;
+     82                               } else {
+     83                                   PDR6 = (~Disp.image[pointer] & 0x7f ) ;
+     84                               }
+     85                               PDR5 |= (pointer & 0x07) ;                          // set sinc drive
+     86                               PDR5 |= DispDrv350[(pointer >> 3) & 0x03] ;
+     87                               if (++pointer >= 25) {
+     88                                   pointer = 0 ;                                   // start over again
+     89                               }
+     90                               break;
+     91                     */
+     92                  case TPC196:
+     93                      // PORTA = 0x00 ;
+     94                      // PORTC = 0x00 ;
+     95                          if ( pointer < 20 ) {
+     96                              PORTD = ~Disp.image[pointer + 20];                    // No flashing due to . is 0x80
+     97                              //PORTB |= 0x80;                                      // write pulse - LE
+     98                              //PORTB &= ~0x80;
+     99                              if ( Disp.image[pointer] & 0x80 ) {                     // flashing
+    100                                  PORTD = ~(Disp.image[pointer] & 0x7f & BlinkStatus);
+    101                              } else {
+    102                                  PORTD = ~(Disp.image[pointer] & 0x7f);
+    103                              }
+    104                              PORTA = DispDrv140[pointer][0];                      // Use the same decoding as tPC140
+    105                              PORTC = DispDrv140[pointer][1];
+    106          
+    107                              ClrBit(PORTG, 0x0f);
+    108                              SetBit(PORTG, DispDrv140[pointer][2]);
+    109          
+    110                          } else {                                // another run for the green and yellow
+    111                              PORTD = ~Disp.image[pointer];                    // No flasing due to . is 0x80
+    112                              PORTB |= 0x80;                                      // write pulse - LE
+    113                              PORTB &= ~0x80;
+    114                              PORTD = 0x7f;
+    115                              PORTA = DispDrv140[pointer - 20][0];                      // Use the same decoding as tPC140
+    116                              PORTC = DispDrv140[pointer - 20][1];
+    117                              ClrBit(PORTG, 0x0f);
+    118                              SetBit(PORTG, DispDrv140[pointer - 20][2]);
+    119                          }
+    120                      if ( ++pointer >= 28 ) {
+    121                          pointer = 0;                                   // start over again
+    122                      }
+    123                      break;
+    124                  case TPC140:
+    125                      PORTA = 0x00;
+    126                      PORTC = 0x00;
+    127                      ClrBit(PORTG, 0x0f);
+    128                      if ( Disp.image[pointer] & 0x80 ) {                     // flashing
+    129                          PORTD = ~((Disp.image[pointer] & 0x7f & BlinkStatus) << 1);
+    130                      } else {
+    131                          PORTD = ~((Disp.image[pointer] & 0x7f) << 1);
+    132                      }
+    133                      PORTA = DispDrv140[pointer][0];
+    134                      PORTC = DispDrv140[pointer][1];
+    135                      SetBit(PORTG, DispDrv140[pointer][2]);
+    136                      if ( ++pointer >= 20 ) {
+    137                          pointer = 0;                                   // start over again
+    138                      }
+    139                      break;
+    140                  default:
+    141                      break;
+    142                  }
+    143                  if ( Disp.alarmLED == ALARM_FLASH ) {
+    144                      if ( BlinkStatus ) {
+    145                          SetBit(PORTG, ALARM_LED);
+    146                      } else {
+    147                          ClrBit(PORTG, ALARM_LED);
+    148                      }
+    149                  }
+    150                  if ( Disp.alarmLED != alarmLEDImg ) {
+    151                      switch ( Disp.alarmLED ) {
+    152                      case ALARM_ON:
+    153                          SetBit(PORTG, ALARM_LED);
+    154                          break;
+    155                      case ALARM_FLASH :
+    156                          SetBit(PORTG, ALARM_LED);
+    157                          break;
+    158                      case ALARM_OFF:
+    159                          ClrBit(PORTG, ALARM_LED);
+   \                     ??DisplayHandler_1:
+   \   0000000A   91000065           LDS     R16, 101
+   \   0000000E   7E0F               ANDI    R16, 0xEF
+   \                     ??DisplayHandler_2:
+   \   00000010   93000065           STS     101, R16
+    160                          break;
+    161                      }
+    162                      alarmLEDImg = Disp.alarmLED;
+   \                     ??DisplayHandler_3:
+   \   00000014   9100....           LDS     R16, (Disp + 1751)
+   \   00000018   9300....           STS     (??pointer + 1), R16
+   \                     ??DisplayHandler_0:
+   \   0000001C   E001               LDI     R16, 1
+   \   0000001E   E010               LDI     R17, 0
+   \   00000020   ........           CALL    OS_Delay
+   \   00000024   9100....           LDS     R16, UnitID
+   \   00000028   950A               DEC     R16
+   \   0000002A   F021               BREQ    ??DisplayHandler_4
+   \   0000002C   500F               SUBI    R16, 15
+   \   0000002E   F409               BRNE    $+2+2
+   \   00000030   C05E               RJMP    ??DisplayHandler_5
+   \   00000032   C09A               RJMP    ??DisplayHandler_6
+   \                     ??DisplayHandler_4:
+   \   00000034   9140....           LDS     R20, ??pointer
+   \   00000038   2F04               MOV     R16, R20
+   \   0000003A   E010               LDI     R17, 0
+   \   0000003C   0F00               LSL     R16
+   \   0000003E   1F11               ROL     R17
+   \   00000040   ....               LDI     R30, LOW(Disp)
+   \   00000042   ....               LDI     R31, (Disp) >> 8
+   \   00000044   0FE0               ADD     R30, R16
+   \   00000046   1FF1               ADC     R31, R17
+   \   00000048   9100....           LDS     R16, ??pointer
+   \   0000004C   3104               CPI     R16, 20
+   \   0000004E   F538               BRCC    ??DisplayHandler_7
+   \   00000050   A500               LDD     R16, Z+40
+   \   00000052   A511               LDD     R17, Z+41
+   \   00000054   9500               COM     R16
+   \   00000056   BB02               OUT     0x12, R16
+   \   00000058   8100               LD      R16, Z
+   \   0000005A   8111               LDD     R17, Z+1
+   \   0000005C   FF07               SBRS    R16, 7
+   \   0000005E   C006               RJMP    ??DisplayHandler_8
+   \   00000060   8100               LD      R16, Z
+   \   00000062   8111               LDD     R17, Z+1
+   \   00000064   9110....           LDS     R17, BlinkStatus
+   \   00000068   2301               AND     R16, R17
+   \   0000006A   C002               RJMP    ??DisplayHandler_9
+   \                     ??DisplayHandler_8:
+   \   0000006C   8100               LD      R16, Z
+   \   0000006E   8111               LDD     R17, Z+1
+   \                     ??DisplayHandler_9:
+   \   00000070   770F               ANDI    R16, 0x7F
+   \   00000072   9500               COM     R16
+   \   00000074   BB02               OUT     0x12, R16
+   \   00000076   E003               LDI     R16, 3
+   \   00000078   9F40               MUL     R20, R16
+   \   0000007A   ....               LDI     R30, LOW(DispDrv140)
+   \   0000007C   ....               LDI     R31, HIGH(DispDrv140)
+   \   0000007E   ....               LDI     R19, (DispDrv140) >> 16
+   \   00000080   0DE0               ADD     R30, R0
+   \   00000082   1DF1               ADC     R31, R1
+   \   00000084   BF3B               OUT     0x3B, R19
+   \   00000086   9106               ELPM    R16, Z
+   \   00000088   BB0B               OUT     0x1B, R16
+   \   0000008A   9631               ADIW    R31:R30, 1
+   \   0000008C   9106               ELPM    R16, Z
+   \   0000008E   BB05               OUT     0x15, R16
+   \   00000090   9100....           LDS     R16, _A_PORTG
+   \   00000094   7F00               ANDI    R16, 0xF0
+   \   00000096   9300....           STS     _A_PORTG, R16
+   \   0000009A   9631               ADIW    R31:R30, 1
+   \   0000009C   C01C               RJMP    ??DisplayHandler_10
+   \                     ??DisplayHandler_7:
+   \   0000009E   8100               LD      R16, Z
+   \   000000A0   8111               LDD     R17, Z+1
+   \   000000A2   9500               COM     R16
+   \   000000A4   BB02               OUT     0x12, R16
+   \   000000A6   9AC7               SBI     0x18, 0x07
+   \   000000A8   98C7               CBI     0x18, 0x07
+   \   000000AA   E70F               LDI     R16, 127
+   \   000000AC   BB02               OUT     0x12, R16
+   \   000000AE   E003               LDI     R16, 3
+   \   000000B0   9F40               MUL     R20, R16
+   \   000000B2   ....               LDI     R30, LOW(DispDrv140)
+   \   000000B4   ....               LDI     R31, HIGH(DispDrv140)
+   \   000000B6   ....               LDI     R19, (DispDrv140) >> 16
+   \   000000B8   0DE0               ADD     R30, R0
+   \   000000BA   1DF1               ADC     R31, R1
+   \   000000BC   97FC               SBIW    R31:R30, 60
+   \   000000BE   BF3B               OUT     0x3B, R19
+   \   000000C0   9106               ELPM    R16, Z
+   \   000000C2   BB0B               OUT     0x1B, R16
+   \   000000C4   9631               ADIW    R31:R30, 1
+   \   000000C6   9106               ELPM    R16, Z
+   \   000000C8   9631               ADIW    R31:R30, 1
+   \   000000CA   BB05               OUT     0x15, R16
+   \   000000CC   9100....           LDS     R16, _A_PORTG
+   \   000000D0   7F00               ANDI    R16, 0xF0
+   \   000000D2   9300....           STS     _A_PORTG, R16
+   \                     ??DisplayHandler_10:
+   \   000000D6   9106               ELPM    R16, Z
+   \   000000D8   9110....           LDS     R17, _A_PORTG
+   \   000000DC   2B10               OR      R17, R16
+   \   000000DE   9310....           STS     _A_PORTG, R17
+   \   000000E2   910C               LD      R16, X
+   \   000000E4   9503               INC     R16
+   \   000000E6   930C               ST      X, R16
+   \   000000E8   310C               CPI     R16, 28
+   \   000000EA   F1F0               BRCS    ??DisplayHandler_6
+   \   000000EC   C03A               RJMP    ??DisplayHandler_11
+   \                     ??DisplayHandler_5:
+   \   000000EE   E000               LDI     R16, 0
+   \   000000F0   BB0B               OUT     0x1B, R16
+   \   000000F2   BB05               OUT     0x15, R16
+   \   000000F4   9100....           LDS     R16, _A_PORTG
+   \   000000F8   7F00               ANDI    R16, 0xF0
+   \   000000FA   9300....           STS     _A_PORTG, R16
+   \   000000FE   9140....           LDS     R20, ??pointer
+   \   00000102   2F04               MOV     R16, R20
+   \   00000104   E010               LDI     R17, 0
+   \   00000106   0F00               LSL     R16
+   \   00000108   1F11               ROL     R17
+   \   0000010A   ....               LDI     R30, LOW(Disp)
+   \   0000010C   ....               LDI     R31, (Disp) >> 8
+   \   0000010E   0FE0               ADD     R30, R16
+   \   00000110   1FF1               ADC     R31, R17
+   \   00000112   8100               LD      R16, Z
+   \   00000114   8111               LDD     R17, Z+1
+   \   00000116   FF07               SBRS    R16, 7
+   \   00000118   C006               RJMP    ??DisplayHandler_12
+   \   0000011A   8100               LD      R16, Z
+   \   0000011C   8111               LDD     R17, Z+1
+   \   0000011E   9110....           LDS     R17, BlinkStatus
+   \   00000122   2301               AND     R16, R17
+   \   00000124   C002               RJMP    ??DisplayHandler_13
+   \                     ??DisplayHandler_12:
+   \   00000126   8100               LD      R16, Z
+   \   00000128   8111               LDD     R17, Z+1
+   \                     ??DisplayHandler_13:
+   \   0000012A   0F00               LSL     R16
+   \   0000012C   9500               COM     R16
+   \   0000012E   BB02               OUT     0x12, R16
+   \   00000130   E003               LDI     R16, 3
+   \   00000132   9F40               MUL     R20, R16
+   \   00000134   ....               LDI     R30, LOW(DispDrv140)
+   \   00000136   ....               LDI     R31, HIGH(DispDrv140)
+   \   00000138   ....               LDI     R19, (DispDrv140) >> 16
+   \   0000013A   0DE0               ADD     R30, R0
+   \   0000013C   1DF1               ADC     R31, R1
+   \   0000013E   BF3B               OUT     0x3B, R19
+   \   00000140   9106               ELPM    R16, Z
+   \   00000142   BB0B               OUT     0x1B, R16
+   \   00000144   9631               ADIW    R31:R30, 1
+   \   00000146   9106               ELPM    R16, Z
+   \   00000148   BB05               OUT     0x15, R16
+   \   0000014A   9631               ADIW    R31:R30, 1
+   \   0000014C   9106               ELPM    R16, Z
+   \   0000014E   9110....           LDS     R17, _A_PORTG
+   \   00000152   2B10               OR      R17, R16
+   \   00000154   9310....           STS     _A_PORTG, R17
+   \   00000158   910C               LD      R16, X
+   \   0000015A   9503               INC     R16
+   \   0000015C   930C               ST      X, R16
+   \   0000015E   3104               CPI     R16, 20
+   \   00000160   F018               BRCS    ??DisplayHandler_6
+   \                     ??DisplayHandler_11:
+   \   00000162   E000               LDI     R16, 0
+   \   00000164   9300....           STS     ??pointer, R16
+   \                     ??DisplayHandler_6:
+   \   00000168   9100....           LDS     R16, (Disp + 1751)
+   \   0000016C   3002               CPI     R16, 2
+   \   0000016E   F459               BRNE    ??DisplayHandler_14
+   \   00000170   9100....           LDS     R16, BlinkStatus
+   \   00000174   2300               TST     R16
+   \   00000176   91000065           LDS     R16, 101
+   \   0000017A   F011               BREQ    ??DisplayHandler_15
+   \   0000017C   6100               ORI     R16, 0x10
+   \   0000017E   C001               RJMP    ??DisplayHandler_16
+   \                     ??DisplayHandler_15:
+   \   00000180   7E0F               ANDI    R16, 0xEF
+   \                     ??DisplayHandler_16:
+   \   00000182   93000065           STS     101, R16
+   \                     ??DisplayHandler_14:
+   \   00000186   9100....           LDS     R16, (Disp + 1751)
+   \   0000018A   9110....           LDS     R17, (??pointer + 1)
+   \   0000018E   1701               CP      R16, R17
+   \   00000190   F409               BRNE    $+2+2
+   \   00000192   CF44               RJMP    ??DisplayHandler_0
+   \   00000194   9100....           LDS     R16, (Disp + 1751)
+   \   00000198   2300               TST     R16
+   \   0000019A   F409               BRNE    $+2+2
+   \   0000019C   CF36               RJMP    ??DisplayHandler_1
+   \   0000019E   950A               DEC     R16
+   \   000001A0   F019               BREQ    ??DisplayHandler_17
+   \   000001A2   950A               DEC     R16
+   \   000001A4   F009               BREQ    $+2+2
+   \   000001A6   CF36               RJMP    ??DisplayHandler_3
+   \                     ??DisplayHandler_17:
+   \   000001A8   91000065           LDS     R16, 101
+   \   000001AC   6100               ORI     R16, 0x10
+   \   000001AE   CF30               RJMP    ??DisplayHandler_2
+   \   000001B0                      REQUIRE _A_PORTD
+   \   000001B0                      REQUIRE _A_PORTA
+   \   000001B0                      REQUIRE _A_PORTC
+   \   000001B0                      REQUIRE _A_PORTG
+   \   000001B0                      REQUIRE _A_PORTB
+    163                  }
+    164              }
+    165          }
+
+   \                                 In  segment NEAR_Z, align 1, keep-with-next
+   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
+   \                     ??pointer:
+   \   00000000                      DS8 1
+   \   00000001                      DS8 1
+    166          
+    167          /*************************************************************************
+    168          *
+    169          *  Build Low display image
+    170          *
+    171          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    172          void printLoDi(char val) {
+   \                     printLoDi:
+   \   00000000   925A               ST      -Y, R5
+   \   00000002   924A               ST      -Y, R4
+   \   00000004   93BA               ST      -Y, R27
+   \   00000006   93AA               ST      -Y, R26
+   \   00000008   939A               ST      -Y, R25
+   \   0000000A   938A               ST      -Y, R24
+   \   0000000C                      REQUIRE ?Register_R4_is_cg_reg
+   \   0000000C                      REQUIRE ?Register_R5_is_cg_reg
+   \   0000000C   9764               SBIW    R29:R28, 20
+   \   0000000E   2F10               MOV     R17, R16
+    173              char i, j, nop, pos, nob, ct, LEDDum[20];
+    174              if ( (Disp.lo_grdata[20] == val) && (val != ALARM_VT) ) {  // graph to display
+   \   00000010   9100....           LDS     R16, (Disp + 1750)
+   \   00000014   1701               CP      R16, R17
+   \   00000016   F561               BRNE    ??printLoDi_0
+   \   00000018   2311               TST     R17
+   \   0000001A   F151               BREQ    ??printLoDi_0
+    175                  for ( i = 0; i < 20; i++ ) {
+   \   0000001C   ....               LDI     R26, LOW((Disp + 1730))
+   \   0000001E   ....               LDI     R27, HIGH((Disp + 1730))
+   \   00000020   01FE               MOVW    R31:R30, R29:R28
+   \   00000022   E104               LDI     R16, 20
+    176                      LEDDum[i] = Disp.lo_grdata[i];                  // copy graph
+   \                     ??printLoDi_1:
+   \   00000024   911D               LD      R17, X+
+   \   00000026   9311               ST      Z+, R17
+    177                  }
+   \   00000028   950A               DEC     R16
+   \   0000002A   F7E1               BRNE    ??printLoDi_1
+    178                  if ( UnitID == TPC140 ) {                        // Mirror byte
+   \   0000002C   9100....           LDS     R16, UnitID
+   \   00000030   3100               CPI     R16, 16
+   \   00000032   F491               BRNE    ??printLoDi_2
+    179                      for ( j = 0; j < 20; j++ ) {
+   \   00000034   01FE               MOVW    R31:R30, R29:R28
+   \   00000036   E114               LDI     R17, 20
+    180                          ct = 0x00;
+   \                     ??printLoDi_3:
+   \   00000038   E070               LDI     R23, 0
+    181                          if ( LEDDum[j] & 0x80 ) {
+   \   0000003A   8100               LD      R16, Z
+   \   0000003C   FD07               SBRC    R16, 7
+    182                              ct |= 0x01;
+   \   0000003E   E071               LDI     R23, 1
+    183                          }
+    184                          for ( i = 0; i < 7; i++ ) {
+   \                     ??printLoDi_4:
+   \   00000040   E007               LDI     R16, 7
+    185                              ct <<= 1;
+   \                     ??printLoDi_5:
+   \   00000042   0F77               LSL     R23
+    186                              if ( LEDDum[j] & 0x01 ) {
+   \   00000044   8120               LD      R18, Z
+   \   00000046   FD20               SBRC    R18, 0
+    187                                  ct |= 0x01;
+   \   00000048   6071               ORI     R23, 0x01
+    188                              }
+    189                              LEDDum[j] >>= 1;
+   \                     ??printLoDi_6:
+   \   0000004A   9526               LSR     R18
+   \   0000004C   8320               ST      Z, R18
+    190                          }
+   \   0000004E   950A               DEC     R16
+   \   00000050   F7C1               BRNE    ??printLoDi_5
+    191                          LEDDum[j] = ct;
+   \   00000052   9371               ST      Z+, R23
+    192                      }
+   \   00000054   951A               DEC     R17
+   \   00000056   F781               BRNE    ??printLoDi_3
+    193                  }
+    194                  for ( i = 0; i < 20; i++ ) {
+   \                     ??printLoDi_2:
+   \   00000058   01DE               MOVW    R27:R26, R29:R28
+   \   0000005A   ....               LDI     R30, LOW(Disp)
+   \   0000005C   ....               LDI     R31, (Disp) >> 8
+   \   0000005E   E104               LDI     R16, 20
+   \   00000060   E030               LDI     R19, 0
+    195                      Disp.image[i] = LEDDum[i];                   // disp if
+   \                     ??printLoDi_7:
+   \   00000062   912D               LD      R18, X+
+   \   00000064   9321               ST      Z+, R18
+   \   00000066   9331               ST      Z+, R19
+    196                  }
+   \   00000068   950A               DEC     R16
+   \   0000006A   F409               BRNE    $+2+2
+   \   0000006C   C0F8               RJMP    ??printLoDi_8
+   \   0000006E   CFF9               RJMP    ??printLoDi_7
+    197              } else {
+    198                  nob = Disp.lo_data[val][0];                          // no of char to disp
+   \                     ??printLoDi_0:
+   \   00000070   E008               LDI     R16, 8
+   \   00000072   9F10               MUL     R17, R16
+   \   00000074   ....               LDI     R24, LOW(Disp)
+   \   00000076   ....               LDI     R25, (Disp) >> 8
+   \   00000078   0D80               ADD     R24, R0
+   \   0000007A   1D91               ADC     R25, R1
+   \   0000007C   01FC               MOVW    R31:R30, R25:R24
+   \   0000007E   53E8               SUBI    R30, 56
+   \   00000080   4FFF               SBCI    R31, 255
+   \   00000082   8020               LD      R2, Z
+    199          
+    200                  nop = 0;                                       // select char set
+   \   00000084   2433               CLR     R3
+    201                  for ( i = 0; (i < NO_OF_LOCH) && (i < nob);) {
+   \   00000086   E000               LDI     R16, 0
+   \                     ??printLoDi_9:
+   \   00000088   1502               CP      R16, R2
+   \   0000008A   F4B0               BRCC    ??printLoDi_10
+    202                      nop += ascii_table[Disp.lo_data[val][i + 1] - 0x20][WIDE_CHAR][0];   // number of pixels
+   \   0000008C   E030               LDI     R19, 0
+   \   0000008E   01FC               MOVW    R31:R30, R25:R24
+   \   00000090   0FE0               ADD     R30, R16
+   \   00000092   1FF3               ADC     R31, R19
+   \   00000094   53E7               SUBI    R30, 55
+   \   00000096   4FFF               SBCI    R31, 255
+   \   00000098   8130               LD      R19, Z
+   \   0000009A   E02F               LDI     R18, 15
+   \   0000009C   9F32               MUL     R19, R18
+   \   0000009E   01F0               MOVW    R31:R30, R1:R0
+   \   000000A0   ....               SUBI    R30, LOW((-(ascii_table - 480) & 0xFFFFFF))
+   \   000000A2   ....               SBCI    R31, HIGH((-(ascii_table - 480) & 0xFFFFFF))
+   \   000000A4   ....               LDI     R19, BYTE3(ascii_table)
+   \   000000A6   BF3B               OUT     0x3B, R19
+   \   000000A8   9126               ELPM    R18, Z
+   \   000000AA   0E32               ADD     R3, R18
+    203                      if ( ++i < nob ) {                            // inc i here!!
+   \   000000AC   9503               INC     R16
+   \   000000AE   1502               CP      R16, R2
+   \   000000B0   F408               BRCC    ??printLoDi_11
+    204                          nop++;                                 // add space
+   \   000000B2   9433               INC     R3
+    205                      }
+    206                  }
+   \                     ??printLoDi_11:
+   \   000000B4   3007               CPI     R16, 7
+   \   000000B6   F340               BRCS    ??printLoDi_9
+    207                  if ( nop > 20 ) {
+   \                     ??printLoDi_10:
+   \   000000B8   E105               LDI     R16, 21
+   \   000000BA   1630               CP      R3, R16
+   \   000000BC   F010               BRCS    ??printLoDi_12
+    208                      ct = TINY_CHAR;
+   \   000000BE   E071               LDI     R23, 1
+   \   000000C0   C001               RJMP    ??printLoDi_13
+    209                  } else {
+    210                      ct = WIDE_CHAR;
+   \                     ??printLoDi_12:
+   \   000000C2   E070               LDI     R23, 0
+    211                  }
+    212                  pos = 20;                                      // start from left (pos 19 first!!)
+   \                     ??printLoDi_13:
+   \   000000C4   E124               LDI     R18, 20
+    213                  for ( i = 0; (i < NO_OF_LOCH) && (i < nob) && (pos > 0);) {
+   \   000000C6   E000               LDI     R16, 0
+   \                     ??printLoDi_14:
+   \   000000C8   1502               CP      R16, R2
+   \   000000CA   F008               BRCS    $+2+2
+   \   000000CC   C047               RJMP    ??printLoDi_15
+   \   000000CE   2322               TST     R18
+   \   000000D0   F409               BRNE    $+2+2
+   \   000000D2   C064               RJMP    ??printLoDi_16
+    214                      if ( (Disp.lo_data[val][i + 1] >= 0x20) && (Disp.lo_data[val][i + 1] <= 0x7f) ) {
+   \   000000D4   E050               LDI     R21, 0
+   \   000000D6   01DC               MOVW    R27:R26, R25:R24
+   \   000000D8   0FA0               ADD     R26, R16
+   \   000000DA   1FB5               ADC     R27, R21
+   \   000000DC   53A7               SUBI    R26, 55
+   \   000000DE   4FBF               SBCI    R27, 255
+   \   000000E0   01FD               MOVW    R31:R30, R27:R26
+   \   000000E2   8130               LD      R19, Z
+   \   000000E4   3230               CPI     R19, 32
+   \   000000E6   F160               BRCS    ??printLoDi_17
+   \   000000E8   8130               LD      R19, Z
+   \   000000EA   3830               CPI     R19, 128
+   \   000000EC   F548               BRCC    ??printLoDi_17
+    215                          nop = ascii_table[Disp.lo_data[val][i + 1] - 0x20][ct][0];   // number of pixels
+   \   000000EE   E035               LDI     R19, 5
+   \   000000F0   9F73               MUL     R23, R19
+   \   000000F2   ....               LDI     R20, LOW(ascii_table)
+   \   000000F4   ....               LDI     R21, HIGH(ascii_table)
+   \   000000F6   ....               LDI     R22, (ascii_table) >> 16
+   \   000000F8   0D40               ADD     R20, R0
+   \   000000FA   1D51               ADC     R21, R1
+   \   000000FC   8000               LD      R0, Z
+   \   000000FE   E03F               LDI     R19, 15
+   \   00000100   9E03               MUL     R0, R19
+   \   00000102   01FA               MOVW    R31:R30, R21:R20
+   \   00000104   0DE0               ADD     R30, R0
+   \   00000106   1DF1               ADC     R31, R1
+   \   00000108   5EE0               SUBI    R30, 224
+   \   0000010A   40F1               SBCI    R31, 1
+   \   0000010C   BF6B               OUT     0x3B, R22
+   \   0000010E   9036               ELPM    R3, Z
+    216                          for ( j = 0; (j < nop) && (pos > 0); j++ ) {
+   \   00000110   2444               CLR     R4
+   \   00000112   C012               RJMP    ??printLoDi_18
+    217                              LEDDum[--pos] = ascii_table[Disp.lo_data[val][i + 1] - 0x20][ct][j + 1];
+   \                     ??printLoDi_19:
+   \   00000114   952A               DEC     R18
+   \   00000116   01FD               MOVW    R31:R30, R27:R26
+   \   00000118   8000               LD      R0, Z
+   \   0000011A   9E03               MUL     R0, R19
+   \   0000011C   01FA               MOVW    R31:R30, R21:R20
+   \   0000011E   0DE0               ADD     R30, R0
+   \   00000120   1DF1               ADC     R31, R1
+   \   00000122   2455               CLR     R5
+   \   00000124   0DE4               ADD     R30, R4
+   \   00000126   1DF5               ADC     R31, R5
+   \   00000128   5DEF               SUBI    R30, 223
+   \   0000012A   40F1               SBCI    R31, 1
+   \   0000012C   9006               ELPM    R0, Z
+   \   0000012E   01FE               MOVW    R31:R30, R29:R28
+   \   00000130   0FE2               ADD     R30, R18
+   \   00000132   1DF5               ADC     R31, R5
+   \   00000134   8200               ST      Z, R0
+    218                          }
+   \   00000136   9443               INC     R4
+   \                     ??printLoDi_18:
+   \   00000138   1443               CP      R4, R3
+   \   0000013A   F410               BRCC    ??printLoDi_17
+   \   0000013C   2322               TST     R18
+   \   0000013E   F751               BRNE    ??printLoDi_19
+    219                      }
+    220                      if ( (++i < nob) && (pos > 0) ) {             // inc i here!!  V6: add check of pos
+   \                     ??printLoDi_17:
+   \   00000140   9503               INC     R16
+   \   00000142   1502               CP      R16, R2
+   \   00000144   F440               BRCC    ??printLoDi_20
+   \   00000146   2322               TST     R18
+   \   00000148   F031               BREQ    ??printLoDi_20
+    221                          LEDDum[--pos] = 0x00;                   // space if more char
+   \   0000014A   952A               DEC     R18
+   \   0000014C   E040               LDI     R20, 0
+   \   0000014E   01FE               MOVW    R31:R30, R29:R28
+   \   00000150   0FE2               ADD     R30, R18
+   \   00000152   1FF4               ADC     R31, R20
+   \   00000154   8340               ST      Z, R20
+    222                      }
+    223                  }
+   \                     ??printLoDi_20:
+   \   00000156   3007               CPI     R16, 7
+   \   00000158   F408               BRCC    $+2+2
+   \   0000015A   CFB6               RJMP    ??printLoDi_14
+    224                  if ( pos > 0 ) {
+   \                     ??printLoDi_15:
+   \   0000015C   2322               TST     R18
+   \   0000015E   F0F1               BREQ    ??printLoDi_16
+    225                      rorLoDis(LEDDum, pos);
+   \   00000160   3124               CPI     R18, 20
+   \   00000162   F478               BRCC    ??printLoDi_21
+   \   00000164   01BE               MOVW    R23:R22, R29:R28
+   \   00000166   01AE               MOVW    R21:R20, R29:R28
+   \   00000168   E030               LDI     R19, 0
+   \   0000016A   0F42               ADD     R20, R18
+   \   0000016C   1F53               ADC     R21, R19
+   \   0000016E   E104               LDI     R16, 20
+   \   00000170   1B02               SUB     R16, R18
+   \                     ??printLoDi_22:
+   \   00000172   01FA               MOVW    R31:R30, R21:R20
+   \   00000174   9131               LD      R19, Z+
+   \   00000176   01AF               MOVW    R21:R20, R31:R30
+   \   00000178   01FB               MOVW    R31:R30, R23:R22
+   \   0000017A   9331               ST      Z+, R19
+   \   0000017C   01BF               MOVW    R23:R22, R31:R30
+   \   0000017E   950A               DEC     R16
+   \   00000180   F7C1               BRNE    ??printLoDi_22
+   \                     ??printLoDi_21:
+   \   00000182   E000               LDI     R16, 0
+   \   00000184   E030               LDI     R19, 0
+   \                     ??printLoDi_23:
+   \   00000186   01FE               MOVW    R31:R30, R29:R28
+   \   00000188   2F40               MOV     R20, R16
+   \   0000018A   E050               LDI     R21, 0
+   \   0000018C   9541               NEG     R20
+   \   0000018E   4050               SBCI    R21, 0
+   \   00000190   0FE4               ADD     R30, R20
+   \   00000192   1FF5               ADC     R31, R21
+   \   00000194   8B33               STD     Z+19, R19
+   \   00000196   9503               INC     R16
+   \   00000198   1702               CP      R16, R18
+   \   0000019A   F3A8               BRCS    ??printLoDi_23
+    226                  }
+    227          
+    228                  switch ( UnitID ) {
+   \                     ??printLoDi_16:
+   \   0000019C   9100....           LDS     R16, UnitID
+   \   000001A0   950A               DEC     R16
+   \   000001A2   F101               BREQ    ??printLoDi_24
+   \   000001A4   500F               SUBI    R16, 15
+   \   000001A6   F009               BREQ    $+2+2
+   \   000001A8   C042               RJMP    ??printLoDi_25
+    229                  case TPC140:                        // Mirror byte
+    230                      for ( j = 0; j < 20; j++ ) {
+   \   000001AA   01FE               MOVW    R31:R30, R29:R28
+   \   000001AC   E124               LDI     R18, 20
+    231                          ct = 0x00;
+   \                     ??printLoDi_26:
+   \   000001AE   E070               LDI     R23, 0
+    232                          if ( LEDDum[j] & 0x80 ) {
+   \   000001B0   8100               LD      R16, Z
+   \   000001B2   FD07               SBRC    R16, 7
+    233                              ct |= 0x01;
+   \   000001B4   E071               LDI     R23, 1
+    234                          }
+    235                          for ( i = 0; i < 7; i++ ) {
+   \                     ??printLoDi_27:
+   \   000001B6   E007               LDI     R16, 7
+    236                              ct <<= 1;
+   \                     ??printLoDi_28:
+   \   000001B8   0F77               LSL     R23
+    237                              if ( LEDDum[j] & 0x01 ) {
+   \   000001BA   8130               LD      R19, Z
+   \   000001BC   FD30               SBRC    R19, 0
+    238                                  ct |= 0x01;
+   \   000001BE   6071               ORI     R23, 0x01
+    239                              }
+    240                              LEDDum[j] >>= 1;
+   \                     ??printLoDi_29:
+   \   000001C0   9536               LSR     R19
+   \   000001C2   8330               ST      Z, R19
+    241                          }
+   \   000001C4   950A               DEC     R16
+   \   000001C6   F7C1               BRNE    ??printLoDi_28
+    242                          LEDDum[j] = ct;
+   \   000001C8   9371               ST      Z+, R23
+    243                      }
+   \   000001CA   952A               DEC     R18
+   \   000001CC   F781               BRNE    ??printLoDi_26
+    244                      for ( i = 0; i < 20; i++ ) {
+   \   000001CE   01FE               MOVW    R31:R30, R29:R28
+   \   000001D0   ....               LDI     R26, LOW(Disp)
+   \   000001D2   ....               LDI     R27, (Disp) >> 8
+   \   000001D4   E104               LDI     R16, 20
+   \   000001D6   E030               LDI     R19, 0
+    245                          Disp.image[i] = LEDDum[i];                   // copy to displaybuffer
+   \                     ??printLoDi_30:
+   \   000001D8   9121               LD      R18, Z+
+   \   000001DA   932D               ST      X+, R18
+   \   000001DC   933D               ST      X+, R19
+    246                      }
+   \   000001DE   950A               DEC     R16
+   \   000001E0   F131               BREQ    ??printLoDi_25
+   \   000001E2   CFFA               RJMP    ??printLoDi_30
+    247                      break;
+    248                  case TPC196:                        
+    249                      for ( i = 0; i < 20; i++ ) {
+   \                     ??printLoDi_24:
+   \   000001E4   E000               LDI     R16, 0
+   \   000001E6   ....               LDI     R20, LOW((DispArr196 - 8))
+   \   000001E8   ....               LDI     R21, HIGH((DispArr196 - 8))
+   \   000001EA   ....               LDI     R22, BYTE3(DispArr196)
+   \   000001EC   010E               MOVW    R1:R0, R29:R28
+   \   000001EE   ....               LDI     R26, LOW(Disp)
+   \   000001F0   ....               LDI     R27, (Disp) >> 8
+    250                          // Rearrange columns due to hw fault
+    251                          if ( i>=8 && i < 19 ) {
+   \                     ??printLoDi_31:
+   \   000001F2   2F20               MOV     R18, R16
+   \   000001F4   5028               SUBI    R18, 8
+   \   000001F6   302B               CPI     R18, 11
+   \   000001F8   F450               BRCC    ??printLoDi_32
+    252                              Disp.image[i] = LEDDum[DispArr196[i - 8]]; 
+   \   000001FA   01CE               MOVW    R25:R24, R29:R28
+   \   000001FC   01FA               MOVW    R31:R30, R21:R20
+   \   000001FE   BF6B               OUT     0x3B, R22
+   \   00000200   9126               ELPM    R18, Z
+   \   00000202   E030               LDI     R19, 0
+   \   00000204   0F82               ADD     R24, R18
+   \   00000206   1F93               ADC     R25, R19
+   \   00000208   01FC               MOVW    R31:R30, R25:R24
+   \   0000020A   8120               LD      R18, Z
+   \   0000020C   C003               RJMP    ??printLoDi_33
+    253                          }else{
+    254                              Disp.image[i] = LEDDum[i];                   // copy to displaybuffer
+   \                     ??printLoDi_32:
+   \   0000020E   01F0               MOVW    R31:R30, R1:R0
+   \   00000210   8120               LD      R18, Z
+   \   00000212   E030               LDI     R19, 0
+   \                     ??printLoDi_33:
+   \   00000214   01FD               MOVW    R31:R30, R27:R26
+   \   00000216   8320               ST      Z, R18
+   \   00000218   8331               STD     Z+1, R19
+    255                          }
+    256                      }
+   \   0000021A   9503               INC     R16
+   \   0000021C   9612               ADIW    R27:R26, 2
+   \   0000021E   E021               LDI     R18, 1
+   \   00000220   0E02               ADD     R0, R18
+   \   00000222   E020               LDI     R18, 0
+   \   00000224   1E12               ADC     R1, R18
+   \   00000226   5F4F               SUBI    R20, 255
+   \   00000228   4F5F               SBCI    R21, 255
+   \   0000022A   3104               CPI     R16, 20
+   \   0000022C   F310               BRCS    ??printLoDi_31
+    257                      break;
+    258                  }
+    259                  if ( val == ALARM_VT ) {
+   \                     ??printLoDi_25:
+   \   0000022E   2311               TST     R17
+   \   00000230   F4B1               BRNE    ??printLoDi_8
+    260                      if ( Disp.alarmLED == ALARM_FLASH ) {
+   \   00000232   9100....           LDS     R16, (Disp + 1751)
+   \   00000236   3002               CPI     R16, 2
+   \   00000238   ....               LDI     R30, LOW(Disp)
+   \   0000023A   ....               LDI     R31, (Disp) >> 8
+   \   0000023C   E104               LDI     R16, 20
+   \   0000023E   F441               BRNE    ??printLoDi_34
+    261                          for ( i = 0; i < 20; i++ ) {
+    262                              Disp.image[i] |= 0x80;               // disp blink on
+   \                     ??printLoDi_35:
+   \   00000240   8120               LD      R18, Z
+   \   00000242   8131               LDD     R19, Z+1
+   \   00000244   6820               ORI     R18, 0x80
+   \   00000246   9321               ST      Z+, R18
+   \   00000248   9331               ST      Z+, R19
+    263                          }
+   \   0000024A   950A               DEC     R16
+   \   0000024C   F041               BREQ    ??printLoDi_8
+   \   0000024E   CFF8               RJMP    ??printLoDi_35
+    264                      } else {
+    265                          for ( i = 0; i < 20; i++ ) {
+    266                              Disp.image[i] &= ~0x80;              // disp blink off
+   \                     ??printLoDi_34:
+   \   00000250   8120               LD      R18, Z
+   \   00000252   8131               LDD     R19, Z+1
+   \   00000254   772F               ANDI    R18, 0x7F
+   \   00000256   9321               ST      Z+, R18
+   \   00000258   9331               ST      Z+, R19
+    267                          }
+   \   0000025A   950A               DEC     R16
+   \   0000025C   F7C9               BRNE    ??printLoDi_34
+    268                      }
+    269                  }
+    270              }
+    271          }
+   \                     ??printLoDi_8:
+   \   0000025E   9664               ADIW    R29:R28, 20
+   \   00000260   9189               LD      R24, Y+
+   \   00000262   9199               LD      R25, Y+
+   \   00000264   91A9               LD      R26, Y+
+   \   00000266   91B9               LD      R27, Y+
+   \   00000268   9049               LD      R4, Y+
+   \   0000026A   9059               LD      R5, Y+
+   \   0000026C   9508               RET
+    272          
+    273          /*************************************************************************
+    274          *
+    275          *  Build X display image
+    276          *
+    277          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    278          void printXDi(char disno) {
+   \                     printXDi:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   2E3A               MOV     R3, R26
+   \   00000004   9724               SBIW    R29:R28, 4
+    279              unsigned char i, pos, nob, LEDDum[4];
+    280          
+    281              if ( UnitID == TPC196 ) {
+   \   00000006   9110....           LDS     R17, UnitID
+   \   0000000A   3011               CPI     R17, 1
+   \   0000000C   F009               BREQ    $+2+2
+   \   0000000E   C07D               RJMP    ??printXDi_0
+    282                  nob = Disp.x_data[disno][0];                            // no of char to disp
+   \   00000010   2F40               MOV     R20, R16
+   \   00000012   E050               LDI     R21, 0
+   \   00000014   E006               LDI     R16, 6
+   \   00000016   2F24               MOV     R18, R20
+   \   00000018   9F20               MUL     R18, R16
+   \   0000001A   ....               LDI     R22, LOW(Disp)
+   \   0000001C   ....               LDI     R23, (Disp) >> 8
+   \   0000001E   0D60               ADD     R22, R0
+   \   00000020   1D71               ADC     R23, R1
+   \   00000022   01FB               MOVW    R31:R30, R23:R22
+   \   00000024   52E4               SUBI    R30, 36
+   \   00000026   4FFA               SBCI    R31, 250
+   \   00000028   8020               LD      R2, Z
+    283          
+    284                  for ( i = 0; i < 4; i++ ) {                               // reset buffer
+   \   0000002A   01FE               MOVW    R31:R30, R29:R28
+   \   0000002C   E004               LDI     R16, 4
+    285                      LEDDum[i] = 0x00;
+   \                     ??printXDi_1:
+   \   0000002E   9351               ST      Z+, R21
+    286                  }
+   \   00000030   950A               DEC     R16
+   \   00000032   F7E9               BRNE    ??printXDi_1
+    287          
+    288                  pos = 0;                                           // start from left
+   \   00000034   E000               LDI     R16, 0
+    289                  for ( i = 0; (i < NO_OF_XCH) && (i < nob);) {
+   \   00000036   E020               LDI     R18, 0
+   \   00000038   C003               RJMP    ??printXDi_2
+   \                     ??printXDi_3:
+   \   0000003A   3025               CPI     R18, 5
+   \   0000003C   F008               BRCS    $+2+2
+   \   0000003E   C046               RJMP    ??printXDi_4
+   \                     ??printXDi_2:
+   \   00000040   1522               CP      R18, R2
+   \   00000042   F008               BRCS    $+2+2
+   \   00000044   C041               RJMP    ??printXDi_5
+    290                      if ( (Disp.x_data[disno][i + 1] >= 0x20) && (Disp.x_data[disno][i + 1] <= 0x7f) ) {
+   \   00000046   01FB               MOVW    R31:R30, R23:R22
+   \   00000048   0FE2               ADD     R30, R18
+   \   0000004A   1FF5               ADC     R31, R21
+   \   0000004C   52E3               SUBI    R30, 35
+   \   0000004E   4FFA               SBCI    R31, 250
+   \   00000050   8110               LD      R17, Z
+   \   00000052   3210               CPI     R17, 32
+   \   00000054   F088               BRCS    ??printXDi_6
+   \   00000056   8110               LD      R17, Z
+   \   00000058   3810               CPI     R17, 128
+   \   0000005A   F470               BRCC    ??printXDi_6
+    291                          LEDDum[pos] = ascii_table[Disp.x_data[disno][i + 1] - 0x20][SEVEN_SEG][0];
+   \   0000005C   8130               LD      R19, Z
+   \   0000005E   E01F               LDI     R17, 15
+   \   00000060   9F31               MUL     R19, R17
+   \   00000062   01F0               MOVW    R31:R30, R1:R0
+   \   00000064   ....               SUBI    R30, LOW((-(ascii_table - 470) & 0xFFFFFF))
+   \   00000066   ....               SBCI    R31, HIGH((-(ascii_table - 470) & 0xFFFFFF))
+   \   00000068   ....               LDI     R19, BYTE3(ascii_table)
+   \   0000006A   BF3B               OUT     0x3B, R19
+   \   0000006C   9006               ELPM    R0, Z
+   \   0000006E   01FE               MOVW    R31:R30, R29:R28
+   \   00000070   0FE0               ADD     R30, R16
+   \   00000072   1FF5               ADC     R31, R21
+   \   00000074   8200               ST      Z, R0
+    292                          i++;
+   \   00000076   9523               INC     R18
+    293                      }
+    294                      if ( pos == 0 ) {
+   \                     ??printXDi_6:
+   \   00000078   2300               TST     R16
+   \   0000007A   F471               BRNE    ??printXDi_7
+    295                          if ( (Disp.x_data[disno][i] == 0x2c) || (Disp.x_data[disno][i] == 0x2e) ) {
+   \   0000007C   01FB               MOVW    R31:R30, R23:R22
+   \   0000007E   0FE2               ADD     R30, R18
+   \   00000080   1FF5               ADC     R31, R21
+   \   00000082   52E4               SUBI    R30, 36
+   \   00000084   4FFA               SBCI    R31, 250
+   \   00000086   8110               LD      R17, Z
+   \   00000088   321C               CPI     R17, 44
+   \   0000008A   F019               BREQ    ??printXDi_8
+   \   0000008C   8110               LD      R17, Z
+   \   0000008E   321E               CPI     R17, 46
+   \   00000090   F419               BRNE    ??printXDi_7
+    296                              LEDDum[pos] |= 0x80;                                          // check ./, on first char
+   \                     ??printXDi_8:
+   \   00000092   8118               LD      R17, Y
+   \   00000094   6810               ORI     R17, 0x80
+   \   00000096   8318               ST      Y, R17
+    297                          }
+    298                      }
+    299                      if ( i < nob ) {
+   \                     ??printXDi_7:
+   \   00000098   1522               CP      R18, R2
+   \   0000009A   F490               BRCC    ??printXDi_9
+    300                          if ( (Disp.x_data[disno][i + 1] == 0x2c) || (Disp.x_data[disno][i + 1] == 0x2e) ) {   // , or .
+   \   0000009C   01FB               MOVW    R31:R30, R23:R22
+   \   0000009E   0FE2               ADD     R30, R18
+   \   000000A0   1FF5               ADC     R31, R21
+   \   000000A2   52E4               SUBI    R30, 36
+   \   000000A4   4FFA               SBCI    R31, 250
+   \   000000A6   8111               LDD     R17, Z+1
+   \   000000A8   321C               CPI     R17, 44
+   \   000000AA   F019               BREQ    ??printXDi_10
+   \   000000AC   8111               LDD     R17, Z+1
+   \   000000AE   321E               CPI     R17, 46
+   \   000000B0   F439               BRNE    ??printXDi_9
+    301                              LEDDum[pos] |= 0x80;
+   \                     ??printXDi_10:
+   \   000000B2   01FE               MOVW    R31:R30, R29:R28
+   \   000000B4   0FE0               ADD     R30, R16
+   \   000000B6   1FF5               ADC     R31, R21
+   \   000000B8   8110               LD      R17, Z
+   \   000000BA   6810               ORI     R17, 0x80
+   \   000000BC   8310               ST      Z, R17
+    302                              i++;
+   \   000000BE   9523               INC     R18
+    303                          }
+    304                      }
+    305                      if ( ++pos >= 4 ) {                             // no room for more characters
+   \                     ??printXDi_9:
+   \   000000C0   9503               INC     R16
+   \   000000C2   3004               CPI     R16, 4
+   \   000000C4   F408               BRCC    $+2+2
+   \   000000C6   CFB9               RJMP    ??printXDi_3
+    306                          i = NO_OF_XCH;
+    307                      }
+    308                  }
+    309                  for (; pos < 4; pos++ ) {                 // shift text right
+   \                     ??printXDi_5:
+   \   000000C8   3004               CPI     R16, 4
+   \   000000CA   F468               BRCC    ??printXDi_11
+    310                      for ( i = 3; i > 0; i-- ) {
+   \                     ??printXDi_4:
+   \   000000CC   01FE               MOVW    R31:R30, R29:R28
+   \   000000CE   9633               ADIW    R31:R30, 3
+   \   000000D0   E013               LDI     R17, 3
+    311                          LEDDum[i] = LEDDum[i - 1];
+   \                     ??printXDi_12:
+   \   000000D2   01DF               MOVW    R27:R26, R31:R30
+   \   000000D4   912E               LD      R18, -X
+   \   000000D6   8320               ST      Z, R18
+    312                          LEDDum[i - 1] = 0x00;                        // clear leftmost char
+   \   000000D8   935C               ST      X, R21
+    313                      }
+   \   000000DA   9731               SBIW    R31:R30, 1
+   \   000000DC   951A               DEC     R17
+   \   000000DE   F7C9               BRNE    ??printXDi_12
+    314                  }
+   \   000000E0   9503               INC     R16
+   \   000000E2   3004               CPI     R16, 4
+   \   000000E4   F398               BRCS    ??printXDi_4
+    315                  for ( i = 0; i < 4; i++ ) {
+   \                     ??printXDi_11:
+   \   000000E6   01DE               MOVW    R27:R26, R29:R28
+   \   000000E8   ....               LDI     R30, LOW((Disp + 40))
+   \   000000EA   ....               LDI     R31, HIGH((Disp + 40))
+   \   000000EC   0F44               LSL     R20
+   \   000000EE   1F55               ROL     R21
+   \   000000F0   0F44               LSL     R20
+   \   000000F2   1F55               ROL     R21
+   \   000000F4   0F44               LSL     R20
+   \   000000F6   1F55               ROL     R21
+   \   000000F8   0FE4               ADD     R30, R20
+   \   000000FA   1FF5               ADC     R31, R21
+   \   000000FC   E004               LDI     R16, 4
+   \   000000FE   E030               LDI     R19, 0
+    316                      Disp.image[20 + 4 * disno + i] = LEDDum[i];            // copy to displaybuffer
+   \                     ??printXDi_13:
+   \   00000100   912D               LD      R18, X+
+   \   00000102   9321               ST      Z+, R18
+   \   00000104   9331               ST      Z+, R19
+    317                  }
+   \   00000106   950A               DEC     R16
+   \   00000108   F7D9               BRNE    ??printXDi_13
+    318              }
+    319          }
+   \                     ??printXDi_0:
+   \   0000010A   9624               ADIW    R29:R28, 4
+   \   0000010C   2DA3               MOV     R26, R3
+   \   0000010E   91B9               LD      R27, Y+
+   \   00000110   9508               RET
+    320          
+    321          /*************************************************************************
+    322          *
+    323          *  Rotate right low display
+    324          *
+    325          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    326          void rorLoDis(char *buf, char pos) {
+   \                     rorLoDis:
+   \   00000000   2F7B               MOV     R23, R27
+   \   00000002   2E0A               MOV     R0, R26
+    327              unsigned char i;
+    328              for ( i = pos; i < 20; i++ ) {
+   \   00000004   3124               CPI     R18, 20
+   \   00000006   F458               BRCC    ??rorLoDis_0
+   \   00000008   01D8               MOVW    R27:R26, R17:R16
+   \   0000000A   E030               LDI     R19, 0
+   \   0000000C   01F8               MOVW    R31:R30, R17:R16
+   \   0000000E   0FE2               ADD     R30, R18
+   \   00000010   1FF3               ADC     R31, R19
+   \   00000012   E134               LDI     R19, 20
+   \   00000014   1B32               SUB     R19, R18
+    329                  buf[i - pos] = buf[i];
+   \                     ??rorLoDis_1:
+   \   00000016   9141               LD      R20, Z+
+   \   00000018   934D               ST      X+, R20
+    330              }
+   \   0000001A   953A               DEC     R19
+   \   0000001C   F7E1               BRNE    ??rorLoDis_1
+    331              for ( i = 0; i < pos; i++ ) {
+   \                     ??rorLoDis_0:
+   \   0000001E   E030               LDI     R19, 0
+   \   00000020   2322               TST     R18
+   \   00000022   F061               BREQ    ??rorLoDis_2
+    332                  buf[19 - i] = 0x00;
+   \                     ??rorLoDis_3:
+   \   00000024   E060               LDI     R22, 0
+   \   00000026   2F43               MOV     R20, R19
+   \   00000028   E050               LDI     R21, 0
+   \   0000002A   9541               NEG     R20
+   \   0000002C   4050               SBCI    R21, 0
+   \   0000002E   01F8               MOVW    R31:R30, R17:R16
+   \   00000030   0FE4               ADD     R30, R20
+   \   00000032   1FF5               ADC     R31, R21
+   \   00000034   8B63               STD     Z+19, R22
+    333              }
+   \   00000036   9533               INC     R19
+   \   00000038   1732               CP      R19, R18
+   \   0000003A   F3A0               BRCS    ??rorLoDis_3
+    334          }
+   \                     ??rorLoDis_2:
+   \   0000003C   2DA0               MOV     R26, R0
+   \   0000003E   2FB7               MOV     R27, R23
+   \   00000040   9508               RET
+    335          
+    336          /*************************************************************************
+    337          *
+    338          * Refresh displays
+    339          *
+    340          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    341          void RefreshDisplay(char value) {
+   \                     RefreshDisplay:
+   \   00000000   938A               ST      -Y, R24
+   \   00000002   2F80               MOV     R24, R16
+    342              switch ( UnitID ) {
+   \   00000004   9100....           LDS     R16, UnitID
+   \   00000008   3001               CPI     R16, 1
+   \   0000000A   F421               BRNE    ??RefreshDisplay_0
+    343              case TPC350:
+    344                  /*      Write2416Data(value) ;        
+    345                        printBar(value) ;
+    346                        printBarSec(value) ;*/
+    347                  break;
+    348              case TPC196:
+    349                  printXDi(0);
+   \   0000000C   E000               LDI     R16, 0
+   \   0000000E   ....               RCALL   printXDi
+    350                  printXDi(1);
+   \   00000010   E001               LDI     R16, 1
+   \   00000012   ....               RCALL   printXDi
+    351                  break;
+    352              default:
+    353                  break;
+    354              }
+    355              printLoDi(value);
+   \                     ??RefreshDisplay_0:
+   \   00000014   2F08               MOV     R16, R24
+   \   00000016   ....               RCALL   printLoDi
+    356          }
+   \   00000018   9189               LD      R24, Y+
+   \   0000001A   9508               RET
+    357          
+    358          /*************************************************************************
+    359          *
+    360          *  Print measage on display
+    361          *
+    362          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+    363          void PrintComError(char *data, char led) {
+   \                     PrintComError:
+   \   00000000   93BA               ST      -Y, R27
+   \   00000002   93AA               ST      -Y, R26
+   \   00000004   938A               ST      -Y, R24
+   \   00000006   01D8               MOVW    R27:R26, R17:R16
+   \   00000008   2F82               MOV     R24, R18
+    364          
+    365              Disp.lo_data[ALARM_VT][0] = strlen(data); //5 ;                  // char to disp
+   \   0000000A   ........           CALL    strlen
+   \   0000000E   9300....           STS     (Disp + 200), R16
+    366              Disp.lo_data[ALARM_VT][1] = data[0];
+   \   00000012   910C               LD      R16, X
+   \   00000014   9300....           STS     (Disp + 201), R16
+    367              Disp.lo_data[ALARM_VT][2] = data[1];
+   \   00000018   01FD               MOVW    R31:R30, R27:R26
+   \   0000001A   8101               LDD     R16, Z+1
+   \   0000001C   9300....           STS     (Disp + 202), R16
+    368              Disp.lo_data[ALARM_VT][3] = data[2];
+   \   00000020   8102               LDD     R16, Z+2
+   \   00000022   9300....           STS     (Disp + 203), R16
+    369              Disp.lo_data[ALARM_VT][4] = data[3];
+   \   00000026   8103               LDD     R16, Z+3
+   \   00000028   9300....           STS     (Disp + 204), R16
+    370              Disp.lo_data[ALARM_VT][5] = data[4];
+   \   0000002C   8104               LDD     R16, Z+4
+   \   0000002E   9300....           STS     (Disp + 205), R16
+    371              Disp.lo_data[ALARM_VT][6] = data[5];
+   \   00000032   8105               LDD     R16, Z+5
+   \   00000034   9300....           STS     (Disp + 206), R16
+    372          
+    373              switch ( UnitID ) {
+   \   00000038   9100....           LDS     R16, UnitID
+   \   0000003C   2300               TST     R16
+   \   0000003E   F019               BREQ    ??PrintComError_0
+   \   00000040   950A               DEC     R16
+   \   00000042   F049               BREQ    ??PrintComError_1
+   \   00000044   C00D               RJMP    ??PrintComError_2
+    374              case TPC350:
+    375                  Disp.hi_data[ALARM_VT][0] = 0;                  // char to disp
+   \                     ??PrintComError_0:
+   \   00000046   E000               LDI     R16, 0
+   \   00000048   9300....           STS     (Disp + 1000), R16
+    376                  Disp.ba_pdata[ALARM_VT] = 0;
+   \   0000004C   9300....           STS     (Disp + 1530), R16
+    377                  Disp.ba_sdata[ALARM_VT] = 0;
+   \   00000050   9300....           STS     (Disp + 1630), R16
+    378                  break;
+   \   00000054   C005               RJMP    ??PrintComError_2
+    379              case TPC196:
+    380                  Disp.x_data[0][0] = 0;                  // char to disp
+   \                     ??PrintComError_1:
+   \   00000056   E000               LDI     R16, 0
+   \   00000058   9300....           STS     (Disp + 1500), R16
+    381                  Disp.x_data[1][0] = 0;                  // char to disp
+   \   0000005C   9300....           STS     (Disp + 1506), R16
+    382                  break;
+    383              default:
+    384                  break;
+    385              }
+    386          
+    387              Disp.alarmLED = led;
+   \                     ??PrintComError_2:
+   \   00000060   9380....           STS     (Disp + 1751), R24
+    388              Disp.disp_vt = ALARM_VT;
+   \   00000064   E000               LDI     R16, 0
+   \   00000066   9300....           STS     (Disp + 1752), R16
+    389              Disp.disp_vt_old = Disp.disp_vt + 1;                 // force printout
+   \   0000006A   9100....           LDS     R16, (Disp + 1752)
+   \   0000006E   9503               INC     R16
+   \   00000070   9300....           STS     (Disp + 1753), R16
+    390              printLoDi(0);
+   \   00000074   E000               LDI     R16, 0
+   \   00000076   ....               RCALL   printLoDi
+    391          
+    392          }
+   \   00000078   9189               LD      R24, Y+
+   \   0000007A   91A9               LD      R26, Y+
+   \   0000007C   91B9               LD      R27, Y+
+   \   0000007E   9508               RET
+    393          
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+      0      2   DisplayBlink
+        0      2   -> OS_Delay
+      2      2   DisplayHandler
+        2      2   -> OS_Delay
+      7      2   Info
+        7      2   -> CharToAscii
+        7      2   -> OS_Delay
+        7      2   -> OS_WaitEvent
+        7      2   -> printLoDi
+        7      2   -> strlen
+      3      2   PrintComError
+        3      2   -> printLoDi
+        3      2   -> strlen
+      1      2   RefreshDisplay
+        1      2   -> printLoDi
+        1      2   -> printXDi
+     26      2   printLoDi
+      5      2   printXDi
+      0      2   rorLoDis
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      30  DisplayBlink
+     432  DisplayHandler
+     318  Info
+     128  PrintComError
+      28  RefreshDisplay
+       1  _A_PORTA
+       1  _A_PORTB
+       1  _A_PORTC
+       1  _A_PORTD
+       1  _A_PORTG
+       2  pointer
+          alarmLEDImg
+     622  printLoDi
+     274  printXDi
+      66  rorLoDis
+       7  -- Other
+
+ 
+     5 bytes in segment ABSOLUTE
+ 1 898 bytes in segment CODE
+     7 bytes in segment INITTAB
+     2 bytes in segment NEAR_Z
+ 
+ 1 898 bytes of CODE memory (+ 7 bytes shared)
+     2 bytes of DATA memory (+ 5 bytes shared)
+
+Errors: none
+Warnings: none

@@ -1,0 +1,222 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V8.10.1.1784/W64 for Microchip AVR   28/Apr/2023  08:50:16
+# Copyright 1996-2023 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
+#
+#    Source file           =  D:\S2Prog\IO\ANZB-1281\Src\UsartInt.c
+#    Command line          =
+#        -f D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\UsartInt.r90.rsp
+#        (D:\S2Prog\IO\ANZB-1281\Src\UsartInt.c --cpu=m128 -ms -o
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main -D OS_LIBMODE_D -D OS_UART=-1
+#        -lCN D:\S2Prog\IO\ANZB-1281\Debug\List\Main -y --initializers_in_flash
+#        --no_tbaa --debug -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\ANZB-1281\INC\ -I
+#        D:\S2Prog\IO\ANZB-1281\..\..\SHARED\INC\ --eeprom_size 4096 --clib
+#        -Ohz) --dependencies=n
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\UsartInt.r90.iar_deps
+#    Locale                =  C
+#    List file             =
+#        D:\S2Prog\IO\ANZB-1281\Debug\List\Main\UsartInt.lst
+#    Object file           =
+#        D:\S2Prog\IO\ANZB-1281\Debug\Obj\Main\UsartInt.r90
+#    Runtime model:           
+#      __64bit_doubles     =  disabled
+#      __SystemLibrary     =  CLib
+#      __architecture      =  *
+#      __cpu               =  3
+#      __cpu_name          =  ATmega128
+#      __dlib_version      =  clib
+#      __enhanced_core     =  enabled
+#      __enhanced_core_mul =  enabled
+#      __has_elpm          =  true
+#      __memory_model      =  2
+#      __mex               =  disabled
+#      __no_rampd          =  enabled
+#      __rt_version        =  3
+#      __vtable_memory     =  __nearflash
+#
+###############################################################################
+
+D:\S2Prog\IO\ANZB-1281\Src\UsartInt.c
+      1          /****************************************************************************************
+      2          / USART1 functions and interrupt
+      3          /   This routines sync and check the ANPRO10
+      4          /   Uart1Pro.c handle the package
+      5          /
+      6          ***************************************************************************************/
+      7          
+      8          
+      9          #ifdef __ATMEGA_1280__
+     10          #include	"iom1280.h"
+     11          #endif
+     12          
+     13          #ifdef __ATMEGA_1281__
+     14          #include	"iom1281.h"
+     15          #endif
+     16          #include "stdio.h"
+     17          #include "math.h"
+     18          #include "externals.h"
+     19          #include "version.h"
+     20          
+     21          #if (OS_UART != 0)
+     22          
+     23          // USART0
+     24          #pragma vector=USART0_RXC_vect
+     25          __interrupt void IntHandler_RX_USART0( void ){   
+     26          
+     27              OS_EnterInterrupt();
+     28              OS_EnterIntStack();
+     29              if ( UCSR0A & __BIT_MASK( DOR0 ) ) {                // Overrun error? 
+     30              }
+     31          
+     32              if ( UCSR0A & __BIT_MASK( FE0 ) ) {                 // Framing error? 
+     33              }
+     34          
+     35              while ( UCSR0A & __BIT_MASK( RXC0)  ) {                // New byte avaiable?
+     36                  UART[0].pRxBuffer[ UART[0].RxFirst ] = UDR0;    // Read the character 
+     37          
+     38                  if (UART[0].RxState != HANDLE) {                // ok to receive? 
+     39                      switch (UART[0].RxState) {                   // Yes, check state
+     40                      case SYNC :
+     41                          if ( UART[0].pRxBuffer[ UART[0].RxFirst ] == ANPRO10_SYN) {
+     42                              UART[0].SyncCnt ++ ;                 // count sync
+     43                              UART[0].RxFirst = 0;                 // start at start of buff
+     44                          } else if ((UART[0].SyncCnt >= 2) && 
+     45                                     (UART[0].pRxBuffer[ UART[0].RxFirst ] == ANPRO10_SOH)) {       // minimum two sync bytes
+     46                              UART[0].SyncCnt = 0 ;                // reset counter
+     47                              UART[0].RxState = HEADER ;
+     48                              UART[0].RxLast = 0 ;
+     49                              UART[0].RxTimeout = RX_TO_TIME ;    // reset timeout
+     50                          } else {
+     51                              UART[0].SyncCnt = 0 ;                // start over once more
+     52                          }
+     53                          break;
+     54                      default :
+     55                          if ((++UART[0].RxFirst) > RXSIZE_UART) { // Point to next location
+     56                              GoToSyncUART(0) ;                       // go to sync mode
+     57                          } else {
+     58                              ReceivePacketUart(0) ;              // Check package
+     59                          }
+     60                          break ;   
+     61                      }
+     62                  }
+     63              }
+     64              OS_LeaveIntStack();
+     65              OS_LeaveInterruptNoSwitch();
+     66          } 
+     67          
+     68          
+     69          #pragma vector=USART0_TXC_vect
+     70          __interrupt void IntHandler_TX_USART0( void ){   
+     71          
+     72             OS_EnterInterrupt();
+     73             OS_EnterIntStack();
+     74              
+     75              UCSR0B &= ~(__BIT_MASK( TXCIE0)) ;            // transmission end, disable int.
+     76              PORTE &= ~0x04 ;                              // TXE0 off
+     77              OS_StopTimer(&TimerUSART0);                    // and stop timer
+     78              GoToSyncUART(0) ;                                    // go to sync modus for recive
+     79              
+     80              OS_LeaveIntStack();
+     81              OS_LeaveInterruptNoSwitch();
+     82          }
+     83          
+     84          
+     85          #pragma vector = USART0_UDRE_vect
+     86          __interrupt void IntHandler_UDRE_USART0( void ){   
+     87          
+     88              OS_EnterInterrupt();
+     89              OS_EnterIntStack();
+     90              if ( UART[0].TxCount-- > 0 ) {
+     91                  UDR0 = UART[0].pTxBuffer[ UART[0].TxLast ];     // Send a character
+     92                  UART[0].TxLast++;
+     93              } else{                                             // Last byte sent?
+     94                    UCSR0B &= ~(__BIT_MASK( UDRIE0)) ;            // transmission end, disable int.
+     95                    UCSR0A |= (__BIT_MASK( TXC0)) ;               // Clear int bit in TXC.
+     96                    UCSR0B |= __BIT_MASK( TXCIE0) ;               // Enable TXC int.
+     97              }           
+     98              OS_LeaveIntStack();
+     99              OS_LeaveInterruptNoSwitch();
+    100          } 
+    101          #endif
+    102          
+    103          // USART1
+    104          #pragma vector=USART1_RXC_vect
+    105          __interrupt void IntHandler_RX_USART1( void ){   
+    106          
+    107              OS_EnterInterrupt();
+    108              OS_EnterIntStack();
+    109              if ( UCSR1A & __BIT_MASK( DOR1 ) ) {                // Overrun error? 
+    110              }
+    111          
+    112              if ( UCSR1A & __BIT_MASK( FE1 ) ) {                 // Framing error? 
+    113              }
+    114          
+    115              while ( UCSR1A & __BIT_MASK( RXC1)  ) {                // New byte avaiable?
+    116                  UART[1].pRxBuffer[ UART[1].RxFirst ] = UDR1;    // Read the character 
+    117          
+    118                  if (UART[1].RxState != HANDLE) {                // ok to receive? 
+    119                      switch (UART[1].RxState) {                   // Yes, check state
+    120                      case SYNC :
+    121                          if ( UART[1].pRxBuffer[ UART[1].RxFirst ] == ANPRO10_SYN) {
+    122                              UART[1].SyncCnt ++ ;                 // count sync
+    123                              UART[1].RxFirst = 0;                 // start at start of buff
+    124                          } else if ((UART[1].SyncCnt >= 2) && 
+    125                                     (UART[1].pRxBuffer[ UART[1].RxFirst ] == ANPRO10_SOH)) {       // minimum two sync bytes
+    126                              UART[1].SyncCnt = 0 ;                // reset counter
+    127                              UART[1].RxState = HEADER ;
+    128                              UART[1].RxLast = 0 ;
+    129                              UART[1].RxTimeout = RX_TO_TIME ;      // reset timeout
+    130                          } else {
+    131                              UART[1].SyncCnt = 0 ;                // start over once more
+    132                          }
+    133                          break;
+    134                      default :
+    135                          if ((++UART[1].RxFirst) > RXSIZE_UART) { // Point to next location
+    136                              GoToSyncUART(1) ;                    // go to sync mode
+    137                          } else {
+    138                              ReceivePacketUart(1) ;              // Check package
+    139                          }
+    140                          break ;   
+    141                      }
+    142                  }
+    143              }
+    144             OS_LeaveIntStack();
+    145             OS_LeaveInterruptNoSwitch();
+    146          } 
+    147          
+    148          
+    149          #pragma vector=USART1_TXC_vect
+    150          __interrupt void IntHandler_TX_USART1( void ){   
+    151          
+    152              OS_EnterInterrupt();
+    153              OS_EnterIntStack();
+    154              UCSR1B &= ~(__BIT_MASK( TXCIE1)) ;            // transmission end, disable int.
+    155              PORTE &= ~0x08 ;                              // TXE1 off
+    156              OS_StopTimer(&TimerUSART1);                    // and stop timer
+    157              GoToSyncUART(1) ;                                    // go to sync modus for recive
+    158              OS_LeaveIntStack();
+    159              OS_LeaveInterruptNoSwitch();
+    160          }
+    161          
+    162          
+    163          #pragma vector = USART1_UDRE_vect
+    164          __interrupt void IntHandler_UDRE_USART1( void ){   
+    165          
+    166             OS_EnterInterrupt();
+    167             OS_EnterIntStack();
+    168               if ( UART[1].TxCount-- > 0 ) {
+    169                  UDR1 = UART[1].pTxBuffer[ UART[1].TxLast ];  // Send a character
+    170                  UART[1].TxLast++;
+    171               } else {
+    172                  UCSR1B &= ~(__BIT_MASK( UDRIE1)) ;            // transmission end, disable int.
+    173                  UCSR1A |= (__BIT_MASK( TXC1)) ;               // Clear int bit in TXC.
+    174                  UCSR1B |= __BIT_MASK( TXCIE1) ;               // Enable TXC int.
+    175               }
+    176              OS_LeaveIntStack();
+    177              OS_LeaveInterruptNoSwitch();
+    178          } 
+
+Errors: 49
+Warnings: 6

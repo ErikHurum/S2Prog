@@ -1,0 +1,237 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:11:46 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\ANCriticalSection.cpp           #
+#    Command line    =  D:\S2Prog\Shared\Src\ANCriticalSection.cpp --fpu     #
+#                       None -D OS_LIBMODE_SP -D CPU_S3C2410 -D              #
+#                       OS_RAMVECT=0 -D OS_UART=-1 -D S2TXU -D USE_LZO=1 -D  #
+#                       __ARM_LIBRARY__ -D WATCHDOG=1 -D NETWORK=1 -lCN      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -z9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\ANCriticalSection.lst       #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\ANCriticalSection.r79        #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\ANCriticalSection.cpp
+      1          #ifndef S2TXU
+      2          	#include <process.h>
+      3          #ifdef BORLAND
+      4            #include <windows.h>
+      5          #endif
+      6          #else
+      7          	#include "RTOS.h"
+      8          #endif
+      9          #include "TSNDefines.h"
+     10          #include "ANCriticalSection.h"
+     11          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     12          ANCriticalSection::ANCriticalSection(void)
+     13          {
+   \                     ??ANCriticalSection:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+     14          #if defined(S2TXU) || defined(ANBOOLOADER)
+     15          	OS_CREATERSEMA(&MyHandle);
+   \   00000008   ........           _BLF     OS_CreateRSema,??OS_CreateRSema??rA
+     16          #else
+     17          	MyHandle  = CreateMutex( NULL, false, NULL );
+     18          
+     19          #endif
+     20          }
+   \   0000000C   0400A0E1           MOV      R0,R4
+   \   00000010   1040BDE8           POP      {R4,LR}
+   \   00000014   1EFF2FE1           BX       LR               ;; return
+     21          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     22          ANCriticalSection::~ANCriticalSection(void)
+     23          {
+     24          #ifdef WIN32
+     25          	WaitForSingleObject( MyHandle, 10 );
+     26          	CloseHandle(MyHandle);
+     27          #endif
+     28          }
+   \                     `?~ANCriticalSection`:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+     29          void ANCriticalSection::Acquire(void)
+   \                     ??Acquire:
+   \   00000000   ........           B        ?Subroutine10
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ?Subroutine10:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   ........           _BLF     OS_Use,??OS_Use??rA
+   \                     ??Subroutine10_0:
+   \   00000008   0040BDE8           POP      {LR}
+   \   0000000C   1EFF2FE1           BX       LR               ;; return
+     30          {
+     31          #ifdef S2TXU
+     32          	OS_Use(&MyHandle);
+     33          #else
+     34          	WaitForSingleObject( MyHandle, INFINITE );
+     35          #endif
+     36          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+     37          int ANCriticalSection::AcquireTimeOut(int TimeOut)
+     38          {
+   \                     ??AcquireTimeOut:
+   \   00000000   00402DE9           PUSH     {LR}
+     39          #ifdef S2TXU
+     40          	OS_Use(&MyHandle);
+   \   00000004   ........           _BLF     OS_Use,??OS_Use??rA
+     41          	return (0);
+   \   00000008   0040BDE8           POP      {LR}
+   \   0000000C   0000A0E3           MOV      R0,#+0
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+     42          #else
+     43          	return (WaitForSingleObject( MyHandle, TimeOut ));
+     44          	//return (0);
+     45          #endif
+     46          }
+     47          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     48          void ANCriticalSection::Release(void)
+     49          {
+   \                     ??Release:
+   \   00000000   00402DE9           PUSH     {LR}
+     50          #ifdef S2TXU
+     51          	OS_Unuse(&MyHandle);
+   \   00000004   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+     52          #else
+     53          	ReleaseMutex(MyHandle);
+     54          #endif
+     55          }
+   \   00000008   ........           B        ??Subroutine10_0
+
+   \                                 In segment CODE, align 4, keep-with-next
+     56          void ANCriticalSection::Enter(void)
+   \                     ??Enter:
+   \   00000000                      REQUIRE ?Subroutine10
+   \   00000000                      ;; // Fall through to label ?Subroutine10
+     57          {
+     58          	Acquire();
+     59          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+     60          void ANCriticalSection::Leave(void)
+     61          {
+   \                     ??Leave:
+   \   00000000   00402DE9           PUSH     {LR}
+     62          	Release();
+   \   00000004   ........           _BLF     OS_Unuse,??OS_Unuse??rA
+     63          }
+   \   00000008   ........           B        ??Subroutine10_0
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs ANCriticalSection &ANCriticalSection::new ANCriticalSection()
+   \                     `??new ANCriticalSection`:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   1000A0E3           MOV      R0,#+16
+   \   00000008   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   0000000C   000050E3           CMP      R0,#+0
+   \   00000010   0000000A           BEQ      `??new ANCriticalSection_1`
+   \   00000014   ........           BL       ??ANCriticalSection
+   \                     `??new ANCriticalSection_1`:
+   \   00000018   ........           B        ??Subroutine10_0
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   __??Code32?? __code __interwork __atpcs void ANCriticalSection::delete ~ANCriticalSection(ANCriticalSection *)
+   \                     `??delete ~ANCriticalSection`:
+   \   00000000   00402DE9           PUSH     {LR}
+   \   00000004   000050E3           CMP      R0,#+0
+   \   00000008   0000000A           BEQ      `??delete ~ANCriticalSection_1`
+   \   0000000C   ........           _BLF     `??operator delete`,`??operator delete??rA`
+   \                     `??delete ~ANCriticalSection_1`:
+   \   00000010   ........           B        ??Subroutine10_0
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+     64          
+     65          
+
+   Maximum stack usage in bytes:
+
+     Function                       CSTACK
+     --------                       ------
+     ANCriticalSection::ANCriticalSection()
+                                        8
+     ANCriticalSection::Acquire()       4
+     ANCriticalSection::AcquireTimeOut(int)
+                                        4
+     ANCriticalSection::Enter()         4
+     ANCriticalSection::Leave()         4
+     ANCriticalSection::Release()       4
+     ANCriticalSection::delete ~ANCriticalSection(ANCriticalSection *)
+                                        4
+     ANCriticalSection::new ANCriticalSection()
+                                        4
+     ANCriticalSection::~ANCriticalSection()
+                                        0
+     __sti__routine()                   0
+
+
+   Segment part sizes:
+
+     Function/Label                 Bytes
+     --------------                 -----
+     ANCriticalSection::ANCriticalSection()
+                                      24
+     ANCriticalSection::~ANCriticalSection()
+                                       4
+     ANCriticalSection::Acquire()      4
+     ?Subroutine10                    16
+     ANCriticalSection::AcquireTimeOut(int)
+                                      20
+     ANCriticalSection::Release()     12
+     ANCriticalSection::Enter()        0
+     ANCriticalSection::Leave()       12
+     ANCriticalSection::new ANCriticalSection()
+                                      28
+     ANCriticalSection::delete ~ANCriticalSection(ANCriticalSection *)
+                                      20
+     __sti__routine()                  4
+      Others                         104
+
+ 
+ 244 bytes in segment CODE
+   4 bytes in segment DIFUNCT
+ 
+ 148 bytes of CODE memory (+ 100 bytes shared)
+
+Errors: none
+Warnings: none

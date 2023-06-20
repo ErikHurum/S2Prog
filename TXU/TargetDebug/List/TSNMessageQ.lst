@@ -1,0 +1,297 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               19/Jan/2017  10:13:08 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\Shared\Src\TSNMessageQ.cpp                 #
+#    Command line    =  D:\S2Prog\Shared\Src\TSNMessageQ.cpp --fpu None -D   #
+#                       OS_LIBMODE_DP -D OS_RAMVECT=0 -D CPU_S3C2410 -D      #
+#                       OS_UART=1 -D ANBOOTLOADER -D __ARM_LIBRARY__ -lCN    #
+#                       D:\S2Prog\TXU\TargetDebug\List\ -o                   #
+#                       D:\S2Prog\TXU\TargetDebug\Obj\ -s2 --no_cse          #
+#                       --no_unroll --no_inline --no_code_motion --no_tbaa   #
+#                       --no_clustering --no_scheduling --debug --cpu_mode   #
+#                       arm --endian little --cpu ARM920T --stack_align 4    #
+#                       --interwork -e --eec++ --dlib_config "C:\Program     #
+#                       Files (x86)\IAR Systems\Embedded Workbench           #
+#                       4.0\arm\LIB\dl4tpainl8f.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\MINILZO.108\ -I          #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\INC\"                              #
+#    List file       =  D:\S2Prog\TXU\TargetDebug\List\TSNMessageQ.lst       #
+#    Object file     =  D:\S2Prog\TXU\TargetDebug\Obj\TSNMessageQ.r79        #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\Shared\Src\TSNMessageQ.cpp
+      1          #ifdef WIN32
+      2          	#include "windows.h"
+      3              #include <queue>
+      4          	using namespace std;
+      5          
+      6          #else
+      7          	#include "RTOS.h"
+      8          #endif
+      9          #include "def.h"
+     10          #include "TSNMessageQ.h"
+     11          
+     12          unsigned int TSNMessageQ::qNumber = 0;
+     13          
+     14          TSNMessageQ::TSNMessageQ()
+     15          {
+     16          #ifdef WIN32
+     17          
+     18          	DWORD error;
+     19            DWORD pid;
+     20          
+     21            //
+     22            // the original mailbox scheme is not suitable for multi instance situation.
+     23            // so fixing it.
+     24            // -hkim-
+     25            //
+     26          #if 0
+     27          	wsprintf(QName,"\\\\.\\mailslot\\MessageQ%d\\Q",qNumber);
+     28          #else
+     29            pid = GetCurrentProcessId();
+     30          	wsprintf(QName,"\\\\.\\mailslot\\MessageQ%d-%d\\Q",pid, qNumber);
+     31          #endif
+     32          
+     33          	hQ = CreateMailslot(QName,(DWORD)0,MAILSLOT_WAIT_FOREVER,NULL);
+     34          	if ( hQ == INVALID_HANDLE_VALUE ) {
+     35          		error = GetLastError();
+     36          	}
+     37          	qNumber++;
+     38          	hEvent 			= CreateEvent(NULL, TRUE, FALSE, TEXT("WriteEvent"));
+     39          	ov.Offset 		= 0;
+     40          	ov.OffsetHigh 	= 0;
+     41          	ov.hEvent     	= hEvent;
+     42          	hMailQ 			= CreateFile(QName,GENERIC_WRITE,FILE_SHARE_READ | FILE_SHARE_WRITE,NULL,CREATE_ALWAYS,0 ,NULL);
+     43          
+     44          
+     45          #else
+     46          	// allocate memory for the queue
+     47          	qBuffer = new U8[qSize];
+     48          	pQ = new OS_Q;
+     49          	OS_Q_Create(pQ, qBuffer, qSize);			//EHSMark, why not use QSize? Was 8192
+     50          	pMessage = 0;
+     51          #endif
+     52          }
+     53          TSNMessageQ::~TSNMessageQ()
+     54          {
+     55          #ifdef WIN32
+     56          	CloseHandle(hQ);
+     57          	CloseHandle(hMailQ);
+     58              CloseHandle(hEvent);
+     59          
+     60          #else
+     61          	delete[] qBuffer;
+     62          #endif
+     63          }
+     64          bool TSNMessageQ::PostMessage(void *buf, int size)
+     65          {
+     66          #ifdef WIN32
+     67          	DWORD bytesWritten;
+     68          	DWORD error;
+     69          	if ( !WriteFile(hMailQ, buf, (DWORD)size, &bytesWritten,0) ) {
+     70          		error = GetLastError();
+     71          	}
+     72          	SetEvent(hEvent);
+     73          	return(bytesWritten == (unsigned)size);
+     74          #else
+     75          	int Ret;
+     76          	do{
+     77          		Ret= OS_Q_Put(pQ,buf,size);
+     78          		if (Ret) {
+     79          			OS_Delay(1);
+     80          		}
+     81          	}while(Ret);
+     82          	return(bool(!Ret));
+     83          #endif
+     84          
+     85          }
+     86          bool TSNMessageQ::GetMessageCond(void *buf, int *size)
+     87          {
+     88          #ifdef WIN32
+     89          
+     90             //	LPDWORD bytesRead = 0;
+     91          	DWORD cbMessage, cMessage, cbRead;
+     92          	bool fResult;
+     93          	LPSTR lpszBuffer;
+     94          	DWORD error;
+     95          
+     96          
+     97          
+     98          	cbMessage = cMessage = cbRead = 0;
+     99          	fResult = GetMailslotInfo(hQ,	// mailslot handle
+    100          														(LPDWORD) NULL,								// no maximum message size
+    101          														&cbMessage,										// size of next message
+    102          														&cMessage,										// number of messages
+    103          														(LPDWORD) NULL);							// no read time-out
+    104          
+    105          	if ( !fResult ) {
+    106          		error = GetLastError();
+    107          		return(FALSE);
+    108          	}
+    109          
+    110          	if ( cbMessage == MAILSLOT_NO_MESSAGE ) {
+    111          		*size = 0;
+    112          		return(false);
+    113          	}
+    114          	lpszBuffer = (LPSTR) GlobalAlloc(GPTR, cbMessage);
+    115          	if ( NULL == lpszBuffer ) {
+    116          		*size = 0;
+    117          		return(FALSE);
+    118          	}
+    119          	lpszBuffer[0] = '\0';
+    120          
+    121          	fResult = ReadFile(hQ,
+    122          										 lpszBuffer,
+    123          										 cbMessage,
+    124          										 &cbRead,
+    125          										 NULL);
+    126          
+    127          	if ( !fResult ) {
+    128          		error = GetLastError();
+    129          		GlobalFree((HGLOBAL) lpszBuffer);
+    130          		*size = 0;
+    131          		return(FALSE);
+    132          	}
+    133          	memcpy(buf,lpszBuffer,cbRead);
+    134          	*size = cbRead;
+    135          	GlobalFree((HGLOBAL) lpszBuffer);
+    136          	return(fResult && cbRead);
+    137          #else
+    138          	if ( !pMessage ) {
+    139          		*size = OS_Q_GetPtrCond(pQ,&pMessage);
+    140          	} else {
+    141          		*size = messageSize;
+    142          	}
+    143          	if ( *size ) {
+    144          		memcpy(buf,pMessage,*size);
+    145          		OS_Q_Purge(pQ);
+    146          		pMessage = 0;
+    147          		messageSize = 0;
+    148          	}
+    149          	return(*size);
+    150          #endif
+    151          
+    152          }
+    153          
+    154          
+    155          int TSNMessageQ::GetMessage(void *buf, int *size, int TimeOut)
+    156          {
+    157          #ifdef WIN32
+    158          	DWORD cbRead = 0;
+    159          	bool fResult=false;
+    160          	DWORD error;
+    161          	unsigned RxSize = unsigned(*size);
+    162          	char *BufPtr = (char*)buf;
+    163          	DWORD TOut = (DWORD)TimeOut;
+    164          
+    165          	while(true){
+    166          		if (CharQueue.size()>= RxSize) {
+    167          			for(unsigned i=0; i< RxSize; i++){
+    168          				BufPtr[i] = CharQueue.front();
+    169          				CharQueue.pop();
+    170          			}
+    171          			return true;
+    172          		}
+    173          		if ( WaitForSingleObject(hEvent, TimeOut) != WAIT_OBJECT_0 ) return false;
+    174          		char tmpBuf[4096];
+    175          		fResult = ReadFile(hQ, tmpBuf, 4096, &cbRead, NULL);
+    176          
+    177          		if ( !fResult ) {
+    178          			error = GetLastError();
+    179          			*size = 0;
+    180          			return(false);
+    181          		}
+    182          		for(unsigned i=0; i < cbRead; i++){
+    183          			CharQueue.push(tmpBuf[i]);
+    184          		}
+    185          	}
+    186          #else
+    187          	if ( !pMessage ) {
+    188          		*size = OS_Q_GetPtr(pQ,&pMessage);
+    189          	} else {
+    190          		*size = messageSize;
+    191          	}
+    192          	memcpy(buf,pMessage,*size);
+    193          	OS_Q_Purge(pQ);
+    194          	pMessage = 0;
+    195          	messageSize = 0;
+    196          	return(*size);
+    197          #endif
+    198          
+    199          }
+    200          
+    201          int TSNMessageQ::GetMessageCnt()
+    202          {
+    203          #ifdef WIN32
+    204          	DWORD cbMessage, cMessage;
+    205          	bool fResult;
+    206          
+    207          
+    208          
+    209          	cbMessage = cMessage = 0;
+    210          	fResult = GetMailslotInfo(hQ,	// mailslot handle
+    211          														(LPDWORD) NULL,								// no maximum message size
+    212          														&cbMessage,										// size of next message
+    213          														&cMessage,										// number of messages
+    214          														(LPDWORD) NULL);							// no read time-out
+    215          	if ( !fResult )
+    216          		return(-1);
+    217          	else
+    218          		return(cMessage);
+    219          #else
+    220          	return(OS_Q_GetMessageCnt(pQ));
+    221          #endif
+    222          
+    223          }int TSNMessageQ::GetMessageSize()
+    224          {
+    225          #ifdef WIN32
+    226          	DWORD cbMessage, cMessage;
+    227          	bool fResult;
+    228          
+    229          
+    230          
+    231          	cbMessage = cMessage = 0;
+    232          	fResult = GetMailslotInfo(hQ,	// mailslot handle
+    233          														(LPDWORD) NULL,								// no maximum message size
+    234          														&cbMessage,										// size of next message
+    235          														&cMessage,										// number of messages
+    236          														(LPDWORD) NULL);							// no read time-out
+    237          	if ( !fResult )
+    238          		return(-1);
+    239          	else
+    240          		return(cbMessage);
+    241          #else
+    242          	if ( !pMessage ) {
+    243          		messageSize = OS_Q_GetPtrCond(pQ,&pMessage);
+    244          	}
+    245          	return(messageSize);
+    246          
+    247          #endif
+    248          
+    249          }
+    250          
+    251          bool TSNMessageQ::HasMore(void)
+    252          {
+    253          #ifndef S2TXU
+    254          	return !CharQueue.empty();
+    255          #else
+    256                  return false;
+    257          #endif
+    258          }
+    259          
+    260          
+
+Errors: 1
+Warnings: none

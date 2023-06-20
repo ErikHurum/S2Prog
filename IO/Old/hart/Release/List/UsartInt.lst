@@ -1,0 +1,386 @@
+###############################################################################
+#
+# IAR C/C++ Compiler V7.30.4.1668 for Microchip AVR       24/Aug/2022  14:11:45
+# Copyright 1996-2021 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+#
+#    Source file  =  D:\S2Prog\IO\hart\Src\UsartInt.c
+#    Command line =  
+#        -f C:\Users\ESY\AppData\Local\Temp\EW5BC8.tmp
+#        (D:\S2Prog\IO\hart\Src\UsartInt.c --cpu=m1280 -ms -o
+#        D:\S2Prog\IO\hart\Release\Obj -D OS_LIBMODE_S -D OS_UART=-1 -lCN
+#        D:\S2Prog\IO\hart\Release\List -y --initializers_in_flash --no_tbaa
+#        --enable_external_bus -DENABLE_BIT_DEFINITIONS -e -I
+#        D:\S2Prog\IO\hart\INC\\ -I ..\..\..\Shared\Inc\\ --eeprom_size 4096
+#        --clib -Oh)
+#    Locale       =  Norwegian Bokmål_NOR.1252
+#    List file    =  D:\S2Prog\IO\hart\Release\List\UsartInt.lst
+#    Object file  =  D:\S2Prog\IO\hart\Release\Obj\UsartInt.r90
+#
+###############################################################################
+
+D:\S2Prog\IO\hart\Src\UsartInt.c
+      1          /****************************************************************************************
+      2          / USART1 functions and interrupt
+      3          /   This routines sync and check the ANPRO10
+      4          /   Uart1Pro.c handle the package
+      5          /
+      6          ***************************************************************************************/
+      7          
+      8          
+      9          #include "iom1280.h"
+
+   \                                 In  segment ABSOLUTE, at 0xc6
+   \   union <unnamed> volatile __io _A_UDR0
+   \                     _A_UDR0:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0xc1
+   \   union <unnamed> volatile __io _A_UCSR0B
+   \                     _A_UCSR0B:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0xc0
+   \   union <unnamed> volatile __io _A_UCSR0A
+   \                     _A_UCSR0A:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x2e
+   \   union <unnamed> volatile __io _A_PORTE
+   \                     _A_PORTE:
+   \   00000000                      DS8 1
+     10          #include "stdio.h"
+     11          #include "math.h"
+     12          #include "externals.h"
+     13          #include "version.h"
+     14          
+     15          #if (OS_UART != 0)
+     16          
+     17          // USART0
+     18          #pragma vector=USART0_RX_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     19          __interrupt void IntHandler_RX_USART0( void ){   
+   \                     IntHandler_RX_USART0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+   \   00000024                      REQUIRE __RSTACK_in_external_ram_new_way
+   \   00000024   9721               SBIW    R29:R28, 1
+     20          
+     21              OS_EnterInterrupt();
+   \   00000026   9100....           LDS     R16, OS_Counters
+   \   0000002A   9503               INC     R16
+   \   0000002C   9300....           STS     OS_Counters, R16
+   \   00000030   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000034   9503               INC     R16
+   \   00000036   9300....           STS     (OS_Counters + 1), R16
+     22              OS_EnterIntStack();
+   \   0000003A   94F8               CLI
+   \   0000003C   ........           CALL    OS__EnterIntStack
+   \   00000040   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000044   2300               TST     R16
+   \   00000046   F409               BRNE    ??IntHandler_RX_USART0_0
+   \   00000048   9478               SEI
+     23              if ( UCSR0A & __BIT_MASK( DOR0 ) ) {                // Overrun error? 
+   \                     ??IntHandler_RX_USART0_0:
+   \   0000004A   9100....           LDS     R16, _A_UCSR0A
+     24              }
+     25          
+     26              if ( UCSR0A & __BIT_MASK( FE0 ) ) {                 // Framing error? 
+   \   0000004E   9100....           LDS     R16, _A_UCSR0A
+   \   00000052   C008               RJMP    ??IntHandler_RX_USART0_1
+     27              }
+     28          
+     29              while ( UCSR0A & __BIT_MASK( RXC0)  ) {                // New byte avaiable?
+     30          		char Data = UDR0;
+   \                     ??IntHandler_RX_USART0_2:
+   \   00000054   9100....           LDS     R16, _A_UDR0
+   \   00000058   8308               ST      Y, R16
+     31          		OS_PutMailCond1(&UART[0].RxMailBox,(const char*)&Data);
+   \   0000005A   019E               MOVW    R19:R18, R29:R28
+   \   0000005C   ....               LDI     R16, LOW((UART + 12))
+   \   0000005E   ....               LDI     R17, HIGH((UART + 12))
+   \   00000060   ........           CALL    OS_PutMailCond1
+     32              }
+   \                     ??IntHandler_RX_USART0_1:
+   \   00000064   9100....           LDS     R16, _A_UCSR0A
+   \   00000068   FD07               SBRC    R16, 7
+   \   0000006A   CFF4               RJMP    ??IntHandler_RX_USART0_2
+     33              OS_LeaveIntStack();
+   \   0000006C   94F8               CLI
+   \   0000006E   ........           CALL    OS__LeaveIntStack
+     34              OS_LeaveInterruptNoSwitch();
+   \   00000072   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000076   950A               DEC     R16
+   \   00000078   9300....           STS     (OS_Counters + 1), R16
+   \   0000007C   9100....           LDS     R16, OS_Counters
+   \   00000080   950A               DEC     R16
+   \   00000082   9300....           STS     OS_Counters, R16
+     35          } 
+   \   00000086   9621               ADIW    R29:R28, 1
+   \   00000088   ....               RJMP    ??Subroutine1_0
+   \   0000008A                      REQUIRE _A_UCSR0A
+   \   0000008A                      REQUIRE _A_UDR0
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ??Subroutine1_0:
+   \   00000000   BF9B               OUT     0x3B, R25
+   \   00000002   BF8F               OUT     0x3F, R24
+   \   00000004   9109               LD      R16, Y+
+   \   00000006   9119               LD      R17, Y+
+   \   00000008   9129               LD      R18, Y+
+   \   0000000A   9139               LD      R19, Y+
+   \   0000000C   9149               LD      R20, Y+
+   \   0000000E   9159               LD      R21, Y+
+   \   00000010   9169               LD      R22, Y+
+   \   00000012   9179               LD      R23, Y+
+   \   00000014   9009               LD      R0, Y+
+   \   00000016   9019               LD      R1, Y+
+   \   00000018   9029               LD      R2, Y+
+   \   0000001A   9039               LD      R3, Y+
+   \   0000001C   91E9               LD      R30, Y+
+   \   0000001E   91F9               LD      R31, Y+
+   \   00000020   9189               LD      R24, Y+
+   \   00000022   9199               LD      R25, Y+
+   \   00000024   9518               RETI
+     36          
+     37          
+     38          #pragma vector=USART0_TX_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     39          __interrupt void IntHandler_TX_USART0( void ){   
+   \                     IntHandler_TX_USART0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+   \   00000024                      REQUIRE __RSTACK_in_external_ram_new_way
+     40          
+     41             OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+     42             OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_TX_USART0_0
+   \   00000046   9478               SEI
+     43              
+     44              UCSR0B &= ~(__BIT_MASK( TXCIE0)) ;            // transmission end, disable int.
+   \                     ??IntHandler_TX_USART0_0:
+   \   00000048   910000C1           LDS     R16, 193
+   \   0000004C   7B0F               ANDI    R16, 0xBF
+   \   0000004E   930000C1           STS     193, R16
+     45              PORTE &= ~0x04 ;                              // TXE0 off
+   \   00000052   9872               CBI     0x0E, 0x02
+     46              OS_StopTimer(&TimerUSART0);                    // and stop timer
+   \   00000054   ....               LDI     R16, LOW(TimerUSART0)
+   \   00000056   ....               LDI     R17, (TimerUSART0) >> 8
+   \   00000058   ........           CALL    OS_StopTimer
+     47              GoToSyncUART(0) ;                                    // go to sync modus for recive
+   \   0000005C   E000               LDI     R16, 0
+   \   0000005E   ........           CALL    GoToSyncUART
+     48              
+     49              OS_LeaveIntStack();
+   \   00000062                      REQUIRE ?Subroutine0
+   \   00000062                      REQUIRE _A_UCSR0B
+   \   00000062                      REQUIRE _A_PORTE
+   \   00000062                      ;               // Fall through to label ?Subroutine0
+     50              OS_LeaveInterruptNoSwitch();
+     51          }
+
+   \                                 In  segment CODE, align 2, keep-with-next
+   \                     ?Subroutine0:
+   \   00000000   94F8               CLI
+   \   00000002   ........           CALL    OS__LeaveIntStack
+   \   00000006   9100....           LDS     R16, (OS_Counters + 1)
+   \   0000000A   950A               DEC     R16
+   \   0000000C   9300....           STS     (OS_Counters + 1), R16
+   \   00000010   9100....           LDS     R16, OS_Counters
+   \   00000014   950A               DEC     R16
+   \   00000016   9300....           STS     OS_Counters, R16
+   \   0000001A                      REQUIRE ??Subroutine1_0
+   \   0000001A                      ;               // Fall through to label ??Subroutine1_0
+     52          
+     53          
+     54          #pragma vector = USART0_UDRE_vect
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     55          __interrupt void IntHandler_UDRE_USART0( void ){   
+   \                     IntHandler_UDRE_USART0:
+   \   00000000   939A               ST      -Y, R25
+   \   00000002   938A               ST      -Y, R24
+   \   00000004   93FA               ST      -Y, R31
+   \   00000006   93EA               ST      -Y, R30
+   \   00000008   923A               ST      -Y, R3
+   \   0000000A   922A               ST      -Y, R2
+   \   0000000C   921A               ST      -Y, R1
+   \   0000000E   920A               ST      -Y, R0
+   \   00000010   937A               ST      -Y, R23
+   \   00000012   936A               ST      -Y, R22
+   \   00000014   935A               ST      -Y, R21
+   \   00000016   934A               ST      -Y, R20
+   \   00000018   933A               ST      -Y, R19
+   \   0000001A   932A               ST      -Y, R18
+   \   0000001C   931A               ST      -Y, R17
+   \   0000001E   930A               ST      -Y, R16
+   \   00000020   B78F               IN      R24, 0x3F
+   \   00000022   B79B               IN      R25, 0x3B
+   \   00000024                      REQUIRE __RSTACK_in_external_ram_new_way
+     56          
+     57              OS_EnterInterrupt();
+   \   00000024   9100....           LDS     R16, OS_Counters
+   \   00000028   9503               INC     R16
+   \   0000002A   9300....           STS     OS_Counters, R16
+   \   0000002E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000032   9503               INC     R16
+   \   00000034   9300....           STS     (OS_Counters + 1), R16
+     58              OS_EnterIntStack();
+   \   00000038   94F8               CLI
+   \   0000003A   ........           CALL    OS__EnterIntStack
+   \   0000003E   9100....           LDS     R16, (OS_Counters + 1)
+   \   00000042   2300               TST     R16
+   \   00000044   F409               BRNE    ??IntHandler_UDRE_USART0_0
+   \   00000046   9478               SEI
+     59              if ( UART[0].TxLast < UART[0].TxCount ) {
+   \                     ??IntHandler_UDRE_USART0_0:
+   \   00000048   9100....           LDS     R16, (UART + 4)
+   \   0000004C   9110....           LDS     R17, (UART + 5)
+   \   00000050   9120....           LDS     R18, (UART + 6)
+   \   00000054   9130....           LDS     R19, (UART + 7)
+   \   00000058   1702               CP      R16, R18
+   \   0000005A   0713               CPC     R17, R19
+   \   0000005C   F4A0               BRCC    ??IntHandler_UDRE_USART0_1
+     60                  UDR0 = UART[0].pTxBuffer[ UART[0].TxLast ];     // Send a character
+   \   0000005E   91E0....           LDS     R30, UART
+   \   00000062   91F0....           LDS     R31, (UART + 1)
+   \   00000066   0FE0               ADD     R30, R16
+   \   00000068   1FF1               ADC     R31, R17
+   \   0000006A   8100               LD      R16, Z
+   \   0000006C   9300....           STS     _A_UDR0, R16
+     61                  UART[0].TxLast++;
+   \   00000070   9100....           LDS     R16, (UART + 4)
+   \   00000074   9110....           LDS     R17, (UART + 5)
+   \   00000078   5F0F               SUBI    R16, 255
+   \   0000007A   4F1F               SBCI    R17, 255
+   \   0000007C   9300....           STS     (UART + 4), R16
+   \   00000080   9310....           STS     (UART + 5), R17
+   \   00000084   C00F               RJMP    ??IntHandler_UDRE_USART0_2
+     62              } else{                                             // Last byte sent?
+     63                    UCSR0B &= ~(__BIT_MASK( UDRIE0)) ;            // transmission end, disable int.
+   \                     ??IntHandler_UDRE_USART0_1:
+   \   00000086   910000C1           LDS     R16, 193
+   \   0000008A   7D0F               ANDI    R16, 0xDF
+   \   0000008C   930000C1           STS     193, R16
+     64                    UCSR0A |= (__BIT_MASK( TXC0)) ;               // Clear int bit in TXC.
+   \   00000090   910000C0           LDS     R16, 192
+   \   00000094   6400               ORI     R16, 0x40
+   \   00000096   930000C0           STS     192, R16
+     65                    UCSR0B |= __BIT_MASK( TXCIE0) ;               // Enable TXC int.
+   \   0000009A   910000C1           LDS     R16, 193
+   \   0000009E   6400               ORI     R16, 0x40
+   \   000000A0   930000C1           STS     193, R16
+     66              }           
+     67              OS_LeaveIntStack();
+   \                     ??IntHandler_UDRE_USART0_2:
+   \   000000A4   ....               RJMP    ?Subroutine0
+   \   000000A6                      REQUIRE _A_UDR0
+   \   000000A6                      REQUIRE _A_UCSR0B
+   \   000000A6                      REQUIRE _A_UCSR0A
+     68              OS_LeaveInterruptNoSwitch();
+     69          } 
+
+   \                                 In  segment INTVEC, offset 0x64, root
+   \                     `??IntHandler_RX_USART0::??INTVEC 100`:
+   \   00000064   ........           JMP     IntHandler_RX_USART0
+
+   \                                 In  segment INTVEC, offset 0x68, root
+   \                     `??IntHandler_UDRE_USART0::??INTVEC 104`:
+   \   00000068   ........           JMP     IntHandler_UDRE_USART0
+
+   \                                 In  segment INTVEC, offset 0x6c, root
+   \                     `??IntHandler_TX_USART0::??INTVEC 108`:
+   \   0000006C   ........           JMP     IntHandler_TX_USART0
+     70          #endif
+     71          
+
+   Maximum stack usage in bytes:
+
+   CSTACK RSTACK Function
+   ------ ------ --------
+     17      2   IntHandler_RX_USART0
+       17      2   -> OS_PutMailCond1
+       17      2   -> OS__EnterIntStack
+       17      2   -> OS__LeaveIntStack
+     16      2   IntHandler_TX_USART0
+       16      2   -> GoToSyncUART
+       16      2   -> OS_StopTimer
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+     16      2   IntHandler_UDRE_USART0
+       16      2   -> OS__EnterIntStack
+       16      2   -> OS__LeaveIntStack
+
+
+   Segment part sizes:
+
+   Bytes  Function/Label
+   -----  --------------
+      38  ??Subroutine1_0
+      26  ?Subroutine0
+     138  IntHandler_RX_USART0
+       4  IntHandler_RX_USART0::??INTVEC 100
+      98  IntHandler_TX_USART0
+       4  IntHandler_TX_USART0::??INTVEC 108
+     166  IntHandler_UDRE_USART0
+       4  IntHandler_UDRE_USART0::??INTVEC 104
+       1  _A_PORTE
+       1  _A_UCSR0A
+       1  _A_UCSR0B
+       1  _A_UDR0
+
+ 
+   4 bytes in segment ABSOLUTE
+ 466 bytes in segment CODE
+  12 bytes in segment INTVEC
+ 
+ 466 bytes of CODE memory (+ 12 bytes shared)
+   0 bytes of DATA memory (+  4 bytes shared)
+
+Errors: none
+Warnings: none

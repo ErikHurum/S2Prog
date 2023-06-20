@@ -1,0 +1,108 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004   SEGGER Microcontroller Systeme GmbH               *
+*                                                                    *
+*       www.segger.com     Support: support@segger.com               *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : LH7A404_SDRAM.mac
+Purpose : Setup CPU for JTAG from IAR CSpy (Sample for LogicPD LH7A404 board)
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+
+/*********************************************************************
+*
+*       InitSDRAMController()
+*
+* Function description
+*   Initializes the SDRAM controller and SDRAM
+*/
+InitSDRAMController() {
+  __sleep(400);                                    // Wait for SDRAM controller
+  __writeMemory32(0x01320008,0x80002410,"Memory"); // Setup SDRAM Controller (Domain CS Configuration)
+  __sleep(400);                                    // Wait for SDRAM controller
+
+  __writeMemory32(0x00000014,0x80002408,"Memory"); // Setup SDRAM Controller (Refresh Timer)
+  __writeMemory32(0x80000003,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __sleep(6000);                                   // Wait for SDRAM controller
+  __writeMemory32(0x80000001,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __sleep(1000);                                   // Wait for SDRAM controller
+
+  __writeMemory32(0x000005dc,0x80002408,"Memory"); // Setup SDRAM Controller (Refresh Timer)
+  __writeMemory32(0x80000002,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+
+  __readMemory32(0xc000c800, "Memory");
+  __sleep(200);                                    // Wait for SDRAM controller
+
+  __writeMemory32(0x01320028,0x80002410,"Memory"); // Setup SDRAM Controller (Domain CS Configuration)
+  __sleep(10);                                     // Wait for SDRAM controller
+  __writeMemory32(0x80000000,0x80002404,"Memory"); // Setup SDRAM Controller (Global configuration)
+  __sleep(10);                                     // Wait for SDRAM controller
+}
+
+/*********************************************************************
+*
+*       InitClock()
+*
+* Function description
+*   Initializes the clock to 200MHz
+*/
+InitClock() {
+  __readMemory32(0x80000420,"Memory"); // GCLK = FCLK = 200 MHz
+  __writeMemory32(0x0004EE39,0x80000420,"Memory"); // GCLK = FCLK = 200 MHz
+                                                   // HCLK = FCLK / 2
+                                                   // Predivisor for PLL1 = 14 (01110b)
+                                                   // Main Divisor1   for PLL1 = 12  (1100b)
+                                                   // Main Divisor2   for PLL1 = 29 (11101b)
+                                                   // PCLK = HCLK / 2
+                                                   // PS Divisor = 1
+                                                   // Static memory controller is clocked
+                                                   // Use the 33 MHz Clock to boot.
+  __sleep(16000);                                  // wait 16 ms to setup
+}
+
+
+/*********************************************************************
+*
+*       Init()
+*
+* Function description
+*   Initializes PLL and external bus interface
+*/
+Init() {
+  InitClock();
+  __writeMemory32(0x00000003,0x80002040,"Memory"); // Set PCMCIA Controller -> 2 Cards @ 0x40000000 & 0x50000000
+  __sleep(100);                                    // wait 1 ms to setup
+  InitSDRAMController();
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*
+* Function description
+*   Called once after the target application is downloaded.
+*/
+execUserPreload() {
+  __message "execUserPreload: Setup LH7A400";
+  Init();
+}
+
+/*********************************************************************
+*
+*       execUserReset()
+*
+* Function description
+*   Called each time the reset command is issued.
+*/
+execUserReset() {
+  __message "execUserReset: Setup LH7A400";
+}
+
+/**************** End of file ***************************************/

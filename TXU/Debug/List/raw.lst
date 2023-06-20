@@ -1,0 +1,652 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  14:41:50 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\lwip-1.4.1\src\core\raw.c              #
+#    Command line    =  D:\S2Prog\TXU\lwip-1.4.1\src\core\raw.c --fpu None   #
+#                       -D OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D   #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --dlib_config     #
+#                       "C:\Program Files (x86)\IAR Systems\Embedded         #
+#                       Workbench 4.0\arm\LIB\dl4tpainl8n.h" -I              #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\raw.lst                     #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\raw.r79                      #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\lwip-1.4.1\src\core\raw.c
+      1          /**
+      2           * @file
+      3           * Implementation of raw protocol PCBs for low-level handling of
+      4           * different types of protocols besides (or overriding) those
+      5           * already available in lwIP.
+      6           *
+      7           */
+      8          
+      9          /*
+     10           * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+     11           * All rights reserved.
+     12           *
+     13           * Redistribution and use in source and binary forms, with or without modification,
+     14           * are permitted provided that the following conditions are met:
+     15           *
+     16           * 1. Redistributions of source code must retain the above copyright notice,
+     17           *    this list of conditions and the following disclaimer.
+     18           * 2. Redistributions in binary form must reproduce the above copyright notice,
+     19           *    this list of conditions and the following disclaimer in the documentation
+     20           *    and/or other materials provided with the distribution.
+     21           * 3. The name of the author may not be used to endorse or promote products
+     22           *    derived from this software without specific prior written permission.
+     23           *
+     24           * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+     25           * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+     26           * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+     27           * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+     28           * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+     29           * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+     30           * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+     31           * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+     32           * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+     33           * OF SUCH DAMAGE.
+     34           *
+     35           * This file is part of the lwIP TCP/IP stack.
+     36           *
+     37           * Author: Adam Dunkels <adam@sics.se>
+     38           *
+     39           */
+     40          
+     41          #include "lwip/opt.h"
+     42          
+     43          #if LWIP_RAW /* don't build if not configured for use in lwipopts.h */
+     44          
+     45          #include "lwip/def.h"
+     46          #include "lwip/memp.h"
+     47          #include "lwip/ip_addr.h"
+     48          #include "lwip/netif.h"
+     49          #include "lwip/raw.h"
+     50          #include "lwip/stats.h"
+     51          #include "arch/perf.h"
+     52          
+     53          #include <string.h>
+     54          
+     55          /** The list of RAW PCBs */
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     56          static struct raw_pcb *raw_pcbs;
+   \                     raw_pcbs:
+   \   00000000                      DS8 4
+     57          
+     58          /**
+     59           * Determine if in incoming IP packet is covered by a RAW PCB
+     60           * and if so, pass it to a user-provided receive callback function.
+     61           *
+     62           * Given an incoming IP datagram (as a chain of pbufs) this function
+     63           * finds a corresponding RAW PCB and calls the corresponding receive
+     64           * callback function.
+     65           *
+     66           * @param p pbuf to be demultiplexed to a RAW PCB.
+     67           * @param inp network interface on which the datagram was received.
+     68           * @return - 1 if the packet has been eaten by a RAW PCB receive
+     69           *           callback function. The caller MAY NOT not reference the
+     70           *           packet any longer, and MAY NOT call pbuf_free().
+     71           * @return - 0 if packet is not eaten (pbuf is still referenced by the
+     72           *           caller).
+     73           *
+     74           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+     75          u8_t
+     76          raw_input(struct pbuf *p, struct netif *inp)
+     77          {
+   \                     raw_input:
+   \   00000000   70472DE9           PUSH     {R4-R6,R8-R10,LR}
+     78            struct raw_pcb *pcb, *prev;
+     79            struct ip_hdr *iphdr;
+     80            s16_t proto;
+     81            u8_t eaten = 0;
+     82          
+     83            LWIP_UNUSED_ARG(inp);
+     84          
+     85            iphdr = (struct ip_hdr *)p->payload;
+     86            proto = IPH_PROTO(iphdr);
+     87          
+     88            prev = NULL;
+     89            pcb = raw_pcbs;
+   \   00000004   ........           LDR      R9,??DataTable2  ;; raw_pcbs
+   \   00000008   0040A0E1           MOV      R4,R0
+   \   0000000C   040094E5           LDR      R0,[R4, #+4]
+   \   00000010   00A099E5           LDR      R10,[R9, #+0]
+   \   00000014   0960D0E5           LDRB     R6,[R0, #+9]
+   \   00000018   0050A0E3           MOV      R5,#+0
+   \   0000001C   0080A0E3           MOV      R8,#+0
+   \                     ??raw_input_0:
+   \   00000020   00005AE3           CMP      R10,#+0
+   \   00000024   2200000A           BEQ      ??raw_input_1
+     90            /* loop through all raw pcbs until the packet is eaten by one */
+     91            /* this allows multiple pcbs to match against the packet by design */
+     92            while ((eaten == 0) && (pcb != NULL)) {
+     93              if ((pcb->protocol == proto) &&
+     94                  (ip_addr_isany(&pcb->local_ip) ||
+     95                   ip_addr_cmp(&(pcb->local_ip), &current_iphdr_dest))) {
+   \   00000028   1000DAE5           LDRB     R0,[R10, #+16]
+   \   0000002C   060050E1           CMP      R0,R6
+   \   00000030   1B00001A           BNE      ??raw_input_2
+   \   00000034   00005AE3           CMP      R10,#+0
+   \   00000038   00009A15           LDRNE    R0,[R10, #+0]
+   \   0000003C   00005013           CMPNE    R0,#+0
+   \   00000040   0300000A           BEQ      ??raw_input_3
+   \   00000044   74109FE5           LDR      R1,??raw_input_4  ;; current_iphdr_dest
+   \   00000048   001091E5           LDR      R1,[R1, #+0]
+   \   0000004C   010050E1           CMP      R0,R1
+   \   00000050   1300001A           BNE      ??raw_input_2
+     96          #if IP_SOF_BROADCAST_RECV
+     97                /* broadcast filter? */
+     98                if (ip_get_option(pcb, SOF_BROADCAST) || !ip_addr_isbroadcast(&current_iphdr_dest, inp))
+     99          #endif /* IP_SOF_BROADCAST_RECV */
+    100                {
+    101                  /* receive callback function available? */
+    102                  if (pcb->recv != NULL) {
+   \                     ??raw_input_3:
+   \   00000054   14C09AE5           LDR      R12,[R10, #+20]
+   \   00000058   00005CE3           CMP      R12,#+0
+   \   0000005C   1000000A           BEQ      ??raw_input_2
+    103                    /* the receive callback function did not eat the packet? */
+    104                    if (pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr()) != 0) {
+   \   00000060   5C309FE5           LDR      R3,??raw_input_4+0x4  ;; current_iphdr_src
+   \   00000064   18009AE5           LDR      R0,[R10, #+24]
+   \   00000068   0420A0E1           MOV      R2,R4
+   \   0000006C   0A10A0E1           MOV      R1,R10
+   \   00000070   0FE0A0E1           MOV      LR,PC
+   \   00000074   1CFF2FE1           BX       R12
+   \   00000078   000050E3           CMP      R0,#+0
+   \   0000007C   0800000A           BEQ      ??raw_input_2
+    105                      /* receive function ate the packet */
+    106                      p = NULL;
+   \   00000080   0040A0E3           MOV      R4,#+0
+    107                      eaten = 1;
+   \   00000084   0150A0E3           MOV      R5,#+1
+    108                      if (prev != NULL) {
+   \   00000088   000058E3           CMP      R8,#+0
+   \   0000008C   0400000A           BEQ      ??raw_input_2
+    109                      /* move the pcb to the front of raw_pcbs so that is
+    110                         found faster next time */
+    111                        prev->next = pcb->next;
+   \   00000090   0C009AE5           LDR      R0,[R10, #+12]
+   \   00000094   0C0088E5           STR      R0,[R8, #+12]
+    112                        pcb->next = raw_pcbs;
+   \   00000098   000099E5           LDR      R0,[R9, #+0]
+   \   0000009C   0C008AE5           STR      R0,[R10, #+12]
+    113                        raw_pcbs = pcb;
+   \   000000A0   00A089E5           STR      R10,[R9, #+0]
+    114                      }
+    115                    }
+    116                  }
+    117                  /* no receive callback function was set for this raw PCB */
+    118                }
+    119                /* drop the packet */
+    120              }
+    121              prev = pcb;
+   \                     ??raw_input_2:
+   \   000000A4   0A80A0E1           MOV      R8,R10
+    122              pcb = pcb->next;
+   \   000000A8   0CA09AE5           LDR      R10,[R10, #+12]
+    123            }
+   \   000000AC   0500B0E1           MOVS     R0,R5
+   \   000000B0   DAFFFF0A           BEQ      ??raw_input_0
+    124            return eaten;
+   \                     ??raw_input_1:
+   \   000000B4   0500A0E1           MOV      R0,R5
+   \   000000B8   7047BDE8           POP      {R4-R6,R8-R10,LR}
+   \   000000BC   1EFF2FE1           BX       LR               ;; return
+   \                     ??raw_input_4:
+   \   000000C0   ........           DC32     current_iphdr_dest
+   \   000000C4   ........           DC32     current_iphdr_src
+    125          }
+    126          
+    127          /**
+    128           * Bind a RAW PCB.
+    129           *
+    130           * @param pcb RAW PCB to be bound with a local address ipaddr.
+    131           * @param ipaddr local IP address to bind with. Use IP_ADDR_ANY to
+    132           * bind to all local interfaces.
+    133           *
+    134           * @return lwIP error code.
+    135           * - ERR_OK. Successful. No error occured.
+    136           * - ERR_USE. The specified IP address is already bound to by
+    137           * another RAW PCB.
+    138           *
+    139           * @see raw_disconnect()
+    140           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    141          err_t
+    142          raw_bind(struct raw_pcb *pcb, ip_addr_t *ipaddr)
+    143          {
+    144            ip_addr_set(&pcb->local_ip, ipaddr);
+   \                     raw_bind:
+   \   00000000   000051E3           CMP      R1,#+0
+   \   00000004   00109115           LDRNE    R1,[R1, #+0]
+   \   00000008   001080E5           STR      R1,[R0, #+0]
+    145            return ERR_OK;
+   \   0000000C   0000A0E3           MOV      R0,#+0
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    146          }
+    147          
+    148          /**
+    149           * Connect an RAW PCB. This function is required by upper layers
+    150           * of lwip. Using the raw api you could use raw_sendto() instead
+    151           *
+    152           * This will associate the RAW PCB with the remote address.
+    153           *
+    154           * @param pcb RAW PCB to be connected with remote address ipaddr and port.
+    155           * @param ipaddr remote IP address to connect with.
+    156           *
+    157           * @return lwIP error code
+    158           *
+    159           * @see raw_disconnect() and raw_sendto()
+    160           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    161          err_t
+    162          raw_connect(struct raw_pcb *pcb, ip_addr_t *ipaddr)
+    163          {
+    164            ip_addr_set(&pcb->remote_ip, ipaddr);
+   \                     raw_connect:
+   \   00000000   000051E3           CMP      R1,#+0
+   \   00000004   00109115           LDRNE    R1,[R1, #+0]
+   \   00000008   041080E5           STR      R1,[R0, #+4]
+    165            return ERR_OK;
+   \   0000000C   0000A0E3           MOV      R0,#+0
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    166          }
+    167          
+    168          
+    169          /**
+    170           * Set the callback function for received packets that match the
+    171           * raw PCB's protocol and binding. 
+    172           * 
+    173           * The callback function MUST either
+    174           * - eat the packet by calling pbuf_free() and returning non-zero. The
+    175           *   packet will not be passed to other raw PCBs or other protocol layers.
+    176           * - not free the packet, and return zero. The packet will be matched
+    177           *   against further PCBs and/or forwarded to another protocol layers.
+    178           * 
+    179           * @return non-zero if the packet was free()d, zero if the packet remains
+    180           * available for others.
+    181           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    182          void
+    183          raw_recv(struct raw_pcb *pcb, raw_recv_fn recv, void *recv_arg)
+    184          {
+    185            /* remember recv() callback and user data */
+    186            pcb->recv = recv;
+   \                     raw_recv:
+   \   00000000   141080E5           STR      R1,[R0, #+20]
+    187            pcb->recv_arg = recv_arg;
+   \   00000004   182080E5           STR      R2,[R0, #+24]
+    188          }
+   \   00000008   1EFF2FE1           BX       LR               ;; return
+    189          
+    190          /**
+    191           * Send the raw IP packet to the given address. Note that actually you cannot
+    192           * modify the IP headers (this is inconsistent with the receive callback where
+    193           * you actually get the IP headers), you can only specify the IP payload here.
+    194           * It requires some more changes in lwIP. (there will be a raw_send() function
+    195           * then.)
+    196           *
+    197           * @param pcb the raw pcb which to send
+    198           * @param p the IP payload to send
+    199           * @param ipaddr the destination address of the IP packet
+    200           *
+    201           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    202          err_t
+    203          raw_sendto(struct raw_pcb *pcb, struct pbuf *p, ip_addr_t *ipaddr)
+    204          {
+   \                     raw_sendto:
+   \   00000000   F0402DE9           PUSH     {R4-R7,LR}
+   \   00000004   0060A0E1           MOV      R6,R0
+   \   00000008   0140A0E1           MOV      R4,R1
+   \   0000000C   0270A0E1           MOV      R7,R2
+    205            err_t err;
+    206            struct netif *netif;
+    207            ip_addr_t *src_ip;
+    208            struct pbuf *q; /* q will be sent down the stack */
+    209            
+    210            LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_TRACE, ("raw_sendto\n"));
+    211            
+    212            /* not enough space to add an IP header to first pbuf in given p chain? */
+    213            if (pbuf_header(p, IP_HLEN)) {
+   \   00000010   1410A0E3           MOV      R1,#+20
+   \   00000014   0400A0E1           MOV      R0,R4
+   \   00000018   ........           _BLF     pbuf_header,??pbuf_header??rA
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   0F00000A           BEQ      ??raw_sendto_0
+    214              /* allocate header in new pbuf */
+    215              q = pbuf_alloc(PBUF_IP, 0, PBUF_RAM);
+   \   00000024   0020A0E3           MOV      R2,#+0
+   \   00000028   0010A0E3           MOV      R1,#+0
+   \   0000002C   0100A0E3           MOV      R0,#+1
+   \   00000030   ........           _BLF     pbuf_alloc,??pbuf_alloc??rA
+   \   00000034   0050B0E1           MOVS     R5,R0
+    216              /* new header pbuf could not be allocated? */
+    217              if (q == NULL) {
+   \   00000038   0200001A           BNE      ??raw_sendto_1
+    218                LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS, ("raw_sendto: could not allocate header\n"));
+    219                return ERR_MEM;
+   \                     ??raw_sendto_2:
+   \   0000003C   F040BDE8           POP      {R4-R7,LR}
+   \   00000040   0000E0E3           MVN      R0,#+0
+   \   00000044   1EFF2FE1           BX       LR
+    220              }
+    221              if (p->tot_len != 0) {
+   \                     ??raw_sendto_1:
+   \   00000048   B800D4E1           LDRH     R0,[R4, #+8]
+   \   0000004C   000050E3           CMP      R0,#+0
+   \   00000050   0900000A           BEQ      ??raw_sendto_3
+    222                /* chain header q in front of given pbuf p */
+    223                pbuf_chain(q, p);
+   \   00000054   0410A0E1           MOV      R1,R4
+   \   00000058   0500A0E1           MOV      R0,R5
+   \   0000005C   ........           _BLF     pbuf_chain,??pbuf_chain??rA
+   \   00000060   050000EA           B        ??raw_sendto_3
+    224              }
+    225              /* { first pbuf q points to header pbuf } */
+    226              LWIP_DEBUGF(RAW_DEBUG, ("raw_sendto: added header pbuf %p before given pbuf %p\n", (void *)q, (void *)p));
+    227            }  else {
+    228              /* first pbuf q equals given pbuf */
+    229              q = p;
+   \                     ??raw_sendto_0:
+   \   00000064   0450A0E1           MOV      R5,R4
+    230              if(pbuf_header(q, -IP_HLEN)) {
+   \   00000068   1310E0E3           MVN      R1,#+19
+   \   0000006C   0500A0E1           MOV      R0,R5
+   \   00000070   ........           _BLF     pbuf_header,??pbuf_header??rA
+   \   00000074   000050E3           CMP      R0,#+0
+   \   00000078   EFFFFF1A           BNE      ??raw_sendto_2
+    231                LWIP_ASSERT("Can't restore header we just removed!", 0);
+    232                return ERR_MEM;
+    233              }
+    234            }
+    235          
+    236            if ((netif = ip_route(ipaddr)) == NULL) {
+   \                     ??raw_sendto_3:
+   \   0000007C   0700A0E1           MOV      R0,R7
+   \   00000080   ........           _BLF     ip_route,??ip_route??rA
+   \   00000084   000050E3           CMP      R0,#+0
+   \   00000088   0600001A           BNE      ??raw_sendto_4
+    237              LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_LEVEL_WARNING, ("raw_sendto: No route to %"U16_F".%"U16_F".%"U16_F".%"U16_F"\n",
+    238                ip4_addr1_16(ipaddr), ip4_addr2_16(ipaddr), ip4_addr3_16(ipaddr), ip4_addr4_16(ipaddr)));
+    239              /* free any temporary header pbuf allocated by pbuf_header() */
+    240              if (q != p) {
+   \   0000008C   040055E1           CMP      R5,R4
+   \   00000090   0100000A           BEQ      ??raw_sendto_5
+    241                pbuf_free(q);
+   \   00000094   0500A0E1           MOV      R0,R5
+   \   00000098   ........           _BLF     pbuf_free,??pbuf_free??rA
+    242              }
+    243              return ERR_RTE;
+   \                     ??raw_sendto_5:
+   \   0000009C   F040BDE8           POP      {R4-R7,LR}
+   \   000000A0   0300E0E3           MVN      R0,#+3
+   \   000000A4   1EFF2FE1           BX       LR
+    244            }
+    245          
+    246          #if IP_SOF_BROADCAST
+    247            /* broadcast filter? */
+    248            if (!ip_get_option(pcb, SOF_BROADCAST) && ip_addr_isbroadcast(ipaddr, netif)) {
+    249              LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_LEVEL_WARNING, ("raw_sendto: SOF_BROADCAST not enabled on pcb %p\n", (void *)pcb));
+    250              /* free any temporary header pbuf allocated by pbuf_header() */
+    251              if (q != p) {
+    252                pbuf_free(q);
+    253              }
+    254              return ERR_VAL;
+    255            }
+    256          #endif /* IP_SOF_BROADCAST */
+    257          
+    258            if (ip_addr_isany(&pcb->local_ip)) {
+   \                     ??raw_sendto_4:
+   \   000000A8   000056E3           CMP      R6,#+0
+   \   000000AC   00109615           LDRNE    R1,[R6, #+0]
+    259              /* use outgoing network interface IP address as source address */
+    260              src_ip = &(netif->ip_addr);
+    261            } else {
+    262              /* use RAW PCB local IP address as source address */
+    263              src_ip = &(pcb->local_ip);
+    264            }
+    265          
+    266            NETIF_SET_HWADDRHINT(netif, &pcb->addr_hint);
+    267            err = ip_output_if (q, src_ip, ipaddr, pcb->ttl, pcb->tos, pcb->protocol, netif);
+   \   000000B0   01002DE9           PUSH     {R0}
+   \   000000B4   00005113           CMPNE    R1,#+0
+   \   000000B8   04108002           ADDEQ    R1,R0,#+4
+   \   000000BC   1000D6E5           LDRB     R0,[R6, #+16]
+   \   000000C0   0610A011           MOVNE    R1,R6
+   \   000000C4   0720A0E1           MOV      R2,R7
+   \   000000C8   01002DE9           PUSH     {R0}
+   \   000000CC   0900D6E5           LDRB     R0,[R6, #+9]
+   \   000000D0   01002DE9           PUSH     {R0}
+   \   000000D4   0A30D6E5           LDRB     R3,[R6, #+10]
+   \   000000D8   0500A0E1           MOV      R0,R5
+   \   000000DC   ........           _BLF     ip_output_if,??ip_output_if??rA
+   \   000000E0   0060A0E1           MOV      R6,R0
+    268            NETIF_SET_HWADDRHINT(netif, NULL);
+    269          
+    270            /* did we chain a header earlier? */
+    271            if (q != p) {
+   \   000000E4   040055E1           CMP      R5,R4
+   \   000000E8   0CD08DE2           ADD      SP,SP,#+12
+   \   000000EC   0100000A           BEQ      ??raw_sendto_6
+    272              /* free the header */
+    273              pbuf_free(q);
+   \   000000F0   0500A0E1           MOV      R0,R5
+   \   000000F4   ........           _BLF     pbuf_free,??pbuf_free??rA
+    274            }
+    275            return err;
+   \                     ??raw_sendto_6:
+   \   000000F8   0600A0E1           MOV      R0,R6
+   \   000000FC   F040BDE8           POP      {R4-R7,LR}
+   \   00000100   1EFF2FE1           BX       LR               ;; return
+    276          }
+    277          
+    278          /**
+    279           * Send the raw IP packet to the address given by raw_connect()
+    280           *
+    281           * @param pcb the raw pcb which to send
+    282           * @param p the IP payload to send
+    283           *
+    284           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    285          err_t
+    286          raw_send(struct raw_pcb *pcb, struct pbuf *p)
+    287          {
+   \                     raw_send:
+   \   00000000   00402DE9           PUSH     {LR}
+    288            return raw_sendto(pcb, p, &pcb->remote_ip);
+   \   00000004   042080E2           ADD      R2,R0,#+4
+   \   00000008   ........           BL       raw_sendto
+   \   0000000C   0040BDE8           POP      {LR}
+   \   00000010   1EFF2FE1           BX       LR               ;; return
+    289          }
+    290          
+    291          /**
+    292           * Remove an RAW PCB.
+    293           *
+    294           * @param pcb RAW PCB to be removed. The PCB is removed from the list of
+    295           * RAW PCB's and the data structure is freed from memory.
+    296           *
+    297           * @see raw_new()
+    298           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    299          void
+    300          raw_remove(struct raw_pcb *pcb)
+    301          {
+    302            struct raw_pcb *pcb2;
+    303            /* pcb to be removed is first in list? */
+    304            if (raw_pcbs == pcb) {
+   \                     raw_remove:
+   \   00000000   ........           LDR      R1,??DataTable2  ;; raw_pcbs
+   \   00000004   00402DE9           PUSH     {LR}
+   \   00000008   002091E5           LDR      R2,[R1, #+0]
+   \   0000000C   000052E1           CMP      R2,R0
+    305              /* make list start at 2nd pcb */
+    306              raw_pcbs = raw_pcbs->next;
+   \   00000010   0C209205           LDREQ    R2,[R2, #+12]
+   \   00000014   00208105           STREQ    R2,[R1, #+0]
+    307              /* pcb not 1st in list */
+    308            } else {
+    309              for(pcb2 = raw_pcbs; pcb2 != NULL; pcb2 = pcb2->next) {
+   \   00000018   00005213           CMPNE    R2,#+0
+   \   0000001C   0800000A           BEQ      ??raw_remove_0
+    310                /* find pcb in raw_pcbs list */
+    311                if (pcb2->next != NULL && pcb2->next == pcb) {
+   \                     ??raw_remove_1:
+   \   00000020   0C1092E5           LDR      R1,[R2, #+12]
+   \   00000024   000051E3           CMP      R1,#+0
+   \   00000028   0200000A           BEQ      ??raw_remove_2
+   \   0000002C   000051E1           CMP      R1,R0
+    312                  /* remove pcb from list */
+    313                  pcb2->next = pcb->next;
+   \   00000030   0C109005           LDREQ    R1,[R0, #+12]
+   \   00000034   0C108205           STREQ    R1,[R2, #+12]
+    314                }
+    315              }
+   \                     ??raw_remove_2:
+   \   00000038   0C2092E5           LDR      R2,[R2, #+12]
+   \   0000003C   000052E3           CMP      R2,#+0
+   \   00000040   F6FFFF1A           BNE      ??raw_remove_1
+    316            }
+    317            memp_free(MEMP_RAW_PCB, pcb);
+   \                     ??raw_remove_0:
+   \   00000044   0010A0E1           MOV      R1,R0
+   \   00000048   0000A0E3           MOV      R0,#+0
+   \   0000004C   ........           _BLF     memp_free,??memp_free??rA
+    318          }
+   \   00000050   0040BDE8           POP      {LR}
+   \   00000054   1EFF2FE1           BX       LR               ;; return
+    319          
+    320          /**
+    321           * Create a RAW PCB.
+    322           *
+    323           * @return The RAW PCB which was created. NULL if the PCB data structure
+    324           * could not be allocated.
+    325           *
+    326           * @param proto the protocol number of the IPs payload (e.g. IP_PROTO_ICMP)
+    327           *
+    328           * @see raw_remove()
+    329           */
+
+   \                                 In segment CODE, align 4, keep-with-next
+    330          struct raw_pcb *
+    331          raw_new(u8_t proto)
+    332          {
+   \                     raw_new:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+   \   00000004   0040A0E1           MOV      R4,R0
+    333            struct raw_pcb *pcb;
+    334          
+    335            LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_TRACE, ("raw_new\n"));
+    336          
+    337            pcb = (struct raw_pcb *)memp_malloc(MEMP_RAW_PCB);
+   \   00000008   0000A0E3           MOV      R0,#+0
+   \   0000000C   ........           _BLF     memp_malloc,??memp_malloc??rA
+   \   00000010   0050B0E1           MOVS     R5,R0
+    338            /* could allocate RAW PCB? */
+    339            if (pcb != NULL) {
+   \   00000014   0900000A           BEQ      ??raw_new_0
+    340              /* initialize PCB to all zeroes */
+    341              memset(pcb, 0, sizeof(struct raw_pcb));
+   \   00000018   1C20A0E3           MOV      R2,#+28
+   \   0000001C   0010A0E3           MOV      R1,#+0
+   \   00000020   ........           _BLF     memset,??memset??rA
+    342              pcb->protocol = proto;
+   \   00000024   1040C5E5           STRB     R4,[R5, #+16]
+    343              pcb->ttl = RAW_TTL;
+   \   00000028   FF00A0E3           MOV      R0,#+255
+   \   0000002C   0A00C5E5           STRB     R0,[R5, #+10]
+    344              pcb->next = raw_pcbs;
+   \   00000030   ........           LDR      R0,??DataTable2  ;; raw_pcbs
+   \   00000034   001090E5           LDR      R1,[R0, #+0]
+   \   00000038   0C1085E5           STR      R1,[R5, #+12]
+    345              raw_pcbs = pcb;
+   \   0000003C   005080E5           STR      R5,[R0, #+0]
+    346            }
+    347            return pcb;
+   \                     ??raw_new_0:
+   \   00000040   0500A0E1           MOV      R0,R5
+   \   00000044   3040BDE8           POP      {R4,R5,LR}
+   \   00000048   1EFF2FE1           BX       LR               ;; return
+    348          }
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable2:
+   \   00000000   ........           DC32     raw_pcbs
+    349          
+    350          #endif /* LWIP_RAW */
+    351          
+
+   Maximum stack usage in bytes:
+
+     Function    CSTACK
+     --------    ------
+     raw_bind        0
+     raw_connect     0
+     raw_input      32
+     raw_new        12
+     raw_recv        0
+     raw_remove      4
+     raw_send        4
+     raw_sendto     32
+
+
+   Segment part sizes:
+
+     Function/Label Bytes
+     -------------- -----
+     raw_pcbs          4
+     raw_input       200
+     raw_bind         20
+     raw_connect      20
+     raw_recv         12
+     raw_sendto      260
+     raw_send         20
+     raw_remove       88
+     raw_new          76
+     ??DataTable2      4
+      Others         152
+
+ 
+ 840 bytes in segment CODE
+   4 bytes in segment DATA_Z
+  12 bytes in segment INITTAB
+ 
+ 700 bytes of CODE memory (+ 152 bytes shared)
+   4 bytes of DATA memory
+
+Errors: none
+Warnings: none

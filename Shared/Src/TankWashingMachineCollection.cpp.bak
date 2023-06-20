@@ -1,0 +1,71 @@
+//---------------------------------------------------------------------------
+
+#pragma hdrstop
+
+#include "TankWashingMachineCollection.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+
+TankWashingMachineCollection::TankWashingMachineCollection()
+	: PRogramObjectBase()
+{
+
+}
+
+
+TankWashingMachineCollection::~TankWashingMachineCollection()
+{
+	// Free all tank washing machine objects
+	TankWashMachineSet_t::iterator iter = TWMSet.begin();
+
+	while (iter != TWMSet.end())
+	{
+		TankWashingMachine *twm = *iter;
+		delete twm;
+		++iter;
+    }
+}
+
+
+void TankWashingMachineCollection::Add(TankWashingMachine* washingMachine)
+{
+	TWMSet.insert(washingMachine);
+}
+
+
+bool TankWashingMachineCollection::Empty()
+{
+    return TWMSet.empty();
+}
+
+
+bool TankWashingMachineCollection::LoadConfigString(TSNConfigString &ConfigString)
+{
+	bool NoError = true;
+	int ErrorLine=0;
+	int Key;
+	AnsiString PROName = "Tank Washing Machine Collection";
+
+	do {
+		AnsiString InputKeyWord= ConfigString.NextWord(ErrorLine);
+		if ( ErrorLine ) {
+			if ( ErrorLine != EOF ) {
+				GiveConfigWarning(PROName,ErrorLine);
+			}
+		} else {
+			Key = FindConfigKey(InputKeyWord);
+
+			// Parse next tank washing machine config
+			if (Key == TWM_TANK_WASHING_MACHINE) {
+				TankWashingMachine *twm = new TankWashingMachine();
+				if (twm->LoadConfigString(ConfigString))
+				{
+					Add(twm);
+                }
+			}
+		}
+	}
+	while (( ErrorLine != EOF )&& ( Key != TWM_END_TANK_WASHING_MACHINE_LIST ));
+
+	return NoError;
+}

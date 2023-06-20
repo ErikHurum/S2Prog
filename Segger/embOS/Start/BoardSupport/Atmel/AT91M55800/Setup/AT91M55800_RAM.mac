@@ -1,0 +1,89 @@
+/*********************************************************************
+*               SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+*       Solutions for real time microcontroller applications         *
+**********************************************************************
+*                                                                    *
+*       (C) 2004   SEGGER Microcontroller Systeme GmbH               *
+*                                                                    *
+*       www.segger.com     Support: support@segger.com               *
+*                                                                    *
+**********************************************************************
+
+----------------------------------------------------------------------
+File    : JTAG_AT91M55_RAM.mac
+Purpose : Setup CPU for JTAG from IAR CSpy (Sample for PhyCore board)
+--------  END-OF-HEADER  ---------------------------------------------
+*/
+
+/*********************************************************************
+*
+*       InitPLL()
+*
+* Function description
+*   Initializes PLL
+*/
+InitPLL() {
+  __var i;
+  __message "AT91M55800_RAM.mac: Init()"; 
+ 
+  __writeMemory32(0x002F0002, 0xFFFF4020, "Memory");        // APMC_CGMR: Enable main oscillator, MOSCEN=1; OSCOUNT=47
+  while ((__readMemory32(0xFFFF4030, "Memory") & 1) != 1);  // APMC_SR:   Wait until oscillator is stable
+  __writeMemory32(0x002F4002, 0xFFFF4020, "Memory");        // APMC_CGMR: Switch to main clock
+  __writeMemory32(0x032F4102, 0xFFFF4020, "Memory");        // APMC_CGMR: Setup PLL to 32MHz
+  // Wait until PLL is stable, plus some extra time
+  for (i = 0; i < 10; i++)  {
+    while ((__readMemory32(0xFFFF4030, "Memory") & 2) != 2) ; // APMC_SR
+  }
+  // Commuting from 16Mhz to PLL @ 32MHz
+  // CSS = 2, MUL = 1
+  __writeMemory32(0x032F8102, 0xFFFF4020, "Memory"); // APMC_CGMR: Master clock = PPL clock
+  __writeMemory32(0x0007effc, 0xFFFF4010, "Memory"); // APMC_PCER: Enable all peripheral clocks
+}
+
+/*********************************************************************
+*
+*       InitMemory()
+*
+* Function description
+*   Initializes memory interface and executes Remap.
+*   Chip selects and timings are for ATMEL AT91EB55 eval board
+*/
+InitMemory() {
+  __message "AT91M55800_RAM.mac: InitMemory()"; 
+
+  __writeMemory32(0x0100252d, 0xFFE00000, "Memory"); // Chip Select Register 0 (EBI_CSR0), Flash at 0x01000000
+  __writeMemory32(0x02002121, 0xFFE00004, "Memory"); // Chip Select Register 1,     external RAM at 0x02000000
+  __writeMemory32(0x00000006, 0xFFE00024, "Memory"); // Standard read, 2 Mbyte (EBI_MCR)
+  //
+  // Perform remap, if not allready done
+  //
+  __writeMemory32(0x12345678, 0x00000000, "Memory");
+  if(__readMemory32(0x00000000, "Memory") != 0x12345678) {
+    __writeMemory32(0x00000001, 0xFFE00020, "Memory"); // Remap (EBI_RCR)
+  }
+}
+
+/*********************************************************************
+*
+*       execUserPreload()
+*
+* Function description
+*   Called once after the target application is downloaded.
+*/
+execUserPreload() {
+  __message "AT91M55800_RAM.mac: execUserPreload()"; 
+  InitPLL();
+  InitMemory();
+}
+
+/*********************************************************************
+*
+*       execUserReset()
+*
+* Function description
+*   Called each time the reset command is issued. 
+*/
+execUserReset() {
+}
+
+/******	EOF *********************************************************/

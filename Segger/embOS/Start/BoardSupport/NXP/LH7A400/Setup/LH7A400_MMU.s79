@@ -1,0 +1,198 @@
+;*********************************************************************
+;*              SEGGER MICROCONTROLLER SYSTEME GmbH                  *
+;*      Solutions for real time microcontroller applications         *
+;*********************************************************************
+;*                                                                   *
+;*      (C) 2002-2007    SEGGER Microcontroller Systeme GmbH         *
+;*                       www.segger.com                              *
+;*                                                                   *
+;*********************************************************************
+;
+;---------------------------------------------------------------------
+;File   : LH7A400_MMU.s79
+;Purpose: MMU initializaition for LH7A400 CPU on LogicPD cardengine
+;-------  END-OF-HEADER  ---------------------------------------------
+;
+        rseg CODE:CODE(2)
+        code32
+
+;
+; Setup the MMU.
+;
+        PUBLIC MMUSetup
+MMUSetup:
+; setup CPU to use cache
+        mrc p15, 0, r0, c1, c0, 0      ; Read cache control register
+        ldr r1, =~0x1307               ; Disable cache & MMU
+        and r0, r0, r1
+        mcr p15, 0, r0, c1, c0, 0      ; Write cache control register
+
+; Flush the cache and TLB.
+        ldr r0, =0x00000000
+        mcr p15, 0, r0, c7, c7, 0      ; invalidate I and D cache
+        mcr p15, 0, r0, c8, c7, 0      ; invalidate both I and D TLBs
+
+; Set domain access control register for all 16 domains.
+        ldr r0, =0x55555555
+        mcr p15, 0, r0, c3, c0, 0
+
+; Set MMU page table.
+        mrc p15, 0, r0, c2, c0, 0
+        ldr r0, =page_table
+        mcr p15, 0, r0, c2, c0, 0
+
+; Enable the MMU and I/D caches, use exception vectors located at 0xFFF0000
+        mrc p15, 0, r0, c1, c0, 0
+        ldr r1, =0x4000727F
+        orr r0, r0, r1
+        mcr     p15, 0, r0, c1, c0, 0
+
+; Two NOP instructions to wait for translation to start.
+        mov r0, r0
+        mov r0, r0
+;return
+        bx lr
+
+/*********************************************************************
+*
+*       Page table
+*
+**********************************************************************
+*/
+        rseg ICODE:CODE(14) ; Align page table at 16k
+        data
+
+page_table:
+
+;          Descriptor                   Address range           Purpose                Type
+;-----------------------------------+-------------------------+----------------------+--------------
+desc set 0x00000c92              //  0x00000000 - 0x00FFFFFF , CS0, normally Flash  , Section descriptor
+  rept 16                        //                                                 , Section is non-cacheable,non-bufferable
+     dcd desc                    //                                                 , Supervisor(SV), User(U) have full access
+desc set desc + 0x100000
+  endr
+
+desc set 0x000                   //  0x01000000 - 0x1FFFFFFF , not used             , Section descriptor  
+  rept  (2*256)-16               //                                                 , access to these addresses will cause data abort
+     dcd desc
+  endr
+
+desc set 0x20000c9e              //  0x20000000 - 0x20FFFFFF , CS1,                 , Section descriptor
+  rept   16                      //                                                 , Section is cacheable, bufferable
+     dcd desc                    //                                                 , SV,U have full access
+desc set desc + 0x100000
+  endr
+
+desc set 0x000                   //  0x21000000 - 0x3FFFFFFF , not used             , Section descriptor  
+  rept   (2*256)-16              //                                                 , access to these addresses will cause data abort
+     dcd desc
+  endr
+
+desc set 0x40000c92              //  0x40000000 - 0x40FFFFFF , PC card/CF slot 1    , Section descriptor
+  rept   16                      //                                                 , Section is non-cacheable, non-bufferable
+     dcd desc                    //                                                 , SV, U have full access
+desc set desc + 0x100000
+  endr
+
+desc set 0x000                   //  0x41000000 - 0x4FFFFFFF , not used             , Section descriptor  
+  rept   256-16                  //                                                 , access to these addresses will cause data abort
+     dcd desc
+  endr
+
+desc set 0x50000c92              //  0x50000000 - 0x50FFFFFF , PC card/CF slot 2    , Section descriptor
+  rept   16                      //                                                 , Section is non-cacheable, non-bufferable
+     dcd desc                    //                                                 , SV, U have full access
+desc set desc + 0x100000
+  endr
+
+desc set 0x000                   //  0x51000000 - 0x5FFFFFFF , not used             , Section descriptor  
+  rept   256-16                  //                                                 , access to these addresses will cause data abort
+     dcd desc
+  endr
+
+     dcd 0x00000000             //  0x60000000 - 0x600FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x00000000             //  0x60100000 - 0x601FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x60200c92             //  0x60200000 - 0x602FFFFF , LogicPD CF card slot , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000             //  0x60300000 - 0x603FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x60400c92             //  0x60400000 - 0x604FFFFF , Logic PD ISA-like Bus, Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+
+desc set 0x000
+  rept  256 - 5                 //  0x60500000 - 0x6FFFFFFF , not used             , Section descriptor  
+    dcd desc                    //                                                 , access to these addresses will cause data abort
+  endr
+
+     dcd 0x70000c92            //  0x70000000 - 0x700FFFFF , LogicPD Wired LAN CS , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70100000 - 0x701FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70200c92            //  0x70200000 - 0x702FFFFF , LogicPD CardEngine CS, Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70300000 - 0x703FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70400c92            //  0x70400000 - 0x704FFFFF , LogicPD reserved     , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access 
+     dcd 0x00000000            //  0x70500000 - 0x705FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70600c92            //  0x70600000 - 0x706FFFFF , LogicPD reserved     , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70700000 - 0x707FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70800c92            //  0x70800000 - 0x708FFFFF , LogicPD reserved     , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70900000 - 0x709FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70a00c92            //  0x70A00000 - 0x70AFFFFF , LogicPD EEProm Reg   , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70B00000 - 0x70BFFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70c00c92            //  0x70C00000 - 0x70CFFFFF , LogicPD Interrupt Msk, Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70D00000 - 0x70DFFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x70e00c92            //  0x70E00000 - 0x70EFFFFF , LogicPD Mode Reg     , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x70F00000 - 0x70FFFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x71000c92            //  0x71000000 - 0x710FFFFF , LogicPD Flash Reg    , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x71100000 - 0x711FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x71200c92            //  0x71200000 - 0x712FFFFF , LogicPD Power Mgmt   , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x71300000 - 0x713FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x71400c92            //  0x71400000 - 0x714FFFFF , LogicPD Revision Reg , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x71500000 - 0x715FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x71600c92            //  0x71600000 - 0x716FFFFF , LogicPD Ext. GPIO Reg, Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x71700000 - 0x717FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x71800c92            //  0x71800000 - 0x718FFFFF , LogicPD GPIO Data Reg, Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+     dcd 0x00000000            //  0x71900000 - 0x719FFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+     dcd 0x71a00c92            //  0x71A00000 - 0x71AFFFFF , LogicPD GPIO Dir Reg , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+
+desc set 0x000                 //  0x71B00000 - 0x7FFFFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+  rept 256 - 27                
+    dcd desc
+  endr
+
+     dcd 0x80000c92           //  0x80000000 - 0x800FFFFF , APB/AHB,SFR          , Section descriptor, Section is non-cacheable, non-bufferable, SV,U have full access
+desc set 0x000                //  0x80100000 - 0xAFFFFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+  rept (3*256) - 1
+    dcd desc
+  endr
+
+     dcd 0xb0000c9e           //  0xB0000000 - 0xB00FFFFF , internal SRAM        , Section descriptor, Section is cacheable, bufferable, SV,U have full access
+desc set 0x000
+  rept 256 - 1                //  0xB0100000 - 0xBFFFFFFF , not used             , Section descriptor, access to these addresses will cause data abort
+    dcd desc
+  endr
+
+
+desc set 0xc0000c9e           //  0xC0000000 - 0xC0FFFFFF , SDRAM                , Section descriptor, Section is cacheable, bufferable, SV,U have full access
+  rept    16
+     dcd desc
+desc set desc + 0x100000
+  endr
+     dcd 0xc1000c9a           //  0xC1000000 - 0xC01FFFFF , SDRAM,RAM for LCD-Ctl, Section descriptor, Section is cacheable, non-bufferable, SV,U have full access
+
+desc set 0xc1100c9e           //  0xC1100000 - 0xC1FFFFFF , SDRAM                , Section descriptor, Section is cacheable, bufferable, SV,U have full access
+  rept    15
+     dcd desc
+desc set desc + 0x100000
+  endr
+
+desc set 0x000               //  0xC2000000 - 0xFFEFFFFFF , not used             , Section descriptor, Section is cacheable, bufferable, SV,U have full access 
+  rept   (4*256)-32-1
+     dcd desc
+  endr
+#if defined (TARGET_JTAG)      // Used for debugging.
+     dcd 0xc0000c9e          //  0xFFF00000 - 0xFFFFFFFFF , Map 1st MB of SDRAM  , Section descriptor, Section is cacheable, bufferable, SV,U have full access 
+#else                        //                             (to have the exception vectors located at the "high vector table")                 
+     dcd 0xb0000c9e          //  0xFFF00000 - 0xFFFFFFFFF , Map internal SRAM    , Section descriptor, Section is cacheable, bufferable, SV,U have full access 
+#endif                       //                             (to have the exception vectors located at the "high vector table")                 
+  end
+
+      END
+
+
+
+

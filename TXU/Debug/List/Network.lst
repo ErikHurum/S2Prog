@@ -1,0 +1,550 @@
+##############################################################################
+#                                                                            #
+# IAR ARM ANSI C/C++ Compiler V4.42A/W32               14/Sep/2022  15:14:37 #
+# Copyright 1999-2005 IAR Systems. All rights reserved.                      #
+#                                                                            #
+#    Cpu mode        =  interwork                                            #
+#    Endian          =  little                                               #
+#    Stack alignment =  4                                                    #
+#    Source file     =  D:\S2Prog\TXU\src\Network.cpp                        #
+#    Command line    =  D:\S2Prog\TXU\src\Network.cpp --fpu None -D          #
+#                       OS_LIBMODE_SP -D CPU_S3C2410 -D OS_RAMVECT=0 -D      #
+#                       OS_UART=-1 -D S2TXU -D USE_LZO=1 -D __ARM_LIBRARY__  #
+#                       -D WATCHDOG=1 -D NETWORK=1 -lCN                      #
+#                       D:\S2Prog\TXU\Debug\List\ -o                         #
+#                       D:\S2Prog\TXU\Debug\Obj\ -s9 --debug --cpu_mode arm  #
+#                       --endian little --cpu ARM920T --stack_align 4        #
+#                       --interwork -e --enable_multibytes --eec++           #
+#                       --dlib_config "C:\Program Files (x86)\IAR            #
+#                       Systems\Embedded Workbench                           #
+#                       4.0\arm\LIB\dl4tpainl8n.h" -I                        #
+#                       D:\S2Prog\TXU\GUI\CORE\ -I D:\S2Prog\TXU\GUI\WM\ -I  #
+#                       D:\S2Prog\TXU\GUI\WIDGET\ -I D:\S2Prog\TXU\CONFIG\   #
+#                       -I D:\S2Prog\TXU\INC\ -I D:\S2Prog\TXU\..\SHARED\INC #
+#                       \ -I D:\S2Prog\TXU\..\SHARED\SRC\ -I                 #
+#                       D:\S2Prog\TXU\..\SHARED\LZO\minilzo.210\ -I          #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ -I             #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\include\ipv4\ -I        #
+#                       D:\S2Prog\TXU\lwip-1.4.1\src\ -I                     #
+#                       D:\S2Prog\TXU\..\SHARED\Database\ -I                 #
+#                       D:\S2Prog\TXU\src\ -I "C:\Program Files (x86)\IAR    #
+#                       Systems\Embedded Workbench 4.0\arm\INC\"             #
+#                       --inline_threshold=2                                 #
+#    List file       =  D:\S2Prog\TXU\Debug\List\Network.lst                 #
+#    Object file     =  D:\S2Prog\TXU\Debug\Obj\Network.r79                  #
+#                                                                            #
+#                                                                            #
+##############################################################################
+
+D:\S2Prog\TXU\src\Network.cpp
+      1          #if (NETWORK==1)
+      2          /**
+      3           * @file  cs8900if.c
+      4           * @brief Ethernet network driver for CS8900A
+      5           */
+      6              #include <stdint.h>
+      7              #include <stdbool.h>
+      8              #include <stdio.h>
+      9              #include <string.h>     // Must include to avoid trouble with include of RTOS.h in Sys_arch.h
+     10          
+     11              #include "lwip/opt.h"
+     12              #include "anpro_net.h"
+     13          
+     14              #include "RTOS.h"
+     15              #include "2410addr.h"
+     16              #include "2410lib.h"
+     17          
+     18              #include "netif/cs8900if.h"
+     19              #include "netif/etharp.h"
+     20              #include "lwip/init.h"
+     21          
+     22              #include "lwip/tcp_impl.h"
+     23              #include "lwip/udp.h"
+     24              #include "lwip/tcpip.h"
+     25              #include "lwip/api.h"
+     26          
+     27              #include "rtos.h"
+     28              #include "TSNConstants.h"
+     29          
+     30              #include "app/tftp_server.h"
+     31              #include "app/shell.h"
+     32          
+     33          extern bool Master;
+     34          
+     35          extern void ANWin_UDP_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t port);
+     36          //OS_STACKPTR int SendUDPTaskStack[256];
+     37          //OS_TASK SendUDPTaskHandle;  /* Task control blocks */
+     38          void SendUDPTask(void);
+     39          void SendBasicTFTPServerTask(void);
+     40          
+     41              #ifdef __cplusplus
+     42          extern "C"
+     43          {
+     44              #endif
+     45          
+     46          static void start_tftp_server(void);
+     47          
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     48          struct netif eth0;
+   \                     eth0:
+   \   00000000                      DS8 48
+
+   \                                 In segment DATA_Z, align 4, align-sorted
+     49          OS_STACKPTR int CS8900Stack[1024];
+     50          OS_TASK *HandleCS8900 = (OS_TASK *)NULL;  // Task control blocks
+   \                     HandleCS8900:
+   \   00000000                      DS8 4
+   \                     CS8900Stack:
+   \   00000004                      DS8 4096
+     51          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     52          void tcpip_init_done_ok(void *arg) {
+   \                     tcpip_init_done_ok:
+   \   00000000   00402DE9           PUSH     {LR}
+     53              sys_sem_t *sem;
+     54              sem = (sys_sem_t *)arg;
+     55              sys_sem_signal(sem);
+   \   00000004   ........           _BLF     sys_sem_signal,??sys_sem_signal??rA
+     56          }
+   \   00000008   0040BDE8           POP      {LR}
+   \   0000000C   1EFF2FE1           BX       LR               ;; return
+     57          
+     58          static void start_network_app_tasks(void) {
+     59              shell_init();
+     60              start_tftp_server();
+     61              start_anpro_net();
+     62          }
+     63          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     64          void CS8900ATask(void) {
+   \                     CS8900ATask:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+     65              extern void cs8900_deplete_event_queue(void);
+     66              struct cs8900if *cs8900if = (struct cs8900if *)eth0.state;
+   \   00000004   ........           LDR      R4,??DataTable1  ;; eth0
+   \   00000008   1C5094E5           LDR      R5,[R4, #+28]
+     67          
+     68              cs8900_deplete_event_queue();
+   \   0000000C   ........           _BLF     cs8900_deplete_event_queue,??cs8900_deplete_event_queue??rA
+     69          
+     70              // hkim mod.
+     71              while ( 1 ) {
+     72                  if ( OS_WaitEventTimed(NETWORK_IRQ_SIGNAL, 1000) != 0 ) {
+   \                     ??CS8900ATask_0:
+   \   00000010   FA1FA0E3           MOV      R1,#+1000
+   \   00000014   0100A0E3           MOV      R0,#+1
+   \   00000018   ........           _BLF     OS_WaitEventTimed,??OS_WaitEventTimed??rA
+   \   0000001C   000050E3           CMP      R0,#+0
+   \   00000020   FAFFFF0A           BEQ      ??CS8900ATask_0
+     73                      cs8900if->interrupts++;
+   \   00000024   080095E5           LDR      R0,[R5, #+8]
+   \   00000028   010080E2           ADD      R0,R0,#+1
+   \   0000002C   080085E5           STR      R0,[R5, #+8]
+     74                      cs8900if_service(&eth0);
+   \   00000030   0400A0E1           MOV      R0,R4
+   \   00000034   ........           _BLF     cs8900if_service,??cs8900if_service??rA
+   \   00000038   F4FFFFEA           B        ??CS8900ATask_0
+     75                  }
+     76                  // FIXME -hkim-
+     77                  // check link status
+     78              }
+     79          }
+     80          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     81          void StartNetDriverTask(void) {
+   \                     StartNetDriverTask:
+   \   00000000   30402DE9           PUSH     {R4,R5,LR}
+     82              OS_IncDI();
+   \   00000004   78409FE5           LDR      R4,??StartNetDriverTask_0  ;; OS_Counters
+   \   00000008   ........           _BLF     OS_DisableInt,??OS_DisableInt??rA
+   \   0000000C   0100D4E5           LDRB     R0,[R4, #+1]
+   \   00000010   010080E2           ADD      R0,R0,#+1
+   \   00000014   0100C4E5           STRB     R0,[R4, #+1]
+     83              HandleCS8900 = new OS_TASK();
+   \   00000018   4000A0E3           MOV      R0,#+64
+   \   0000001C   ........           _BLF     `??operator new`,`??operator new??rA`
+   \   00000020   0050B0E1           MOVS     R5,R0
+   \   00000024   0100000A           BEQ      ??StartNetDriverTask_1
+   \   00000028   4010A0E3           MOV      R1,#+64
+   \   0000002C   ........           _BLF     __data_memzero,??__data_memzero??rA
+   \                     ??StartNetDriverTask_1:
+   \   00000030   50009FE5           LDR      R0,??StartNetDriverTask_0+0x4  ;; HandleCS8900
+     84              OS_CREATETASK(HandleCS8900, "CS8900A", CS8900ATask, DEFAULT_THREAD_PRIO, CS8900Stack);
+   \   00000034   50309FE5           LDR      R3,??StartNetDriverTask_0+0x8  ;; CS8900ATask
+   \   00000038   ........           STR      R5,[R0], #+4
+   \   0000003C   0210A0E3           MOV      R1,#+2
+   \   00000040   02002DE9           PUSH     {R1}
+   \   00000044   401DA0E3           MOV      R1,#+4096
+   \   00000048   02002DE9           PUSH     {R1}
+   \   0000004C   3C109FE5           LDR      R1,??StartNetDriverTask_0+0xC  ;; `?<Constant "CS8900A">`
+   \   00000050   01002DE9           PUSH     {R0}
+   \   00000054   B420A0E3           MOV      R2,#+180
+   \   00000058   0500A0E1           MOV      R0,R5
+   \   0000005C   ........           _BLF     OS_CreateTask_SP,??OS_CreateTask_SP??rA
+     85              OS_DecRI();
+   \   00000060   0100D4E5           LDRB     R0,[R4, #+1]
+   \   00000064   010040E2           SUB      R0,R0,#+1
+   \   00000068   0100C4E5           STRB     R0,[R4, #+1]
+   \   0000006C   000CB0E1           LSLS     R0,R0,#+24
+   \   00000070   0CD08DE2           ADD      SP,SP,#+12
+   \   00000074   0000001A           BNE      ??StartNetDriverTask_2
+   \   00000078   ........           _BLF     OS_EnableInt,??OS_EnableInt??rA
+     86          }
+   \                     ??StartNetDriverTask_2:
+   \   0000007C   3040BDE8           POP      {R4,R5,LR}
+   \   00000080   1EFF2FE1           BX       LR               ;; return
+   \                     ??StartNetDriverTask_0:
+   \   00000084   ........           DC32     OS_Counters
+   \   00000088   ........           DC32     HandleCS8900
+   \   0000008C   ........           DC32     CS8900ATask
+   \   00000090   ........           DC32     `?<Constant "CS8900A">`
+     87          
+
+   \                                 In segment CODE, align 4, keep-with-next
+     88          void StartNetwork(void) {
+   \                     StartNetwork:
+   \   00000000   10402DE9           PUSH     {R4,LR}
+   \   00000004   14D04DE2           SUB      SP,SP,#+20
+     89              sys_sem_t sem;
+     90              ip_addr_t ipaddr, netmask, gw;
+     91          
+     92              if ( sys_sem_new(&sem, 0) ==  ERR_OK ) {
+   \   00000008   0010A0E3           MOV      R1,#+0
+   \   0000000C   0C008DE2           ADD      R0,SP,#+12
+   \   00000010   ........           _BLF     sys_sem_new,??sys_sem_new??rA
+   \   00000014   000050E3           CMP      R0,#+0
+   \   00000018   0700001A           BNE      ??StartNetwork_0
+     93                  tcpip_init(tcpip_init_done_ok, &sem);
+   \   0000001C   88009FE5           LDR      R0,??StartNetwork_1  ;; tcpip_init_done_ok
+   \   00000020   0C108DE2           ADD      R1,SP,#+12
+   \   00000024   ........           _BLF     tcpip_init,??tcpip_init??rA
+     94                  sys_sem_wait(&sem);
+   \   00000028   0010A0E3           MOV      R1,#+0
+   \   0000002C   0C008DE2           ADD      R0,SP,#+12
+   \   00000030   ........           _BLF     sys_arch_sem_wait,??sys_arch_sem_wait??rA
+     95                  sys_sem_free(&sem);
+   \   00000034   0C008DE2           ADD      R0,SP,#+12
+   \   00000038   ........           _BLF     sys_sem_free,??sys_sem_free??rA
+     96              }
+     97          
+     98              setup_anpro_network_address(&eth0, &netmask, &gw, &ipaddr);
+   \                     ??StartNetwork_0:
+   \   0000003C   ........           LDR      R4,??DataTable1  ;; eth0
+   \   00000040   0D30A0E1           MOV      R3,SP
+   \   00000044   08208DE2           ADD      R2,SP,#+8
+   \   00000048   04108DE2           ADD      R1,SP,#+4
+   \   0000004C   0400A0E1           MOV      R0,R4
+   \   00000050   ........           _BLF     ??setup_anpro_network_address,??setup_anpro_network_address??rA
+     99          
+    100              netif_add(&eth0, &ipaddr, &netmask, &gw, NULL, cs8900if_init, tcpip_input);
+   \   00000054   54009FE5           LDR      R0,??StartNetwork_1+0x4  ;; tcpip_input
+   \   00000058   01002DE9           PUSH     {R0}
+   \   0000005C   50009FE5           LDR      R0,??StartNetwork_1+0x8  ;; cs8900if_init
+   \   00000060   01002DE9           PUSH     {R0}
+   \   00000064   0000A0E3           MOV      R0,#+0
+   \   00000068   01002DE9           PUSH     {R0}
+   \   0000006C   14308DE2           ADD      R3,SP,#+20
+   \   00000070   10208DE2           ADD      R2,SP,#+16
+   \   00000074   0C108DE2           ADD      R1,SP,#+12
+   \   00000078   0400A0E1           MOV      R0,R4
+   \   0000007C   ........           _BLF     netif_add,??netif_add??rA
+    101              netif_set_default(&eth0);
+   \   00000080   0400A0E1           MOV      R0,R4
+   \   00000084   ........           _BLF     netif_set_default,??netif_set_default??rA
+    102              netif_set_up(&eth0);
+   \   00000088   0400A0E1           MOV      R0,R4
+   \   0000008C   ........           _BLF     netif_set_up,??netif_set_up??rA
+    103          #if 0
+    104              {
+    105                  static struct udp_pcb *ANWin_pcb = udp_new();
+    106                  // initialize DNS client
+    107                  udp_bind(ANWin_pcb, IP_ADDR_ANY, 550);
+    108                  udp_recv(ANWin_pcb, ANWin_UDP_recv, NULL);
+    109              }
+    110          #endif
+    111              //OS_CREATETASK(&SendUDPTaskHandle  , "Send UDP", SendUDPTask   , 50, SendUDPTaskStack);
+    112              //OS_CREATETASK(&SendUDPTaskHandle  , "BasicTFTPServer", SendBasicTFTPServerTask   , 50, SendUDPTaskStack);
+    113              start_network_app_tasks();
+   \   00000090   ........           _BLF     shell_init,??shell_init??rA
+   \   00000094   1C009FE5           LDR      R0,??StartNetwork_1+0xC  ;; tftp_server_request_callback
+   \   00000098   ........           _BLF     TFTPServerInit,??TFTPServerInit??rA
+   \   0000009C   ........           _BLF     ??start_anpro_net,??start_anpro_net??rA
+    114          
+    115          }
+   \   000000A0   20D08DE2           ADD      SP,SP,#+32
+   \   000000A4   1040BDE8           POP      {R4,LR}
+   \   000000A8   1EFF2FE1           BX       LR               ;; return
+   \                     ??StartNetwork_1:
+   \   000000AC   ........           DC32     tcpip_init_done_ok
+   \   000000B0   ........           DC32     tcpip_input
+   \   000000B4   ........           DC32     cs8900if_init
+   \   000000B8   ........           DC32     tftp_server_request_callback
+    116          
+    117          #ifdef __cplusplus
+    118          }
+    119          #endif
+    120          
+    121              #if 0
+    122          /**
+    123           * Receive input function for DNS response packets arriving for the dns UDP pcb.
+    124           *
+    125           * @params see udp.h
+    126           */
+    127          void
+    128          ANWin_UDP_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t port){
+    129              char tmpStr[100];
+    130              memset(tmpStr,0,100);
+    131              memcpy(tmpStr,p->payload,p->len);
+    132              pbuf_free(p);
+    133          
+    134              return;
+    135          }
+    136          void SendUDPTask(void){
+    137              OS_Delay(1000);
+    138              static struct udp_pcb *ANWin_pcb = udp_new();
+    139              char msg[100];
+    140              int Cnt = 0;
+    141          
+    142              //netconn_connect(struct netconn *conn, ip_addr_t *addr, u16_t port)
+    143              struct netconn *conn;
+    144              ip_addr_t addr;
+    145              //int ErrStat = netconn_connect(conn,&addr,502);
+    146              //(void) pvParameters; // Satisfy complier
+    147              //struct netconn *conn;
+    148              struct netbuf *inbuf;
+    149              char *rq;
+    150              int length;
+    151          
+    152          // Create a new socket
+    153              conn = netconn_new(NETCONN_TCP);
+    154          // Bind connection
+    155              ip_addr_t TCPaddr;
+    156              IP4_ADDR(&TCPaddr, 192,168,227,106);
+    157          
+    158              while ( true ) {
+    159                  netconn_bind(conn,&TCPaddr,550);
+    160                  if ( conn != NULL ) {
+    161          // Just read page and throw away
+    162                      int ErrConn = netconn_recv(conn,&inbuf);
+    163                      if ( inbuf != NULL ) {
+    164                          void *Myrq;
+    165                          u16_t Length;
+    166                          netbuf_data(inbuf,&Myrq,&Length);
+    167                          netbuf_delete(inbuf);
+    168                      } else {
+    169                          OS_Delay(1000);
+    170                      }
+    171                      //netconn_delete(newconn);
+    172                  }
+    173              }
+    174              /*
+    175              while ( true ) {
+    176                  OS_Delay(2000);
+    177                  sprintf(msg,"Dette er test nummer %i",Cnt++);
+    178                  struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT,strlen(msg),PBUF_RAM);
+    179                  memcpy (p->payload, msg, strlen(msg));
+    180                  udp_sendto(ANWin_pcb, p, IP_ADDR_BROADCAST, 501); //dest port
+    181                  pbuf_free(p);
+    182              }
+    183            */
+    184          
+    185          }
+    186          
+    187          static void EchoRequest( struct netconn *pxNetCon ){
+    188              struct netbuf *pxRxBuffer=(struct netbuf*)NULL;
+    189              char *pcRxString = (char*)NULL;
+    190              u16_t usLength;
+    191          
+    192              if ( netconn_recv( pxNetCon,&pxRxBuffer ) == ERR_OK ){
+    193                  netbuf_data( pxRxBuffer, ( void ** ) &pcRxString, &usLength );
+    194                  if (  pcRxString != NULL){
+    195                      netconn_write( pxNetCon, pcRxString, (u16_t) usLength, NETCONN_COPY );
+    196                  }
+    197                  netbuf_delete( pxRxBuffer );
+    198              }
+    199          }
+    200          
+    201          void SendBasicTFTPServerTask(void){
+    202              struct netconn *pxTCPListener=(struct netconn*)NULL, *pxNewConnection=(struct netconn*)NULL;
+    203              pxTCPListener = netconn_new( NETCONN_TCP );
+    204          
+    205              netconn_bind(pxTCPListener, NULL, 23 );
+    206              netconn_listen( pxTCPListener );
+    207          
+    208              for(;
+    209                  ;
+    210                  ){
+    211                  if(netconn_accept(pxTCPListener,&pxNewConnection) == ERR_OK){
+    212                      EchoRequest(pxNewConnection);
+    213                  } else {
+    214                      OS_Delay(100);
+    215                  }
+    216              }
+    217          }
+    218              #endif
+    219          
+    220              #ifdef __cplusplus
+    221          extern "C"
+    222          {
+    223              #endif
+    224          
+    225          /////////////////////////////////////////////////////////////////////////
+    226          // XXX
+    227          // be very careful with this code.
+    228          // this runs in lwip tcpip_thread context.
+    229          // so if you don't pay attention, you get all the concurrency issues
+    230          // as well as blocking lwip tcip_thread
+    231          /////////////////////////////////////////////////////////////////////////
+
+   \                                 In segment CODE, align 4, keep-with-next
+    232          static tTFTPError
+    233          tftp_get_request_handler(tTFTPConnection *psTFTP) {
+   \                     tftp_get_request_handler:
+   \   00000000   00402DE9           PUSH     {LR}
+    234              // GET reqiest, aka, clients want to read data from server
+    235              // in this case, we just send a data filled with 0xff
+    236              memset(psTFTP->pui8Data, 0xff, psTFTP->ui32DataLength);
+   \   00000004   042090E5           LDR      R2,[R0, #+4]
+   \   00000008   000090E5           LDR      R0,[R0, #+0]
+   \   0000000C   FF10A0E3           MOV      R1,#+255
+   \   00000010   ........           _BLF     memset,??memset??rA
+    237              return TFTP_OK;
+   \   00000014   0040BDE8           POP      {LR}
+   \   00000018   0000E0E3           MVN      R0,#+0
+   \   0000001C   1EFF2FE1           BX       LR               ;; return
+    238          }
+    239          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    240          static tTFTPError
+    241          tftp_put_request_handler(tTFTPConnection *psTFTP) {
+    242              // PUT request, aka, clients want to write data to server
+    243              // in this case, we are just a data sink hole.
+    244              return TFTP_OK;
+   \                     tftp_put_request_handler:
+   \   00000000   0000E0E3           MVN      R0,#+0
+   \   00000004   1EFF2FE1           BX       LR               ;; return
+    245          }
+    246          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    247          static void
+    248          tftp_transfer_close(tTFTPConnection *psTFTP) {
+    249              // nada
+    250          }
+   \                     tftp_transfer_close:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+    251          
+
+   \                                 In segment CODE, align 4, keep-with-next
+    252          static tTFTPError
+    253          tftp_server_request_callback(tTFTPConnection *psTFTP, bool bGet, int8_t *pui8FileName, tTFTPMode eMode) {
+    254              psTFTP->pfnGetData  = tftp_get_request_handler;
+   \                     tftp_server_request_callback:
+   \   00000000   24209FE5           LDR      R2,??tftp_server_request_callback_0  ;; tftp_get_request_handler
+    255              psTFTP->pfnPutData  = tftp_put_request_handler;
+    256              psTFTP->pfnClose    = tftp_transfer_close;
+    257          
+    258              if ( bGet ) {
+   \   00000004   000051E3           CMP      R1,#+0
+   \   00000008   0C2080E5           STR      R2,[R0, #+12]
+   \   0000000C   1C209FE5           LDR      R2,??tftp_server_request_callback_0+0x4  ;; tftp_put_request_handler
+    259                  psTFTP->ui32DataRemaining = 1024 * 1024 * 10;   // 10MB data for test
+   \   00000010   A018A013           MOVNE    R1,#+10485760
+   \   00000014   102080E5           STR      R2,[R0, #+16]
+   \   00000018   14209FE5           LDR      R2,??tftp_server_request_callback_0+0x8  ;; tftp_transfer_close
+   \   0000001C   142080E5           STR      R2,[R0, #+20]
+   \   00000020   08108015           STRNE    R1,[R0, #+8]
+    260              } else {
+    261                  // nada
+    262              }
+    263              return TFTP_OK;
+   \   00000024   0000E0E3           MVN      R0,#+0
+   \   00000028   1EFF2FE1           BX       LR               ;; return
+   \                     ??tftp_server_request_callback_0:
+   \   0000002C   ........           DC32     tftp_get_request_handler
+   \   00000030   ........           DC32     tftp_put_request_handler
+   \   00000034   ........           DC32     tftp_transfer_close
+    264          }
+
+   \                                 In segment DIFUNCT, align 4, keep-with-next, root
+   \   00000000                      REQUIRE ?call_ctors
+   \   00000000   ........           DC32    ??__sti__routine
+
+   \                                 In segment DATA_C, align 4, align-sorted
+   \                     `?<Constant "CS8900A">`:
+   \   00000000   435338393030       DC8 "CS8900A"
+   \              4100        
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \   static __??Code32?? __intrinsic __code __interwork __atpcs void __sti__routine()
+   \                     ??__sti__routine:
+   \   00000000   1EFF2FE1           BX       LR               ;; return
+
+   \                                 In segment CODE, align 4, keep-with-next
+   \                     ??DataTable1:
+   \   00000000   ........           DC32     eth0
+    265          
+    266          static void
+    267          start_tftp_server(void) {
+    268              TFTPServerInit(tftp_server_request_callback);
+    269          }
+    270          
+    271          #ifdef __cplusplus
+    272          }
+    273          #endif
+    274          
+    275          #endif //NETWORK==1
+    276          
+
+   Maximum stack usage in bytes:
+
+     Function                     CSTACK
+     --------                     ------
+     CS8900ATask                     12
+     StartNetDriverTask              24
+     StartNetwork                    40
+     __sti__routine()                 0
+     tcpip_init_done_ok               4
+     tftp_get_request_handler         4
+     tftp_put_request_handler         0
+     tftp_server_request_callback     0
+     tftp_transfer_close              0
+
+
+   Segment part sizes:
+
+     Function/Label               Bytes
+     --------------               -----
+     eth0                           48
+     HandleCS8900                 4100
+     tcpip_init_done_ok             16
+     CS8900ATask                    60
+     StartNetDriverTask            148
+     StartNetwork                  188
+     tftp_get_request_handler       32
+     tftp_put_request_handler        8
+     tftp_transfer_close             4
+     tftp_server_request_callback   56
+     ?<Constant "CS8900A">           8
+     __sti__routine()                4
+     ??DataTable1                    4
+      Others                       304
+
+ 
+   808 bytes in segment CODE
+     8 bytes in segment DATA_C
+ 4 148 bytes in segment DATA_Z
+     4 bytes in segment DIFUNCT
+    12 bytes in segment INITTAB
+ 
+   524 bytes of CODE  memory (+ 300 bytes shared)
+     8 bytes of CONST memory
+ 4 148 bytes of DATA  memory
+
+Errors: none
+Warnings: none
