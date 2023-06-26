@@ -74,6 +74,7 @@ void AnalogInput::Init(void) {
     BasicSensorType     = AI_SENSOR_NOT_DEFINED;
     BasicSensorTypeWord = L_WORD485; //Unknown
     TimeChecked         = 0;
+    DataTransferSet.insert(this);
 }
 
 AnalogInput::~AnalogInput(void) {
@@ -169,6 +170,10 @@ void AnalogInput::SetPROPtr(PRogramObject *PPtr) {
             LocationKWord = L_WORD654; break;
         case C_AI_LOC_POWER2     :
             LocationKWord = L_WORD655; break;
+        case C_AI_LOC_POWER_AC   :
+            LocationKWord = L_WORD1125; break;
+        case C_AI_LOC_POWER_DC   :
+            LocationKWord = L_WORD1126; break;
         case C_AI_LOC_AC_OK      :
             LocationKWord = L_WORD890; break;
         case C_AI_LOC_FUSES      :

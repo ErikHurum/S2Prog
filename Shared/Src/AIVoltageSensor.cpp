@@ -19,8 +19,9 @@ AIVoltageSensor::AIVoltageSensor(int Loc,int BasicSnsType,float MinVolt, float M
     AlarmLowVoltage  *LoVPtr= NULL;
 
     switch ( Location ) {
-    default             :
-    case C_AI_LOC_POWER1:
+    default                 :
+    case C_AI_LOC_POWER1    :
+    case C_AI_LOC_POWER_DC  :
         {
             switch ( TSNConfigInfo::ConfigInfoPtr->ConfigCompatibilityNo ) {
             case 0:
@@ -34,7 +35,8 @@ AIVoltageSensor::AIVoltageSensor(int Loc,int BasicSnsType,float MinVolt, float M
             }
         }
         break;
-    case C_AI_LOC_POWER2:
+    case C_AI_LOC_POWER2    :
+    case C_AI_LOC_POWER_AC  :
         {
             switch ( TSNConfigInfo::ConfigInfoPtr->ConfigCompatibilityNo ) {
             case 0:

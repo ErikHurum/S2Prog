@@ -36,6 +36,7 @@ IOUnit::IOUnit(int PortNo):ANPRO10Object(TSNUart::Channels[PortNo])
 	TotalUnitRestart  = -1;
 	FlashEraseStatus  = 0xff;
 	ProgrammingStatus = 0xff;
+    DataTransferSet.insert(this);
 
 #ifndef ANCONF
 	AlarmIOComFailure  *tmpPtr = new AlarmIOComFailure( this, 10);

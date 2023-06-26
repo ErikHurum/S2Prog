@@ -104,6 +104,7 @@ void PROTankPressure::Initiate(void) {
     LowIGP_Locked            = PROProjectInfo::LowIGP_Locked;
     MaxPressureRange         = 0.0;
     TankType                 = TANKTYPE_TANK_PRESS;
+    DataTransferSet.insert(this);
 }
 //---------------------------------------------------------------------------
 

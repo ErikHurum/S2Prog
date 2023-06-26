@@ -589,11 +589,13 @@
 #define C_AI_LOC_ATM            2284
 #define C_AI_LOC_POWER1         2285
 #define C_AI_LOC_POWER2         2286
-#define C_AI_LOC_AC_OK          2287
-#define C_AI_LOC_FUSES          2288
-#define C_AI_LOC_TRIM           2289
-#define C_AI_LOC_LIST           2290
-#define C_AI_LOC_TANK_CLEAN     2291
+#define C_AI_LOC_POWER_AC       2287
+#define C_AI_LOC_POWER_DC       2288
+#define C_AI_LOC_AC_OK          2289
+#define C_AI_LOC_FUSES          2290
+#define C_AI_LOC_TRIM           2291
+#define C_AI_LOC_LIST           2292
+#define C_AI_LOC_TANK_CLEAN     2293
 
 #define C_AI_LOC_TEMP           2300
 #define C_AI_LOC_TEMP1          2301
@@ -1046,6 +1048,7 @@
 #define C_TU_POWER_1           8211
 #define C_TU_POWER_2           8212
 #define C_TU_POWER_BOTH        8213
+#define C_TU_POWER_ACDC        8214 
 
 #define C_NETWORK              8300
 #define C_NETWORK_END          8301
@@ -3264,7 +3267,8 @@
 
 #define START_DELAY                         10000
 
-#define IO_STATUS_REQ_DELAY     1500 //150
+#define IO_STATUS_REQ_DELAY     15
+#define INT_AD_CON_WAIT_CYCLES  20
 
 // UART related constants
 
@@ -3293,7 +3297,7 @@
 #define EXTERNAL_ALARM_SILENCE      1
 
 #define DATA_EXPIRATION_TIME    (5*RS485_IO_PERIODE)
-#define SEND_MIN_INTERVAL        1000
+#define SEND_MIN_INTERVAL   250
 #define MODBUS_UPDATE_INTERVAL   2000
 
 /////////////////////////////////////////////////////

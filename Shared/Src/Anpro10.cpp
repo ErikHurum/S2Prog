@@ -809,13 +809,13 @@ void ANPRO10_UnpackPacket(U8 *Buf, TSNUart *Port) {
                         } else {
                             PRogramObjectBase::DataTransferSet.erase(ObjPtr);
                             MainForm->StaticDataAdvProgress->Position = MainForm->StaticDataAdvProgress->Max - PRogramObjectBase::DataTransferSet.size();
-                            //if ( MapSize <= 5 ) {
-                            //    set<PRogramObjectBase *>::iterator pBIt;
-                            //    for ( pBIt = PRogramObjectBase::DataTransferSet.begin(); pBIt != PRogramObjectBase::DataTransferSet.end(); pBIt++ ) {
-                            //        PRogramObjectBase *ObjPtr2   = *pBIt;
-                            //        AnsiString Name = ObjPtr2->Name;
-                            //    }
-                            //}
+							if ( MapSize <= 5 ) {
+								set<PRogramObjectBase *>::iterator pBIt;
+								for ( pBIt = PRogramObjectBase::DataTransferSet.begin(); pBIt != PRogramObjectBase::DataTransferSet.end(); pBIt++ ) {
+									PRogramObjectBase *ObjPtr2   = *pBIt;
+									AnsiString Name = ObjPtr2->Name;
+								}
+                            }
                         }
 #endif
                         int ErrorStatus = ObjPtr->ReceiveData((U8 *)pCommand);

@@ -16,6 +16,7 @@ PRODraft::PRODraft(int DType) {
     NumberOfPRO++;
 
     Initiate();
+    DataTransferSet.insert(this);
 }
 //---------------------------------------------------------------------------
 

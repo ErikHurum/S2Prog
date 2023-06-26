@@ -88,6 +88,7 @@ CargoTypeObject::CargoTypeObject(bool Fixed, bool AddToList) : PRogramObjectBase
     MolMass       = 0.0;
     Viscosity     = 0.0;
     DB_IdNumber   = -1;
+    DataTransferSet.insert(this);
 }
 
 CargoTypeObject::~CargoTypeObject(void) {

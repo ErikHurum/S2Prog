@@ -305,6 +305,8 @@ PROTanksystemUnit::PROTanksystemUnit(void) : CreatedFromUart(false), MyPortNumbe
 
 void PROTanksystemUnit::Initiate(void) {
     TanksystemUnitSet.insert(this);
+    DataTransferSet.insert(this);
+
     IDNumber = (C_PRO_TANKSYS_UNIT << 16) + TanksystemUnitSet.size();
     Type = C_PRO_TANKSYS_UNIT;
     IOUnit::GlobalHW_UnitSet.insert(this);
@@ -1025,6 +1027,12 @@ int PROTanksystemUnit::LoadConfigFromFile(TSNConfigString &ConfigString) {
                         case C_TU_POWER_BOTH :
                             Internal24VSns =  new AIVoltageSensor(C_AI_LOC_POWER1, L_WORD653, TCU_AL_LO_VOLTAGE, TCU_AL_HI_VOLTAGE);
                             External24VSns =  new AIVoltageSensor(C_AI_LOC_POWER2, L_WORD653, TCU_AL_LO_VOLTAGE, TCU_AL_HI_VOLTAGE);
+                            AnalogInList.push_back((AnalogInput *)Internal24VSns);
+                            AnalogInList.push_back((AnalogInput *)External24VSns);
+                            break;
+                        case C_TU_POWER_ACDC :
+                            Internal24VSns =  new AIVoltageSensor(C_AI_LOC_POWER_DC, L_WORD1003, TCU_AL_LO_VOLTAGE, TCU_AL_HI_VOLTAGE);
+                            External24VSns =  new AIVoltageSensor(C_AI_LOC_POWER_AC, L_WORD1003, TCU_AL_LO_VOLTAGE, TCU_AL_HI_VOLTAGE);
                             AnalogInList.push_back((AnalogInput *)Internal24VSns);
                             AnalogInList.push_back((AnalogInput *)External24VSns);
                             break;

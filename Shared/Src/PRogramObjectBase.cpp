@@ -1,6 +1,6 @@
 #include "TSNIncludes.h"
 #ifdef ANWIN
-#include "MainUnit.h"
+    #include "MainUnit.h"
 #endif
 #pragma hdrstop
 #ifdef BORLAND
@@ -17,10 +17,9 @@ set<PRogramObjectBase *>PRogramObjectBase::PRogramObjectBaseSet;
 set<PRogramObjectBase *>PRogramObjectBase::MySet;
 set<PRogramObjectBase *>PRogramObjectBase::DataTransferSet;
 
-
 PRogramObjectBase::PRogramObjectBase(bool AddToList) {
     MySet.insert(this);
-    if ( AddToList ) {
+    if (AddToList) {
         PRogramObjectBaseSet.insert(this);
     }
     ActiveAlarms    = 0;
@@ -42,7 +41,7 @@ PRogramObjectBase::PRogramObjectBase(bool AddToList) {
 PRogramObjectBase::~PRogramObjectBase(void) {
     set<PRogramObjectBase *>::iterator it = PRogramObjectBaseSet.find(this);
 
-    if ( it != PRogramObjectBaseSet.end() ) {
+    if (it != PRogramObjectBaseSet.end()) {
         PRogramObjectBaseSet.erase(this);
         MySet.erase(this);
         IdMap.erase(IDNumber);
@@ -65,11 +64,11 @@ set<unsigned> PRogramObjectBase::ReadIdTable(TSNConfigString &ConfigInputLines, 
     set<unsigned>tmpIdSet;
     do {
         unsigned tmpId = ConfigInputLines.ReadInteger(ErrorStatus, EndKw);
-        if ( !ErrorStatus ) {
+        if (!ErrorStatus) {
             tmpIdSet.insert(tmpId);
         }
-    }while ( !ErrorStatus );
-    if ( ErrorStatus == END_FOUND ) {
+    }while (!ErrorStatus);
+    if (ErrorStatus == END_FOUND) {
         // End found, Permitted in this case, so ErrorStatus set to 0
         ErrorStatus = 0;
     }
@@ -78,10 +77,10 @@ set<unsigned> PRogramObjectBase::ReadIdTable(TSNConfigString &ConfigInputLines, 
 
 AnsiString PRogramObjectBase::MakeIdTableString(int ExtraTabs) {
     AnsiString LocalString;
-    if ( !ReadPermissionSet.empty() ) {
+    if (!ReadPermissionSet.empty()) {
         LocalString += MakeIdTableString(ReadPermissionSet, C_PRO_READ_PERMISSION, C_PROLIST_END, ExtraTabs);
     }
-    if ( !WritePermissionSet.empty() ) {
+    if (!WritePermissionSet.empty()) {
         LocalString += MakeIdTableString(WritePermissionSet, C_PRO_WRITE_PERMISSION, C_PROLIST_END, ExtraTabs);
     }
     return LocalString;
@@ -97,7 +96,7 @@ AnsiString PRogramObjectBase::MakeIdTableString(set<unsigned>IdSet, int StartKW,
     //AnsiString TabStr6= AnsiString::StringOfChar('\t',6+ExtraTabs);
     LocalString += TabStr3 + KeyWord(StartKW) + CrLfStr;
     set<unsigned>::iterator IdIt;
-    for ( IdIt = IdSet.begin(); IdIt != IdSet.end(); IdIt++ ) {
+    for (IdIt = IdSet.begin(); IdIt != IdSet.end(); IdIt++) {
         AnsiString IdNumStr;
         IdNumStr.cat_sprintf("0x%0x", (*IdIt));
         LocalString += TabStr4 + IdNumStr + CrLfStr;
@@ -120,13 +119,13 @@ int PRogramObjectBase::LoadConfigFromFile(TSNConfigString &ConfigString) {
 AnsiString PRogramObjectBase::MakeConfigString(int ExtraTabs) {
     AnsiString LocalString;
     LocalString += TabStr2 + KeyWord(C_PRO_START_COMMON) + CrLfStr;
-    if ( !Name.IsEmpty() ) {
+    if (!Name.IsEmpty()) {
         LocalString += TabStr3 + KeyWord(C_PRO_NAME) + Name + CrLfStr;
     }
-    if ( !TagName.IsEmpty() ) {
+    if (!TagName.IsEmpty()) {
         LocalString += TabStr3 + KeyWord(C_PRO_TAGNAME) + TagName + CrLfStr;
     }
-    if ( !Description.IsEmpty() ) {
+    if (!Description.IsEmpty()) {
         LocalString += TabStr3 + KeyWord(C_DESCRIPTION) + Description + CrLfStr;
     }
     LocalString += TabStr3 + KeyWord(C_PRO_SORTNO) + (AnsiString)SortNo + CrLfStr;
@@ -144,13 +143,13 @@ bool PRogramObjectBase::LoadConfigString(TSNConfigString &ConfigString) {
     int Key;
     do {
         AnsiString InputKeyWord = ConfigString.NextWord(ErrorLine);
-        if ( ErrorLine ) {
-            if ( ErrorLine != EOF ) {
+        if (ErrorLine) {
+            if (ErrorLine != EOF) {
                 GiveConfigWarning((AnsiString)"PRogram object base" + Name, ErrorLine);
             }
         } else {
             Key = FindConfigKey(InputKeyWord);
-            switch ( Key ) {
+            switch (Key) {
             default:
                 GiveConfigWarning((AnsiString)"PRogram object base" + Name, InputKeyWord, ConfigString.LineCount);
                 break;
@@ -178,19 +177,19 @@ bool PRogramObjectBase::LoadConfigString(TSNConfigString &ConfigString) {
                 break;
             case C_PRO_READ_PERMISSION:
                 ReadPermissionSet = ReadIdTable(ConfigString, ErrorLine, C_PROLIST_END);
-                if ( ErrorLine ) {
+                if (ErrorLine) {
                     NoError = false;
                 }
                 break;
             case C_PRO_WRITE_PERMISSION:
                 WritePermissionSet = ReadIdTable(ConfigString, ErrorLine, C_PROLIST_END);
-                if ( ErrorLine ) {
+                if (ErrorLine) {
                     NoError = false;
                 }
                 break;
             }
         }
-    }while ( NoError && (ErrorLine != EOF) && (Key != C_PRO_END_COMMON) );
+    }while (NoError && (ErrorLine != EOF) && (Key != C_PRO_END_COMMON));
     return (NoError);
 }
 //---------------------------------------------------------------------------
@@ -206,7 +205,7 @@ bool PRogramObjectBase::RestoreSettings(TSNConfigString *SettingsString) {
 ///////////////////////////////////////////////////////////////
 AnsiString PRogramObjectBase::FindStatusChar(int Stat) {
     AnsiString StrPtr;
-    switch ( Stat ) {
+    switch (Stat) {
     case ST_NONE:
         //StrPtr = "";
         break;
@@ -253,7 +252,7 @@ int PRogramObjectBase::GetFloatValue(int ValueId, int Index, float &MyValue) {
 }
 int PRogramObjectBase::GetValue(int ValueId, int Index, float &MyValue, int &DecPnt, int &Unit) {
     int Status = E_NO_ERR;
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_PRO_TIMESTAMP:
         MyValue = (float)clock() - TimeStamp;
         DecPnt = 0;
@@ -274,7 +273,7 @@ int PRogramObjectBase::GetValue(int ValueId, int Index, float &MyValue, int &Dec
 
 int PRogramObjectBase::GetStringValue(int ValueId, int Index, AnsiString &MyString) {
     int Status = GETVAL_NO_ERR;
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_PRO_NAME:
         MyString = Name;
         break;
@@ -294,7 +293,7 @@ int PRogramObjectBase::GetStringValue(int ValueId, int Index, AnsiString &MyStri
 }
 int PRogramObjectBase::GetBitValue(int ValueId, int Index, bool &MyBit) {
     int Status = GETVAL_NO_ERR;
-    switch ( ValueId ) {
+    switch (ValueId) {
     default:
         Status = GETVAL_NOT_AVAILABLE;
         break;
@@ -305,7 +304,7 @@ int PRogramObjectBase::GetBitValue(int ValueId, int Index, bool &MyBit) {
 
 int PRogramObjectBase::PutValue(int ValueId, int Index, AnsiString NewValue, bool Local, int *UnitId) {
     int Status = E_NO_ERR, ValUnitId = NO_UNIT;
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_PRO_NAME:
         Name = NewValue;
         break;
@@ -313,7 +312,7 @@ int PRogramObjectBase::PutValue(int ValueId, int Index, AnsiString NewValue, boo
         Status = E_INPUT_ERR;
         break;
     }
-    if ( UnitId ) {
+    if (UnitId) {
         *UnitId = ValUnitId;
     }
     return (Status);
@@ -385,7 +384,7 @@ int PRogramObjectBase::SendData(U16 CommandNo) {
 
 int PRogramObjectBase::SendModbusData(U16 ValueId, float Value, U16 Cmd) {
     int ErrorStatus = E_OK;
-    switch ( Cmd ) {
+    switch (Cmd) {
     case CMD_GENERIC_MODBUS_RT_DATA:
         {
             QueueANPRO10_COMMAND_2751 Cmd;
@@ -398,12 +397,12 @@ int PRogramObjectBase::SendModbusData(U16 ValueId, float Value, U16 Cmd) {
             Cmd.Data.ValueKey       = ValueId;
             Cmd.Data.Value          = Value;
             bool hasSent;
-            if ( Master ) {
+            if (Master) {
                 hasSent = ANPRO10SendNormal(&Cmd);
             } else {
                 hasSent = ANPRO10SendUrgent(&Cmd);
             }
-            if ( !hasSent ) ErrorStatus = E_QUEUE_FULL;
+            if (!hasSent) ErrorStatus = E_QUEUE_FULL;
             else ErrorStatus = E_OK;
         }
         break;
@@ -414,53 +413,65 @@ int PRogramObjectBase::SendModbusData(U16 ValueId, float Value, U16 Cmd) {
     return (ErrorStatus);
 }
 #define STATIC_UPDATE_PERIOD_COM  (3*60 * 1000)
-#define STATIC_UPDATE_MIN_DELAY   20               // C00614 has 57 as calculated delay and it works on the Hudong series C00610 and related 
+#define STATIC_UPDATE_MIN_DELAY   20               // C00614 has 57 as calculated delay and it works on the Hudong series C00610 and related
 void PRogramObjectBase::SendStaticData(void) {
 #ifdef S2TXU
-    TSN_Delay(START_DELAY);
-    const int NumberOfObjects   = PRogramObjectBaseSet.size();    // Not used, but informative when debugging
-    //const int ComDelay          = STATIC_UPDATE_MIN_DELAY;        //STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();;
-    bool FirstTime              = true;
-    int Delay                   = STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();
-    if ( Delay <STATIC_UPDATE_MIN_DELAY ) {
-        Delay = STATIC_UPDATE_MIN_DELAY;
-    }
-    while ( true ) {
-        if ( SendFlashDataInProgress == FLASH_IDLE ) {
-            /*
-            if ( FirstTime ) {
-                FirstTime = false;
+    set<PRogramObjectBase*>MyStaticDataSet = DataTransferSet;
+    if (!MyStaticDataSet.empty()) {
+        TSN_Delay(START_DELAY);
+        const int NumberOfObjects   = MyStaticDataSet.size();    // Not used, but informative when debugging
+        //const int ComDelay          = STATIC_UPDATE_MIN_DELAY;        //STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();;
+        bool FirstTime              = true;
+        int Delay                   = STATIC_UPDATE_PERIOD_COM / MyStaticDataSet.size();
+        if (Delay < 20) {
+            Delay = 20;
+        }
+        while (true) {
+            if (SendFlashDataInProgress == FLASH_IDLE) {
+                /*
+                if ( FirstTime ) {
+                    FirstTime = false;
+                } else {
+                    int AvgIODelay = RS485_IO_PERIODE - PROTanksystemUnit::MySelf->GetIOLoadDelay();
+                    if ( (Delay > STATIC_UPDATE_MIN_DELAY) && (AvgIODelay > 0 )  ){
+                        Delay--;
+                    } else if ( (Delay < STATIC_UPDATE_MIN_DELAY) || (AvgIODelay < 0 ) ) {
+                        Delay++;
+                    }
+                }
+                */
+                ANPRO10_SendTime(false);
+                int t0 = OS_GetTime();
+                set<PRogramObjectBase *>::iterator pBIt;
+                for (pBIt = MyStaticDataSet.begin(); pBIt != MyStaticDataSet.end(); pBIt++) {
+                    int ret = (*pBIt)->SendData(CMD_GENERIC_STATIC_DATA);
+                    switch (ret) {
+                    case E_QUEUE_FULL:
+                        if (Delay < 100) {
+                            Delay++; 
+                        }
+                    case E_OK:
+                        TSN_Delay(Delay);
+                        break;
+                    case E_UNKNOWN_COMMAND:
+                        //MyStaticDataSet.erase(pBIt); // Remove objects which have no static data to send from the set
+                        break;
+                    case E_UNKNOWN_OBJECT:
+                    default:
+                        TSN_Delay(0);
+                        break;
+                    }
+                }
+                if ((Delay < 100) && (PROTanksystemUnit::MySelf->GetIOLoadDelay() > 2000)) {
+                    Delay++;
+                }else{ 
+                    OS_DelayUntil(t0 + STATIC_UPDATE_PERIOD_COM);
+                }
             } else {
-                int AvgIODelay = RS485_IO_PERIODE - PROTanksystemUnit::MySelf->GetIOLoadDelay();
-                if ( (Delay > STATIC_UPDATE_MIN_DELAY) && (AvgIODelay > 0 )  ){
-                    Delay--;
-                } else if ( (Delay < STATIC_UPDATE_MIN_DELAY) || (AvgIODelay < 0 ) ) {
-                    Delay++;
-                }
+                // Reset Delay when flashing
+                Delay = STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();
+                TSN_Delay(Delay);
             }
-            */
-            ANPRO10_SendTime(false);
-            int t0 = OS_GetTime();
-            set<PRogramObjectBase *>::iterator pBIt;
-            for ( pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++ ) {
-                int ret = (*pBIt)->SendData(CMD_GENERIC_STATIC_DATA);
-                switch ( ret ) {
-                case E_QUEUE_FULL:
-                    Delay++;
-                case E_OK:
-                    TSN_Delay(Delay);
-                    break;
-                case E_UNKNOWN_OBJECT:
-                default:
-                    TSN_Delay(0);
-                    break;
-                }
-            }
-            OS_DelayUntil(t0 += STATIC_UPDATE_PERIOD_COM);
-        } else {
-            // Reset Delay when flashing
-            Delay = STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();
-            TSN_Delay(Delay);
         }
     }
 #endif
@@ -483,10 +494,10 @@ unsigned PRogramObjectBase::GetMaxId(unsigned IdTypeKey) {
     unsigned MaxId = 0;
     IdTypeKey &= 0xffff0000;
     set<PRogramObjectBase *>::iterator pBIt;
-    for ( pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++ ) {
+    for (pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++) {
         const PRogramObjectBase *tmpPtr = (const PRogramObjectBase *)*pBIt;
-        if ( (IdTypeKey == (tmpPtr->IDNumber & 0xffff0000))
-             && (MaxId < tmpPtr->IDNumber) ) {
+        if ((IdTypeKey == (tmpPtr->IDNumber & 0xffff0000))
+            && (MaxId < tmpPtr->IDNumber)) {
             MaxId = tmpPtr->IDNumber;
         }
     }
@@ -497,13 +508,13 @@ int PRogramObjectBase::CorrectIds(void) {
     int Errors = 0;
     set<int>IDNumbers;
     set<PRogramObjectBase *>::iterator pBIt;
-    for ( pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++ ) {
+    for (pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++) {
         PRogramObjectBase *tmpPtr = *pBIt;
         pair<set<int>::iterator, bool> pr;
         // Should not be required to loop here!
         //int Cnt=0;
         pr = IDNumbers.insert(tmpPtr->IDNumber);
-        if ( !pr.second ) {
+        if (!pr.second) {
             int NewId       = GetMaxId(*pr.first) + 1;
             tmpPtr->IDNumber = NewId;
             // Try with the new Id
@@ -533,30 +544,30 @@ pair_struct PRogramObjectBase::InsertInMap(void) {
 void PRogramObjectBase::InitMap(void) {
     int Cnt = 0;
     set<PRogramObjectBase *>::iterator pBIt;
-    for ( pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++ ) {
+    for (pBIt = PRogramObjectBaseSet.begin(); pBIt != PRogramObjectBaseSet.end(); pBIt++) {
         pair_struct RetStruct = (*pBIt)->InsertInMap();
         Cnt++;
-		if ( !RetStruct.Inserted ) {
+        if (!RetStruct.Inserted) {
             AnsiString WarningStr;
             AnsiString IdNumStr;
             AnsiString LineNumStr;
             PRogramObjectBase *ConflictPtr = FindObject((*pBIt)->IDNumber);
-			IdNumStr.cat_sprintf("Cnt %i %i (0x%0x)", Cnt, (*pBIt)->IDNumber, (*pBIt)->IDNumber);
+            IdNumStr.cat_sprintf("Cnt %i %i (0x%0x)", Cnt, (*pBIt)->IDNumber, (*pBIt)->IDNumber);
             LineNumStr.cat_sprintf(" Line numbers: %i and %i", ConflictPtr->GetLineNumber(), (*pBIt)->GetLineNumber());
 
-            if ( (*pBIt)->Name == "0" && RetStruct.Ptr->Name == "0" ) {
+            if ((*pBIt)->Name == "0" && RetStruct.Ptr->Name == "0") {
                 WarningStr = "Objects have no name. Double entry of ID: " + IdNumStr + LineNumStr;
             } else {
                 WarningStr = "Object names: [" + (*pBIt)->Name + "][" + RetStruct.Ptr->Name + "] Double entry of ID: " + IdNumStr + LineNumStr;
 
-			}
+            }
             AnsiString ObjectTypes = "Object types are: [" + KeyWord((*pBIt)->Type) + "][" + KeyWord(RetStruct.Ptr->Type) + "]";
             GiveConfigWarning(WarningStr + CrLfStr + ObjectTypes);
         }
     }
-	DataTransferSet = PRogramObjectBaseSet;
+    //DataTransferSet = PRogramObjectBaseSet;
 #ifdef ANWIN
-	MainForm->StaticDataAdvProgress->Max = DataTransferSet.size();
+    MainForm->StaticDataAdvProgress->Max = DataTransferSet.size();
 #endif
 }
 
@@ -564,7 +575,7 @@ PRogramObjectBase* PRogramObjectBase::FindObject(int IdNum) {
     map<int, PRogramObjectBase *>::iterator ObjMapIterator;
     ObjMapIterator = IdMap.find(IdNum);
     PRogramObjectBase *ObjPtr;
-    if ( ObjMapIterator != IdMap.end() ) {
+    if (ObjMapIterator != IdMap.end()) {
         ObjPtr = ObjMapIterator->second;
     } else {
         ObjPtr = NULL;
@@ -574,12 +585,12 @@ PRogramObjectBase* PRogramObjectBase::FindObject(int IdNum) {
 
 bool PRogramObjectBase::CheckReadPermissionSet(unsigned IdNum) {
     bool IsFound = false;
-    if ( WritePermissionSet.empty() ) {
+    if (WritePermissionSet.empty()) {
         IsFound = true;
     } else {
         set<unsigned>::iterator pBIt;
         pBIt = ReadPermissionSet.find(IdNum);
-        if ( pBIt != ReadPermissionSet.end() ) {
+        if (pBIt != ReadPermissionSet.end()) {
             IsFound = true;
         }
     }
@@ -588,11 +599,11 @@ bool PRogramObjectBase::CheckReadPermissionSet(unsigned IdNum) {
 }
 bool PRogramObjectBase::ReadPermission(unsigned IdNum) {
     bool IsFound = false;
-    if ( Master || ReadPermissionSet.empty() ) {
+    if (Master || ReadPermissionSet.empty()) {
         IsFound = true;
-    } else if ( IdNum ) {
+    } else if (IdNum) {
         IsFound = CheckReadPermissionSet(IdNum);
-    } else if ( PROTanksystemUnit::MySelf ) {
+    } else if (PROTanksystemUnit::MySelf) {
         IsFound = CheckReadPermissionSet(PROTanksystemUnit::MySelf->IDNumber);
     } else {
         IsFound = true; // /* TODO -oErik -cPossible bug : Hva gjør vi her?? */
@@ -604,12 +615,12 @@ bool PRogramObjectBase::ReadPermission(unsigned IdNum) {
 
 bool PRogramObjectBase::CheckWritePermissionSet(unsigned IdNum) {
     bool IsFound = false;
-    if ( WritePermissionSet.empty() ) {
+    if (WritePermissionSet.empty()) {
         IsFound = true;
     } else {
         set<unsigned>::iterator pBIt;
         pBIt = WritePermissionSet.find(IdNum);
-        if ( pBIt != WritePermissionSet.end() ) {
+        if (pBIt != WritePermissionSet.end()) {
             IsFound = true;
         }
     }
@@ -618,11 +629,11 @@ bool PRogramObjectBase::CheckWritePermissionSet(unsigned IdNum) {
 
 bool PRogramObjectBase::WritePermission(unsigned IdNum) {
     bool IsFound = false;
-    if ( Master || WritePermissionSet.empty()/* || !PROTanksystemUnit::MySelf*/ ) {
+    if (Master || WritePermissionSet.empty()/* || !PROTanksystemUnit::MySelf*/) {
         IsFound = true;
-    } else if ( IdNum ) {
+    } else if (IdNum) {
         IsFound = CheckWritePermissionSet(IdNum);
-    } else if ( PROTanksystemUnit::MySelf ) {
+    } else if (PROTanksystemUnit::MySelf) {
         IsFound = CheckWritePermissionSet(PROTanksystemUnit::MySelf->IDNumber);
     } else {
         IsFound = true;
@@ -632,7 +643,7 @@ bool PRogramObjectBase::WritePermission(unsigned IdNum) {
 
 void PRogramObjectBase::DeleteAllObjects(void) {
     set<PRogramObjectBase *>::iterator pBIt;
-    for ( pBIt = MySet.begin(); pBIt != MySet.end(); pBIt++ ) {
+    for (pBIt = MySet.begin(); pBIt != MySet.end(); pBIt++) {
         delete (*pBIt);
     }
 }
@@ -640,7 +651,7 @@ void PRogramObjectBase::DeleteAllObjects(void) {
 void PRogramObjectBase::EraseFromVector(vector<PRogramObjectBase *> &MyVect, PRogramObjectBase *MyPtr) {
     vector<PRogramObjectBase *>::iterator it;
     it = find(MyVect.begin(), MyVect.end(), MyPtr);
-    if ( it != MyVect.end() ) {
+    if (it != MyVect.end()) {
         MyVect.erase(it);
     }
 }
@@ -659,40 +670,40 @@ bool PRogramObjectBase::IsAvailableNewData(void) {
 #ifdef S2TXU
     return bool(abs(OS_Time - TimeStamp)<4*DATA_EXPIRATION_TIME);
 #else
-	return bool(abs(clock() - TimeStamp)<4*DATA_EXPIRATION_TIME);
+    return bool(abs(clock() - TimeStamp)<4*DATA_EXPIRATION_TIME);
 #endif
 }
 bool PRogramObjectBase::IsTimeToSend(void) {
-  if (abs(clock() - LastRTTxTime)>=SEND_MIN_INTERVAL){
-      return true;
-  }
-  return false;
+    if (abs(clock() - LastRTTxTime) >= SEND_MIN_INTERVAL) {
+        return true;
+    }
+    return false;
 }
 
 
 unsigned PRogramObjectBase::GetFirstFreeId(int ObjectType, vector<PRogramObjectBase *>ObjVector, bool ExcludeLast) {
     set<unsigned>IDSet;
     unsigned Size = ObjVector.size();
-    if ( ExcludeLast ) {
+    if (ExcludeLast) {
         Size--;
     }
-    for ( unsigned i = 0;  i < Size; i++ ) {
+    for (unsigned i = 0;  i < Size; i++) {
         IDSet.insert(ObjVector[i]->IDNumber);
     }
 
     unsigned FirstFreeId = 0;
     unsigned MaxId       = (ObjectType << 16);
-    for ( unsigned i = 0; !FirstFreeId && i < IDSet.size(); i++ ) {
+    for (unsigned i = 0; !FirstFreeId && i < IDSet.size(); i++) {
         unsigned IDNum = (ObjectType << 16) + i + 1;
         set<unsigned>::iterator pBIt;
         pBIt = IDSet.find(IDNum);
-        if ( pBIt == IDSet.end() ) {
+        if (pBIt == IDSet.end()) {
             FirstFreeId = IDNum;
-        } else if ( *pBIt > MaxId ) {
+        } else if (*pBIt > MaxId) {
             MaxId = *pBIt;
         }
     }
-    if ( !FirstFreeId ) {
+    if (!FirstFreeId) {
         FirstFreeId = MaxId + 1;
     }
     return (FirstFreeId);
@@ -701,26 +712,26 @@ unsigned PRogramObjectBase::GetFirstFreeId(int ObjectType, vector<PRogramObjectB
 unsigned PRogramObjectBase::GetFirstFreeId(int ObjectType, set<PRogramObjectBase *>ObjSet, bool ExcludeLast) {
     set<unsigned>IDSet;
     unsigned Size = ObjSet.size();
-    if ( ExcludeLast ) {
+    if (ExcludeLast) {
         Size--;
     }
     set<PRogramObjectBase *>::iterator pBIt;
-    for ( pBIt = ObjSet.begin(); pBIt != ObjSet.end(); pBIt++ ) {
+    for (pBIt = ObjSet.begin(); pBIt != ObjSet.end(); pBIt++) {
         IDSet.insert((*pBIt)->IDNumber);
     }
     unsigned FirstFreeId = 0;
     unsigned MaxId       = (ObjectType << 16);
-    for ( unsigned i = 0; !FirstFreeId && i < IDSet.size(); i++ ) {
+    for (unsigned i = 0; !FirstFreeId && i < IDSet.size(); i++) {
         unsigned IDNum = (ObjectType << 16) + i + 1;
         set<unsigned>::iterator pBIt;
         pBIt = IDSet.find(IDNum);
-        if ( pBIt == IDSet.end() ) {
+        if (pBIt == IDSet.end()) {
             FirstFreeId = IDNum;
-        } else if ( *pBIt > MaxId ) {
+        } else if (*pBIt > MaxId) {
             MaxId = *pBIt;
         }
     }
-    if ( !FirstFreeId ) {
+    if (!FirstFreeId) {
         FirstFreeId = MaxId + 1;
     }
     return (FirstFreeId);
@@ -729,9 +740,9 @@ unsigned PRogramObjectBase::GetFirstFreeId(int ObjectType, set<PRogramObjectBase
 
 
 void PRogramObjectBase::SetIdNumber(PRogramObjectBase *ObjPtr, int ProposedId, int ObjectType, vector<PRogramObjectBase *>ObjVector, bool CreatedFromOther) {
-    if ( !ProposedId ) {
+    if (!ProposedId) {
         ObjPtr->IDNumber = (ObjectType << 16) + ObjVector.size();
-    } else if ( (ProposedId >> 16) != ObjectType ) {
+    } else if ((ProposedId >> 16) != ObjectType) {
         AnsiString IdNumStr;
         IdNumStr.cat_sprintf("0x%0x", ProposedId);
         ObjPtr->IDNumber = GetFirstFreeId(ObjectType, ObjVector, true);
@@ -740,15 +751,15 @@ void PRogramObjectBase::SetIdNumber(PRogramObjectBase *ObjPtr, int ProposedId, i
     } else {
         ObjPtr->IDNumber = ProposedId;
     }
-    if ( CreatedFromOther ) {
+    if (CreatedFromOther) {
         ObjPtr->IDNumber += 0x8000; // Was 0x1000
     }
 }
 
 void PRogramObjectBase::SetIdNumber(PRogramObjectBase *ObjPtr, int ProposedId, int ObjectType, set<PRogramObjectBase *>Objset, bool CreatedFromOther) {
-    if ( !ProposedId ) {
+    if (!ProposedId) {
         ObjPtr->IDNumber = (ObjectType << 16) + Objset.size();
-    } else if ( (ProposedId >> 16) != ObjectType ) {
+    } else if ((ProposedId >> 16) != ObjectType) {
         AnsiString IdNumStr;
         IdNumStr.cat_sprintf("0x%0x", ProposedId);
 
@@ -757,7 +768,7 @@ void PRogramObjectBase::SetIdNumber(PRogramObjectBase *ObjPtr, int ProposedId, i
     } else {
         ObjPtr->IDNumber = ProposedId;
     }
-    if ( CreatedFromOther ) {
+    if (CreatedFromOther) {
         ObjPtr->IDNumber += 0x8000; // Was 0x1000
     }
 }
@@ -773,7 +784,7 @@ int PRogramObjectBase::GetLineNumber(void) {
 
 
 bool PRogramObjectBase::Compare(PRogramObjectBase *Ptr1, PRogramObjectBase *Ptr2) {
-    if ( Ptr1 && Ptr2 ) {
+    if (Ptr1 && Ptr2) {
         return Ptr1->SortNo < Ptr2->SortNo;
     } else return true;
 }
@@ -782,27 +793,27 @@ void PRogramObjectBase::SetTimeStamp(void) {
     TimeStamp = clock();
 }
 
-vector<PRogramObjectBase*> PRogramObjectBase::SortVector(vector<PRogramObjectBase*>UnsortedVector) {
-	vector<PRogramObjectBase *>TempVector;
-	if (UnsortedVector.size()) {
-		TempVector.push_back(*UnsortedVector.begin());
-		for ( unsigned i = 1; i < UnsortedVector.size(); i++) {
-			bool PosFound = false;
-			vector<PRogramObjectBase*>::iterator pBIt;
-			for ( pBIt = TempVector.begin(); !PosFound && pBIt != TempVector.end(); pBIt++ ) {
-				if ( (*pBIt)->SortNo > UnsortedVector[i]->SortNo ) {
-					PosFound = true;
-					TempVector.insert(pBIt,1,UnsortedVector[i]);
-				}
-			}
-			if ( !PosFound ) {
-				TempVector.push_back(UnsortedVector[i]);
-			}
-		}
-	}  else{
-		 TempVector =  UnsortedVector;
+vector<PRogramObjectBase *> PRogramObjectBase::SortVector(vector<PRogramObjectBase *>UnsortedVector) {
+    vector<PRogramObjectBase *>TempVector;
+    if (UnsortedVector.size()) {
+        TempVector.push_back(*UnsortedVector.begin());
+        for (unsigned i = 1; i < UnsortedVector.size(); i++) {
+            bool PosFound = false;
+            vector<PRogramObjectBase *>::iterator pBIt;
+            for (pBIt = TempVector.begin(); !PosFound && pBIt != TempVector.end(); pBIt++) {
+                if ((*pBIt)->SortNo > UnsortedVector[i]->SortNo) {
+                    PosFound = true;
+                    TempVector.insert(pBIt, 1, UnsortedVector[i]);
+                }
+            }
+            if (!PosFound) {
+                TempVector.push_back(UnsortedVector[i]);
+            }
+        }
+    }  else {
+        TempVector =  UnsortedVector;
     }
-	return TempVector;
+    return TempVector;
 }
 
 vector<PRogramObjectBase *>PRogramObjectBase::GetReadPermissionVector(vector<PRogramObjectBase *>MyVect, unsigned  pIDNumber) {
@@ -836,10 +847,10 @@ vector<PRogramObjectBase *>PRogramObjectBase::GetWritePermissionVector(vector<PR
         for (unsigned i = 0; i < MyVect.size(); i++) {
             if (MyVect[i]->CheckWritePermissionSet(pIDNumber)) {
                 ListVector.push_back(MyVect[i]);
-			}
+            }
         }
     }
     ListVector = SortVector(ListVector);
-	return (ListVector);
+    return (ListVector);
 }
 

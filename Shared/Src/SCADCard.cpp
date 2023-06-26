@@ -59,6 +59,7 @@ SCADCard::SCADCard(PROIOComponent *IOCompPtr, PRogramObject *ElementPtr, IOUnit 
     }
 
     Name = "ADCard[" + (AnsiString)IOModulePtr->IOAddress + ":" + (AnsiString)(IOChannel + 1) + "]";
+    DataTransferSet.insert(this);
 }
 
 SCADCard::~SCADCard(void) {
@@ -606,7 +607,7 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                                     CompPtr->PROPtr->SetTimeStamp();
                                                 }
                                             }
-                                            //CompPtr->SendData();
+                                            CompPtr->SendData();
                                         } else {
                                             RequestADConfig = 3;
                                         }
@@ -620,7 +621,7 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                 }
                             }
                             SetHWFailure((bool)ActiveAlarms);
-                            //SendData();
+                            SendData();
                         }
                     }
                 }
@@ -762,14 +763,9 @@ bool SCADCard::HandleCard(int Delay) {
             NewSensor = false;
             // Should ask for sensor info for all channels here
         } else { // The normal place
-            int StartTime = OS_Time;
             RequestMeasuredData(0);
-            int SendTime = OS_Time;
-            if ( ANPRO10_IO_Receive() ) {
-                int ReceiveTime = OS_Time;
-                int ReqTime = SendTime - StartTime;
-                int ReplyTime = ReceiveTime - SendTime;
-                int TotalTime = ReqTime+ReplyTime;
+
+            if ( ANPRO10_IO_Receive(200) ) {
                 if ( RequestADConfig ) {
                     bool AddDelay = true;
                     switch ( RequestADConfig ) {

@@ -884,6 +884,7 @@ void PROTank::Initiate(bool AddToList) {
         ObjectSet.insert(this);
         AddToIOObjectList();
         AddToScratchPageVector();
+        DataTransferSet.insert(this);
     } else {
         MyIndex = -1;
     }
@@ -893,7 +894,7 @@ void PROTank::Initiate(bool AddToList) {
     LevelDifference     = 0.0;
     CargoType           = new CargoTypeObject(false, AddToList);
     HasLevelSensors     = false;
-    NotEmptyTank         = false;
+    NotEmptyTank        = false;
 
     WaterSns            = NULL;
     MetriTapeSns        = NULL;
@@ -6267,22 +6268,22 @@ int PROTank::SendData(U16 cmd) {
         if ( IsTimeToSend() )     {
             LastRTTxTime = clock();
             QueueANPRO10_COMMAND_2100 Cmd;
-            Cmd.TxInfo.Port = NULL;
-            Cmd.TxInfo.rxAddr = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId = DEVICE_BROADCAST_TXU;
-            Cmd.Data.ObjectId = IDNumber;
+            Cmd.TxInfo.Port             = NULL;
+            Cmd.TxInfo.rxAddr           = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId             = DEVICE_BROADCAST_TXU;
+            Cmd.Data.ObjectId           = IDNumber;
             Cmd.Data.ndb = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.HWFailure = HWFailure;
-            Cmd.Data.IsNewData = IsAvailableNewData();
-            Cmd.Data.HasLevelSensors = HasLevelSensors;
-            Cmd.Data.NotEmptyTank = NotEmptyTank;
-            Cmd.Data.Level = Level;
-            Cmd.Data.LevelFC = LevelFC;
-            Cmd.Data.LevelRef = LevelAtRef;
-            Cmd.Data.UllageRef = UllageRef;
-            Cmd.Data.UllageFC = UllageFC;
-            Cmd.Data.UllageAtSns = UllageAtSns;
+            Cmd.Data.CommandNo          = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.HWFailure          = HWFailure;
+            Cmd.Data.IsNewData          = IsAvailableNewData();
+            Cmd.Data.HasLevelSensors    = HasLevelSensors;
+            Cmd.Data.NotEmptyTank       = NotEmptyTank;
+            Cmd.Data.Level              = Level;
+            Cmd.Data.LevelFC            = LevelFC;
+            Cmd.Data.LevelRef           = LevelAtRef;
+            Cmd.Data.UllageRef          = UllageRef;
+            Cmd.Data.UllageFC           = UllageFC;
+            Cmd.Data.UllageAtSns        = UllageAtSns;
 
             Cmd.Data.Volume             = Volume;
             Cmd.Data.VolumePercent      = VolumePercent;

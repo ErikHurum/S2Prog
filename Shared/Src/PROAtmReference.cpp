@@ -19,6 +19,7 @@ PROAtmReference::PROAtmReference(bool IsConfig):IsConfigured(IsConfig)
     if (IsConfigured) {
         AddToIOObjectList();
     }
+    DataTransferSet.insert(this);
 }
 //---------------------------------------------------------------------------
 

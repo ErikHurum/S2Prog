@@ -929,6 +929,7 @@ ConfigKeyWord SurvConfigKey[] =
     {   "Power1"                    , C_TU_POWER_1          },
     {   "Power2"                    , C_TU_POWER_2          },
     {   "PowerBoth"                 , C_TU_POWER_BOTH       },
+    {   "PowerACDC"                 , C_TU_POWER_ACDC       },
 // SystemData, Range: 8400 -> 8499
     {   "ScreenOffTime", C_SD_SCREEN_OFF_TIME },
     {   "AlarmOffDelay", C_SD_ALARM_OFF_DELAY },

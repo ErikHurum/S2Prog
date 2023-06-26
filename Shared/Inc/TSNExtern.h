@@ -486,7 +486,7 @@ extern void AcknowledgeSoftAlarms(set<AlarmBasic*>&AlarmSet);
 extern AnsiString MakeConfigStringFromList(set<PRogramObjectBase*>PROSet);
 extern void SetDataTime(set<PRogramObject*>&PROSet);
 extern void SetDataTime(set<PRogramObjectBase*>&PROList);
-extern void RecalcProgramObjects(set<PRogramObject*>&PROList, int Delay=0);
+extern void RecalcProgramObjects(set<PRogramObject*>&PROList);
 
 extern void AddList(PROLinkedList *DestList,PROLinkedList *SrcList);
 

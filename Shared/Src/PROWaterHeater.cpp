@@ -30,6 +30,7 @@ void PROWaterHeater::Initiate(int idNumber, bool addToList) {
     if ( addToList ) {
         ObjectSet.insert(this);
         AllObjVector.push_back(this);
+        DataTransferSet.insert(this);
         AddToIOObjectList();
     }
     ObjectVector.push_back(this);

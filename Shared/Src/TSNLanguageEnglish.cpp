@@ -1137,6 +1137,9 @@ NewLanguageWord EnglishDictionary[]=
     { L_WORD1123, L"TNo"},
     { L_WORD1124, L"Distance"},
 
+    { L_WORD1125 ,L"220VAC"},
+    { L_WORD1126 ,L"24VDC"},
+
 };
 
 unsigned WordsInEnglishDictionary = NELEMENTS(EnglishDictionary);

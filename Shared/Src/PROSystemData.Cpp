@@ -101,6 +101,7 @@ PROSystemData::PROSystemData(void) {
     FreshWaterWeight  = 0.0;
     MiscVolume        = 0.0;
     MiscWeight        = 0.0;
+    DataTransferSet.insert(this);
 }
 
 ///////////////////////////////////////////////////////////////

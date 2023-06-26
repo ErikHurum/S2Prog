@@ -82,6 +82,7 @@ void AlarmBasic::Initiate(void) {
     Time_Disappeared     = time(NULL);
     Time_Changed         = time(NULL);
     AlarmSet.insert(this);
+    DataTransferSet.insert(this);
 
 }
 
