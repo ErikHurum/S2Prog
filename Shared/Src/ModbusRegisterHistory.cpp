@@ -24,10 +24,10 @@ void ModbusRegisterHistory::CalculateScale(void) {
 //---------------------------------------------------------------------------
 
 int ModbusRegisterHistory::GetOutputVal(void) {
-    if ( ObjPtr ) {
+    if ( ObjectPtr ) {
         float OutVal;
         int DecPnt,Unit; // These variables are not used
-        int Status = ObjPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
+        int Status = ObjectPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
         switch ( Status ) {
         case GETVAL_FLOAT_NOT_LEGAL:
         case GETVAL_NOT_AVAILABLE:
@@ -60,7 +60,7 @@ int ModbusRegisterHistory::GetOutputVal(void) {
 float ModbusRegisterHistory::GetOutputValFloat(void) {
     float OutVal;
     int DecPnt,Unit; // These variables are not used
-    int Status = ObjPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
+    int Status = ObjectPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
     switch ( Status ) {
     case GETVAL_FLOAT_NOT_LEGAL:
     case GETVAL_NOT_AVAILABLE:

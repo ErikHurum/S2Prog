@@ -17,6 +17,8 @@ set<PRogramObjectBase *>PRogramObjectBase::PRogramObjectBaseSet;
 set<PRogramObjectBase *>PRogramObjectBase::MySet;
 set<PRogramObjectBase *>PRogramObjectBase::DataTransferSet;
 
+//set<PRogramObjectBase *>PRogramObjectBase::ActualDataTransferSet;
+
 PRogramObjectBase::PRogramObjectBase(bool AddToList) {
     MySet.insert(this);
     if (AddToList) {
@@ -447,7 +449,7 @@ void PRogramObjectBase::SendStaticData(void) {
                     int ret = (*pBIt)->SendData(CMD_GENERIC_STATIC_DATA);
                     switch (ret) {
                     case E_QUEUE_FULL:
-                        if (Delay < 100) {
+                        if (( Delay < 100) && (RunningTime > 5*60*1000)) {
                             Delay++; 
                         }
                     case E_OK:
@@ -668,19 +670,33 @@ void PRogramObjectBase::SetIdNumber(unsigned IDNum) {
 
 bool PRogramObjectBase::IsAvailableNewData(void) {
 #ifdef S2TXU
+#pragma diag_suppress=Pa082
     return bool(abs(OS_Time - TimeStamp)<4*DATA_EXPIRATION_TIME);
 #else
     return bool(abs(clock() - TimeStamp)<4*DATA_EXPIRATION_TIME);
 #endif
 }
 bool PRogramObjectBase::IsTimeToSend(void) {
-    if (abs(clock() - LastRTTxTime) >= SEND_MIN_INTERVAL) {
+    /*
+    long ElapsedTics = abs(clock() - LastRTTxTime);
+    if (ElapsedTics >= SEND_MIN_INTERVAL) {
         return true;
     }
     return false;
+    */
+    //ActualDataTransferSet.insert(this);
+    return true;
 }
 
 
+void PRogramObjectBase::RefreshData(int ValueKey) {
+}
+void PRogramObjectBase::SetOffline(int ValueKey) {
+}
+
+bool PRogramObjectBase::IsStaticValue(int ValueKey) {
+    return false;
+}
 unsigned PRogramObjectBase::GetFirstFreeId(int ObjectType, vector<PRogramObjectBase *>ObjVector, bool ExcludeLast) {
     set<unsigned>IDSet;
     unsigned Size = ObjVector.size();

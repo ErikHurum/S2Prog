@@ -49,20 +49,19 @@ void ModbusWago473RegisterIn::Update(void)
 
         // No need for range check since the value can't get outside 32 mA
         // Should add error check using statur register instead
-        if (ObjPtr) {
+        if (ObjectPtr) {
             if (Master) {
-                ObjPtr->SetTimeStamp();
-                ObjPtr->PutFloatValue(ValueKey, Current);
-                ObjPtr->RefreshData(ValueKey);
+                ObjectPtr->SetTimeStamp();
+                ObjectPtr->PutFloatValue(ValueKey, Current);
             }else{
                 // Should also include the com port. Now send broadcast to all TDUs and PCs
                 // connected to this slave TCU
-                ObjPtr->SendModbusData(ValueKey, Current);
+                ObjectPtr->SendModbusData(ValueKey, Current);
             }
         }
     } else {
-        if (ObjPtr && Master) {
-            ObjPtr->SetOffline(ValueKey);
+        if (ObjectPtr && Master) {
+            ObjectPtr->SetOffline(ValueKey);
         }
     }
 }

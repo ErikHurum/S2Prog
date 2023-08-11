@@ -29,7 +29,6 @@ ModbusCoilIn::ModbusCoilIn(bool pIsCreatedFromMultiple) {
     DefaultId         	  = false;
     Type                  = C_PRO_MODBUS_COIL_IN;
     AlarmPtr              = NULL;
-    ObjectPtr             = NULL;
     RefIDNumber           = 0;
     ValueKey              = 0;
     IsCreatedFromMultiple = pIsCreatedFromMultiple;
@@ -236,7 +235,7 @@ void ModbusCoilIn::Update(void) {
                     AlarmPtr->Check();
                 } else if ( ObjectPtr ) {
                     ObjectPtr->SetTimeStamp();
-                    if (tmpPtr->IsNewDigitalInput(Channel,IsActive)) {
+                    if (tmpPtr->NewDigitalIn(Channel,IsActive)) {
                         ObjectPtr->PutBitValue(ValueKey, 0, IsActive);
                     }
                     if ( AutoReset && tmpIsActive ) {

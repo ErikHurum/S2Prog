@@ -309,7 +309,7 @@ bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                         CompPtr->PROPtr->SetTimeStamp();
                                     }
                                 }
-                                //CompPtr->SendData();
+                                CompPtr->SendData();
                             }
                         }
                     }
@@ -381,14 +381,8 @@ void IOUnitZBAna::HandleIO(int Delay) {
             Restart = false;
         }
     } else if (MyCurentTime > (PowerOnTime)) {
-        int StartTime = OS_Time;
         Request(CMD_REQ_ANA_DATA);
-        int SendTime = OS_Time;
-        ANPRO10_IO_Receive(10);
-        int ReceiveTime = OS_Time;
-        int ReqTime = SendTime - StartTime;
-        int ReplyTime = ReceiveTime - SendTime;
-        int TotalTime = ReqTime + ReplyTime;
+        ANPRO10_IO_Receive();
         TSN_Delay(Delay);
         if (MyCurentTime > ReqStatusTime) {
             ReqStatusTime = MyCurentTime + IO_STATUS_REQ_DELAY;
@@ -422,7 +416,7 @@ void IOUnitZBAna::HandleIO(int Delay) {
     }
     ActiveAlarms = CheckAlarms(AlarmSet);
     SetHWFailure(bool(ActiveAlarms));
-    //SendData();
+    SendData();
     TSN_Delay(Delay);
 }
 
@@ -505,8 +499,8 @@ int IOUnitZBAna::SendData(U16 cmd) {
             Cmd.Data.ndb           = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
             Cmd.Data.CommandNo     = CMD_GENERIC_REALTIME_DATA;
             Cmd.Data.PowerStatus   = PowerStatus;
-            Cmd.Data.FailCnt      = FailCnt;
-            Cmd.Data.FailCntTotal = FailCntTotal;
+            Cmd.Data.FailCnt       = FailCnt;
+            Cmd.Data.FailCntTotal  = FailCntTotal;
             for (int i = 0; i < MAX_AN_ZBANA_CHANNELS; i++) {
                 Cmd.Data.mAValues[i] = mAValues[i];
                 Cmd.Data.Status[i] = Status[i];

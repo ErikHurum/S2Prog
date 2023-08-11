@@ -20,7 +20,8 @@ public:
 #else
 	static const int WantedPacketSize   = 4096; //8192; // octets
 #endif
-	static const int MessageQPollPeriod = 10; // msec
+	static const int MessageQPollPeriod = 20; // msec
+    static void FindANPRO10ComPorts(void);
 };
 
 #endif //TSNASYNCSENDER_H

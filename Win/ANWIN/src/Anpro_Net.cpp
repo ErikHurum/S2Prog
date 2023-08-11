@@ -424,7 +424,8 @@ Anpro_Net::start(void)
          Anpro_Net::anpro_net_thread,     // thread routine
          this,                            // lpParameter
          0,                               // creation flags
-         NULL);                           // threadId
+		 NULL);                           // threadId
+   SetThreadPriority(_anpro_net_thread, THREAD_PRIORITY_TIME_CRITICAL);
    if (PROProjectInfo::IP_AddressMain) {
        _server_tcp_addr.sin_addr.s_addr   = PROProjectInfo::IP_AddressMain + (PROProjectInfo::IP_AddressTCU_Master << 24);
    } else {

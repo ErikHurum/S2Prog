@@ -8,7 +8,6 @@
 
 vector<PRogramObjectBase *>PRogramObject::ScratchPageVector;
 vector<PRogramObject *>PRogramObject::IOObjectVector;
-set<PRogramObject *>PRogramObject::TaskUniquePROSet;
 set<PRogramObject *>PRogramObject::ObjectSet;
 PRogramObject::PRogramObject(bool AddToList) : PRogramObjectBase(AddToList) {
     ObjectSet.insert(this);
@@ -19,20 +18,20 @@ PRogramObject::PRogramObject(bool AddToList) : PRogramObjectBase(AddToList) {
 }
 
 PRogramObject::~PRogramObject(void) {
-    for ( unsigned j = 0; j < AnalogInList.size(); j++ ) {
-        if ( AnalogInList[j] ) {
+    for (unsigned j = 0; j < AnalogInList.size(); j++) {
+        if (AnalogInList[j]) {
             delete AnalogInList[j];
         }
     }
     AnalogInList.clear();
 
     set<AlarmBasic *>::iterator pBIt;
-    for ( pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++ ) {
+    for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
         delete (*pBIt);
     }
     vector<PRogramObject *>::iterator it;
     it = find(IOObjectVector.begin(), IOObjectVector.end(), this);
-    if ( it != IOObjectVector.end() ) {
+    if (it != IOObjectVector.end()) {
         IOObjectVector.erase(it);
     }
     ObjectSet.erase(this);
@@ -50,10 +49,10 @@ AnsiString PRogramObject::MakeConfigString(int ExtraTabs) {
     LocalString += TabStr1 + KeyWord(C_PRO_START_PRO) + CrLfStr;
 
     LocalString += PRogramObjectBase::MakeConfigString();
-    if ( !LongName.IsEmpty() ) {
+    if (!LongName.IsEmpty()) {
         LocalString += TabStr2 + KeyWord(C_PRO_LONGNAME) + LongName + CrLfStr;
     }
-    if ( DataFromOther ) {
+    if (DataFromOther) {
         LocalString += TabStr1 + KeyWord(C_DATA_FROM_OTHER) + CrLfStr;
     }
     LocalString += TabStr1 + KeyWord(C_PRO_END_PRO) + CrLfStr;
@@ -68,13 +67,13 @@ bool PRogramObject::LoadConfigString(TSNConfigString &ConfigString) {
     int Key;
     do {
         AnsiString InputKeyWord = ConfigString.NextWord(ErrorLine);
-        if ( ErrorLine ) {
-            if ( ErrorLine != EOF ) {
+        if (ErrorLine) {
+            if (ErrorLine != EOF) {
                 GiveConfigWarning((AnsiString)"PRogram object " + Name, ErrorLine);
             }
         } else {
             Key = FindConfigKey(InputKeyWord);
-            switch ( Key ) {
+            switch (Key) {
             default:
                 GiveConfigWarning((AnsiString)"PRogram object " + Name, InputKeyWord, ConfigString.LineCount);
                 break;
@@ -93,9 +92,9 @@ bool PRogramObject::LoadConfigString(TSNConfigString &ConfigString) {
                 break;
             }
         }
-    }while ( NoError && (ErrorLine != EOF) && (Key != C_PRO_END_PRO) );
+    }while (NoError && (ErrorLine != EOF) && (Key != C_PRO_END_PRO));
 
-    if ( LongName.IsEmpty() || (LongName == "0") ) {
+    if (LongName.IsEmpty() || (LongName == "0")) {
         LongName = Name;
     }
     return (NoError);
@@ -103,11 +102,11 @@ bool PRogramObject::LoadConfigString(TSNConfigString &ConfigString) {
 //---------------------------------------------------------------------------
 
 void PRogramObject::SortAnalogInputs(void) {
-    for ( unsigned j = 0; j < AnalogInList.size(); j++ ) {
+    for (unsigned j = 0; j < AnalogInList.size(); j++) {
         float MinDistance = AnalogInList[j]->Distance;
         int MinDistIndex = j;
-        for ( unsigned i = j + 1; i < AnalogInList.size(); i++ ) {
-            if ( AnalogInList[i]->Distance < MinDistance ) {
+        for (unsigned i = j + 1; i < AnalogInList.size(); i++) {
+            if (AnalogInList[i]->Distance < MinDistance) {
                 MinDistance  = AnalogInList[i]->Distance;
                 MinDistIndex = i;
             }
@@ -145,25 +144,25 @@ void PRogramObject::AddToScratchPageVector(void) {
 ///////////////////////////////////////////////////////////////
 
 void PRogramObject::SaveSettings(TSNConfigString *SettingsString) {
-    if ( IsModified || WriteAll ) {
+    if (IsModified || WriteAll) {
         IsModified = false;
         AnsiString LocalString;
         AnsiString IdNumStr;
         IdNumStr.cat_sprintf("0x%0x", IDNumber);
-        if ( Type >= C_PRO_PROJINFO && Type < 10000 ) {
+        if (Type >= C_PRO_PROJINFO && Type < 10000) {
             LocalString += KeyWord(Type) + IdNumStr + CrLfStr;
         } else {
             LocalString += KeyWord(C_PRO_START_PRO) + IdNumStr + CrLfStr;
         }
-        if ( !AlarmSet.empty() ) {
+        if (!AlarmSet.empty()) {
             set<AlarmBasic *>::iterator pBIt;
-            for ( pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++ ) {
+            for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
                 AlarmBasic *element = *pBIt;
-                if ( element ) LocalString += (AnsiString)element->SaveSettings();
+                if (element) LocalString += (AnsiString)element->SaveSettings();
             }
         }
-        for ( unsigned j = 0; j < AnalogInList.size(); j++ ) {
-            if ( AnalogInList[j] ) LocalString += AnalogInList[j]->SaveAISettings();
+        for (unsigned j = 0; j < AnalogInList.size(); j++) {
+            if (AnalogInList[j]) LocalString += AnalogInList[j]->SaveAISettings();
         }
         LocalString += KeyWord(C_PRO_END) + CrLfStr;
         LocalString += CrLfStr;
@@ -177,13 +176,13 @@ bool PRogramObject::RestoreSettings(TSNConfigString *SettingsString) {
     int Key;
     do {
         AnsiString InputKeyWord = SettingsString->NextWord(ErrorLine);
-        if ( ErrorLine ) {
-            if ( ErrorLine != EOF ) {
+        if (ErrorLine) {
+            if (ErrorLine != EOF) {
                 RestoreSettingsWarning((AnsiString)"Tank " + Name + ":\nUnknown error started at line:" + (AnsiString)ErrorLine + NewLineStr);
             }
         } else {
             Key = FindConfigKey(InputKeyWord);
-            switch ( Key ) {
+            switch (Key) {
             default:
                 NoError = false;
                 RestoreSettingsWarning((AnsiString)"Tank " + Name + ":\nThe keyword " + InputKeyWord + " is not allowed here!! Line:" + (AnsiString)SettingsString->LineCount + NewLineStr);
@@ -226,16 +225,16 @@ bool PRogramObject::RestoreSettings(TSNConfigString *SettingsString) {
                 break;
             }
         }
-    }while ( NoError && (ErrorLine != EOF) && (Key != C_PRO_END) );
+    }while (NoError && (ErrorLine != EOF) && (Key != C_PRO_END));
     return (NoError);
 }
 
 AnalogInput* PRogramObject::FindAIFromIDNumber(unsigned AIIDNumber) {
     AnalogInput *AIPtr = NULL;
     unsigned type = AIIDNumber >> 16;
-    if ( type >= C_PRO_PROJINFO && type < 10000 ) { //only to strip of fault
-        for ( unsigned j = 0; !AIPtr && j < AnalogInList.size(); j++ ) {
-            if ( AnalogInList[j]->IDNumber == AIIDNumber ) {
+    if (type >= C_PRO_PROJINFO && type < 10000) { //only to strip of fault
+        for (unsigned j = 0; !AIPtr && j < AnalogInList.size(); j++) {
+            if (AnalogInList[j]->IDNumber == AIIDNumber) {
                 AIPtr = AnalogInList[j];
             }
         }
@@ -250,8 +249,8 @@ AnalogInput* PRogramObject::FindAIFromIDNumber(unsigned AIIDNumber) {
 ///////////////////////////////////////////////////////////////
 AnalogInput* PRogramObject::FindAnalogInput(int Location) {
     AnalogInput *SnsPtr = NULL;
-    for ( unsigned j = 0; !SnsPtr && j < AnalogInList.size(); j++ ) {
-        if ( AnalogInList[j]->Location == Location ) {
+    for (unsigned j = 0; !SnsPtr && j < AnalogInList.size(); j++) {
+        if (AnalogInList[j]->Location == Location) {
             SnsPtr = AnalogInList[j];
         }
     }
@@ -259,9 +258,9 @@ AnalogInput* PRogramObject::FindAnalogInput(int Location) {
 }
 AnalogInput* PRogramObject::FindAnalogInput(int Location, int BasicSensorType) {
     AnalogInput *SnsPtr = NULL;
-    for ( unsigned j = 0; !SnsPtr && j < AnalogInList.size(); j++ ) {
+    for (unsigned j = 0; !SnsPtr && j < AnalogInList.size(); j++) {
         int Loc = AnalogInList[j]->Location;
-        if ( Loc == Location && AnalogInList[j]->GetBasicSensorType() == BasicSensorType ) {
+        if (Loc == Location && AnalogInList[j]->GetBasicSensorType() == BasicSensorType) {
             SnsPtr = AnalogInList[j];
         }
     }
@@ -270,9 +269,9 @@ AnalogInput* PRogramObject::FindAnalogInput(int Location, int BasicSensorType) {
 
 AnalogInput* PRogramObject::FindAllAnalogInput(int Location, int BasicSensorType) {
     AnalogInput *SnsPtr = NULL;
-    for ( unsigned j = 0; !SnsPtr && j < AllAnalogInList.size(); j++ ) {
+    for (unsigned j = 0; !SnsPtr && j < AllAnalogInList.size(); j++) {
         int Loc = AllAnalogInList[j]->Location;
-        if ( Loc == Location && AllAnalogInList[j]->GetBasicSensorType() == BasicSensorType ) {
+        if (Loc == Location && AllAnalogInList[j]->GetBasicSensorType() == BasicSensorType) {
             SnsPtr = AllAnalogInList[j];
         }
     }
@@ -280,8 +279,8 @@ AnalogInput* PRogramObject::FindAllAnalogInput(int Location, int BasicSensorType
 }
 int PRogramObject::FindTypeNumberOfSensors(int BasicSensorType) {
     int tmpCnt = 0;
-    for ( unsigned j = 0; j < AnalogInList.size(); j++ ) {
-        if ( AnalogInList[j]->GetBasicSensorType() == BasicSensorType ) {
+    for (unsigned j = 0; j < AnalogInList.size(); j++) {
+        if (AnalogInList[j]->GetBasicSensorType() == BasicSensorType) {
             tmpCnt++;
         }
     }
@@ -290,8 +289,8 @@ int PRogramObject::FindTypeNumberOfSensors(int BasicSensorType) {
 
 int PRogramObject::FindTypeNumberOfAllSensors(int BasicSensorType) {
     int tmpCnt = 0;
-    for ( unsigned j = 0;  j < AllAnalogInList.size(); j++ ) {
-        if ( AllAnalogInList[j]->GetBasicSensorType() == BasicSensorType ) {
+    for (unsigned j = 0;  j < AllAnalogInList.size(); j++) {
+        if (AllAnalogInList[j]->GetBasicSensorType() == BasicSensorType) {
             tmpCnt++;
         }
     }
@@ -304,7 +303,7 @@ int PRogramObject::GetValue(int ValueId, int Index, float &MyRetValue, int &DecP
 
 int PRogramObject::GetStringValue(int ValueId, int Index, AnsiString &MyString) {
     int Status = GETVAL_NO_ERR;
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_PRO_LONGNAME:
         MyString = LongName;
         break;
@@ -327,14 +326,14 @@ void PRogramObject::Calculate(void) {
 }
 void PRogramObject::AddAlarms(set<AlarmBasic *> &AlInfoList) {
     set<AlarmBasic *>::iterator pBIt;
-    for ( pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++ ) {
+    for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
         AlInfoList.insert(*pBIt);
     }
 }
 
 void PRogramObject::AddToExternalAlarms(set<AlarmBasic *> &AlInfoList) {
     set<AlarmBasic *>::iterator pBIt;
-    for ( pBIt = AlInfoList.begin(); pBIt != AlInfoList.end(); pBIt++ ) {
+    for (pBIt = AlInfoList.begin(); pBIt != AlInfoList.end(); pBIt++) {
         ExternalAlarmList.insert(*pBIt);
     }
 }
@@ -342,13 +341,13 @@ void PRogramObject::AddToExternalAlarms(set<AlarmBasic *> &AlInfoList) {
 void PRogramObject::AddCompleteList(set<AlarmBasic *> &AlInfoList) {
     AddSensorAlarms();
     set<AlarmBasic *>::iterator pBIt;
-    for ( pBIt = CompleteAlarmInfoList.begin(); pBIt != CompleteAlarmInfoList.end(); pBIt++ ) {
+    for (pBIt = CompleteAlarmInfoList.begin(); pBIt != CompleteAlarmInfoList.end(); pBIt++) {
         AlInfoList.insert(*pBIt);
     }
 }
 
 void PRogramObject::AddSensorAlarms(void) {
-    for ( unsigned i = 0; i < AnalogInList.size(); i++ ) {
+    for (unsigned i = 0; i < AnalogInList.size(); i++) {
         AnalogInList[i]->AddAlarms(CompleteAlarmInfoList);
         AnalogInList[i]->SetPROPtr((PRogramObject *)this);
     }
@@ -367,23 +366,23 @@ int PRogramObject::LCWriteXML(char *StrBuf) {
 }
 
 void PRogramObject::RemoveAnalogInI(int Index, bool DeleteAI) {
-    if ( Index >= 0 && Index < (int)AnalogInList.size() ) {
+    if (Index >= 0 && Index < (int)AnalogInList.size()) {
         RemoveAnalogInP(AllAnalogInList[Index], DeleteAI);
     }
 }
 
 void PRogramObject::RemoveAnalogInP(AnalogInput *AIPtr, bool DeleteAI) {
-    if ( AIPtr ) {
+    if (AIPtr) {
         //bool NotFound = true;
         vector<AnalogInput *>::iterator Iter;
 
-        for ( Iter = AnalogInList.begin(); Iter != AnalogInList.end(); Iter++ ) {
-            if ( AIPtr == *Iter ) {
+        for (Iter = AnalogInList.begin(); Iter != AnalogInList.end(); Iter++) {
+            if (AIPtr == *Iter) {
                 AnalogInList.erase(Iter);
             }
         }
-        for ( Iter = AllAnalogInList.begin(); Iter != AllAnalogInList.end(); Iter++ ) {
-            if ( AIPtr == *Iter ) {
+        for (Iter = AllAnalogInList.begin(); Iter != AllAnalogInList.end(); Iter++) {
+            if (AIPtr == *Iter) {
                 AllAnalogInList.erase(Iter);
             }
         }
@@ -398,19 +397,19 @@ void PRogramObject::AddAnalogIn(AnalogInput *AIPtr) {
 
 void PRogramObject::SetChildUserRights(void) {
 
-    for ( unsigned i = 0; i < AnalogInList.size(); i++ ) {
+    for (unsigned i = 0; i < AnalogInList.size(); i++) {
         AnalogInList[i]->ReadPermissionSet  = ReadPermissionSet;
         AnalogInList[i]->WritePermissionSet = WritePermissionSet;
     }
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++ ) {
+    for (ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++) {
         (*ObjIt)->ReadPermissionSet  = ReadPermissionSet;
         (*ObjIt)->WritePermissionSet = WritePermissionSet;
     }
 }
 
 void PRogramObject::SetChildUserRights(PRogramObject *Child) {
-    if ( Child ) {
+    if (Child) {
         Child->ReadPermissionSet  = ReadPermissionSet;
         Child->WritePermissionSet = WritePermissionSet;
         Child->SetChildUserRights();
@@ -420,18 +419,18 @@ void PRogramObject::SetChildUserRights(PRogramObject *Child) {
 
 void PRogramObject::MergeChildUserRights(PRogramObject *Child) {
 
-    if ( Child ) {
+    if (Child) {
         // First merge my direct r/w permissions
         MergeSet(Child->ReadPermissionSet, ReadPermissionSet);
         MergeSet(Child->WritePermissionSet, WritePermissionSet);
         // Time for merging the analog inputs
-        for ( unsigned i = 0; i < AnalogInList.size(); i++ ) {
+        for (unsigned i = 0; i < AnalogInList.size(); i++) {
             MergeSet(AnalogInList[i]->ReadPermissionSet, ReadPermissionSet);
             MergeSet(AnalogInList[i]->WritePermissionSet, WritePermissionSet);
         }
         // Time for merging the alarms
         set<AlarmBasic *>::iterator ObjIt;
-        for ( ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++ ) {
+        for (ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++) {
             MergeSet((*ObjIt)->ReadPermissionSet, ReadPermissionSet);
             MergeSet((*ObjIt)->WritePermissionSet, WritePermissionSet);
         }
@@ -445,9 +444,9 @@ AnsiString PRogramObject::GetHWAlarms(void) {
     set<AlarmBasic *>ActiveAlarmSet;
 
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = CompleteAlarmInfoList.begin(); ObjIt != CompleteAlarmInfoList.end(); ObjIt++ ) {
+    for (ObjIt = CompleteAlarmInfoList.begin(); ObjIt != CompleteAlarmInfoList.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
-        switch ( ALPtr->State ) {
+        switch (ALPtr->State) {
         case AlarmBasic::AlAknowledged  :
         case AlarmBasic::AlActive       :
             ActiveAlarmSet.insert(ALPtr);
@@ -458,7 +457,7 @@ AnsiString PRogramObject::GetHWAlarms(void) {
 
         }
     }
-    for ( ObjIt = ActiveAlarmSet.begin(); ObjIt != ActiveAlarmSet.end(); ObjIt++ ) {
+    for (ObjIt = ActiveAlarmSet.begin(); ObjIt != ActiveAlarmSet.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
         MsgStr += ALPtr->Get_CompleteMessage() + CrStr;
     }
@@ -467,9 +466,9 @@ AnsiString PRogramObject::GetHWAlarms(void) {
 AnsiString PRogramObject::GetAlarms(void) {
     AnsiString MsgStr;
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++ ) {
+    for (ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
-        switch ( ALPtr->State ) {
+        switch (ALPtr->State) {
         case AlarmBasic::AlAknowledged  :
         case AlarmBasic::AlActive       :
             MsgStr += ALPtr->Get_Message() + CrStr;
@@ -487,23 +486,23 @@ AnsiString PRogramObject::GetWarnings(void) {
     AnsiString DisabeledSensorsMsgStr;
     AnsiString MsgStr;
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++ ) {
+    for (ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
-        if ( !ALPtr->Enable ) {
+        if (!ALPtr->Enable) {
             DisabeledAlarmMsgStr += ALPtr->Get_Message() + CrStr;
         }
     }
-    for ( unsigned i = 0; i < AnalogInList.size(); i++ ) {
+    for (unsigned i = 0; i < AnalogInList.size(); i++) {
         AnalogInput *AIPtr = AnalogInList[i];
-        if ( !AIPtr->Enable ) {
+        if (!AIPtr->Enable) {
             DisabeledSensorsMsgStr += AIPtr->Name + CrStr;
         }
     }
-    if ( !DisabeledAlarmMsgStr.IsEmpty() ) {
+    if (!DisabeledAlarmMsgStr.IsEmpty()) {
         MsgStr = "The following Alarm(s) are disabled:" + CrStr + DisabeledAlarmMsgStr;
     }
-    if ( !DisabeledSensorsMsgStr.IsEmpty() ) {
-        if ( !MsgStr.IsEmpty() ) {
+    if (!DisabeledSensorsMsgStr.IsEmpty()) {
+        if (!MsgStr.IsEmpty()) {
             MsgStr += CrStr;
         }
         MsgStr += "The following sensor(s) are disabled:" + CrStr + DisabeledSensorsMsgStr;
@@ -516,11 +515,11 @@ int PRogramObject::GetNumberOfHWAlarms(void) {
     int Count = 0;
 
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = CompleteAlarmInfoList.begin(); ObjIt != CompleteAlarmInfoList.end(); ObjIt++ ) {
+    for (ObjIt = CompleteAlarmInfoList.begin(); ObjIt != CompleteAlarmInfoList.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
 
         if (ALPtr->IsHWAlarm) {
-            switch ( ALPtr->State ) {
+            switch (ALPtr->State) {
             case AlarmBasic::AlAknowledged  :
             case AlarmBasic::AlActive       :
                 Count++;
@@ -537,9 +536,9 @@ int PRogramObject::GetNumberOfHWAlarms(void) {
 int PRogramObject::GetNumberOfAlarms(void) {
     int Count = 0;
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++ ) {
+    for (ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
-        switch ( ALPtr->State ) {
+        switch (ALPtr->State) {
         case AlarmBasic::AlAknowledged  :
         case AlarmBasic::AlActive       :
             Count++;
@@ -555,42 +554,43 @@ int PRogramObject::GetNumberOfAlarms(void) {
 int PRogramObject::GetNumberOfWarnings(void) {
     int Count = 0;
     set<AlarmBasic *>::iterator ObjIt;
-    for ( ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++ ) {
+    for (ObjIt = AlarmSet.begin(); ObjIt != AlarmSet.end(); ObjIt++) {
         AlarmBasic *ALPtr = *ObjIt;
-        if ( !ALPtr->Enable ) {
+        if (!ALPtr->Enable) {
             Count++;
         }
     }
-    for ( unsigned i = 0; i < AnalogInList.size(); i++ ) {
+    for (unsigned i = 0; i < AnalogInList.size(); i++) {
         AnalogInput *AIPtr = AnalogInList[i];
-        if ( !AIPtr->Enable ) {
+        if (!AIPtr->Enable) {
             Count++;
         }
     }
     return Count;
 }
 void PRogramObject::RefreshData(int ValueKey) {
-    if ( !IsStaticValue(ValueKey) ) {
-        if ( IsAvailableNewData() ) {
-            if ( DataFromOther ) {
-                HWFailure = CheckAlarms(ExternalAlarmList);
-            }
-            if ( !DataFromOther || !HWFailure ) {
+    //if ( !IsStaticValue(ValueKey) ) {
+    if (IsAvailableNewData()) {
+        if (DataFromOther) {
+            HWFailure = CheckAlarms(ExternalAlarmList);
+        }
+        if (!DataFromOther || !HWFailure) {
                 Calculate();
                 IsNewData = true;
-                // HWFailure set elsewhere when our IO-system
-                CheckAlarms(AlarmSet);
-            }
-        } else {
-            IsNewData = false;
-            SetAlarmsToNormal(AlarmSet);
-            SendData();
+            // HWFailure set elsewhere when our IO-system
+            CheckAlarms(AlarmSet);
+            //TSN_Delay(10);
         }
+    } else {
+        IsNewData = false;
+        SetAlarmsToNormal(AlarmSet);
+        SendData();
     }
+    // }
 }
 
 void PRogramObject::SetOffline(int ValueKey) {
-    if ( !IsStaticValue(ValueKey) ) {
+    if (!IsStaticValue(ValueKey)) {
         IsNewData = false;
         HWFailure = true;
         SetAlarmsToNormal(AlarmSet);
@@ -602,10 +602,6 @@ void PRogramObject::SetOffline(int ValueKey) {
 
 set<AnalogInput *>PRogramObject::GetModBusSensorList(void) {
     return ModbusSensorSet;
-}
-
-bool PRogramObject::IsStaticValue(int ValueKey) {
-    return false;
 }
 
 

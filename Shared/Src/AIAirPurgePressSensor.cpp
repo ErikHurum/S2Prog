@@ -179,6 +179,7 @@ int AIAirPurgePressSensor::ReceiveData(U8* data)
 }
 int AIAirPurgePressSensor::SendData(U16 cmd)
 {
+    int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
         if ( IsTimeToSend() )     {
@@ -200,12 +201,14 @@ int AIAirPurgePressSensor::SendData(U16 cmd)
             Cmd.Data.FreeValue      = Failure;
             bool sent =ANPRO10SendNormal(&Cmd);
             if ( !sent )
-                return(E_QUEUE_FULL);
+                ErrorStatus = E_QUEUE_FULL;
             else
-                return(E_OK);
+                ErrorStatus = E_OK;
         }
+        break;
     default:
-        return AnalogInput::SendData(cmd);
+        ErrorStatus = AnalogInput::SendData(cmd);
     };
+    return ErrorStatus;
 }
 

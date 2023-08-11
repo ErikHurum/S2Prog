@@ -7,7 +7,6 @@ private:
 	void CalculateScaleOut(float &ScaleOut, float &OffsetOut);
 	int  GetOutputVal(void);
 public:
-	static set<PRogramObject*>UniquePROSet;
 	static set<PRogramObjectBase*>ModbusSet;
 	ModbusRegisterIn(bool pIsCreatedFromMultiple=false, int ModuleType=C_PRO_MODBUS_REG_IN, bool InsertInSet=true);
 	~ModbusRegisterIn();

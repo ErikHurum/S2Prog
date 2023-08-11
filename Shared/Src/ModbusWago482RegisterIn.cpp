@@ -47,20 +47,19 @@ void ModbusWago482RegisterIn::Update(void)
 
         // No need for range check since the value can't get outside 10 Volt
         // Should add error check using statur register instead
-        if (ObjPtr) {
+        if (ObjectPtr) {
             if (Master) {
-                ObjPtr->SetTimeStamp();
-                ObjPtr->PutFloatValue(ValueKey, Voltage);
-                ObjPtr->RefreshData(ValueKey);
+                ObjectPtr->SetTimeStamp();
+                ObjectPtr->PutFloatValue(ValueKey, Voltage);
             }else{
                 // Should also include the com port. Now send broadcast to all TDUs and PCs
                 // connected to this slave TCU
-                ObjPtr->SendModbusData(ValueKey, Voltage);
+                ObjectPtr->SendModbusData(ValueKey, Voltage);
             }
         }
     } else {
-        if (ObjPtr && Master) {
-            ObjPtr->SetOffline(ValueKey);
+        if (ObjectPtr && Master) {
+            ObjectPtr->SetOffline(ValueKey);
         }
     }
 }

@@ -171,6 +171,7 @@ struct mAHartMeasuredDataStruct {
     #ifdef S2TXU
 bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
     ReceiveCnt++;
+    int StartTime = OS_Time;
     ANPRO10_PacketHeading *pPH = (ANPRO10_PacketHeading *)Buf;
     bool MyPacket = (pPH->txadr == this->IOAddress);
     if ( MyPacket ) {
@@ -258,7 +259,7 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                         CompPtr->PROPtr->SetTimeStamp();
                                     }
                                 }
-                                //CompPtr->SendData();
+                                CompPtr->SendData();
                             }
                         }
                     }
@@ -287,6 +288,7 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
             }
         } while ( MoreCommands && (Buf < EndPtr) );
     }
+    int HandlingTime = OS_Time-StartTime;
     return (MyPacket);
 }
 

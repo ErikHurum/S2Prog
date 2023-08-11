@@ -243,7 +243,7 @@ void ModbusRegBitIn::SetProList(void) {
         }
     }
     if (IdNumbers.size() == 1) {
-        ObjPtr = (PRogramObject *)FindPROFromIDNumber(IdNumbers[0]);
+        ObjectPtr = (PRogramObject *)FindPROFromIDNumber(IdNumbers[0]);
     }
 
 
@@ -346,8 +346,8 @@ AnsiString ModbusRegBitIn::GetRegisterType(void) {
 
 AnsiString ModbusRegBitIn::GetRegisterValue(void) {
     AnsiString Result;
-    if (ObjPtr) {
-        Result = LibGetValue(ValueKey, ObjPtr);
+    if (ObjectPtr) {
+        Result = LibGetValue(ValueKey, ObjectPtr);
         if (!Result.IsEmpty()) {
             switch (NormalState) {
             case C_CTRL_NS_UNPOWERED:

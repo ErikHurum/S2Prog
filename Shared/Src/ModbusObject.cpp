@@ -18,8 +18,9 @@ vector<OS_TASK *>ModbusObject::ModbusTaskVector;
 OS_TASK *ModbusObject::ModbusUpdateTaskPtr = NULL;
 #endif
 
-set<ModbusObject *>ModbusObject::ModbusSet;
-set<ModbusObject *>ModbusObject::MyModbusSet;
+set<ModbusObject      *>ModbusObject::ModbusSet;
+set<ModbusObject      *>ModbusObject::MyModbusSet;
+set<PRogramObjectBase *>ModbusObject::MyModbusPRogramObjectSet;
 
 ModbusObject::ModbusObject(void) : PRogramObject(false) {
     ModbusSet.insert(this);
@@ -30,6 +31,8 @@ ModbusObject::ModbusObject(void) : PRogramObject(false) {
     Address     = -1;
     Channel     = -1;
     IsActive    = false;
+    ObjectPtr   = NULL;
+    ValueKey    = 0;
     IsCreatedFromMultiple = false;
 }
 ModbusObject::~ModbusObject(void) {
@@ -165,13 +168,36 @@ ModbusUnit* ModbusObject::FindUnit(void) {
 void ModbusObject::ExchangeData(void) {
 #ifdef S2TXU
     OS_Delay(10000);
-    FOREVER{
+    {
         set<ModbusObject *>::iterator pBIt;
         for (pBIt = MyModbusSet.begin(); pBIt != MyModbusSet.end(); pBIt++) {
-            (*pBIt)->Update();
+            PRogramObjectBase *tmpObjectPtr = (*pBIt)->ObjectPtr;
+            if ( tmpObjectPtr && !tmpObjectPtr->IsStaticValue((*pBIt)->ValueKey)) {
+                MyModbusPRogramObjectSet.insert(tmpObjectPtr);
+            }
         }
-        OS_Delay(MODBUS_UPDATE_INTERVAL);
+
     }
+    //int Delay = MODBUS_UPDATE_INTERVAL/MyModbusPRogramObjectSet.size();
+    int Delay = MODBUS_UPDATE_INTERVAL/MyModbusSet.size();
+    FOREVER{
+        {
+            set<ModbusObject *>::iterator pBIt;
+            for (pBIt = MyModbusSet.begin(); pBIt != MyModbusSet.end(); pBIt++) {
+                (*pBIt)->Update();
+                OS_Delay(Delay);
+            }
+        }
+        /*
+        {
+            set<PRogramObjectBase *>::iterator pBIt;
+            for (pBIt = MyModbusPRogramObjectSet.begin(); pBIt != MyModbusPRogramObjectSet.end(); pBIt++) {
+                (*pBIt)->RefreshData();
+                OS_Delay(Delay);
+            }
+        }
+        */
+    } 
 #endif
 }
 
@@ -337,7 +363,7 @@ void ModbusObject::ModbusTask(TSNUart *Port) {
                     for (MBUnitIt = ModbusUnitSet.begin(); MBUnitIt != ModbusUnitSet.end(); MBUnitIt++) {
                         ModbusUnit *tmpPtr = *MBUnitIt;
                         tmpPtr->HandleIO();
-                        //CheckAlarms(tmpPtr->AlarmSet);
+                        CheckAlarms(tmpPtr->AlarmSet);
                     }
                     OS_DelayUntil(t0 + RequestDelay);
                 }

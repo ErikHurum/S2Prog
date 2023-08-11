@@ -793,28 +793,32 @@ void ANPRO10_UnpackPacket(U8 *Buf, TSNUart *Port) {
             case CMD_GENERIC_STATIC_DATA  :         // 102
             case CMD_GENERIC_MODBUS_RT_DATA:        // 103
 
-            case CMD_PRO_ALARM_STATUS       :       // 3000
+			case CMD_PRO_ALARM_STATUS       :       // 3000
             case CMD_PRO_ALARM_ACK          :       // 3001
                 {
                     // Call receive packet on the right object.
                     ANPRO10_COMMAND_OBJ_PACKET *pCommand = (ANPRO10_COMMAND_OBJ_PACKET *)pCH;
                     PRogramObjectBase          *ObjPtr   = PRogramObjectBase::FindObject(pCommand->ObjectId);
-                    if ( ObjPtr ) {
+					if ( ObjPtr  ) {
 #if defined(ANWIN)
-                        int MapSize = PRogramObjectBase::DataTransferSet.size();
-                        if ( PRogramObjectBase::DataTransferSet.empty() && MainForm->StaticDataAdvProgress->Visible ) {
-                            MainForm->StaticDataAdvProgress->Visible = false;
-                            MainForm->UpdatingDatabaseLabel->Visible = false;
-                            MainForm->ComStatusPanel->Width 		= 30;
-                        } else {
-                            PRogramObjectBase::DataTransferSet.erase(ObjPtr);
-                            MainForm->StaticDataAdvProgress->Position = MainForm->StaticDataAdvProgress->Max - PRogramObjectBase::DataTransferSet.size();
-							if ( MapSize <= 5 ) {
-								set<PRogramObjectBase *>::iterator pBIt;
-								for ( pBIt = PRogramObjectBase::DataTransferSet.begin(); pBIt != PRogramObjectBase::DataTransferSet.end(); pBIt++ ) {
-									PRogramObjectBase *ObjPtr2   = *pBIt;
-									AnsiString Name = ObjPtr2->Name;
-								}
+                        if ( MainForm->StaticDataAdvProgress->Visible) {
+                            int MapSize = PRogramObjectBase::DataTransferSet.size();
+                            if ( PRogramObjectBase::DataTransferSet.empty()  ) {
+                                MainForm->StaticDataAdvProgress->Visible = false;
+                                MainForm->UpdatingDatabaseLabel->Visible = false;
+                                MainForm->ComStatusPanel->Width 		= 30;
+                            } else {
+                                PRogramObjectBase::DataTransferSet.erase(ObjPtr);
+                                MainForm->StaticDataAdvProgress->Position = MainForm->StaticDataAdvProgress->Max - PRogramObjectBase::DataTransferSet.size();
+                                /*
+                                if ( MapSize <= 5 ) {
+                                    set<PRogramObjectBase *>::iterator pBIt;
+                                    for ( pBIt = PRogramObjectBase::DataTransferSet.begin(); pBIt != PRogramObjectBase::DataTransferSet.end(); pBIt++ ) {
+                                        PRogramObjectBase *ObjPtr2   = *pBIt;
+                                        AnsiString Name = ObjPtr2->Name;
+                                    }
+                                }
+                                */
                             }
                         }
 #endif
@@ -2478,11 +2482,11 @@ bool ANPRO10SendUrgent(void *Cmd) {
     ANPRO10_SendCommand(Command->TxInfo.Port, (U8 *)&Command->Data, DEVICE_BROADCAST_ADDR, DEVICE_BROADCAST_TXU);
     return (true);
 #else
+    bool        Status                                  = true;
     // Send the Data On the UrgentQueue
 #if (NETWORK != 1) // original code
-    bool        Status                                  =  TSNAsyncSender::UrgentCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+    Status =  TSNAsyncSender::UrgentCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
 #else // hkim
-    bool        Status                                  = true;
     extern bool anpro_net_send_urgent(void *cmd);
     extern bool anpro_net_is_this_cmd_for_net_interface(QueueANPRO10_CommandHeading * cmd);
     //
@@ -2502,11 +2506,13 @@ bool ANPRO10SendUrgent(void *Cmd) {
     //
     if ( Command->TxInfo.rxAddr == DEVICE_BROADCAST_ADDR || Command->TxInfo.rxId == DEVICE_BROADCAST_TXU ) {
         anpro_net_send_urgent(Cmd);
-        Status = TSNAsyncSender::UrgentCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+        if (TSNAsyncSender::UrgentCommandQ ) {
+            Status |= TSNAsyncSender::UrgentCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+        }
     } else {
         if ( anpro_net_is_this_cmd_for_net_interface(Command) ) {
             anpro_net_send_urgent(Cmd);
-        } else {
+        } else if ( TSNAsyncSender::UrgentCommandQ ){
             Status = TSNAsyncSender::UrgentCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
         }
     }
@@ -2548,10 +2554,12 @@ bool ANPRO10SendNormal(void *Cmd) {
     ANPRO10_SendCommand(Command->TxInfo.Port, (U8 *)&Command->Data, DEVICE_BROADCAST_ADDR, DEVICE_BROADCAST_TXU);
     return (true);
 #else
-#if (NETWORK != 1) // original code
-    bool        Status = TSNAsyncSender::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
-#else // hkim
     bool        Status = true;
+#if (NETWORK != 1) // original code
+    if (TSNAsyncSender::NormalCommandQ) {
+        Status = TSNAsyncSender::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+    }
+#else // hkim
     extern bool anpro_net_send_normal(void *cmd);
     extern bool anpro_net_is_this_cmd_for_net_interface(QueueANPRO10_CommandHeading * cmd);
     //
@@ -2571,11 +2579,13 @@ bool ANPRO10SendNormal(void *Cmd) {
     //
     if ( Command->TxInfo.rxAddr == DEVICE_BROADCAST_ADDR || Command->TxInfo.rxId == DEVICE_BROADCAST_TXU ) {
         Status = AsyncsenderNetwork::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
-        Status |= TSNAsyncSender::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+        if (TSNAsyncSender::NormalCommandQ) {
+            Status |= TSNAsyncSender::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
+        }
     } else {
         if ( anpro_net_is_this_cmd_for_net_interface(Command) ) {
             Status = AsyncsenderNetwork::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
-        } else {
+        } else if ( TSNAsyncSender::NormalCommandQ ){
             //anpro_net_send_normal(Cmd);
             Status = TSNAsyncSender::NormalCommandQ->PostMessage((U8 *)Command, Command->Data.ndb + sizeof(QueueANPRO10_CommandHeading));
         }

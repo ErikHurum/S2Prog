@@ -316,7 +316,6 @@ void __fastcall TChildForm::UpdateStringGrid(vector<PRogramObjectBase *>ObjectTa
 									StatusColor = clYellow;
 									break;
 								case AD_NOT_USED     :
-									break;
 									//StatusColor = clBlack;
 									break;
 								default:

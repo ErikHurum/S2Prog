@@ -72,12 +72,15 @@ bool TSNMessageQ::PostMessage(void *buf, int size) {
     return (bytesWritten == (unsigned)size);
 #else
     int Ret;
+    int Cnt = 0;
+    // Must exit with error code if not free buffer after a time
     do{
         Ret= OS_Q_Put(pQ,buf,size);
         if (Ret) {
+            Cnt++;
             OS_Delay(1);
         }
-    }while(Ret);
+    }while(Ret && Cnt < 10 );
     return (bool(!Ret));
 #endif
 

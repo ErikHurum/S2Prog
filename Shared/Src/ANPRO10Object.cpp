@@ -32,7 +32,7 @@ bool ANPRO10Object::ANPRO10_IO_UnpackPacket(U8 *Buf)
 #define MAX_TIME_BETWEEN_BYTE	10
 bool ANPRO10Object::ANPRO10_IO_Receive(int Delay)
 {
-	int StartTime = OS_Time;
+	int StartTime = clock();
 	#ifdef S2TXU
 	#if (USE_EMBOS_MEM_POOL==1) 
 	U8 *RxBuf = (U8*)OS_MEMF_Alloc(&pANPRO10IOMemPool,PURPOSE_IO_RECEIVE);
@@ -158,7 +158,7 @@ bool ANPRO10Object::ANPRO10_IO_Receive(int Delay)
 		FailCntTotal++;
 		FailCnt++;
 	}
-        int ReceiveTime = OS_Time - StartTime;
+        int ReceiveTime = clock() - StartTime;
         ReceiveTime++;
 	return(PacketOK);
 }

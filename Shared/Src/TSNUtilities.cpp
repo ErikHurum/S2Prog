@@ -148,12 +148,12 @@ int GetDaylightSaving(void) {
      */
     const time_t SecsNow = time(NULL);
     struct tm *TimeNow = localtime(&SecsNow);
-	// Was a Bug in MS Windows. isdst is 1 when no dst!!!
-	// Still a bug EHS 15.03.2022
+    // Was a Bug in MS Windows. isdst is 1 when no dst!!!
+    // Still a bug EHS 15.03.2022
     if (TimeNow->tm_isdst) {
-		//Dst = true;
+        //Dst = true;
     }
-	PROSystemData::DaylightSaving = Dst;
+    PROSystemData::DaylightSaving = Dst;
 #else
     Dst = PROSystemData::DaylightSaving;
 #endif
@@ -487,8 +487,8 @@ void Calc_1stDeg_coeffs(float x1, float y1, float x2, float y2, float &a, float 
 // y = y1 + ((x – x1) / (x2 – x1)) * (y2 – y1)
 /////////////////////////////////////////////////////////////
 float IntPol1stDeg(float x1, float x2, float y1, float y2, float x) {
-   // if (x1 != x2) return (y2 - y1) / (x2 - x1) * (x - x1) + y1;
-    if (x1 != x2) return ((x - x1) / (x2 - x1)) * (y2 - y1)+y1;
+    // if (x1 != x2) return (y2 - y1) / (x2 - x1) * (x - x1) + y1;
+    if (x1 != x2) return ((x - x1) / (x2 - x1)) * (y2 - y1) + y1;
     else return (y1);
 }
 
@@ -759,7 +759,7 @@ void StartMainProgram(void) {
             ProgProgress = WD_BOOT_START_MAIN;
             rINTMSK = 0xffffffff;
             rEINTMASK = 0x3ff;
-            void (*run)(void) = (void(*)(void))StartAddress;
+            void (*run)(void) = (void (*)(void))StartAddress;
             run();
         }
 #if (WATCHDOG == 1)
@@ -774,12 +774,12 @@ void StartMainProgram(void) {
 
 #ifndef ANBOOTLOADER
 
-int CheckAlarms(set<AlarmBasic *>& AlarmSet, volatile bool* pHWFailure) {
+int CheckAlarms(set<AlarmBasic *> &AlarmSet, volatile bool *pHWFailure) {
     int ActiveAlarmCnt = 0;
     bool ActiveHWAlarms = false;
     set<AlarmBasic *>::iterator pBIt;
     for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
-        AlarmBasic* Element = *pBIt;
+        AlarmBasic *Element = *pBIt;
         Element->Check();
         if (Element->State != AlarmBasic::AlIdle) {
             if (Element->IsHWAlarm) {
@@ -796,16 +796,16 @@ int CheckAlarms(set<AlarmBasic *>& AlarmSet, volatile bool* pHWFailure) {
     return (ActiveAlarmCnt);
 }
 
-void SetAlarmsToNormal(set<AlarmBasic *>& AlarmSet) {
+void SetAlarmsToNormal(set<AlarmBasic *> &AlarmSet) {
     set<AlarmBasic *>::iterator pBIt;
     for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
-        AlarmBasic* Element = *pBIt;
+        AlarmBasic *Element = *pBIt;
         Element->SetAlarmToNormal();
     }
 }
 
-void GetAlarmTotals(set<AlarmBasic *>& AlarmInfoList, int& ActAl, int& AckAl, int& IdlAl, int& SuspAl, int& OutsideLim,
-                    int& OutsideLimEnabled) {
+void GetAlarmTotals(set<AlarmBasic *> &AlarmInfoList, int &ActAl, int &AckAl, int &IdlAl, int &SuspAl, int &OutsideLim,
+                    int &OutsideLimEnabled) {
     ActAl = 0;
     AckAl = 0;
     IdlAl = 0;
@@ -814,7 +814,7 @@ void GetAlarmTotals(set<AlarmBasic *>& AlarmInfoList, int& ActAl, int& AckAl, in
     OutsideLimEnabled = 0;
     set<AlarmBasic *>::iterator pBIt;
     for (pBIt = AlarmInfoList.begin(); pBIt != AlarmInfoList.end(); pBIt++) {
-        AlarmBasic* TempElement = *pBIt;
+        AlarmBasic *TempElement = *pBIt;
         switch (TempElement->State) {
         case AlarmBasic::AlIdle:
             IdlAl++;
@@ -838,11 +838,11 @@ void GetAlarmTotals(set<AlarmBasic *>& AlarmInfoList, int& ActAl, int& AckAl, in
     }
 }
 
-int GetActiveAlarms(set<AlarmBasic *>& AlarmSet) {
+int GetActiveAlarms(set<AlarmBasic *> &AlarmSet) {
     int ActAl = 0;
     set<AlarmBasic *>::iterator pBIt;
     for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
-        AlarmBasic* Element = *pBIt;
+        AlarmBasic *Element = *pBIt;
         switch (Element->State) {
         case AlarmBasic::AlActive:
         case AlarmBasic::AlAknowledged:
@@ -856,10 +856,10 @@ int GetActiveAlarms(set<AlarmBasic *>& AlarmSet) {
     return (ActAl);
 }
 
-void AcknowledgeAlarms(set<AlarmBasic *>& AlarmSet) {
+void AcknowledgeAlarms(set<AlarmBasic *> &AlarmSet) {
     set<AlarmBasic *>::iterator pBIt;
     for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
-        AlarmBasic* element = *pBIt;
+        AlarmBasic *element = *pBIt;
         switch (element->State) {
         case AlarmBasic::AlActive:
             element->MoveAlarmToAknowledge();
@@ -874,10 +874,10 @@ void AcknowledgeAlarms(set<AlarmBasic *>& AlarmSet) {
     }
 }
 
-void AcknowledgeSoftAlarms(set<AlarmBasic *>& AlarmSet) {
+void AcknowledgeSoftAlarms(set<AlarmBasic *> &AlarmSet) {
     set<AlarmBasic *>::iterator pBIt;
     for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
-        AlarmBasic* element = *pBIt;
+        AlarmBasic *element = *pBIt;
         if (!element->IsHWAlarm) {
             switch (element->State) {
             case AlarmBasic::AlActive:
@@ -894,45 +894,42 @@ void AcknowledgeSoftAlarms(set<AlarmBasic *>& AlarmSet) {
     }
 }
 
-void SetDataTime(set<PRogramObject *>& PROSet) {
+void SetDataTime(set<PRogramObject *> &PROSet) {
     clock_t CurrentClock = clock();
     if (!PROSet.empty()) {
         set<PRogramObject *>::iterator pBIt;
         for (pBIt = PROSet.begin(); pBIt != PROSet.end(); pBIt++) {
-            PRogramObject* TempElement = *pBIt;
+            PRogramObject *TempElement = *pBIt;
             TempElement->TimeStamp = CurrentClock;
         }
     }
 }
 
-void SetDataTime(set<PRogramObjectBase *>& PROList) {
+void SetDataTime(set<PRogramObjectBase *> &PROList) {
     clock_t CurrentClock = clock();
     set<PRogramObjectBase *>::iterator pBIt;
     for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
-        PRogramObject* TempElement = (PRogramObject *)*pBIt;
+        PRogramObject *TempElement = (PRogramObject *)*pBIt;
         TempElement->TimeStamp = CurrentClock;
     }
 }
 
-void RecalcProgramObjects(set<PRogramObject *>& PROList, int Delay) {
+void RecalcProgramObjects(set<PRogramObject *> &PROList) {
     set<PRogramObject *>::iterator pBIt;
 	for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
-        PRogramObject* TempElement = *pBIt;
+        PRogramObject *TempElement = *pBIt;
 		TempElement->RefreshData();
-#ifdef S2TXU
-		OS_Delay(Delay);
-#endif
 	}
 }
 
-void AddList(PROLinkedList* DestList, PROLinkedList* SrcList) {
+void AddList(PROLinkedList *DestList, PROLinkedList *SrcList) {
     if (DestList && SrcList) {
         if (!SrcList->isEmpty()) {
             int size = SrcList->Size();
-            PRONode* node = SrcList->getHead();
+            PRONode *node = SrcList->getHead();
             for (int count = 0; count < size; count++) {
                 node = node->getNext();
-                PRogramObjectBase* element = node->getElement();
+                PRogramObjectBase *element = node->getElement();
                 if (element) DestList->insertInOrder(element);
             }
         }
@@ -967,10 +964,10 @@ float FilterVal(float OldVal, float NewVal, float Degree) {
 #if defined(S2TXU) || defined(ANBOOTLOADER)
 extern "C"
 {
-void RestartIncMsg(char* Message) {
+void RestartIncMsg(char *Message) {
 
-	strncpy(LastOSErrorTask,Message,TASK_NAME_LENGTH-1);
-    LastOSErrorTask[TASK_NAME_LENGTH-1] = 0;
+    strncpy(LastOSErrorTask, Message, TASK_NAME_LENGTH - 1);
+    LastOSErrorTask[TASK_NAME_LENGTH - 1] = 0;
     LastOSError = 0xff;
     OS_Use(&FlashSema); // Block further operations on the flash
 #if (WATCHDOG == 1)
@@ -1019,43 +1016,41 @@ void SignalSaveSettings(int Signal) {
 
 
 double FloatRound(double Number, int Decimals) {
-	if (Number) {
-		double Factor = pow(10.0, Decimals);
-		Number *= Factor;
-		if (Number > 0.0) {
-			Number = floor(Number + 0.50001);
-		} else {
-			Number = ceil(Number - 0.50001);
-		}
-		Number /= Factor;
-	}
+    if (Number) {
+        double Factor = pow(10.0, Decimals);
+        Number *= Factor;
+        if (Number > 0.0) {
+            Number = floor(Number + 0.50001);
+        } else {
+            Number = ceil(Number - 0.50001);
+        }
+        Number /= Factor;
+    }
 
     return Number;
 }
 
-int GetGMT(void)
-{
-    time_t Now = time(NULL); 
-	int TimeZone   = TSNTimeZone();
-	int DaylightSaving   = PROSystemData::DaylightSaving;
-	int NowGMT = Now + 60*TimeZone + 60*60*DaylightSaving;
+int GetGMT(void) {
+    time_t Now = time(NULL);
+    int TimeZone   = TSNTimeZone();
+    int DaylightSaving   = PROSystemData::DaylightSaving;
+    int NowGMT = Now + 60 * TimeZone + 60 * 60 * DaylightSaving;
 
-	return NowGMT;
+    return NowGMT;
 }
 
-AnsiString GetHours(int Value)
-{
-	time_t rTime = Value;
+AnsiString GetHours(int Value) {
+    time_t rTime = Value;
     int rHours   = rTime / SEC_TO_HOURS;
     rTime -= rHours * SEC_TO_HOURS;
-	int rMinutes = rTime / SEC_TO_MINUTES;
-	rTime -= rMinutes * SEC_TO_MINUTES;
+    int rMinutes = rTime / SEC_TO_MINUTES;
+    rTime -= rMinutes * SEC_TO_MINUTES;
     int rSeconds = rTime;
-    AnsiString tmpStr; 
-	tmpStr.cat_sprintf("%02i:%02i:%02i", rHours, rMinutes, rSeconds);
-	//char tmpBuf[BUF_SIZE];
-	//strftime(tmpBuf,sizeof(tmpBuf), "%T",localtime(&rTime));
-	return tmpStr;
+    AnsiString tmpStr;
+    tmpStr.cat_sprintf("%02i:%02i:%02i", rHours, rMinutes, rSeconds);
+    //char tmpBuf[BUF_SIZE];
+    //strftime(tmpBuf,sizeof(tmpBuf), "%T",localtime(&rTime));
+    return tmpStr;
 }
 
 float Make_str_to_feet(char *Buf) {
@@ -1066,22 +1061,22 @@ float Make_str_to_feet(char *Buf) {
     char tmpBuf[BUF_SIZE];
     strcpy(tmpBuf, Buf);
     len = strlen(tmpBuf);
-    if ( len ) {
+    if (len) {
         Ptr1 = tmpBuf;
         Ptr2 = strpbrk(Ptr1, ". ,/-:");
-        if ( Ptr2 ) {
+        if (Ptr2) {
             *Ptr2++ = 0;
             Ptr3 = strpbrk(Ptr2, ". ,/-:");
-            if ( Ptr3 ) {
+            if (Ptr3) {
                 *Ptr3++ = 0;
             }
         } else {
             tmpBuf[len] = 0;
         }
         retval = atoi(Ptr1) * FEET_TO_METER;
-        if ( Ptr2 ) {
+        if (Ptr2) {
             retval += atoi(Ptr2) * INCH_TO_METER;
-            if ( Ptr3 ) retval += atoi(Ptr3) * EIGHTS_TO_METER;
+            if (Ptr3) retval += atoi(Ptr3) * EIGHTS_TO_METER;
         }
     }
     return (retval);
@@ -1094,22 +1089,22 @@ float Make_hour_time_str_to_seconds(char *Buf) {
     char tmpBuf[BUF_SIZE];
     strcpy(tmpBuf, Buf);
     len = strlen(tmpBuf);
-    if ( len ) {
+    if (len) {
         Ptr1 = tmpBuf;
-		Ptr2 = strpbrk(Ptr1, ".,/-:");
-		if ( Ptr2 ) {
-			*Ptr2++ = 0;
+        Ptr2 = strpbrk(Ptr1, ".,/-:");
+        if (Ptr2) {
+            *Ptr2++ = 0;
             Ptr3 = strpbrk(Ptr2, ".,/-:");
-            if ( Ptr3 ) {
+            if (Ptr3) {
                 *Ptr3++ = 0;
             }
         } else {
             tmpBuf[len] = 0;
         }
         retval = atoi(Ptr1) * SEC_TO_HOURS;
-        if ( Ptr2 ) {
+        if (Ptr2) {
             retval += atoi(Ptr2) * SEC_TO_MINUTES;
-            if ( Ptr3 ) retval += atoi(Ptr3);
+            if (Ptr3) retval += atoi(Ptr3);
         }
     }
     return (retval);

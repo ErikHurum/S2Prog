@@ -9,7 +9,7 @@
 //===================================================================
 
 #include "def.h"
-#include "option.h"
+//#include "option.h"
 #include "2410addr.h"
 #include "2410lib.h"
 #include "2410slib.h"
@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include <ctype.h>
 
+
+#define FCLK 202800000
+#define PCLK (FCLK/4)
 //extern char Image$$RW$$Limit[];
 //void *mallocPt=Image$$RW$$Limit;
 

@@ -1125,14 +1125,11 @@ int PROTanksystemUnit::LoadConfigFromFile(TSNConfigString &ConfigString) {
                                 //BufSize = 64*1024;
 
                                 if (tempPtr->PortNumber < FIRST_ST16554_PORT) {        // TODO or
-                                    Channels[PortNum] = (TSNUart *)new SC2410Uart(tempPtr->PortNumber, tempPtr->BaudRate, tempPtr->WordLength, tempPtr->StopBits, tempPtr->Parity, BufSize, tempPtr->Device, tempPtr->HWProtocol, tempPtr->SWProtocol, ProtocolMaster, tempPtr->MaxTimeBetweenChar, tempPtr->Relaxed, tempPtr->LogTime, tempPtr->LogEntries);
+                                    Channels[PortNum] = (TSNUart *)new SC2410Uart(tempPtr->PortNumber, tempPtr->BaudRate, tempPtr->WordLength, tempPtr->StopBits, tempPtr->Parity, BufSize, tempPtr->Device, tempPtr->HWProtocol, tempPtr->SWProtocol, ProtocolMaster, tempPtr->MaxTimeBetweenChar, tempPtr->Relaxed, tempPtr->LogTime, tempPtr->LogEntries,tempPtr->Delay);
                                 } else {
                                     // Allways master for the other ports for IO and tPCx
-                                    Channels[PortNum] = (TSNUart *)new ST165540Uart(tempPtr->PortNumber, tempPtr->BaudRate, tempPtr->WordLength, tempPtr->StopBits, tempPtr->Parity, BufSize, tempPtr->Device, tempPtr->HWProtocol, tempPtr->SWProtocol, ProtocolMaster, tempPtr->MaxTimeBetweenChar, tempPtr->Relaxed, tempPtr->LogTime, tempPtr->LogEntries);
+                                    Channels[PortNum] = (TSNUart *)new ST165540Uart(tempPtr->PortNumber, tempPtr->BaudRate, tempPtr->WordLength, tempPtr->StopBits, tempPtr->Parity, BufSize, tempPtr->Device, tempPtr->HWProtocol, tempPtr->SWProtocol, ProtocolMaster, tempPtr->MaxTimeBetweenChar, tempPtr->Relaxed, tempPtr->LogTime, tempPtr->LogEntries,tempPtr->Delay);
                                 }
-                                // EHSMark  Must add to constructor parameters
-                                Channels[PortNum]->Delay = tempPtr->Delay;
-                                //TSNUart::Channels[PortNum] = UartPtr;
                             } else {
                                 //UartPtr = (TSNUart*)new TSNUart(tempPtr->PortNumber,tempPtr->BaudRate,tempPtr->WordLength,tempPtr->StopBits,'N',BufSize);
                             }
@@ -1681,6 +1678,7 @@ void PROTanksystemUnit::Calculate(void) {
     MaxLoad = MaxPerformance;
     RunningHours = RunningTime;
     SendData();
+    OS_Delay(100);
     SendData(CMD_GENERIC_STATIC_DATA);
 #endif
 }

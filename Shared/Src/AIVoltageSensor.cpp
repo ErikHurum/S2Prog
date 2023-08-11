@@ -24,6 +24,7 @@ AIVoltageSensor::AIVoltageSensor(int Loc,int BasicSnsType,float MinVolt, float M
     case C_AI_LOC_POWER_DC  :
         {
             switch ( TSNConfigInfo::ConfigInfoPtr->ConfigCompatibilityNo ) {
+            default:
             case 0:
                 HiVPtr  = new AlarmHighVoltage(this, MaxVoltage, ID_AL_HI_VOLTAGE   );
                 LoVPtr  = new AlarmLowVoltage( this, MinVoltage, ID_AL_LOW_VOLTAGE  );
@@ -39,6 +40,7 @@ AIVoltageSensor::AIVoltageSensor(int Loc,int BasicSnsType,float MinVolt, float M
     case C_AI_LOC_POWER_AC  :
         {
             switch ( TSNConfigInfo::ConfigInfoPtr->ConfigCompatibilityNo ) {
+            default:
             case 0:
                 HiVPtr  = new AlarmHighVoltage(this, MaxVoltage, ID_AL_HI_VOLTAGE   );
                 LoVPtr  = new AlarmLowVoltage( this, MinVoltage, ID_AL_LOW_VOLTAGE  );

@@ -626,6 +626,7 @@ int PROInclinometer::SendData(U16 cmd)
         }
         break;
     case CMD_GENERIC_STATIC_DATA:
+        /*
         {
             QueueANPRO10_COMMAND_2711 Cmd;
 
@@ -642,6 +643,8 @@ int PROInclinometer::SendData(U16 cmd)
                 ErrorStatus =  E_OK;
             }
         }
+        */
+        ErrorStatus =  E_UNKNOWN_COMMAND;
         break;
     default:
         ErrorStatus =  E_UNKNOWN_COMMAND;

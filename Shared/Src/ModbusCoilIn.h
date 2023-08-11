@@ -6,7 +6,6 @@ class PROLevelSwitch;
 class ModbusCoilIn : public ModbusCoil {
 private:
     AlarmModbusInCoil *AlarmPtr;
-    PRogramObjectBase *ObjectPtr;
     int         ValueKey;
     unsigned    RefIDNumber;
     /// True if ObjectID not defined in the configuration file

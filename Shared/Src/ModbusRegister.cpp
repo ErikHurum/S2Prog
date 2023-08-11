@@ -25,8 +25,6 @@ ModbusRegister::ModbusRegister(void) {
     Address             = 0;
     Channel             = 0;
     RefObjectId         = 0;
-    ObjPtr              = NULL;
-    ValueKey            = 0;
     MinRange            = 0.0;
     MaxRange            = 1.0;
     RegMax              = 0xffff;
@@ -34,7 +32,7 @@ ModbusRegister::ModbusRegister(void) {
     Offset              = 0.0;
     HasSign             = false;
     HasDecimalScaling   = false;
-    ModbusDataFormat = Float_None;
+    ModbusDataFormat    = Float_None;
     HasRange            = false;
     DecimalPoint        = 0;
     DecimalScaling      = 0.0;
@@ -255,8 +253,8 @@ bool ModbusRegister::LoadConfigString(TSNConfigString &ConfigString) {
 
 
 void ModbusRegister::SetProList(void) {
-    ObjPtr = (PRogramObject *)FindPROFromIDNumber(RefObjectId);
-    if (!ObjPtr) {
+    ObjectPtr = (PRogramObject *)FindPROFromIDNumber(RefObjectId);
+    if (!ObjectPtr) {
         AnsiString InfoStr;
         if (IsCreatedFromMultiple) {
             InfoStr.cat_sprintf("Created by ModbusMultiple (Line number %i): ModbusRegister RefIDNumber %i (0x%0x) is incorrect", LineNumber, RefObjectId,RefObjectId);
@@ -271,11 +269,11 @@ void ModbusRegister::SetProList(void) {
 //---------------------------------------------------------------------------
 
 int ModbusRegister::GetOutputVal(void) {
-    if (ObjPtr) {
+    if (ObjectPtr) {
         float OutVal;
         int DecPnt, Unit; // These variables are not used
 
-        int Status = ObjPtr->GetValue(ValueKey, 0, OutVal, DecPnt, Unit);
+        int Status = ObjectPtr->GetValue(ValueKey, 0, OutVal, DecPnt, Unit);
         if (HasRange) {
             if (OutVal < MinRange) {
                 OutVal = MinRange;

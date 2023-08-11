@@ -19,8 +19,8 @@
 #endif
 
 
-ST165540Uart::ST165540Uart(int PortNum, unsigned BdRate, unsigned WrdLength, unsigned StpBits, char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr, int MaxTimeChar, bool Relax, int LogP, int LogE) :
-    TSNUart(PortNum, BdRate, WrdLength, StpBits, Prty, BufSize, Dev, HWProt, SWProt, IsMstr, MaxTimeChar, Relax, LogP, LogE),
+ST165540Uart::ST165540Uart(int PortNum, unsigned BdRate, unsigned WrdLength, unsigned StpBits, char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr, int MaxTimeChar, bool Relax, int LogP, int LogE, int DelayP) :
+    TSNUart(PortNum, BdRate, WrdLength, StpBits, Prty, BufSize, Dev, HWProt, SWProt, IsMstr, MaxTimeChar, Relax, LogP, LogE, DelayP),
     FIFOInstalled(Unknown) {
     LastTxTime = 0;
     OS_CREATERSEMA(&TxSema);

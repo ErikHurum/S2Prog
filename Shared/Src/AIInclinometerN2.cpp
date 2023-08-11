@@ -248,6 +248,7 @@ int AIInclinometerN2::ReceiveData(U8 *data) {
     };
 }
 int AIInclinometerN2::SendData(U16 cmd) {
+    int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
         if ( IsTimeToSend() )     {
@@ -270,14 +271,18 @@ int AIInclinometerN2::SendData(U16 cmd) {
             Cmd.Data.ResultOK       = ResultOK;
 
             bool sent = ANPRO10SendNormal(&Cmd);
-            if ( !sent ) return (E_QUEUE_FULL);
-            else return (E_OK);
+            if ( !sent ) ErrorStatus = E_QUEUE_FULL;
+            else ErrorStatus = E_OK;
         }
+        break;
     case CMD_GENERIC_STATIC_DATA:
-        return AnalogInput::SendData(cmd);
+        ErrorStatus = AnalogInput::SendData(cmd);
+        break;
     default:
-        return (E_UNKNOWN_COMMAND);
+        ErrorStatus = E_UNKNOWN_COMMAND;
+        break;
     };
+    return (ErrorStatus);
 
 }
 

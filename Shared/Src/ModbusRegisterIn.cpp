@@ -4,7 +4,6 @@
 #pragma package(smart_init)
 #endif
 
-set<PRogramObject *>ModbusRegisterIn::UniquePROSet;
 set<PRogramObjectBase *>ModbusRegisterIn::ModbusSet;
 
 
@@ -125,20 +124,19 @@ void ModbusRegisterIn::Update(void) {
                     }
                     break;
                 }
-                if (ObjPtr) {
+                if (ObjectPtr) {
                     if (Master) {
-                        ObjPtr->SetTimeStamp();
-                        ObjPtr->PutFloatValue(ValueKey, Value);
-                        ObjPtr->RefreshData(ValueKey);
+                        ObjectPtr->SetTimeStamp();
+                        ObjectPtr->PutFloatValue(ValueKey, Value);
                     }else{
                         // Should also include the com port. Now send broadcast to all TDUs and PCs
                         // connected to this slave TCU
-                        ObjPtr->SendModbusData(ValueKey, Value);
+                        ObjectPtr->SendModbusData(ValueKey, Value);
                     }
                 }
             } else {
-                if (ObjPtr) {
-                    ObjPtr->SetOffline(ValueKey);
+                if (ObjectPtr) {
+                    ObjectPtr->SetOffline(ValueKey);
                 }
             }
         }
@@ -158,10 +156,10 @@ void ModbusRegisterIn::CalculateScaleOut(float &ScaleOut, float &OffsetOut) {
 //---------------------------------------------------------------------------
 
 int ModbusRegisterIn::GetOutputVal(void) {
-    if (ObjPtr) {
+    if (ObjectPtr) {
         float OutVal;
         int DecPnt, Unit; // These variables are not used
-        int Status = ObjPtr->GetValue(ValueKey, 0, OutVal, DecPnt, Unit);
+        int Status = ObjectPtr->GetValue(ValueKey, 0, OutVal, DecPnt, Unit);
         switch (Status) {
         case GETVAL_FLOAT_NOT_LEGAL:
         case GETVAL_NOT_AVAILABLE:
@@ -198,8 +196,8 @@ float ModbusRegisterIn::GetOutputValFloat(void) {
     float OutVal;
     int DecPnt, Unit; // These variables are not used
     int Status;
-    if (ObjPtr) {
-        Status = ObjPtr->GetValue(ValueKey, 0, OutVal, DecPnt, Unit);
+    if (ObjectPtr) {
+        Status = ObjectPtr->GetValue(ValueKey, 0, OutVal, DecPnt, Unit);
     } else {
         Status = GETVAL_ERROR;
     }
@@ -263,30 +261,30 @@ void ModbusRegisterIn::InitiateHoldingRegisters(ModbusUnit *UnitPtr) {
 
 
 ModbusRegisterIn& ModbusRegisterIn::operator = (ModbusRegisterIn Src) {
-    Name          = Src.Name;
-    Description   = Src.Description;
+    Name                = Src.Name;
+    Description         = Src.Description;
 
-    IPAddress     = Src.IPAddress;
-    TCUAddress    = Src.TCUAddress;
-    TCUPortNo     = Src.TCUPortNo;
-    Address       = Src.Address;
-    Channel       = Src.Channel;
+    IPAddress           = Src.IPAddress;
+    TCUAddress          = Src.TCUAddress;
+    TCUPortNo           = Src.TCUPortNo;
+    Address             = Src.Address;
+    Channel             = Src.Channel;
 
 
-    MinRange      = Src.MinRange;
-    MaxRange      = Src.MaxRange;
-    RegMax        = Src.RegMax;
-    ValueKey      = Src.ValueKey;
-    RefObjectId   = Src.RefObjectId;
+    MinRange            = Src.MinRange;
+    MaxRange            = Src.MaxRange;
+    RegMax              = Src.RegMax;
+    ValueKey            = Src.ValueKey;
+    RefObjectId         = Src.RefObjectId;
 
-    Scale             = Src.Scale;
-    Offset            = Src.Offset;
-    HasSign           = Src.HasSign;
-    HasDecimalScaling = Src.HasDecimalScaling;
-    ModbusDataFormat   = Src.ModbusDataFormat;
-    HasRange          = Src.HasRange;
-    DecimalPoint      = Src.DecimalPoint;
-    DecimalScaling    = Src.DecimalScaling;
+    Scale               = Src.Scale;
+    Offset              = Src.Offset;
+    HasSign             = Src.HasSign;
+    HasDecimalScaling   = Src.HasDecimalScaling;
+    ModbusDataFormat    = Src.ModbusDataFormat;
+    HasRange            = Src.HasRange;
+    DecimalPoint        = Src.DecimalPoint;
+    DecimalScaling      = Src.DecimalScaling;
     if ((TCUAddress==CurrentDeviceAddress) && (CurrentDeviceId == DEVICE_TCU)) {
         MyModbusSet.insert(this);
     }
@@ -305,7 +303,7 @@ void ModbusRegisterIn::UpdateFromMultiple(unsigned pIdNumber, int pChannel) {
 AnsiString ModbusRegisterIn::GetRegisterValue(void) {
     AnsiString Result;
     //Result.sprintf("%8.3f",GetOutputValFloat());
-    Result = LibGetValue(ValueKey, ObjPtr);
+    Result = LibGetValue(ValueKey, ObjectPtr);
     return Result;
 }
 
@@ -314,8 +312,8 @@ AnsiString ModbusRegisterIn::GetRegisterValue(void) {
 
 
 void ModbusRegisterIn::SetProList(void) {
-    ObjPtr = (PRogramObject *)FindPROFromIDNumber(RefObjectId);
-    if (!ObjPtr) {
+    ObjectPtr = (PRogramObject *)FindPROFromIDNumber(RefObjectId);
+    if (!ObjectPtr) {
         AnsiString InfoStr;
         if (IsCreatedFromMultiple) {
             InfoStr.cat_sprintf("Created by ModbusMultiple (Line number %i): ModbusRegisterIn RefIDNumber %i (0x%0x) is incorrect", LineNumber, RefObjectId,RefObjectId);

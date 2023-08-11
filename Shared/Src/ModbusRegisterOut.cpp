@@ -35,10 +35,10 @@ void ModbusRegisterOut::CalculateScale(void)
 int ModbusRegisterOut::GetOutputVal(void)
 {
     int ReturnVal = 0;
-    if ( ObjPtr ) {
+    if ( ObjectPtr ) {
         float OutVal;
         int DecPnt,Unit; // These variables are not used
-        int Status = ObjPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
+        int Status = ObjectPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
         switch ( Status ) {
         case GETVAL_HW_ALARM       :
             OutVal = RegMax;
@@ -84,10 +84,10 @@ int ModbusRegisterOut::GetOutputVal(void)
 }
 float ModbusRegisterOut::GetOutputValFloat(void)
 {
-    if ( ObjPtr ) {
+    if ( ObjectPtr ) {
     float OutVal;
     int DecPnt,Unit; // These variables are not used
-    int Status = ObjPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
+    int Status = ObjectPtr->GetValue(ValueKey, 0, OutVal,DecPnt,Unit);
     switch ( Status ) {
     case GETVAL_FLOAT_NOT_LEGAL:
     case GETVAL_NOT_AVAILABLE:
@@ -109,8 +109,8 @@ AnsiString ModbusRegisterOut::GetOutputString(void)
 {
     AnsiString MyString;
     int ErrorStatus = GETVAL_ERROR;
-    if ( ObjPtr ) {
-        ErrorStatus = ObjPtr->GetStringValue(ValueKey,0,MyString);
+    if ( ObjectPtr ) {
+        ErrorStatus = ObjectPtr->GetStringValue(ValueKey,0,MyString);
     }
     switch(ErrorStatus){
     case GETVAL_ERROR:
@@ -260,7 +260,7 @@ void ModbusRegisterOut::UpdateFromMultiple(unsigned pIdNumber, int pChannel)
 AnsiString ModbusRegisterOut::GetRegisterValue(void) {
     AnsiString Result;
     //Result.sprintf("%8.3f",GetOutputValFloat());
-    Result = LibGetValue(ValueKey, ObjPtr);
+    Result = LibGetValue(ValueKey, ObjectPtr);
 	return Result;
 }
 
@@ -268,8 +268,8 @@ AnsiString ModbusRegisterOut::GetRegisterValue(void) {
 
 
 void ModbusRegisterOut::SetProList(void) {
-    ObjPtr = (PRogramObject *)FindPROFromIDNumber(RefObjectId);
-    if (!ObjPtr) {
+    ObjectPtr = (PRogramObject *)FindPROFromIDNumber(RefObjectId);
+    if (!ObjectPtr) {
         AnsiString InfoStr;
         if (IsCreatedFromMultiple) {
             InfoStr.cat_sprintf("Created by ModbusMultiple (Line number %i): ModbusRegisterOut RefIDNumber %i (0x%0x) is incorrect", LineNumber, RefObjectId,RefObjectId);

@@ -11,20 +11,23 @@ private:
 	static map<U32, ModbusObject *>DeviceMap;
 
 protected:
-    AnsiString IPAddress;
-    int TCUAddress;
-    int TCUPortNo;
-    int Address;
-    int Channel;
-    int ProChannel;
-    bool IsCreatedFromMultiple;
+    AnsiString        IPAddress;
+    int               TCUAddress;
+    int               TCUPortNo;
+    int               Address;
+    int               Channel;
+    int               ProChannel;
+    bool              IsCreatedFromMultiple;
+    PRogramObjectBase *ObjectPtr;
+    int               ValueKey;
 public:
 #ifdef S2TXU
 	static vector<OS_TASK*>ModbusTaskVector;
 #endif
     bool IsActive;
-    static set<ModbusObject *>ModbusSet;
-    static set<ModbusObject *>MyModbusSet;
+    static set<ModbusObject      *>ModbusSet;
+    static set<ModbusObject      *>MyModbusSet;
+    static set<PRogramObjectBase *>MyModbusPRogramObjectSet;
 #ifdef S2TXU
     static OS_TASK *ModbusTaskPtr;
     static OS_TASK *ModbusUpdateTaskPtr;

@@ -31,18 +31,22 @@ OS_TIMER AlarmSilenceTimer;
 
 
 AlarmBasic::AlarmBasic(void) {
-    //Initiate();
+    Initiate();
 }
 
 AlarmBasic::AlarmBasic(PRogramObjectBase *PROPtr) {
     Initiate();
     PROPointer = PROPtr;
+    AlarmSet.insert(this);
+    DataTransferSet.insert(this);
 }
 
 AlarmBasic::AlarmBasic(PRogramObjectBase *PROPtr, float Lim) {
     Initiate();
     PROPointer = PROPtr;
     Limit      = Lim;
+    AlarmSet.insert(this);
+    DataTransferSet.insert(this);
 }
 
 AlarmBasic::AlarmBasic(PRogramObjectBase *PROPtr, float Lim, float Dband, bool AlEnable) {
@@ -50,6 +54,8 @@ AlarmBasic::AlarmBasic(PRogramObjectBase *PROPtr, float Lim, float Dband, bool A
     Limit      = Lim;
     Deadband   = Dband;
     Enable     = AlEnable;
+    AlarmSet.insert(this);
+    DataTransferSet.insert(this);
 }
 
 void AlarmBasic::Initiate(void) {
@@ -81,8 +87,6 @@ void AlarmBasic::Initiate(void) {
     Time_Acknowledged    = time(NULL);
     Time_Disappeared     = time(NULL);
     Time_Changed         = time(NULL);
-    AlarmSet.insert(this);
-    DataTransferSet.insert(this);
 
 }
 
@@ -271,10 +275,8 @@ void AlarmBasic::Check(void) {
 
 // This function can ONLY be called from Check() This to ensure only ONE alarm master!!
 void AlarmBasic::UpdateAlarm(int ValueStatus) {
-#ifndef WIN32
-    if ( RunningTime > PROProjectInfo::AlarmSystemStartUpDelay )
-#endif
-    {
+#ifdef S2TXU
+    if ( RunningTime > PROProjectInfo::AlarmSystemStartUpDelay ){
         AlarmSema.Acquire();
         if (IsVisible) {
             switch (State) {
@@ -325,6 +327,7 @@ void AlarmBasic::UpdateAlarm(int ValueStatus) {
         }
         AlarmSema.Release();
     }
+#endif
 }
 // This function can ONLY be called from Check() This to ensure only ONE alarm master!!
 void AlarmBasic::AddAlarm(void) {
@@ -931,7 +934,7 @@ int AlarmBasic::ReceiveData(U8 *data) {
 
 // This function is typically called from AddAlarm, RemoveAlarm and MoveAlarmToAcknovledge (on Master)
 // every time alarmstate changes. In addition it is also called from cyclic alarmupdate routine.
-#ifdef BORLAND
+#ifndef BORLAND
     #pragma diag_suppress=Pa082
 #endif
 int AlarmBasic::SendData(U16 cmd) {

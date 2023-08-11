@@ -19,7 +19,7 @@ private:
     static map<int, PRogramObjectBase *> IdMap;
     static set<PRogramObjectBase *> PRogramObjectBaseSet;
     static set<PRogramObjectBase *> MySet;
-
+   // static set<PRogramObjectBase *>ActualDataTransferSet;
 
 protected:
     volatile bool IsModified;
@@ -97,7 +97,9 @@ public:
     void EraseFromVector(vector<PRogramObjectBase *> &MyVect, PRogramObjectBase *MyPtr);
     unsigned GetIdNumber(void);
     void SetIdNumber(unsigned IDNum);
-
+    virtual void RefreshData(int ValueKey=0);
+    virtual void SetOffline(int ValueKey);
+    virtual bool IsStaticValue(int ValueKey=0);
     virtual bool IsAvailableNewData(void);
     virtual bool IsTimeToSend(void);
     static unsigned GetFirstFreeId(int ObjectType, vector<PRogramObjectBase *>ObjVector, bool ExcludeLast = false);

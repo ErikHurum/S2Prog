@@ -32,8 +32,8 @@ private:
     set<unsigned>AnalogOutSet;
     set<unsigned>DigitalInSet;
     set<unsigned>DigitalOutSet;
-    bool NewAnalogIn[MODBUS_MAX_REGISTERS];
-    bool NewDigitalIn[MODBUS_MAX_REGISTERS];
+    int AnalogInTime[MODBUS_MAX_REGISTERS];
+    int DigitalInTime[MODBUS_MAX_REGISTERS];
     bool PreviousDigitalIn[MODBUS_MAX_REGISTERS];
     U8  DigitalOut[MODBUS_MAX_COILS/8];
     U8  DigitalIn [MODBUS_MAX_COILS/8];
@@ -70,10 +70,8 @@ public:
     void SetHoldingRegister(int Index, U16 NewVal, bool LittleEndian=false);
     void MoveRegisters(int Index, int Entries, int Size);
     bool HasNewValue(int Index);
-    void HasReadValue(int Index);
     bool FlagNewValues(int FirstReg, int NumberOfRegs);
     bool HasNewDigitalValue(int Index);
-    void HasReadDigitalValue(int Index);
     bool FlagNewDigitalValues(int FirstReg, int NumberOfRegs);
 
     bool GetCoilIn(int Index);
@@ -87,7 +85,7 @@ public:
     bool SetCoils(int FirstCoil, int NumberOfCoils, U8 *DataPtr);
     void SetCoilHistory(int Index, bool State, int Entries);
     void SetPreviousState(int Channel, bool CurrentState);
-    bool IsNewDigitalInput(int Channel, bool CurrentState);
+    bool NewDigitalIn(int Channel, bool CurrentState);
     void HandleRequest(U8 *RequestData);
 	ANCriticalSection AccessDigitalSema;
 #ifdef ANWIN

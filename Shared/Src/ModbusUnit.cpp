@@ -19,16 +19,16 @@ ModbusUnit::ModbusUnit(int Addr, int ComPortNo) {
     myTimeOut           = 0;
     myFrameSpaceTime    = 0;
     myFrameTimeOut      = 0;
-    for ( int i = 0; i < MODBUS_MAX_REGISTERS; i++ ) {
-        AnalogOut[i]            = 0;
-        AnalogIn[i]             = 0;
-        NewAnalogIn[i]          = false;
-        PreviousDigitalIn[i]    = false;
-        NewDigitalIn[i]         = false;
+    for (int i = 0; i < MODBUS_MAX_REGISTERS; i++) {
+        AnalogOut[i] = 0;
+        AnalogIn[i] = 0;
+        AnalogInTime[i] = 0;
+        PreviousDigitalIn[i] = false;
+        DigitalInTime[i] = 0;
     }
-    for ( int i = 0; i < MODBUS_MAX_REGISTERS / 8; i++ ) {
+    for (int i = 0; i < MODBUS_MAX_REGISTERS / 8; i++) {
         DigitalOut[i] = 0;
-        DigitalIn[i]  = 0;
+        DigitalIn[i] = 0;
     }
     LastAnalogOut      = 0;
     LastAnalogIn       = 0;
@@ -48,7 +48,7 @@ ModbusUnit::ModbusUnit(int Addr, int ComPortNo) {
     hasNewCoilOutput   = false;
     AddressSystem      = C_UART_DEVICE;
     MaxRegisters       = MAX_REGISTERS_RTU_COM;
-    MaxCoils           = MAX_COILS_RTU_COM; 
+    MaxCoils           = MAX_COILS_RTU_COM;
     AlarmModbusComFailure *ComAlarm  = new AlarmModbusComFailure(this, 5);
     Name             = "ModbusUnit" + AnsiString(ComPort) + ":" + AnsiString(Addr);
     AlarmSet.insert(ComAlarm);
@@ -59,9 +59,9 @@ ModbusUnit::~ModbusUnit(void) {
 
 U16  ModbusUnit::GetOutputRegister(int Index, bool LittleEndian) {
     U16 RetVal = 0;
-    if ( Index < MODBUS_MAX_REGISTERS ) {
+    if (Index < MODBUS_MAX_REGISTERS) {
         U16 tmpReg = AnalogOut[Index];
-        if ( LittleEndian ) {
+        if (LittleEndian) {
             RetVal = tmpReg;
         } else {
             RetVal = (tmpReg >> 8) | ((tmpReg & 0xff) << 8);
@@ -71,9 +71,9 @@ U16  ModbusUnit::GetOutputRegister(int Index, bool LittleEndian) {
 }
 U16  ModbusUnit::GetRegister(int Index, bool LittleEndian) {
     U16 RetVal = 0;
-    if ( Index < MODBUS_MAX_REGISTERS ) {
+    if (Index < MODBUS_MAX_REGISTERS) {
         U16 tmpReg = AnalogIn[Index];
-        if ( LittleEndian ) {
+        if (LittleEndian) {
             RetVal = tmpReg;
         } else {
             RetVal = (tmpReg >> 8) | ((tmpReg & 0xff) << 8);
@@ -89,16 +89,16 @@ U16  ModbusUnit::GetRegisterDirect(int Channel, bool LittleEndian) {
     bool ErrStat;
 
     U16 tmpReg = 0;
-    if ( myPort ) {
+    if (myPort) {
         do {
             ErrStat = (Get_Multiple(myPort, MBUS_CMD_READ_HOLDING_REGISTER, Address, Channel, 1, (U8 *)&tmpReg, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE);
-            if ( ErrStat ) {
+            if (ErrStat) {
                 //Cnt++;
                 TSN_Delay(10);
             }
-        }while ( ErrStat && RetryCnt++ < 5 );
+        }while (ErrStat && RetryCnt++ < 5);
 
-        if ( LittleEndian ) {
+        if (LittleEndian) {
             RetVal = tmpReg;
         } else {
             RetVal = (tmpReg >> 8) | ((tmpReg & 0xff) << 8);
@@ -109,27 +109,27 @@ U16  ModbusUnit::GetRegisterDirect(int Channel, bool LittleEndian) {
 
 
 void ModbusUnit::SetRegisterDirect(int Channel, U16 NewVal) {
-    if ( myPort ) {
+    if (myPort) {
         //AnalogOut[Channel] = (NewVal >> 8) | ((NewVal & 0xff) << 8);
         int RetryCnt = 0;
         bool ErrStat;
 
         do {
             ErrStat = (Set_Single(myPort, MBUS_CMD_WRITE_SINGLE_REGISTER, Address, Channel, NewVal, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE);
-            if ( ErrStat ) {
+            if (ErrStat) {
                 //Cnt++;
                 TSN_Delay(10);
             }
-        }while ( ErrStat && RetryCnt++ < 10 );
+        }while (ErrStat && RetryCnt++ < 10);
     }
 }
 
 bool ModbusUnit::SlaveSetRegisters(U16 *Registers, int FirstReg, int NumberOfRegs, U8 *DataPtr) {
     bool NoError = false;
-    if ( FirstReg < MODBUS_MAX_REGISTERS && NumberOfRegs <= MaxRegisters ) {
+    if (FirstReg < MODBUS_MAX_REGISTERS && NumberOfRegs <= MaxRegisters) {
         memcpy(&Registers[FirstReg], DataPtr, NumberOfRegs * 2);
         NoError = true;
-        if ( (void*)Registers == (void*)AnalogIn ) {
+        if ((void *)Registers == (void *)AnalogIn) {
             FlagNewValues(FirstReg, NumberOfRegs);
         }
     }
@@ -137,7 +137,7 @@ bool ModbusUnit::SlaveSetRegisters(U16 *Registers, int FirstReg, int NumberOfReg
 }
 
 void ModbusUnit::SetRegister(int Index, U16 NewVal, bool LittleEndian) {
-    if ( LittleEndian ) {
+    if (LittleEndian) {
         AnalogOut[Index] = NewVal;
     } else {
         AnalogOut[Index] = (NewVal >> 8) | ((NewVal & 0xff) << 8);
@@ -150,14 +150,14 @@ void ModbusUnit::SetRegisterString(int Index, AnsiString MyString, int Size) {
     char *RegAddress = (char *)&AnalogOut[Index];
     strncpy(RegAddress, MyString.c_str(), Size);
     int StrLen = strlen(RegAddress);
-    if ( StrLen < Size ) {
+    if (StrLen < Size) {
         memset(&RegAddress[StrLen], 0, Size - StrLen);
     }
     hasNewRegOutput = true;
 }
 
 void ModbusUnit::SetHoldingRegister(int Index, U16 NewVal, bool LittleEndian) {
-    if ( LittleEndian ) {
+    if (LittleEndian) {
         AnalogIn[Index] = NewVal;
     } else {
         AnalogIn[Index] = (NewVal >> 8) | ((NewVal & 0xff) << 8);
@@ -172,62 +172,48 @@ void ModbusUnit::MoveRegisters(int Index, int Entries, int Size) {
 bool ModbusUnit::HasNewValue(int Index) {
     bool IsNewValue = false;
     // Should possibly remove IsMaster later
-    if ( IsMaster ) {
-        if ( IsAvailableNewData() ) {
-            IsNewValue =  NewAnalogIn[Index]; 
-        } else {
-            IsNewValue = false; //!HWFailure;
-        }
+    if (IsMaster) {
+        // No need to check ModbusUnit timestamp as each register has it's own
+        IsNewValue =  abs(clock() - AnalogInTime[Index]) < 4 * DATA_EXPIRATION_TIME;
     } else {
-        IsNewValue         =  NewAnalogIn[Index]; // Should possibly remove IsMaster later
-        NewAnalogIn[Index] = false;
+        IsNewValue         =  abs(clock() - AnalogInTime[Index]) < 4 * DATA_EXPIRATION_TIME;  // Should possibly remove IsMaster later
     }
     return IsNewValue;
 }
 
 bool ModbusUnit::FlagNewValues(int FirstReg, int NumberOfRegs) {
-    if ( FirstReg < MODBUS_MAX_REGISTERS && NumberOfRegs <= MaxRegisters ) {
-        for ( int i = FirstReg; i < FirstReg + NumberOfRegs; i++ ) {
-            NewAnalogIn[i] = true;
+    if (FirstReg < MODBUS_MAX_REGISTERS && NumberOfRegs <= MaxRegisters) {
+        for (int i = FirstReg; i < FirstReg + NumberOfRegs; i++) {
+            AnalogInTime[i] = clock();
         }
         return true;
     }
     return false;
 }
 
-void ModbusUnit::HasReadValue(int Index) {
-    NewAnalogIn[Index] = false;
-}
-
 bool ModbusUnit::HasNewDigitalValue(int Index) {
-    AccessDigitalSema.Acquire();
-    bool IsNewValue =  NewDigitalIn[Index]; // Should possibly remove IsMaster later
-    NewDigitalIn[Index] = false;
-    AccessDigitalSema.Release();
+    //AccessDigitalSema.Acquire();
+    bool IsNewValue =  abs(clock() - DigitalInTime[Index]) < 4 * DATA_EXPIRATION_TIME;  // Should possibly remove IsMaster later
+    //AccessDigitalSema.Release();
     return IsNewValue;
 }
 
 bool ModbusUnit::FlagNewDigitalValues(int FirstReg, int NumberOfRegs) {
-    if ( FirstReg < MODBUS_MAX_REGISTERS && NumberOfRegs <= MaxRegisters ) {
-        AccessDigitalSema.Acquire();
-        for ( int i = FirstReg; i < FirstReg + NumberOfRegs; i++ ) {
-            NewDigitalIn[i] = true;
+    if (FirstReg < MODBUS_MAX_COILS && NumberOfRegs <= MaxCoils) {
+        //AccessDigitalSema.Acquire();
+        for (int i = FirstReg; i < FirstReg + NumberOfRegs; i++) {
+            DigitalInTime[i] = clock();
         }
-        AccessDigitalSema.Release();
+        //AccessDigitalSema.Release();
         return true;
     }
     return false;
 }
 
-void ModbusUnit::HasReadDigitalValue(int Index) {
-    AccessDigitalSema.Acquire();
-    NewDigitalIn[Index] = false;
-    AccessDigitalSema.Release();
-}
 
 bool ModbusUnit::SlaveGetRegisters(U16 *Registers, int Index, int NumberOfRegisters, U8 *DataPtr) {
     bool NoError = false;
-    if ( Index < MODBUS_MAX_REGISTERS && NumberOfRegisters <= MaxRegisters ) {
+    if (Index < MODBUS_MAX_REGISTERS && NumberOfRegisters <= MaxRegisters) {
         memcpy(DataPtr, &Registers[Index], NumberOfRegisters * 2);
         NoError = true;
     }
@@ -252,22 +238,22 @@ bool ModbusUnit::GetCoilOut(int Index) {
 bool ModbusUnit::GetCoils(U8 *Coils, int FirstCoil, int NumberOfCoils, U8 *DataPtr) {
     bool NoError = true;
     int StartOffset = 0;
-    if ( Coils == DigitalOut ) {
+    if (Coils == DigitalOut) {
         StartOffset = StartDigitalOut;
-    } else if ( Coils == DigitalIn ) {
+    } else if (Coils == DigitalIn) {
         StartOffset  = StartDigitalIn;
     }
     FirstCoil        -= StartOffset;
     int LastCoil      = FirstCoil + NumberOfCoils - 1;
     int NumberOfBytes = NumberOfCoils >> 3;
-    if ( NumberOfCoils & 7 ) {
+    if (NumberOfCoils & 7) {
         NumberOfBytes++;
     }
-    if ( FirstCoil >= 0 && (LastCoil < MODBUS_MAX_COILS) && NumberOfCoils <= MaxCoils ) {
+    if (FirstCoil >= 0 && (LastCoil < MODBUS_MAX_COILS) && NumberOfCoils <= MaxCoils) {
         memset(DataPtr, 0, NumberOfBytes);
         AccessDigitalSema.Acquire();
-        for ( int Cnt = 0, i = FirstCoil; i <= LastCoil; i++ ) {
-            if ( MB_GetBit(Coils, i) ) {
+        for (int Cnt = 0, i = FirstCoil; i <= LastCoil; i++) {
+            if (MB_GetBit(Coils, i)) {
                 MB_SetBit(DataPtr, Cnt);
             }
             Cnt++;
@@ -284,14 +270,14 @@ bool ModbusUnit::SetCoils(int FirstCoil, int NumberOfCoils, U8 *DataPtr) {
     bool NoError = true;
     int NumberOfBytes = NumberOfCoils >> 3;
     int LastCoil      = FirstCoil + NumberOfCoils - 1;
-    if ( NumberOfCoils & 7 ) {
+    if (NumberOfCoils & 7) {
         NumberOfBytes++;
     }
 
-    if ( FirstCoil >= 0 && (LastCoil >= 0) && (LastCoil < MODBUS_MAX_COILS) && NumberOfCoils <= MaxCoils ) {
+    if (FirstCoil >= 0 && (LastCoil >= 0) && (LastCoil < MODBUS_MAX_COILS) && NumberOfCoils <= MaxCoils) {
         AccessDigitalSema.Acquire();
-        for ( int Cnt = FirstCoil, i = 0; i < NumberOfCoils; i++, Cnt++ ) {
-            if ( MB_GetBit(DataPtr, i) ) {
+        for (int Cnt = FirstCoil, i = 0; i < NumberOfCoils; i++, Cnt++) {
+            if (MB_GetBit(DataPtr, i)) {
                 MB_SetBit(DigitalIn, Cnt);
             } else {
                 MB_ResetBit(DigitalIn, Cnt);
@@ -308,10 +294,10 @@ bool ModbusUnit::SetCoils(int FirstCoil, int NumberOfCoils, U8 *DataPtr) {
 
 bool ModbusUnit::SetInCoil(int Index, U16 State) {
     bool NoError = true;
-    if ( Index >= StartDigitalIn && Index < MODBUS_MAX_COILS ) {
+    if (Index >= StartDigitalIn && Index < MODBUS_MAX_COILS) {
         Index -= StartDigitalIn;
         AccessDigitalSema.Acquire();
-        if ( State == 0xFF00 ) {
+        if (State == 0xFF00) {
             MB_SetBit(DigitalIn, Index);
         } else {
             MB_ResetBit(DigitalIn, Index);
@@ -325,10 +311,10 @@ bool ModbusUnit::SetInCoil(int Index, U16 State) {
 }
 bool ModbusUnit::InitInCoil(int Index, U16 State) {
     bool NoError = true;
-    if ( Index >= StartDigitalIn && Index < MODBUS_MAX_COILS ) {
+    if (Index >= StartDigitalIn && Index < MODBUS_MAX_COILS) {
         Index -= StartDigitalIn;
         AccessDigitalSema.Acquire();
-        if ( State ) {
+        if (State) {
             MB_SetBit(DigitalIn, Index);
         } else {
             MB_ResetBit(DigitalIn, Index);
@@ -343,10 +329,10 @@ bool ModbusUnit::InitInCoil(int Index, U16 State) {
 
 bool ModbusUnit::SetCoil(int Index, bool State) {
     bool NoError = true;
-    if ( Index >= StartDigitalOut && Index < MODBUS_MAX_COILS ) {
+    if (Index >= StartDigitalOut && Index < MODBUS_MAX_COILS) {
         Index -= StartDigitalOut;
         AccessDigitalSema.Acquire();
-        if ( State ) {
+        if (State) {
             MB_SetBit(DigitalOut, Index);
         } else {
             MB_ResetBit(DigitalOut, Index);
@@ -363,19 +349,19 @@ bool ModbusUnit::SetCoil(int Index, bool State) {
 
 bool ModbusUnit::SetCoilDirect(int Channel, bool State) {
     bool NoError = true;
-    if ( myPort ) {
+    if (myPort) {
         unsigned Value = 0;
-        if ( State ) {
+        if (State) {
             Value = 0xFF00;
         }
         int RetryCnt = 0;
         do {
             NoError = (Set_Single(myPort, MBUS_CMD_WRITE_SINGLE_COIL, Address, Channel, Value, 200, myFrameSpaceTime, myFrameTimeOut) != PORT_FAILURE);
-            if ( !NoError ) {
+            if (!NoError) {
                 //Cnt++;
             }
             TSN_Delay(100);
-        }while ( !NoError && RetryCnt++ < 10 );
+        }while (!NoError && RetryCnt++ < 10);
     } else {
         NoError = false;
     }
@@ -386,14 +372,14 @@ bool ModbusUnit::SetCoilDirect(int Channel, bool State) {
 void ModbusUnit::SetCoilHistory(int Index, bool State, int Entries) {
     Index -= StartDigitalOut;
     AccessDigitalSema.Acquire();
-    for ( int i = Entries - 1; i >= 1; i-- ) {
-        if ( MB_GetBit(DigitalIn, i - 1 + Index) ) {
+    for (int i = Entries - 1; i >= 1; i--) {
+        if (MB_GetBit(DigitalIn, i - 1 + Index)) {
             MB_SetBit(DigitalOut, i + Index);
         } else {
             MB_ResetBit(DigitalOut, Index);
         }
     }
-    if ( State ) {
+    if (State) {
         MB_SetBit(DigitalOut, Index);
     } else {
         MB_ResetBit(DigitalOut, Index);
@@ -403,12 +389,10 @@ void ModbusUnit::SetCoilHistory(int Index, bool State, int Entries) {
 
 
 
-void ModbusUnit::SetPreviousState(int Channel, bool CurrentState)
-{
+void ModbusUnit::SetPreviousState(int Channel, bool CurrentState) {
     PreviousDigitalIn[Channel] = CurrentState;
 }
-bool ModbusUnit::IsNewDigitalInput(int Channel, bool CurrentState)
-{
+bool ModbusUnit::NewDigitalIn(int Channel, bool CurrentState) {
     if (PreviousDigitalIn[Channel] == CurrentState) {
         return false;
     }
@@ -416,7 +400,7 @@ bool ModbusUnit::IsNewDigitalInput(int Channel, bool CurrentState)
 }
 void ModbusUnit::HandleRequest(U8 *RequestData) {
     int Offset;
-    switch ( myPort->Device ) {
+    switch (myPort->Device) {
     case C_UART_DEVICE_MODICON_MASTER_TCP   :
     case C_UART_DEVICE_MODICON_SLAVE_TCP    :
     case C_UART_DEVICE_MODBUS_SLAVE_TCP     :
@@ -434,14 +418,14 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
         break;
     }
     TimeStamp  = clock();
-    switch ( RequestData[MODBUS_INDEX_COMMAND] ) {
+    switch (RequestData[MODBUS_INDEX_COMMAND]) {
     case MBUS_CMD_READ_COIL_STATUS          :
     case MBUS_CMD_READ_INPUT_STATUS         :
         {
             int FCoil         = (RequestData[MODBUS_INDEX_ADDRESS] << 8) | RequestData[MODBUS_INDEX_ADDRESS + 1];
             int NCoils        = (RequestData[MODBUS_INDEX_CNT] << 8) | RequestData[MODBUS_INDEX_CNT + 1];
             int NumberOfBytes = NCoils >> 3;
-            if ( NCoils & 7 ) {
+            if (NCoils & 7) {
                 NumberOfBytes++;
             }
             //SlaveAddress--;
@@ -452,9 +436,9 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             Packet[MODBUS_INDEX_COMMAND       + Offset] = RequestData[MODBUS_INDEX_COMMAND];
             Packet[MODBUS_INDEX_EXCEPTION_CODE + Offset] = NumberOfBytes;
             U8 *tmpCoilPtr;
-            switch ( RequestData[MODBUS_INDEX_COMMAND] ) {
+            switch (RequestData[MODBUS_INDEX_COMMAND]) {
             case MBUS_CMD_READ_COIL_STATUS   :
-                switch ( myPort->Device ) {
+                switch (myPort->Device) {
                 case C_UART_DEVICE_MODBUS_SLAVE     :
                     tmpCoilPtr = DigitalOut;
                     break;
@@ -466,7 +450,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
                 }
                 break;
             case MBUS_CMD_READ_INPUT_STATUS  :
-                switch ( myPort->Device ) {
+                switch (myPort->Device) {
                 case C_UART_DEVICE_MODBUS_SLAVE     :
                     tmpCoilPtr = DigitalIn;
                     break;
@@ -478,7 +462,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
                 }
             }
 
-            if ( GetCoils(tmpCoilPtr, FCoil, NCoils, &Packet[MODBUS_INDEX_DATA_START + Offset]) ) {
+            if (GetCoils(tmpCoilPtr, FCoil, NCoils, &Packet[MODBUS_INDEX_DATA_START + Offset])) {
                 Send_Query(myPort, Packet, MODBUS_INDEX_DATA_START + NumberOfBytes + Offset);
             } else {
                 Packet[MODBUS_INDEX_COMMAND] += 0x80;
@@ -501,9 +485,9 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             Packet[MODBUS_INDEX_BYTE_CNT + Offset] = NRegs * 2;
 
             U16 *tmpRegPtr;
-            switch ( RequestData[MODBUS_INDEX_COMMAND] ) {
+            switch (RequestData[MODBUS_INDEX_COMMAND]) {
             case MBUS_CMD_READ_INPUT_REGISTER   :
-                switch ( myPort->Device ) {
+                switch (myPort->Device) {
                 case C_UART_DEVICE_MODBUS_SLAVE     :
                     tmpRegPtr = AnalogIn;
                     break;
@@ -515,7 +499,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
                 }
                 break;
             case MBUS_CMD_READ_HOLDING_REGISTER :
-                switch ( myPort->Device ) {
+                switch (myPort->Device) {
                 case C_UART_DEVICE_MODBUS_SLAVE     :
                     tmpRegPtr = AnalogOut;
                     break;
@@ -527,7 +511,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
                 }
                 break;
             }
-            if ( SlaveGetRegisters(tmpRegPtr, FReg, NRegs, &Packet[MODBUS_INDEX_DATA_START + Offset]) ) {
+            if (SlaveGetRegisters(tmpRegPtr, FReg, NRegs, &Packet[MODBUS_INDEX_DATA_START + Offset])) {
                 Send_Query(myPort, Packet, MODBUS_INDEX_DATA_START + NRegs * 2 + Offset);
             } else {
                 Packet[MODBUS_INDEX_COMMAND       + Offset] += 0x80;
@@ -551,7 +535,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             Packet[MODBUS_INDEX_CNT           + Offset] = RequestData[MODBUS_INDEX_CNT];
             Packet[MODBUS_INDEX_CNT + 1       + Offset] = RequestData[MODBUS_INDEX_CNT + 1];
 
-            if ( SetInCoil(FReg, Coil) ) {
+            if (SetInCoil(FReg, Coil)) {
                 // Just send the request packet
                 Send_Query(myPort, RequestData, REQUEST_QUERY_SIZE + Offset);
             } else {
@@ -575,9 +559,9 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             Packet[MODBUS_INDEX_CNT           + Offset] = RequestData[MODBUS_INDEX_CNT];
             Packet[MODBUS_INDEX_CNT + 1       + Offset] = RequestData[MODBUS_INDEX_CNT + 1];
 
-            if ( FReg < MODBUS_MAX_REGISTERS ) {
+            if (FReg < MODBUS_MAX_REGISTERS) {
                 U16 *tmpRegPtr;
-                switch ( myPort->Device ) {
+                switch (myPort->Device) {
                 case C_UART_DEVICE_MODICON_SLAVE_TCP    :
                 case C_UART_DEVICE_MODICON_SLAVE        :
                 case C_UART_DEVICE_MODBUS_SLAVE_TCP     :
@@ -595,7 +579,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
                     break;
                 }
 
-                if ( SlaveSetRegisters(tmpRegPtr, FReg, 1, &RequestData[MODBUS_INDEX_CNT + Offset]) ) {
+                if (SlaveSetRegisters(tmpRegPtr, FReg, 1, &RequestData[MODBUS_INDEX_CNT + Offset])) {
                     Send_Query(myPort, Packet, REQUEST_QUERY_SIZE + Offset);
                 } else {
                     Packet[MODBUS_INDEX_COMMAND + Offset] += 0x80;
@@ -616,7 +600,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             int FCoil         = (RequestData[MODBUS_INDEX_ADDRESS] << 8) | RequestData[MODBUS_INDEX_ADDRESS + 1];
             int NCoils        = (RequestData[MODBUS_INDEX_CNT] << 8) | RequestData[MODBUS_INDEX_CNT    + 1];
             int NumberOfBytes = NCoils >> 3;
-            if ( NCoils & 7 ) {
+            if (NCoils & 7) {
                 NumberOfBytes++;
             }
             //SlaveAddress--;
@@ -629,7 +613,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             Packet[MODBUS_INDEX_ADDRESS + 1   + Offset] = RequestData[MODBUS_INDEX_ADDRESS + 1];
             Packet[MODBUS_INDEX_CNT           + Offset] = RequestData[MODBUS_INDEX_CNT];
             Packet[MODBUS_INDEX_CNT + 1       + Offset] = RequestData[MODBUS_INDEX_CNT + 1];
-            if ( SetCoils(FCoil, NCoils, &RequestData[REQUEST_MULTIPLE_SIZE + Offset]) ) {
+            if (SetCoils(FCoil, NCoils, &RequestData[REQUEST_MULTIPLE_SIZE + Offset])) {
                 Send_Query(myPort, Packet, REQUEST_QUERY_SIZE + Offset);
             } else {
                 Packet[MODBUS_INDEX_COMMAND       + Offset] += 0x80;
@@ -654,7 +638,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             Packet[MODBUS_INDEX_CNT + 1       + Offset] = RequestData[MODBUS_INDEX_CNT + 1];
 
             U16 *tmpRegPtr;
-            switch ( myPort->Device ) {
+            switch (myPort->Device) {
             case C_UART_DEVICE_MODICON_SLAVE_TCP    :
             case C_UART_DEVICE_MODICON_SLAVE        :
             case C_UART_DEVICE_MODBUS_SLAVE_TCP     :
@@ -668,7 +652,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
                 break;
             }
 
-            if ( SlaveSetRegisters(tmpRegPtr, FReg, NRegs, &RequestData[REQUEST_MULTIPLE_SIZE + Offset]) ) {
+            if (SlaveSetRegisters(tmpRegPtr, FReg, NRegs, &RequestData[REQUEST_MULTIPLE_SIZE + Offset])) {
                 Send_Query(myPort, Packet, REQUEST_QUERY_SIZE);
             } else {
                 Packet[MODBUS_INDEX_COMMAND + Offset] += 0x80;
@@ -698,52 +682,56 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
 void ModbusUnit::HandleIO(void) {
 
     int Cnt = 0; // Assume that the problem is a general communication failure
-    for ( unsigned i = 0; i < AddressesVectAnalogIn.size(); i++ ) {
+    OS_Delay(5);
+    for (unsigned i = 0; i < AddressesVectAnalogIn.size(); i++) {
         unsigned Channel = AddressesVectAnalogIn[i].First;
         unsigned Count   = AddressesVectAnalogIn[i].NumberOfAddr;
-        if ( Get_Multiple(myPort, myPort->ModbusCmdInputRegister, Address, Channel, Count, (U8 *)&AnalogIn[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE ) {
+        if (Get_Multiple(myPort, myPort->ModbusCmdInputRegister, Address, Channel, Count, (U8 *)&AnalogIn[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
             Cnt++;
         } else {
             FlagNewValues(Channel, Count);
         }
     }
-    for ( unsigned i = 0; i < AddressesVectDigitalIn.size(); i++ ) {
+    OS_Delay(5);
+    for (unsigned i = 0; i < AddressesVectDigitalIn.size(); i++) {
         unsigned Channel = AddressesVectDigitalIn[i].First;
         unsigned Count   = AddressesVectDigitalIn[i].NumberOfAddr;
         U8 tmpReplyData[256];
-        if ( Get_Multiple(myPort, myPort->ModbusCmdInputStatus, Address, Channel, Count, tmpReplyData, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE ) {
+        if (Get_Multiple(myPort, myPort->ModbusCmdInputStatus, Address, Channel, Count, tmpReplyData, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
             Cnt++;
         } else {
             SetCoils(Channel, Count, tmpReplyData);
             FlagNewDigitalValues(Channel, Count);
         }
     }
-    if ( hasNewRegOutput ) {
+    OS_Delay(5);
+    if (hasNewRegOutput) {
         hasNewRegOutput = false;
-        for ( unsigned i = 0; i < AddressesVectAnalogOut.size(); i++ ) {
+        for (unsigned i = 0; i < AddressesVectAnalogOut.size(); i++) {
             unsigned Channel = AddressesVectAnalogOut[i].First;
             unsigned Count   = AddressesVectAnalogOut[i].NumberOfAddr;
-            if ( WriteMultipleRegisters(myPort, Address, Channel, Count, (U8 *)&AnalogOut[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE ) {
+            if (WriteMultipleRegisters(myPort, Address, Channel, Count, (U8 *)&AnalogOut[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
                 Cnt++;
             }
         }
     }
-    if ( hasNewCoilOutput ) {
+    OS_Delay(5);
+    if (hasNewCoilOutput) {
         hasNewCoilOutput = false;
-        for ( unsigned i = 0; i < AddressesVectDigitalOut.size(); i++ ) {
+        for (unsigned i = 0; i < AddressesVectDigitalOut.size(); i++) {
             unsigned FCoil  = AddressesVectDigitalOut[i].First;
             unsigned NCoils = AddressesVectDigitalOut[i].NumberOfAddr;
             U8 Packet[MAX_QUERY_LENGTH];  // Could subtract REQUEST_MULTIPLE_SIZE
-            if ( GetCoils(DigitalOut, FCoil, NCoils, Packet) ) {
-                if ( WriteMultipleCoils(myPort, Address, FCoil, NCoils, Packet, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE ) {
+            if (GetCoils(DigitalOut, FCoil, NCoils, Packet)) {
+                if (WriteMultipleCoils(myPort, Address, FCoil, NCoils, Packet, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
                     Cnt++;
                 }
             }
         }
     }
-    TSN_Delay(myRequestDelay * 2);
-    if ( Cnt ) {
-        if ( myPort->Relaxed ) {
+    //TSN_Delay(myRequestDelay * 2);
+    if (Cnt) {
+        if (myPort->Relaxed) {
             ComFailCount++;
             ComTotalFailCount++;
         } else {
@@ -754,7 +742,7 @@ void ModbusUnit::HandleIO(void) {
         ComFailCount = 0;
         TimeStamp  = clock();
     }
-    //SendData();
+    SendData();
     CheckAlarms(AlarmSet, &HWFailure);
 }
 #endif
@@ -763,7 +751,7 @@ ModbusUnit* ModbusUnit::FindDevice(U8 TCUUnit, U16 ComPort, U8 Address) {
     ModbusUnit *ObjPtr = NULL;
     map<unsigned, ModbusUnit *>::iterator ObjMapIterator;
     ObjMapIterator = DeviceMap.find(Key);
-    if ( ObjMapIterator != DeviceMap.end() ) {
+    if (ObjMapIterator != DeviceMap.end()) {
         ObjPtr = ObjMapIterator->second;
     }
     return (ObjPtr);
@@ -771,18 +759,18 @@ ModbusUnit* ModbusUnit::FindDevice(U8 TCUUnit, U16 ComPort, U8 Address) {
 //----------------------------------------------------------------------------
 void ModbusUnit::InsertInMap(U8 TCUUnit, U16 ComPort, U8 Address, int ObjType, int Channel, unsigned RefObjId, bool isVolatile) {
     ModbusUnit *tmpReg = FindDevice(TCUUnit, ComPort, Address);
-    if ( !tmpReg ) {
+    if (!tmpReg) {
         unsigned Key = (TCUUnit << 24) | (Address << 16) | ComPort;
         tmpReg = new ModbusUnit(Address, ComPort);
         DeviceMap.insert(pair<unsigned, ModbusUnit *>(Key, tmpReg));
     }
-    switch ( ObjType ) {
+    switch (ObjType) {
     case C_PRO_MODBUS_REG_BIT_OUT:
         tmpReg->StartAnalogOut   = MIN(tmpReg->StartAnalogOut, Channel);
         tmpReg->LastAnalogOut    = MAX(tmpReg->LastAnalogOut, Channel + 1);
         tmpReg->HasAnalogOut     = true;
         tmpReg->AnalogOutSet.insert(Channel);
-        if ( isVolatile ) {
+        if (isVolatile) {
             tmpReg->StartAnalogIn    = MIN(tmpReg->StartAnalogIn, Channel);
             tmpReg->LastAnalogIn     = MAX(tmpReg->LastAnalogIn, Channel + 1);
             tmpReg->HasAnalogIn      = true;
@@ -832,13 +820,13 @@ void ModbusUnit::InsertInMap(U8 TCUUnit, U16 ComPort, U8 Address, int ObjType, i
         tmpReg->DigitalInSet.insert(Channel);
         break;
     }
-    if ( RefObjId ) {
+    if (RefObjId) {
         tmpReg->ObjectIdSet.insert(RefObjId);
     }
 }
 void ModbusUnit::DeleteAllInDeviceMap(void) {
     map<unsigned, ModbusUnit *>::iterator ObjMapIterator;
-    for ( ObjMapIterator = DeviceMap.begin(); ObjMapIterator != DeviceMap.end(); ObjMapIterator++ ) {
+    for (ObjMapIterator = DeviceMap.begin(); ObjMapIterator != DeviceMap.end(); ObjMapIterator++) {
         delete (*ObjMapIterator).second;
     }
     DeviceMap.clear();
@@ -853,14 +841,14 @@ void ModbusUnit::SetAddressRanges(set<unsigned>AddressSet, vector<AddressRange> 
     AddressRange Addresses = { 0, 0, 0 };
     bool FirstAddress = true;
     set<unsigned>::iterator IdIt;
-    for ( IdIt = AddressSet.begin(); IdIt != AddressSet.end(); IdIt++ ) {
+    for (IdIt = AddressSet.begin(); IdIt != AddressSet.end(); IdIt++) {
         unsigned Addr = *IdIt;
-        if ( FirstAddress ) {
+        if (FirstAddress) {
             FirstAddress = false;
             Addresses.First = Addr;
             Addresses.Last  = Addr;
         } else {
-            if ( Addr >= (Addresses.First + MaxAddressStep) ) {
+            if (Addr >= (Addresses.First + MaxAddressStep)) {
                 Addresses.NumberOfAddr = Addresses.Last - Addresses.First + 1;
                 AddressVector.push_back(Addresses);
                 Addresses.First = Addr;
@@ -870,7 +858,7 @@ void ModbusUnit::SetAddressRanges(set<unsigned>AddressSet, vector<AddressRange> 
             }
         }
     }
-    if ( !FirstAddress ) {
+    if (!FirstAddress) {
         Addresses.NumberOfAddr = Addresses.Last - Addresses.First + 1;
         AddressVector.push_back(Addresses);
     }
@@ -884,9 +872,9 @@ int ModbusUnit::GetTotalFailCount(void) {
 }
 
 void ModbusUnit::SetHWFailure(bool Failure) {
-    if ( Failure ) {
+    if (Failure) {
         set<AnalogInput *>::iterator pSnsIt;
-        for ( pSnsIt = SensorSet.begin(); pSnsIt != SensorSet.end(); pSnsIt++ ) {
+        for (pSnsIt = SensorSet.begin(); pSnsIt != SensorSet.end(); pSnsIt++) {
             AnalogInput *SnsPtr = *pSnsIt;
             if (!SnsPtr->HWFailure) {
                 SnsPtr->HWFailure = true;
@@ -904,15 +892,15 @@ void ModbusUnit::SetAlarmList(void) {
 void ModbusUnit::SetProList(void) {
 
     set<int>::iterator pBIt;
-    for ( pBIt = ObjectIdSet.begin(); pBIt != ObjectIdSet.end(); pBIt++ ) {
+    for (pBIt = ObjectIdSet.begin(); pBIt != ObjectIdSet.end(); pBIt++) {
         int ObjectId = *pBIt;
         // Add PROgramobjects like e.g. a tank to this Modbus device
         PRogramObject *ObjPtr = (PRogramObject *)FindPROFromIDNumber(ObjectId);
-        if ( ObjPtr ) {
+        if (ObjPtr) {
             pair<set<PRogramObject *>::iterator, bool> Ret;
             Ret = IOUniquePROSet.insert(ObjPtr);
             // Currently ignore thes PRogramObject alarms.
-            if ( Ret.second && ObjPtr->DataFromOther ) {
+            if (Ret.second && ObjPtr->DataFromOther) {
                 //AddAlarms(ObjPtr->CompleteAlarmInfoList);
                 ObjPtr->AddToExternalAlarms(AlarmSet);
             }
@@ -920,7 +908,7 @@ void ModbusUnit::SetProList(void) {
             set<AnalogInput *>tmpSensorSet = ObjPtr->GetModBusSensorList();
 
             set<AnalogInput *>::iterator pSnsIt;
-            for ( pSnsIt = tmpSensorSet.begin(); pSnsIt != tmpSensorSet.end(); pSnsIt++ ) {
+            for (pSnsIt = tmpSensorSet.begin(); pSnsIt != tmpSensorSet.end(); pSnsIt++) {
                 AnalogInput *SnsPtr = *pSnsIt;
                 SensorSet.insert(SnsPtr);
                 SnsPtr->AddAlarms(CompleteAlarmInfoList);
@@ -938,9 +926,9 @@ void ModbusUnit::SetProList(void) {
 
 //---------------------------------------------------------------------------
 void ModbusUnit::SetGlobalProList(void) {
-    if ( !ObjectSet.empty() ) {
+    if (!ObjectSet.empty()) {
         set<PRogramObjectBase *>::iterator pBIt;
-        for ( pBIt = ObjectSet.begin(); pBIt != ObjectSet.end(); pBIt++ ) {
+        for (pBIt = ObjectSet.begin(); pBIt != ObjectSet.end(); pBIt++) {
             ModbusUnit *tmpPtr = (ModbusUnit *)*pBIt;
             tmpPtr->SetProList();
         }
@@ -950,7 +938,7 @@ void ModbusUnit::SetGlobalProList(void) {
 
 void ModbusUnit::SetToMaster(void) {
     set<PRogramObjectBase *>::iterator MBUnitIt;
-    for ( MBUnitIt = ObjectSet.begin(); MBUnitIt != ObjectSet.end(); MBUnitIt++ ) {
+    for (MBUnitIt = ObjectSet.begin(); MBUnitIt != ObjectSet.end(); MBUnitIt++) {
         ModbusUnit *MBUnitPtr = (ModbusUnit *)*MBUnitIt;
         MBUnitPtr->SetIsMaster();
     }
@@ -959,7 +947,7 @@ void ModbusUnit::SetToMaster(void) {
 int ModbusUnit::ReceiveData(U8 *data) {
     int ErrorStatus = E_OK;
     ANPRO10_CommandHeading *pCH = (ANPRO10_CommandHeading *)data;
-    switch ( pCH->CommandNo ) {
+    switch (pCH->CommandNo) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             ANPRO10_COMMAND_2750 *pData = (ANPRO10_COMMAND_2750 *)data;
@@ -979,9 +967,9 @@ int ModbusUnit::ReceiveData(U8 *data) {
 
 int ModbusUnit::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
-    switch ( cmd ) {
+    switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
+        if (IsTimeToSend())     {
             LastRTTxTime = clock();
             QueueANPRO10_COMMAND_2750 Cmd;
             Cmd.TxInfo.Port         = NULL;
@@ -994,7 +982,7 @@ int ModbusUnit::SendData(U16 cmd) {
             Cmd.Data.ComTotalFailCount = ComTotalFailCount;
             memcpy(Cmd.Data.DigitalIn, DigitalIn, MODBUS_MAX_COILS / 8);
             bool sent = ANPRO10SendNormal(&Cmd);
-            if ( !sent ) ErrorStatus = E_QUEUE_FULL;
+            if (!sent) ErrorStatus = E_QUEUE_FULL;
             else ErrorStatus = E_OK;
         }
         break;
@@ -1011,9 +999,9 @@ int ModbusUnit::SendData(U16 cmd) {
 int ModbusUnit::GetActiveAlarms(void) {
     int ActAl       = 0;
     set<AlarmBasic *>::iterator pBIt;
-    for ( pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++ ) {
+    for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
         AlarmBasic *Element = *pBIt;
-        switch ( Element->State ) {
+        switch (Element->State) {
         case AlarmBasic::AlActive     :
         case AlarmBasic::AlAknowledged:
             ActAl++;
@@ -1033,7 +1021,7 @@ void ModbusUnit::SetUpCom(TSNUart *Port, int RequestDelay, int TimeOut, int Fram
     myFrameSpaceTime    = FrameSpaceTime;
     myFrameTimeOut      = FrameTimeOut;
     AddressSystem       = Port->Device;
-    switch ( myPort->Device ) {
+    switch (myPort->Device) {
     case C_UART_DEVICE_MODICON_MASTER_TCP   :
     case C_UART_DEVICE_MODICON_SLAVE_TCP    :
     case C_UART_DEVICE_MODBUS_SLAVE_TCP     :
@@ -1042,20 +1030,20 @@ void ModbusUnit::SetUpCom(TSNUart *Port, int RequestDelay, int TimeOut, int Fram
     case C_UART_DEVICE_MODBUS_MASTER_INV    :
     case C_UART_DEVICE_MODBUS_MASTER_TCP    :
         MaxRegisters = MAX_REGISTERS_RTU_TCP;
-        MaxCoils     = MAX_COILS_RTU_TCP    ;
+        MaxCoils     = MAX_COILS_RTU_TCP;
         break;
     case C_UART_DEVICE_MODICON_SLAVE        :
     case C_UART_DEVICE_MODBUS_SLAVE_INV     :
     case C_UART_DEVICE_MODBUS_SLAVE         :
     default:
         MaxRegisters = MAX_REGISTERS_RTU_COM;
-        MaxCoils     = MAX_COILS_RTU_COM    ;
+        MaxCoils     = MAX_COILS_RTU_COM;
         break;
     }
-    SetAddressRanges(AnalogOutSet   , AddressesVectAnalogOut    , MAX_REGISTERS_RTU_TCP  ); // Write alway max 0x7B
-    SetAddressRanges(AnalogInSet    , AddressesVectAnalogIn     , MaxRegisters           );
-    SetAddressRanges(DigitalOutSet  , AddressesVectDigitalOut   , MAX_COILS_RTU_TCP      ); // Write alway max 0x7B0
-    SetAddressRanges(DigitalInSet   , AddressesVectDigitalIn    , MaxCoils               ); 
+    SetAddressRanges(AnalogOutSet, AddressesVectAnalogOut, MAX_REGISTERS_RTU_TCP); // Write alway max 0x7B
+    SetAddressRanges(AnalogInSet, AddressesVectAnalogIn, MaxRegisters);
+    SetAddressRanges(DigitalOutSet, AddressesVectDigitalOut, MAX_COILS_RTU_TCP); // Write alway max 0x7B0
+    SetAddressRanges(DigitalInSet, AddressesVectDigitalIn, MaxCoils);
 }
 
 

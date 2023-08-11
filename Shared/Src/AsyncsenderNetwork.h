@@ -15,7 +15,7 @@ public:
 	~AsyncsenderNetwork();
 	static TSNMessageQ *NormalCommandQ;
 #if (USE_LZO == 1)
-    static const int WantedPacketSize   = (2*1492); // octets
+    static const int WantedPacketSize   = (1*1492); // octets
 #else
     static const int WantedPacketSize   = 1492; //1024; //8192; // octets
 #endif

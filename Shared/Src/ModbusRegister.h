@@ -24,8 +24,6 @@ protected:
     FloatingPoint   ModbusDataFormat;
     bool  HasRange;
     int   RefObjectId;
-    PRogramObject *ObjPtr;
-    int   ValueKey;
     int   RegMax;
 
 public:

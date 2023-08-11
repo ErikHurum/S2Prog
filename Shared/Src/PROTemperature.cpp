@@ -68,12 +68,14 @@ void PROTemperature::Initiate(void) {
 
 void PROTemperature::CreateAlarms(void)
 {
-    HighTempPtr    = new AlarmHighTemp(this);
-    LowTempPtr     = new AlarmLowTemp(this);
-    HighTempPtr->Limit = HighTempLimit;
-    LowTempPtr->Limit  = LowTempLimit;
-    AlarmSet.insert(HighTempPtr);
-    AlarmSet.insert(LowTempPtr);
+    if (!AnalogInList.empty()) {
+        HighTempPtr    = new AlarmHighTemp(this);
+        LowTempPtr     = new AlarmLowTemp(this);
+        HighTempPtr->Limit = HighTempLimit;
+        LowTempPtr->Limit  = LowTempLimit;
+        AlarmSet.insert(HighTempPtr);
+        AlarmSet.insert(LowTempPtr);
+    }
 
     if ( AnalogInList.size() > 1) {
         HighBotTempPtr = new AlarmHighBotTemp(this);

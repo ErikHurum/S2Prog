@@ -936,6 +936,7 @@ int AnalogInput::ReceiveData(U8 *data) {
     };
 }
 int AnalogInput::SendData(U16 cmd) {
+    int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
         if ( IsTimeToSend() )     {
@@ -956,9 +957,10 @@ int AnalogInput::SendData(U16 cmd) {
             Cmd.Data.ResultOK       = ResultOK;
 
             bool sent = ANPRO10SendNormal(&Cmd);
-            if ( !sent ) return (E_QUEUE_FULL);
-            else return (E_OK);
+            if ( !sent ) ErrorStatus = E_QUEUE_FULL;
+            else ErrorStatus = E_OK;
         }
+        break;
     case CMD_GENERIC_STATIC_DATA:
         {
             QueueANPRO10_COMMAND_2510  Cmd;
@@ -977,12 +979,15 @@ int AnalogInput::SendData(U16 cmd) {
             Cmd.Data.NewSensor     = NewSensor;
             strncpy(Cmd.Data.SerialNo, SerialNumber.c_str(), 15);
             bool sent = ANPRO10SendNormal(&Cmd);
-            if ( !sent ) return (E_QUEUE_FULL);
-            else return (E_OK);
+            if ( !sent ) ErrorStatus = E_QUEUE_FULL;
+            else ErrorStatus = E_OK;
         }
+        break;
     default:
-        return (E_UNKNOWN_COMMAND);
+        ErrorStatus = E_UNKNOWN_COMMAND;
+        break;
     };
+    return ErrorStatus;
 
 }
 

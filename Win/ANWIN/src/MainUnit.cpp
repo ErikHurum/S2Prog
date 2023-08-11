@@ -319,11 +319,12 @@ void TMainForm::WriteIniFile(void) {
     TmpIni->WriteString("LoadCalc", "FileName", LoadCalcXMLFileName);
 	TmpIni->WriteString("LoadCalc", "RegistryKey", LoadCalcRegKey);
 
-	AnsiString VersionInfo;
-	int VersionStatus = PROTanksystemUnit::MySelf->GetStringValue(SVT_UNIT_PROGRAM_VERSION, 0, VersionInfo);
-
-	if ( PROTanksystemUnit::MySelf ) TmpIni->WriteString("Project", "ProgVersion", VersionInfo);
-    TmpIni->WriteString("Communication", "DataSourceName", DataSourceName.c_str());
+	if ( PROTanksystemUnit::MySelf ) {
+		AnsiString VersionInfo;
+		int VersionStatus = PROTanksystemUnit::MySelf->GetStringValue(SVT_UNIT_PROGRAM_VERSION, 0, VersionInfo);
+		TmpIni->WriteString("Project", "ProgVersion", VersionInfo);
+	}
+	TmpIni->WriteString("Communication", "DataSourceName", DataSourceName.c_str());
     TmpIni->WriteInteger("Communication", "BaudRate", BaudRate);
     TmpIni->WriteInteger("Communication", "DataBits", DataBits);
     TmpIni->WriteString("Communication", "StopBits", StopBits.c_str());

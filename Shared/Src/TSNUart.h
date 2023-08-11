@@ -53,7 +53,7 @@ public:
     #endif
     static TSNUart *Channels[MAX_COM_PORTS];
     TSNUart(int PortNum,unsigned BdRate,
-            unsigned WrdLength,unsigned StpBits,char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr,int MaxTimeChar=0,bool Relax=false, int LogP=0, int LogE=0);
+            unsigned WrdLength,unsigned StpBits,char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr,int MaxTimeChar=0,bool Relax=false, int LogP=0, int LogE=0, int DelayP=0);
     TSNUart(void);
     ~TSNUart(void);
     void Initiate(void);

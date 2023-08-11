@@ -1321,7 +1321,7 @@
 #define POWER_ON_ZB485_START_DELAY  10
 #define RS485_IO_PERIODE            2000
 #define MIN_IO_DELAY                10
-#define MAX_IO_RESPONSE_TIME        100
+#define MAX_IO_RESPONSE_TIME        50
 #define MAX_AN_ZBANA_CHANNELS       12
 #define MAX_AN_ZB485_CHANNELS        8
 #define MAX_TCU_AD_CHANNELS          8
@@ -3297,8 +3297,8 @@
 #define EXTERNAL_ALARM_SILENCE      1
 
 #define DATA_EXPIRATION_TIME    (5*RS485_IO_PERIODE)
-#define SEND_MIN_INTERVAL   250
-#define MODBUS_UPDATE_INTERVAL   2000
+#define SEND_MIN_INTERVAL       250
+#define MODBUS_UPDATE_INTERVAL  2000
 
 /////////////////////////////////////////////////////
 //
@@ -3380,6 +3380,7 @@
 #define SAAB_TASK_PRIORITY          130
 #define COM_SEND_TASK_PRIORITY      140
 #define MODBUS_TASK_PRIORITY        170
+#define CALCULATE_OBJ_TASK_PRIORITY 90
 
 
 

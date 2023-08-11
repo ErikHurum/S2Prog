@@ -765,7 +765,7 @@ bool SCADCard::HandleCard(int Delay) {
         } else { // The normal place
             RequestMeasuredData(0);
 
-            if ( ANPRO10_IO_Receive(200) ) {
+            if ( ANPRO10_IO_Receive() ) {
                 if ( RequestADConfig ) {
                     bool AddDelay = true;
                     switch ( RequestADConfig ) {

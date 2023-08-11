@@ -673,6 +673,7 @@ int PROLinePressure::ReceiveData(U8* data)
 
 int PROLinePressure::SendData(U16 cmd)
 {
+    int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
         if ( IsTimeToSend() )     {
@@ -691,14 +692,18 @@ int PROLinePressure::SendData(U16 cmd)
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent )
-                return(E_QUEUE_FULL);
+                ErrorStatus = E_QUEUE_FULL;
             else
-                return(E_OK);
+                ErrorStatus = E_OK;
         }
+        break;
     case CMD_GENERIC_STATIC_DATA :
+        break;
     default:
-        return(E_UNKNOWN_COMMAND);
+        ErrorStatus = E_UNKNOWN_COMMAND;
+        break;
     };
+    return ErrorStatus;
 }
 
 int PROLinePressure::WriteXML(char *StrBuf, bool IncAlarms)

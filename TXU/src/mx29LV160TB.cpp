@@ -1,6 +1,5 @@
 #include <string.h>
 #include "def.h"
-#include "option.h"
 #include "2410addr.h"
 #include "2410lib.h"
 #include "2410slib.h"

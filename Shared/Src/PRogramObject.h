@@ -76,7 +76,6 @@ public:
     void SetOffline(int ValueKey);
 
     set<AnalogInput *>GetModBusSensorList(void);
-    virtual bool IsStaticValue(int ValueKey);
 };
 
 //---------------------------------------------------------------------------

@@ -10,7 +10,7 @@
 
 TSNUart *TSNUart::Channels[MAX_COM_PORTS] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
-TSNUart::TSNUart(int PortNum, unsigned BdRate, unsigned WrdLength, unsigned StpBits, char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr, int MaxTimeChar, bool Relax, int LogP, int LogE) {
+TSNUart::TSNUart(int PortNum, unsigned BdRate, unsigned WrdLength, unsigned StpBits, char Prty, unsigned BufSize, int Dev, int HWProt, int SWProt, bool IsMstr, int MaxTimeChar, bool Relax, int LogP, int LogE, int DelayP) {
     PortNumber              = PortNum;
     BaudRate                = BdRate;
     WordLength              = WrdLength;
@@ -21,8 +21,8 @@ TSNUart::TSNUart(int PortNum, unsigned BdRate, unsigned WrdLength, unsigned StpB
     Device                  = Dev;
     HWProtocol              = HWProt;
     SWProtocol              = SWProt;
-    Delay                   = 0;
-    Relaxed                 = false;
+    Delay                   = DelayP;
+    Relaxed                 = Relax;
     TimeOut                 = 0;
     MaxTimeBetweenChar      = MaxTimeChar;
     LogTime                 = LogP;

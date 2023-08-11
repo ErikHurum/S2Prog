@@ -18,8 +18,8 @@
 
 extern int OS_FSys;
 
-SC2410Uart::SC2410Uart(int PortNum,unsigned BdRate,unsigned WrdLength,unsigned StpBits,char Prty, unsigned BufSize, int Dev, int HWProt,int SWProt, bool IsMstr,int MaxTimeChar,bool Relax, int LogP, int LogE):
-TSNUart(PortNum,BdRate,WrdLength, StpBits, Prty, BufSize, Dev, HWProt,SWProt, IsMstr,MaxTimeChar, Relax, LogP, LogE)
+SC2410Uart::SC2410Uart(int PortNum,unsigned BdRate,unsigned WrdLength,unsigned StpBits,char Prty, unsigned BufSize, int Dev, int HWProt,int SWProt, bool IsMstr,int MaxTimeChar,bool Relax, int LogP, int LogE, int DelayP):
+TSNUart(PortNum,BdRate,WrdLength, StpBits, Prty, BufSize, Dev, HWProt,SWProt, IsMstr,MaxTimeChar, Relax, LogP, LogE,DelayP)
 {
 	OS_CREATERSEMA(&TxSema);
 	Channels[PortNumber] = this;

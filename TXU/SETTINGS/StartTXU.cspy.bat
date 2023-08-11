@@ -22,7 +22,7 @@
 @REM but they are listed at the end of this file for reference.
 
 
-"C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\common\bin\cspybat" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\bin\armproc.dll" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\bin\<libsupport_plugin>" --macro "D:\S2Prog\TXU\Mac\TXUDebug.mac" --backend -B "--endian" "little" "--cpu" "ARM920T" "--fpu" "None" "--proc_device_desc_file" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\CONFIG\ios3c2410a.ddf" "--drv_verify_download" "all" "--proc_driver" "jlink" "--jlink_connection" "TCPIP:192.168.227.140" "192.168.227.140" "--jlink_reset_strategy" "0,0" "--jlink_initial_speed" "32" "--jlink_catch_exceptions" "0x037" 
+"C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\common\bin\cspybat" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\bin\armproc.dll" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\bin\<libsupport_plugin>" --macro "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\TXU\Mac\TXUDebug.mac" --backend -B "--endian" "little" "--cpu" "ARM920T" "--fpu" "None" "--proc_device_desc_file" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0\arm\CONFIG\ios3c2410a.ddf" "--drv_verify_download" "all" "--proc_driver" "jlink" "--jlink_connection" "TCPIP:192.168.227.140" "192.168.227.140" "--jlink_reset_strategy" "0,0" "--jlink_initial_speed" "32" "--jlink_catch_exceptions" "0x037" 
 
 
 @REM Loaded plugins:
