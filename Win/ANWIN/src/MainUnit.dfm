@@ -874,6 +874,7 @@ object MainForm: TMainForm
     Visible = False
     Wrapable = False
     OnExit = ADConverterinfo1Click
+    ExplicitWidth = 1531
     object ToolButtonCargo: TToolButton
       Left = 5
       Top = 0
@@ -955,6 +956,7 @@ object MainForm: TMainForm
     Height = 35
     Align = alTop
     TabOrder = 1
+    ExplicitWidth = 1531
     object AlarmPanel: TPanel
       Left = 1
       Top = 1

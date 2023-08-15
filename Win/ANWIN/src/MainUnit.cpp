@@ -2578,10 +2578,10 @@ void __fastcall TMainForm::OnPVCS(void) {
 }
 
 int __fastcall TMainForm::GetNumberOfPvcsScreens(AnsiString Path) {
-    int NumberOfScreens = 0;
+	int NumberOfScreens = 0;
     AnsiString FileName = Path + "config.xml";
     TiXmlDocument InDoc(FileName.c_str());
-    bool loadOkay = InDoc.LoadFile();
+	bool loadOkay = InDoc.LoadFile();
     if ( loadOkay ) {
         TiXmlElement *InElem = InDoc.RootElement();
         if ( InElem ) {
@@ -2597,7 +2597,7 @@ int __fastcall TMainForm::GetNumberOfPvcsScreens(AnsiString Path) {
 }
 
 bool __fastcall TMainForm::GetPvcsScreenInfo(AnsiString Path, int ScreenCount) {
-    AnsiString FileName = Path + "dxffiles.xml";
+	AnsiString FileName = Path + "dxffiles.xml";
     TiXmlDocument InDoc(FileName.c_str());
 	bool loadOkay = InDoc.LoadFile();
     if ( loadOkay ) {
