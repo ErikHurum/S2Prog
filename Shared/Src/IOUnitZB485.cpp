@@ -477,8 +477,7 @@ int IOUnitZB485::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2610 Cmd;
 
             Cmd.TxInfo.Port        = NULL;

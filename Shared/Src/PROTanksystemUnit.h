@@ -41,6 +41,7 @@ protected:
     AnsiString LastOSErrTask;
     float  RunningHours;
     int IOLoadDelay;
+    int   IO_ScanPeriod;
     AlarmTXUComFailure *TXUComFailureAlarm;
     static ValueList TCU_R1UnitValueList[];
     static ValueList TCU_R2UnitValueList[];
@@ -168,6 +169,9 @@ public:
     void VersionControl(TSNUart *Port);
     void SetIOLoadDelay(int Delay);
     int  GetIOLoadDelay(void);
+    void SetIO_ScanPeriod(int Delay);
+    int  GetIO_ScanPeriod(void);
+
 
     static PROTanksystemUnit* FindTCU(int Address);
     static TSNUart *GetComPort(int TCUAddress, int PortNum);

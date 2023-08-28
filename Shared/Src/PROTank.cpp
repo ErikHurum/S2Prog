@@ -325,9 +325,11 @@ ValueList PROTank::AllTankValueList[] = {
 
 
 
-    { L_WORD883, L_WORD884, SVT_RADAR_THRESHOLD },        // {"Radar Threshold" ,"RTrH",SVT_RADAR_THRESHOLD},
-    { L_WORD918, L_WORD919, SVT_DISTANCE_SNS_UTI },       // {"DistSnsUTI" ,"DUTI",SVT_DISTANCE_SNS_UTI},
-    { L_WORD1084, L_WORD1085, SVT_LEVEL_OFFSET     },       // {"Level offset" ,"LOff",SVT_LEVEL_OFFSET},
+    { L_WORD883, L_WORD884, SVT_RADAR_THRESHOLD   },       // {"Radar Threshold" ,"RTrH",SVT_RADAR_THRESHOLD},
+    { L_WORD918, L_WORD919, SVT_DISTANCE_SNS_UTI  },       // {"DistSnsUTI" ,"DUTI",SVT_DISTANCE_SNS_UTI},
+    { L_WORD1084, L_WORD1085, SVT_LEVEL_OFFSET      },       // {"Level offset" ,"LOff",SVT_LEVEL_OFFSET},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },       // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },       // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
 
 
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
@@ -544,11 +546,14 @@ ValueList PROTank::AllTankValueList2[] = {
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
 
-    { L_WORD52, L_WORD52, SVT_SUBMENU },
-    { L_WORD883, L_WORD884, SVT_RADAR_THRESHOLD },        // {"Radar Threshold" ,"RTrH",SVT_RADAR_THRESHOLD},
-    { L_WORD918, L_WORD919, SVT_DISTANCE_SNS_UTI },       // {"DistSnsUTI" ,"DUTI",SVT_DISTANCE_SNS_UTI},
-    { L_WORD1084, L_WORD1085, SVT_LEVEL_OFFSET     },       // {"Level offset" ,"LOff",SVT_LEVEL_OFFSET},
-    { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO     },       // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
+    { L_WORD52, L_WORD52, SVT_SUBMENU           },
+    { L_WORD883, L_WORD884, SVT_RADAR_THRESHOLD   },       // {"Radar Threshold" ,"RTrH",SVT_RADAR_THRESHOLD},
+    { L_WORD918, L_WORD919, SVT_DISTANCE_SNS_UTI  },       // {"DistSnsUTI" ,"DUTI",SVT_DISTANCE_SNS_UTI},
+    { L_WORD1084, L_WORD1085, SVT_LEVEL_OFFSET      },       // {"Level offset" ,"LOff",SVT_LEVEL_OFFSET},
+    { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO        },       // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },       // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },       // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
+
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
 
 // Alarm limits
@@ -6225,8 +6230,10 @@ int PROTank::ReceiveData(U8 *data) {
             FilteredVolPercent = pData->FilteredVolPercent;
             memmove(&LevelHistory[1], &LevelHistory[0], sizeof(float) * (LEVEL_HISTORY_ENTRIES - 1));
             LevelHistory[0] = Level;
-            IsOnline  = pData->IsOnline;
-            ErrorStatus = E_OK;
+            IsOnline        = pData->IsOnline;
+            TimeStamp       = pData->TimeStamp;
+            UpdatePeriod    = pData->UpdatePeriod;
+            ErrorStatus     = E_OK;
         }
         break;
     case CMD_GENERIC_STATIC_DATA:
@@ -6264,8 +6271,8 @@ int PROTank::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if (IsTimeToSend())     {
-            LastRTTxTime = clock();
+        UpdatePeriod = clock() - TimeStamp;
+        {
             QueueANPRO10_COMMAND_2100 Cmd;
             Cmd.TxInfo.Port             = NULL;
             Cmd.TxInfo.rxAddr           = DEVICE_BROADCAST_ADDR;
@@ -6299,6 +6306,9 @@ int PROTank::SendData(U16 cmd) {
             Cmd.Data.HasWater           = HasWater;
             Cmd.Data.FilteredVolPercent = FilteredVolPercent;
             Cmd.Data.IsOnline           = IsOnline;
+            Cmd.Data.TimeStamp          = TimeStamp;
+            Cmd.Data.UpdatePeriod       = UpdatePeriod;
+
             /*
             bool sent;
             do {
@@ -7091,8 +7101,16 @@ bool PROTank::CalculateOtherSns(void) {
             UllageAtSns = tmpUllageAtSns;
 
         } else {
-            LevelFC = tmpLevelFC;
-            LevelAtRef = TmpLevelAtRef;
+            if (tmpLevelFC < 0.0) {
+                LevelFC = 0.0;
+            } else {
+                LevelFC = tmpLevelFC;
+            }
+            if (TmpLevelAtRef < 0.0) {
+                LevelAtRef = 0.0;
+            } else {
+                LevelAtRef = TmpLevelAtRef;
+            }
         }
     } else {
         Level = 0.0;

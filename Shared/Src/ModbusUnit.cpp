@@ -677,8 +677,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
 
     }
 }
-#ifdef ANWIN
-#else
+#ifdef S2TXU
 void ModbusUnit::HandleIO(void) {
 
     int Cnt = 0; // Assume that the problem is a general communication failure
@@ -969,8 +968,7 @@ int ModbusUnit::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if (IsTimeToSend())     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2750 Cmd;
             Cmd.TxInfo.Port         = NULL;
             Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;

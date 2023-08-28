@@ -1161,7 +1161,7 @@
 // IO related constants
 #define POWER_ON_ZBANA_START_DELAY  5
 #define POWER_ON_ZB485_START_DELAY  10
-#define RS485_IO_PERIODE            2000
+#define SCAN_IO_INTERVAL            2000
 #define MIN_IO_DELAY                25
 #define MAX_IO_RESPONSE_TIME        30
 #define MAX_AN_ZBANA_CHANNELS       12
@@ -1763,7 +1763,7 @@
 #define SVT_RXERR_CNT               4017
 #define SVT_RXERR_TIME              4018
 #define SVT_ERROR_ADDRESS           4019
-#define SVT_IO_SYSTEM_DELAY         4020
+#define SVT_IO_TIME_SLICE         4020
 #define SVT_CPU_LOAD_RAW            4021
 #define SVT_CPU_LOAD_AVG            4022
 #define SVT_CPU_LOAD_MAX            4023
@@ -2909,7 +2909,7 @@
 #define ANPRO3_DEFAULT_DELAY    1000
 #define EXTERNAL_ALARM_SILENCE      1
 
-#define DATA_EXPIRATION_TIME    (4*RS485_IO_PERIODE)
+#define DATA_EXPIRATION_TIME    (4*SCAN_IO_INTERVAL)
 #define SEND_MIN_INTERVAL   250
 #define MODBUS_UPDATE_INTERVAL   2000
 

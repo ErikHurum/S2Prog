@@ -17,6 +17,8 @@
 #pragma link "AdvUtil"
 #pragma link "BaseGrid"
 #pragma link "asgprint"
+#pragma link "frCoreClasses"
+#pragma link "tmsAdvGridExcel"
 #pragma resource "*.dfm"
 TGroupTableTemperature *GroupTableTemperature;
 TGroupTableTemperature *TGroupTableTemperature::TemperaturesTable = NULL;

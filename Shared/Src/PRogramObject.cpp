@@ -569,24 +569,24 @@ int PRogramObject::GetNumberOfWarnings(void) {
     return Count;
 }
 void PRogramObject::RefreshData(int ValueKey) {
-    //if ( !IsStaticValue(ValueKey) ) {
-    if (IsAvailableNewData()) {
-        if (DataFromOther) {
-            HWFailure = CheckAlarms(ExternalAlarmList);
-        }
-        if (!DataFromOther || !HWFailure) {
+    if (!IsStaticValue(ValueKey)) {
+        if (IsAvailableNewData()) {
+            if (DataFromOther) {
+                HWFailure = CheckAlarms(ExternalAlarmList);
+            }
+            if (!DataFromOther || !HWFailure) {
                 Calculate();
                 IsNewData = true;
-            // HWFailure set elsewhere when our IO-system
-            CheckAlarms(AlarmSet);
-            //TSN_Delay(10);
+                // HWFailure set elsewhere when our IO-system
+                CheckAlarms(AlarmSet);
+                //TSN_Delay(10);
+            }
+        } else {
+            IsNewData = false;
+            SetAlarmsToNormal(AlarmSet);
+            SendData();
         }
-    } else {
-        IsNewData = false;
-        SetAlarmsToNormal(AlarmSet);
-        SendData();
     }
-    // }
 }
 
 void PRogramObject::SetOffline(int ValueKey) {

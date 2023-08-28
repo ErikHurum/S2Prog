@@ -23,6 +23,7 @@ public:
     bool ForcePowerOff;
 
     set<PRogramObject*>UniquePROList;
+    set<PRogramObject*>RelatedPROgramObjectsList;
     PROIOComponent *IOComponent[MAX_AN_SGCNV_CHANNELS];
     volatile float MsrdValues[MAX_AN_SGCNV_CHANNELS];
     volatile U16   CalValues[MAX_AN_SGCNV_CHANNELS];

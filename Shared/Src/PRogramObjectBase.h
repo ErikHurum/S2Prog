@@ -31,7 +31,7 @@ public:
     volatile int        ActiveAlarms;
     volatile bool       HWFailure;
     volatile clock_t    TimeStamp;
-    volatile clock_t    LastRTTxTime;
+    volatile int        UpdatePeriod;
     static volatile bool WriteAll;
     PRogramObjectBase(bool AddToList = true);
     virtual ~PRogramObjectBase(void);

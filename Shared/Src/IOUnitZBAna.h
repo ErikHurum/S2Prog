@@ -12,7 +12,6 @@ public:
     U8      Filters[MAX_AN_ZBANA_CHANNELS];
     U8      Status[MAX_AN_ZBANA_CHANNELS];
     float	mAValues[MAX_AN_ZBANA_CHANNELS];
-    int 	ReceiveCnt;
     IOUnitZBAna(PROIOComponent *IOCompPtr, PRogramObject *ElementPtr);
     ~IOUnitZBAna(void);
     PROIOComponent	*IOComponent[MAX_AN_ZBANA_CHANNELS];

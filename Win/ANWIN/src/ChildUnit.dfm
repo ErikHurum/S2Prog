@@ -3,7 +3,7 @@ object ChildForm: TChildForm
   Top = 0
   AlphaBlend = True
   Caption = 'ChildForm'
-  ClientHeight = 169
+  ClientHeight = 175
   ClientWidth = 326
   Color = clBtnFace
   DefaultMonitor = dmMainForm

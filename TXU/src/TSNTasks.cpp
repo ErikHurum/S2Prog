@@ -394,7 +394,7 @@ static TSN_STACKPTR int CalcMiscObjectsStack[2048];
 TSN_TASK CalcMiscObjectsHandle;                                                         /* Task control blocks */
 
 void CalcMiscObjectsTask(void) {
-#ifndef WIN32
+#ifdef S2TXU
     OS_Delay(15000);
     /*
         struct tcp_pcb *Mypcb = tcp_new();
@@ -417,10 +417,11 @@ void CalcMiscObjectsTask(void) {
                     ExternalObjects.insert(*pBIt);
                 }
             }
+            int t0 = OS_Time;
             FOREVER {
-                OS_Delay(1000);
                 if ( PROSystemData::TXUSystemData ) {
                     PROSystemData::TXUSystemData->Calculate();
+                    PROSystemData::TXUSystemData->SendData();
                 }
                 if ( PRODraftSystem::PRODraftSysPtr ) {
                     PRODraftSystem::PRODraftSysPtr->Calculate();
@@ -435,12 +436,7 @@ void CalcMiscObjectsTask(void) {
                             tmpPtr->Calculate();
                             CheckAlarms(tmpPtr->AlarmSet);
                         }
-                        tmpPtr->SendData();
-                    }
-                }
-                if ( !ModbusUnit::ObjectSet.empty() ) {
-                    for ( pPrgObjetBIt = ModbusUnit::ObjectSet.begin();  pPrgObjetBIt != ModbusUnit::ObjectSet.end(); pPrgObjetBIt++ ) {
-                        (*pPrgObjetBIt)->SendData();
+                        //tmpPtr->SendData();
                     }
                 }
 
@@ -449,11 +445,18 @@ void CalcMiscObjectsTask(void) {
                     PROWaterHeater::ObjectVector[i]->Calculate();
                     //CheckAlarms((*pBIt)->AlarmSet);
                 }
+
+                OS_DelayUntil(t0 += CALCULATION_PERIOD);
+
             }
         } else {
+            int t0 = OS_Time;
             FOREVER {
-                OS_Delay(1000);
                 PROTanksystemUnit::MySelf->Calculate();
+                PROTanksystemUnit::MySelf->SendData();
+                OS_Delay(100);
+                PROTanksystemUnit::MySelf->SendData(CMD_GENERIC_STATIC_DATA);
+                OS_DelayUntil(t0 += CALCULATION_PERIOD);
             }
         }
         case DEVICE_TDU:
@@ -464,6 +467,7 @@ void CalcMiscObjectsTask(void) {
     }
 #endif
 }
+
 
 TSN_TIMER ComActivityTimer;
 void CheckComActivity(void) {
@@ -746,28 +750,54 @@ void ANPRO10_IO_Handler(TSNUart * CompPtr) {
                 TaskUniquePROSet.insert(IOElement);
             }
         }
-        if ( !PROProjectInfo::SimulateIO && NumberOfRequests ) {
+        // Include all Modbus register in
+        {
+            set<PRogramObjectBase *>::iterator pBIt;
+            for (pBIt = ModbusRegisterIn::ModbusSet.begin(); pBIt !=ModbusRegisterIn::ModbusSet.end(); pBIt++) {
+                PRogramObject *IOElement = (PRogramObject*)(((ModbusRegisterIn*)(*pBIt))->GetObjectPointer());
+                if (IOElement) {
+                    TaskUniquePROSet.insert(IOElement);
+                }else{
+                    continue;
+                }
+           }
+        }
+        if ( !PROProjectInfo::SimulateIO && NumberOfRequests ) { 
             // Forever
-            float AvgTime = 0.0;
-            int   Delay   = MIN_IO_DELAY;
-            while ( true ) {
+            int   Delay         = 2*MIN_IO_DELAY;
+            int   RS485_Period  = PROTanksystemUnit::MySelf->GetIO_ScanPeriod();
+            FOREVER {
                 int StartTime = OS_Time;
                 set<IOUnit *>::iterator pBIt;
                 for ( pBIt = IOUnitSet.begin(); pBIt != IOUnitSet.end(); pBIt++ ) {
                     IOUnit *IOElement = *pBIt;
                     IOElement->HandleIO(Delay);
                 }
+                RecalcProgramObjects(TaskUniquePROSet,Delay);
+                // Let us wait
+                OS_DelayUntil(StartTime + RS485_Period);
+                // After wait, see if any speed adjustmens are required
                 int TimeUsed = abs( OS_Time - StartTime);
-                if (TimeUsed < RS485_IO_PERIODE) {
+                int TimeMargin = RS485_Period - TimeUsed;
+                if (TimeUsed < RS485_Period) {
                     Delay++;
-                } else if (TimeUsed > RS485_IO_PERIODE && Delay > 2 /*MIN_IO_DELAY*/) {
+                    // See if we can speed up things
+                    if (( TimeMargin > 500) && ( RS485_Period > SCAN_IO_INTERVAL)) {
+                        RS485_Period -= 500;    // Subtract half a second
+                        Delay = 10;             // Set to a reasonable value
+                        PROTanksystemUnit::MySelf->SetIO_ScanPeriod(RS485_Period);
+                    }
+                } else if (TimeUsed > RS485_Period && Delay >= MIN_IO_DELAY) {
                     Delay--;
+                    // See if we must reduce speed
+                    if (Delay <= MIN_IO_DELAY ) {
+                        RS485_Period += 500;    // Add half a second
+                        Delay = 10;             // Set to a reasonable value
+                        PROTanksystemUnit::MySelf->SetIO_ScanPeriod(RS485_Period);
+                    }
                 }
-                OS_DelayUntil(StartTime + RS485_IO_PERIODE);
-                AvgTime = FilterVal(AvgTime, TimeUsed, 10.0);
 
                 if ( PROTanksystemUnit::MySelf ) PROTanksystemUnit::MySelf->SetIOLoadDelay(Delay);
-                RecalcProgramObjects(TaskUniquePROSet);
             }
         } else { //End if (NumberOfRequests)
             OS_Terminate(NULL);
@@ -799,11 +829,12 @@ void StartWindowTasks(void) {
     CREATE_TASK(&aTCB[4], "Alarm Window",     AlarmWindowTask,    60, AlarmWinStack);     //Alarm window
 }
 
+
 TSN_TASK SendStaticDataTaskHandle;                                                   /* Task control blocks */
 
 void StartSendStaticDataTask(void) {
     static int SendStaticDataTaskStack[8 * 512];
-    CREATE_TASK(&SendStaticDataTaskHandle, "Send Static Data", PRogramObjectBase::SendStaticData,  80, SendStaticDataTaskStack);
+    CREATE_TASK(&SendStaticDataTaskHandle, "Send Static Data", PRogramObjectBase::SendStaticData,  SEND_STATIC_DATA_TASK_PRIORITY, SendStaticDataTaskStack);
 
 }
 void StartMiscTasks(void) {
@@ -1009,12 +1040,12 @@ void StartTasks(void) {
             StartMiscTasks();
             ProgProgress = WD_START_INT_AD_TASKS;
             ModbusObject::StartExchangeData();
-            CREATE_TASK(&CalcMiscObjectsHandle, "CalcMiscObjects", CalcMiscObjectsTask,  90, CalcMiscObjectsStack);
+            CREATE_TASK(&CalcMiscObjectsHandle, "CalcMiscObjects", CalcMiscObjectsTask,  CALCULATE_OBJ_TASK_PRIORITY, CalcMiscObjectsStack);
             LastStartTime = time(NULL);
             ProgProgress  = WD_START_OK;
             OS_IncDI();
             ExternAlarmSilence = new TSN_TASK();
-            OS_CREATETASK(ExternAlarmSilence, "External AlarmSilence", ExternalAlarmSilenceTask, 100, ExternalAlarmSilenceStack);
+            OS_CREATETASK(ExternAlarmSilence, "External AlarmSilence", ExternalAlarmSilenceTask, EXTERNAL_ALARM_SILENCE_PRIORITY, ExternalAlarmSilenceStack);
             OS_DecRI();
         } else {
             Master = true;

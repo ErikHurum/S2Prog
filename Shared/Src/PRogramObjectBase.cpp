@@ -34,9 +34,9 @@ PRogramObjectBase::PRogramObjectBase(bool AddToList) {
     IDNumber 	    = (C_PRO_BASIC << 16) + MySet.size();
     Type            = 0;
     HWFailure       = false;
+    UpdatePeriod    = 0;
     TimeStamp       = clock();
     LineNumber      = -1;
-    LastRTTxTime    = clock();
 }
 //---------------------------------------------------------------------------
 
@@ -256,9 +256,14 @@ int PRogramObjectBase::GetValue(int ValueId, int Index, float &MyValue, int &Dec
     int Status = E_NO_ERR;
     switch (ValueId) {
     case SVT_PRO_TIMESTAMP:
-        MyValue = (float)clock() - TimeStamp;
+        MyValue = TimeStamp;
         DecPnt = 0;
-        Unit   = NO_UNIT;
+        Unit   = MSECOND_UNIT;
+        break;
+    case SVT_PRO_UPDATE_PERIOD:
+        MyValue = UpdatePeriod;
+        DecPnt = 0;
+        Unit   = MSECOND_UNIT;
         break;
     case SVT_PRO_SORTNO :
         MyValue = (float)SortNo;
@@ -414,21 +419,19 @@ int PRogramObjectBase::SendModbusData(U16 ValueId, float Value, U16 Cmd) {
     }
     return (ErrorStatus);
 }
-#define STATIC_UPDATE_PERIOD_COM  (3*60 * 1000)
-#define STATIC_UPDATE_MIN_DELAY   20               // C00614 has 57 as calculated delay and it works on the Hudong series C00610 and related
 void PRogramObjectBase::SendStaticData(void) {
 #ifdef S2TXU
-    set<PRogramObjectBase*>MyStaticDataSet = DataTransferSet;
+    set<PRogramObjectBase *>MyStaticDataSet = DataTransferSet;
     if (!MyStaticDataSet.empty()) {
         TSN_Delay(START_DELAY);
         const int NumberOfObjects   = MyStaticDataSet.size();    // Not used, but informative when debugging
         //const int ComDelay          = STATIC_UPDATE_MIN_DELAY;        //STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();;
         bool FirstTime              = true;
         int Delay                   = STATIC_UPDATE_PERIOD_COM / MyStaticDataSet.size();
-        if (Delay < 20) {
-            Delay = 20;
+        if (Delay < 5) {
+            Delay = 5;
         }
-        while (true) {
+        FOREVER{
             if (SendFlashDataInProgress == FLASH_IDLE) {
                 /*
                 if ( FirstTime ) {
@@ -449,10 +452,13 @@ void PRogramObjectBase::SendStaticData(void) {
                     int ret = (*pBIt)->SendData(CMD_GENERIC_STATIC_DATA);
                     switch (ret) {
                     case E_QUEUE_FULL:
-                        if (( Delay < 100) && (RunningTime > 5*60*1000)) {
-                            Delay++; 
+                        if ((Delay < 100) && (RunningTime > 5 * STATIC_UPDATE_PERIOD_COM)) {
+                            Delay++;
                         }
                     case E_OK:
+                        if ((Delay > 5) && ( PROTanksystemUnit::MySelf->GetIOLoadDelay() >= 10)) {
+                            Delay--;
+                        }
                         TSN_Delay(Delay);
                         break;
                     case E_UNKNOWN_COMMAND:
@@ -460,15 +466,11 @@ void PRogramObjectBase::SendStaticData(void) {
                         break;
                     case E_UNKNOWN_OBJECT:
                     default:
-                        TSN_Delay(0);
+                        //TSN_Delay(0);
                         break;
                     }
                 }
-                if ((Delay < 100) && (PROTanksystemUnit::MySelf->GetIOLoadDelay() > 2000)) {
-                    Delay++;
-                }else{ 
-                    OS_DelayUntil(t0 + STATIC_UPDATE_PERIOD_COM);
-                }
+                OS_DelayUntil(t0 + STATIC_UPDATE_PERIOD_COM);
             } else {
                 // Reset Delay when flashing
                 Delay = STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();
@@ -677,14 +679,6 @@ bool PRogramObjectBase::IsAvailableNewData(void) {
 #endif
 }
 bool PRogramObjectBase::IsTimeToSend(void) {
-    /*
-    long ElapsedTics = abs(clock() - LastRTTxTime);
-    if (ElapsedTics >= SEND_MIN_INTERVAL) {
-        return true;
-    }
-    return false;
-    */
-    //ActualDataTransferSet.insert(this);
     return true;
 }
 
@@ -806,7 +800,7 @@ bool PRogramObjectBase::Compare(PRogramObjectBase *Ptr1, PRogramObjectBase *Ptr2
 }
 
 void PRogramObjectBase::SetTimeStamp(void) {
-    TimeStamp = clock();
+    TimeStamp    = clock();
 }
 
 vector<PRogramObjectBase *> PRogramObjectBase::SortVector(vector<PRogramObjectBase *>UnsortedVector) {

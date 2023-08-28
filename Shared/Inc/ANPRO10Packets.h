@@ -233,6 +233,8 @@ struct ANPRO10_COMMAND_2100 {
     float   FilteredVolPercent;
     float   UllageRef;
     bool    IsOnline;
+    clock_t TimeStamp;
+    int     UpdatePeriod;
 };
 
 struct QueueANPRO10_COMMAND_2100 {
@@ -273,6 +275,8 @@ struct ANPRO10_COMMAND_2104 {
 
     float   Pressure;
     bool    IsNewData;
+    clock_t TimeStamp;
+    int     UpdatePeriod;
 };
 
 struct QueueANPRO10_COMMAND_2104 {
@@ -307,6 +311,8 @@ struct ANPRO10_COMMAND_2106 {
     bool    IsNewData;
     float   BottomTemp;
     bool    IsOnline;
+    clock_t TimeStamp;
+    int     UpdatePeriod;
 };
 
 struct QueueANPRO10_COMMAND_2106 {
@@ -325,7 +331,7 @@ struct ANPRO10_COMMAND_2120 {
     bool      IsFailure;
     bool      HWFailure;
     bool      IsNewData;
-    U8         State;
+    U8        State;
 };
 
 struct QueueANPRO10_COMMAND_2120 {
@@ -781,6 +787,7 @@ struct ANPRO10_COMMAND_2700 {
     float     RawLoad;
     float     AvgLoad;
     float     MaxLoad;
+    int       IO_ScanPeriod;    // May be moved to static
 };
 
 struct QueueANPRO10_COMMAND_2700 {

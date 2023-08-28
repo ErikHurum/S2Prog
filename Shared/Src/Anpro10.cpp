@@ -380,7 +380,7 @@ void ANPRO10_UnpackPacket(U8 *Buf, TSNUart *Port) {
             case CMD_ACK_SETTINGS     :
                 DownloadAck = *Buf;
 #ifndef WIN32
-                OS_EVENT_Pulse(&AckFlashEvent);
+                OS_EVENT_Set(&AckFlashEvent);       // Was Pulse
 #endif
                 break;
             case CMD_ALARM_SILENCE:
@@ -600,7 +600,7 @@ void ANPRO10_UnpackPacket(U8 *Buf, TSNUart *Port) {
             case CMD_ACK_SETTINGS     :
                 DownloadAck = *Buf;
 #ifndef WIN32
-                OS_EVENT_Pulse(&AckFlashEvent);
+                OS_EVENT_Set(&AckFlashEvent); // Was Pulse
 #endif
                 break;
             case CMD_PRO_PRINT_OUT       :
@@ -2214,7 +2214,7 @@ U8 ANPRO10_ReceiveFlashData(ANPRO10_FLASH_DATA *Cmd) {
 int ANPRO10_SendFlashData(TSNUart *port, U32 Address, U32 DeviceId, U16 CmdNo, U32 FirstSector, U32 LastSector) {
     SuspendIO(4 * 60 * 1000);
     int ErrorStatus = FLASH_NO_ERROR;
-#ifndef WIN32
+#ifdef S2TXU
     if ( SendFlashDataInProgress == FLASH_IDLE ) {
         SendFlashDataInProgress = FLASH_BUSY_SEND;
         SendFlashDataTSNUart    = port;
@@ -2322,7 +2322,7 @@ int ANPRO10_SendFlashData(TSNUart *port, U32 Address, U32 DeviceId, U16 CmdNo, U
 int ANPRO10_SendSettings(TSNUart *port, U32 Address, U32 DeviceId) {
     SuspendIO(4 * 60 * 1000);
     int ErrorStatus = FLASH_NO_ERROR;
-#ifndef WIN32
+#ifdef S2TXU
     if ( SendFlashDataInProgress == FLASH_IDLE ) {
         SendFlashDataInProgress = FLASH_BUSY_SEND;
         SendFlashDataTSNUart    = port;

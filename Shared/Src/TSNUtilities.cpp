@@ -914,11 +914,21 @@ void SetDataTime(set<PRogramObjectBase *> &PROList) {
     }
 }
 
-void RecalcProgramObjects(set<PRogramObject *> &PROList) {
+void RecalcProgramObjects(set<PRogramObject *> &PROList, int Delay) {
     set<PRogramObject *>::iterator pBIt;
 	for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
         PRogramObject *TempElement = *pBIt;
 		TempElement->RefreshData();
+        TSN_Delay(Delay);
+	}
+}
+
+void SendProgramObjects(set<PRogramObject *> &PROList, int Delay) {
+    set<PRogramObject *>::iterator pBIt;
+	for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
+        PRogramObject *TempElement = *pBIt;
+        TempElement->SendData();
+        TSN_Delay(Delay);
 	}
 }
 

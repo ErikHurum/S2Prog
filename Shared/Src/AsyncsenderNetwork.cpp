@@ -128,6 +128,8 @@ void AsyncsenderNetwork::TaskEntryPoint(void) {
                         OS_Delay(1);
                     }else{
                         anpro_net_send_urgent(sCmd);
+                        // Give other tasks a chance
+                        OS_Delay(1);
                     }
                 } else {
                     CompressErrCnt++;

@@ -29,7 +29,7 @@ bool ANPRO10Object::ANPRO10_IO_UnpackPacket(U8 *Buf)
 {
 	return(false);
 }
-#define MAX_TIME_BETWEEN_BYTE	10
+#define MAX_TIME_BETWEEN_BYTE	15
 bool ANPRO10Object::ANPRO10_IO_Receive(int Delay)
 {
 	int StartTime = clock();

@@ -1578,6 +1578,11 @@ ValueList PROTankPressure::TankPressValueList[] =  {
     { L_WORD328, L_WORD359, SVT_TP_OFFSET },                     // {"TP Offset" ,"TPOf",SVT_TP_OFFSET},
     { L_WORD820, L_WORD820, SVT_TP_ENABLE_TEXT },
 
+    { L_WORD52, L_WORD52, SVT_SUBMENU               },
+    { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO        },           // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },           // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },           // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
+    { L_WORD813, L_WORD813, SVT_SUBMENU_END         },
 };
 
 ValueList* PROTankPressure::GetValueInfoTable(int &Entries, int Index) {
@@ -1654,6 +1659,8 @@ int PROTankPressure::ReceiveData(U8 *data) {
             HWFailure   = pData->HWFailure;
             IsNewData   = pData->IsNewData;
             Pressure    = pData->Pressure;
+            UpdatePeriod= pData->UpdatePeriod;
+            TimeStamp   = pData->TimeStamp;
             if (CreatedFromThisTank) {
                 // Can update tank value here
                 CreatedFromThisTank->SetPressure(Pressure);
@@ -1686,19 +1693,21 @@ int PROTankPressure::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if (IsTimeToSend())     {
-            LastRTTxTime = clock();
+        UpdatePeriod = clock() - TimeStamp;
+        {
             QueueANPRO10_COMMAND_2104 Cmd;
-            Cmd.TxInfo.Port     = NULL;
-            Cmd.TxInfo.rxAddr   = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId     = DEVICE_BROADCAST_TXU;
-            Cmd.Data.ObjectId   = IDNumber;
-            Cmd.Data.ndb        = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo  = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.HasPressure = HasPressure;
-            Cmd.Data.HWFailure  = HWFailure;
-            Cmd.Data.IsNewData  = IsNewData;
-            Cmd.Data.Pressure   = Pressure;
+            Cmd.TxInfo.Port         = NULL;
+            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
+            Cmd.Data.ObjectId       = IDNumber;
+            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.HasPressure     = HasPressure;
+            Cmd.Data.HWFailure      = HWFailure;
+            Cmd.Data.IsNewData      = IsNewData;
+            Cmd.Data.Pressure       = Pressure;
+            Cmd.Data.TimeStamp      = TimeStamp;
+            Cmd.Data.UpdatePeriod   = UpdatePeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus =E_QUEUE_FULL;
             else ErrorStatus = E_OK;

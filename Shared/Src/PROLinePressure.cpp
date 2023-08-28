@@ -581,16 +581,21 @@ int PROLinePressure::PutFloatValue( int ValueId, float NewValue)
 
 }
 ValueList LinePressValueList[] =  {
-	{L_WORD304      ,L_WORD237,SVT_BLANK},                           //  {"Unused"    ,"",SVT_BLANK},
-	{L_WORD311      ,L_WORD237,SVT_PRESSURE},                        //  {"Pressure"  ,"",SVT_PRESSURE},
-	{L_WORD313      ,L_WORD237,SVT_LO_PRESS_LIMIT},                  //  {"Low Press" ,"",SVT_LO_PRESS_LIMIT},
-	{L_WORD312      ,L_WORD237,SVT_HI_PRESS_LIMIT},                  //  {"High Press","",SVT_HI_PRESS_LIMIT},
-	{L_WORD1104     ,L_WORD237,SVT_HIHI_PRESS_LIMIT},                  //  {"High Press","",SVT_HI_PRESS_LIMIT},
-   // {L_WORD856      ,L_WORD857,SVT_TANK_STATE_STR},                  // {"Operation mode","Op Mode",SVT_TANK_STATE_STR},
+	{L_WORD304      ,L_WORD237,SVT_BLANK},                          //  {"Unused"    ,"",SVT_BLANK},
+	{L_WORD311      ,L_WORD237,SVT_PRESSURE},                       //  {"Pressure"  ,"",SVT_PRESSURE},
+	{L_WORD313      ,L_WORD237,SVT_LO_PRESS_LIMIT},                 //  {"Low Press" ,"",SVT_LO_PRESS_LIMIT},
+	{L_WORD312      ,L_WORD237,SVT_HI_PRESS_LIMIT},                 //  {"High Press","",SVT_HI_PRESS_LIMIT},
+	{L_WORD1104     ,L_WORD237,SVT_HIHI_PRESS_LIMIT},               //  {"High Press","",SVT_HI_PRESS_LIMIT},
+   // {L_WORD856      ,L_WORD857,SVT_TANK_STATE_STR},               // {"Operation mode","Op Mode",SVT_TANK_STATE_STR},
 #ifdef ANWIN
-    { L_WORD434, L_WORD237, SVT_LP_ENABLE_TEXT },                    // {"On/Off"       ,"",SVT_AI_ENABLE},
-    { L_WORD126, L_WORD237, SVT_LP_GAIN        },                    // {"Gain"         ,"",SVT_AI_GAIN},
-    { L_WORD127, L_WORD237, SVT_LP_OFFSET      },                    // {"Offset"       ,"",SVT_AI_OFFSET},
+    { L_WORD434, L_WORD237, SVT_LP_ENABLE_TEXT      },              // {"On/Off"       ,"",SVT_AI_ENABLE},
+    { L_WORD126, L_WORD237, SVT_LP_GAIN             },              // {"Gain"         ,"",SVT_AI_GAIN},
+    { L_WORD127, L_WORD237, SVT_LP_OFFSET           },              // {"Offset"       ,"",SVT_AI_OFFSET},
+    { L_WORD52, L_WORD52, SVT_SUBMENU               },
+    { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO        },              // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },              // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },              // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
+    { L_WORD813, L_WORD813, SVT_SUBMENU_END         },
 #endif
 };
 
@@ -653,12 +658,15 @@ int PROLinePressure::ReceiveData(U8* data)
     ANPRO10_CommandHeading *pCH = (ANPRO10_CommandHeading*)data;
     switch ( pCH->CommandNo ) {
     case  CMD_GENERIC_REALTIME_DATA: // Real time Data
+        UpdatePeriod = clock() - TimeStamp;
         {
             ANPRO10_COMMAND_2104  *pData = (ANPRO10_COMMAND_2104*) data;
             HasPressure = pData->HasPressure;
             HWFailure   = pData->HWFailure;
             IsNewData   = pData->IsNewData;
             Pressure    = pData->Pressure;
+            UpdatePeriod= pData->UpdatePeriod;
+            TimeStamp   = pData->TimeStamp;
             if ( PROPtr ) {
                 // Can update tank value here
             }
@@ -676,19 +684,20 @@ int PROLinePressure::SendData(U16 cmd)
     int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2104 Cmd;
-			Cmd.TxInfo.Port     = NULL;
-            Cmd.TxInfo.rxAddr   = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId     = DEVICE_BROADCAST_TXU;
-            Cmd.Data.ObjectId   = IDNumber;
-            Cmd.Data.ndb        = sizeof(Cmd)-sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo  = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.HasPressure= HasPressure;
-            Cmd.Data.HWFailure  = HWFailure;
-            Cmd.Data.IsNewData  = IsNewData;
-            Cmd.Data.Pressure   = Pressure;
+			Cmd.TxInfo.Port         = NULL;
+            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
+            Cmd.Data.ObjectId       = IDNumber;
+            Cmd.Data.ndb            = sizeof(Cmd)-sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.HasPressure    = HasPressure;
+            Cmd.Data.HWFailure      = HWFailure;
+            Cmd.Data.IsNewData      = IsNewData;
+            Cmd.Data.Pressure       = Pressure;
+            Cmd.Data.TimeStamp      = TimeStamp;
+            Cmd.Data.UpdatePeriod   = UpdatePeriod;
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent )

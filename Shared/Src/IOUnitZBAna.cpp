@@ -29,7 +29,6 @@ IOUnitZBAna::IOUnitZBAna(PROIOComponent *IOCompPtr, PRogramObject *ElementPtr) :
     ObjectSet.insert(this);
     Type        = C_IO_AN_ZBANA;
     IDNumber    = (C_IO_AN_ZBANA << 16) + ObjectSet.size();
-    ReceiveCnt  = 0;
     for (int i = 0; i < MAX_AN_ZBANA_CHANNELS; i++) {
         Filters[i] = 0;
         Status[i] = 0;
@@ -236,8 +235,6 @@ void IOUnitZBAna::SetHWFailure(bool Failure) {
 
     #ifdef S2TXU
 bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
-    int StartTime = OS_Time;
-    ReceiveCnt++;
     ANPRO10_PacketHeading *pPH = (ANPRO10_PacketHeading *)Buf;
     bool MyPacket = (pPH->txadr == this->IOAddress);
     if (MyPacket) {
@@ -304,15 +301,19 @@ bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                 CompPtr->ActiveAlarms = CheckAlarms(CompPtr->AlarmSet, &CompPtr->MyHWFailure);
                                 if (!CompPtr->ActiveAlarms) {
                                     CompPtr->SetTimeStamp();
-                                    // Also set time stamp on the e.g. linked tank object
-                                    if (CompPtr->PROPtr) {
-                                        CompPtr->PROPtr->SetTimeStamp();
-                                    }
-                                }
+                                 }
                                 CompPtr->SendData();
                             }
                         }
                     }
+                }
+                 // Also set time stamp on the e.g. linked tank object
+                {
+                    set<PRogramObject *>::iterator pBIt;
+                    for (pBIt = IOUniquePROSet.begin(); pBIt != IOUniquePROSet.end(); pBIt++) {
+                        (*pBIt)->SetTimeStamp();
+                    }
+                    
                 }
                 break;
             case CMD_REP_ANA_FILTER:
@@ -338,7 +339,6 @@ bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
             }
         } while (MoreCommands && (Buf < EndPtr));
     }
-    int HandlingTime = OS_Time-StartTime;
     return (MyPacket);
 }
 
@@ -488,8 +488,7 @@ int IOUnitZBAna::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if (IsTimeToSend())     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2601 Cmd;
             Cmd.TxInfo.Port        = NULL;
             Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;

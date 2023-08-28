@@ -984,6 +984,8 @@ int PROTemperature::ReceiveData(U8 *data) {
             VaporTemp   = pCommand->VaporTemp;
             BottomTemp  = pCommand->BottomTemp;
             IsOnline    = pCommand->IsOnline;
+            UpdatePeriod= pCommand->UpdatePeriod;
+            TimeStamp   = pCommand->TimeStamp;
             if (CreatedFromThisTank) {
                 CreatedFromThisTank->SetTemperature(Temperature);
             }
@@ -1001,23 +1003,25 @@ int PROTemperature::SendData(U16 CommandNo) {
     int ErrorStatus = E_OK;
     switch (CommandNo) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        UpdatePeriod = clock() - TimeStamp;
+        {
             QueueANPRO10_COMMAND_2106 Cmd;
-            Cmd.TxInfo.Port      = NULL;
-            Cmd.TxInfo.rxAddr    = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId      = DEVICE_BROADCAST_TXU;
-            Cmd.Data.CommandNo   = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.ndb         = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.ObjectId    = IDNumber;
-            Cmd.Data.HasTemp     = HasTemp;
-            Cmd.Data.HWFailure   = HWFailure;
-            Cmd.Data.IsNewData   = IsNewData;
-            Cmd.Data.StatusTemp  = StatusTemp;
-            Cmd.Data.Temperature = Temperature;
-            Cmd.Data.VaporTemp   = VaporTemp;
-            Cmd.Data.BottomTemp  = BottomTemp;
-            Cmd.Data.IsOnline    = IsOnline;
+            Cmd.TxInfo.Port         = NULL;
+            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
+            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.ObjectId       = IDNumber;
+            Cmd.Data.HasTemp        = HasTemp;
+            Cmd.Data.HWFailure      = HWFailure;
+            Cmd.Data.IsNewData      = IsNewData;
+            Cmd.Data.StatusTemp     = StatusTemp;
+            Cmd.Data.Temperature    = Temperature;
+            Cmd.Data.VaporTemp      = VaporTemp;
+            Cmd.Data.BottomTemp     = BottomTemp;
+            Cmd.Data.IsOnline       = IsOnline;
+            Cmd.Data.TimeStamp      = TimeStamp;
+            Cmd.Data.UpdatePeriod   = UpdatePeriod;
             // post command on messageQ
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus =  E_QUEUE_FULL;
@@ -1061,15 +1065,20 @@ ValueList PROTemperature::TempValueList1[] =  {
     { L_WORD988, L_WORD365, SVT_T4 },                       // {"Upp Temp"  ,"UT",SVT_T3},
     { L_WORD989, L_WORD365, SVT_T5 },                       // {"Upp Temp"  ,"UT",SVT_T3},
     { L_WORD363, L_WORD367, SVT_TT },                       // {"Top Temp"  ,"TT",SVT_TT},
+    { L_WORD52, L_WORD52, SVT_SUBMENU },
+    { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO     },         // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP  },         // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },      // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
+    { L_WORD813, L_WORD813, SVT_SUBMENU_END },
 };
 
 
 ValueList PROTemperature::TempValueList2[] =  {
-    { L_WORD304, L_WORD237, SVT_BLANK },                    // {"Unused"    ,"",SVT_BLANK},
-    { L_WORD338, L_WORD338, SVT_TEMP },                     // {"Temp"      ,"Temp",SVT_TEMP},
-    { L_WORD1049, L_WORD1049, SVT_VAPOR_TEMP },               // {"VaporTemp"      ,"VaporTemp",SVT_TEMP},
-    { L_WORD112, L_WORD237, SVT_HI_TEMP_LIMIT },            // {"High Temp" ,"",SVT_HI_TEMP_LIMIT},
-    { L_WORD113, L_WORD237, SVT_LO_TEMP_LIMIT },            // {"Low Temp"  ,"",SVT_LO_TEMP_LIMIT},
+    { L_WORD304, L_WORD237, SVT_BLANK },                     // {"Unused"    ,"",SVT_BLANK},
+    { L_WORD338, L_WORD338, SVT_TEMP },                      // {"Temp"      ,"Temp",SVT_TEMP},
+    { L_WORD1049, L_WORD1049, SVT_VAPOR_TEMP },              // {"VaporTemp"      ,"VaporTemp",SVT_TEMP},
+    { L_WORD112, L_WORD237, SVT_HI_TEMP_LIMIT },             // {"High Temp" ,"",SVT_HI_TEMP_LIMIT},
+    { L_WORD113, L_WORD237, SVT_LO_TEMP_LIMIT },             // {"Low Temp"  ,"",SVT_LO_TEMP_LIMIT},
     { L_WORD1060, L_WORD1062, SVT_HI_BOT_TEMP_LIMIT },       // {"High Bot Temp" ,"",SVT_HI_TEMP_LIMIT},
     { L_WORD1061, L_WORD1063, SVT_LO_BOT_TEMP_LIMIT },       // {"Low Bot Temp"  ,"",SVT_LO_TEMP_LIMIT},
     { L_WORD360, L_WORD364 , SVT_T1 },                       // {"Temp 1"  ,"BT",SVT_T1},
@@ -1078,6 +1087,11 @@ ValueList PROTemperature::TempValueList2[] =  {
     { L_WORD988, L_WORD832 , SVT_T4 },                       // {"Temp 4"  ,"UT",SVT_T3},
     { L_WORD989, L_WORD1040, SVT_T5 },                       // {"Temp 5"  ,"UT",SVT_T3},
     { L_WORD363, L_WORD367 , SVT_TT },                       // {"Top Temp"  ,"TT",SVT_TT},
+    { L_WORD52, L_WORD52, SVT_SUBMENU },
+    { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO     },          // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP  },          // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },       // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
+    { L_WORD813, L_WORD813, SVT_SUBMENU_END },
 };
 ValueList PROTemperature::TempAlarmValueList[] =  {
     { L_WORD304, L_WORD237, SVT_BLANK },                    // {"Unused"    ,"",SVT_BLANK},
@@ -1346,10 +1360,10 @@ void PROTemperature::SetState(TankState newState) {
     }
     if (!ExcludeState && newState != tUndefined) {
         const AlarmBasic::StateAlarmTable AlarmSet[] = {   //tSeaGoing       , tLoad             , tDischarge        , tTankCleaning, tUndefined
-            { (AlarmBasic *)HighTempPtr, { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
-            { (AlarmBasic *)LowTempPtr, { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
+            { (AlarmBasic *)HighTempPtr   , { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
+            { (AlarmBasic *)LowTempPtr    , { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
             { (AlarmBasic *)HighBotTempPtr, { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
-            { (AlarmBasic *)LowBotTempPtr, { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
+            { (AlarmBasic *)LowBotTempPtr , { EnableUsePrevious, EnableUsePrevious, EnableUsePrevious, EnableNoMemFalse } },
         };
         for (unsigned i = 0; i < NELEMENTS(AlarmSet); i++) {
             AlarmBasic *AlPtr = AlarmSet[i].AlarmPtr;

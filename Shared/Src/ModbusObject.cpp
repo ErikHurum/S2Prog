@@ -95,6 +95,7 @@ bool ModbusObject::LoadConfigString(TSNConfigString &ConfigString) {
             }
         }
     }
+    // This insert is first for modbus multiple and only insert for single Modbus objects
     if (!ErrorLine && (TCUAddress == CurrentDeviceAddress) && (CurrentDeviceId == DEVICE_TCU)) {
         MyModbusSet.insert(this);
     }
@@ -172,32 +173,23 @@ void ModbusObject::ExchangeData(void) {
         set<ModbusObject *>::iterator pBIt;
         for (pBIt = MyModbusSet.begin(); pBIt != MyModbusSet.end(); pBIt++) {
             PRogramObjectBase *tmpObjectPtr = (*pBIt)->ObjectPtr;
-            if ( tmpObjectPtr && !tmpObjectPtr->IsStaticValue((*pBIt)->ValueKey)) {
+            if (tmpObjectPtr && !tmpObjectPtr->IsStaticValue((*pBIt)->ValueKey)) {
                 MyModbusPRogramObjectSet.insert(tmpObjectPtr);
             }
         }
 
     }
     //int Delay = MODBUS_UPDATE_INTERVAL/MyModbusPRogramObjectSet.size();
-    int Delay = MODBUS_UPDATE_INTERVAL/MyModbusSet.size();
+    //int Delay = (float)MODBUS_UPDATE_INTERVAL/(float)MyModbusSet.size();
     FOREVER{
-        {
-            set<ModbusObject *>::iterator pBIt;
-            for (pBIt = MyModbusSet.begin(); pBIt != MyModbusSet.end(); pBIt++) {
-                (*pBIt)->Update();
-                OS_Delay(Delay);
-            }
+        int StartTime = OS_Time;
+        set<ModbusObject *>::iterator pBIt;
+        for (pBIt = MyModbusSet.begin(); pBIt != MyModbusSet.end(); pBIt++) {
+            (*pBIt)->Update();
         }
-        /*
-        {
-            set<PRogramObjectBase *>::iterator pBIt;
-            for (pBIt = MyModbusPRogramObjectSet.begin(); pBIt != MyModbusPRogramObjectSet.end(); pBIt++) {
-                (*pBIt)->RefreshData();
-                OS_Delay(Delay);
-            }
-        }
-        */
-    } 
+
+        OS_DelayUntil(StartTime + 2000);
+    }
 #endif
 }
 
@@ -270,7 +262,7 @@ set<ModbusUnit *>ModbusObject::GetModbusUnits(void) {
     set<ModbusUnit *>ModbusUnitSet;
     {
         set<ModbusObject *>::iterator pBIt;
-        for (pBIt = ModbusObject::ModbusSet.begin(); pBIt != ModbusObject::ModbusSet.end(); pBIt++) {
+        for (pBIt = ModbusSet.begin(); pBIt != ModbusSet.end(); pBIt++) {
             ModbusObject *tmpPtr = *pBIt;
             if (tmpPtr->IPAddress.Length()) {
                 tmpPtr->SetAlarmList();
@@ -289,7 +281,7 @@ set<ModbusUnit *>ModbusObject::GetModbusUnits(unsigned PortNumber) {
     set<ModbusUnit *>ModbusUnitSet;
     {
         set<ModbusObject *>::iterator pBIt;
-        for (pBIt = ModbusObject::ModbusSet.begin(); pBIt != ModbusObject::ModbusSet.end(); pBIt++) {
+        for (pBIt = ModbusSet.begin(); pBIt != ModbusSet.end(); pBIt++) {
             ModbusObject *tmpPtr = *pBIt;
             if (tmpPtr->TCUPortMatch(CurrentDeviceAddress, PortNumber)) {
                 tmpPtr->SetAlarmList();
@@ -491,4 +483,8 @@ AlarmBasic* ModbusObject::GetAlarmPtr(void) {
 }
 
 
+
+PRogramObjectBase* ModbusObject::GetObjectPointer(void) {
+    return ObjectPtr;
+}
 

@@ -12,7 +12,7 @@ private:
     static ValueList TempAlarmValueList[];
     static ValueList TempSensorValueList1[];
     static ValueList TempSensorValueList2[];
-    static unsigned MaxTempCnt;
+    static unsigned  MaxTempCnt;
     static bool      UseTemperatureWindow;
 public:
     static vector<PRogramObjectBase *>AllObjVector;

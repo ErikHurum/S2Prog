@@ -8,7 +8,7 @@ private:
 #endif
     static void ExchangeData(void);
 
-	static map<U32, ModbusObject *>DeviceMap;
+    static map<U32, ModbusObject *>DeviceMap;
 
 protected:
     AnsiString        IPAddress;
@@ -22,7 +22,7 @@ protected:
     int               ValueKey;
 public:
 #ifdef S2TXU
-	static vector<OS_TASK*>ModbusTaskVector;
+    static vector<OS_TASK *>ModbusTaskVector;
 #endif
     bool IsActive;
     static set<ModbusObject      *>ModbusSet;
@@ -75,14 +75,10 @@ public:
     virtual int GetObjectId(void);
     virtual AnsiString GetValueKey(void);
     virtual AnsiString GetRegisterType(void);
-	virtual AnsiString GetRegisterValue(void);
+    virtual AnsiString GetRegisterValue(void);
     bool GetDigitalStatus(void);
     virtual AlarmBasic* GetAlarmPtr(void);
-
-
-
-
-
+    PRogramObjectBase* GetObjectPointer(void);
 };
 //---------------------------------------------------------------------------
 #endif

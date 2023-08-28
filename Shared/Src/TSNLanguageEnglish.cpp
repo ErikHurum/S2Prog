@@ -1139,7 +1139,9 @@ NewLanguageWord EnglishDictionary[]=
 
     { L_WORD1125 ,L"220VAC"},
     { L_WORD1126 ,L"24VDC"},
-
+    { L_WORD1127, L"TimeStamp"  },
+    { L_WORD1128, L"Age"  },
+    { L_WORD1129 ,L"CalcPeriod"},
 };
 
 unsigned WordsInEnglishDictionary = NELEMENTS(EnglishDictionary);

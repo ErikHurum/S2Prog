@@ -276,7 +276,7 @@ void AlarmBasic::Check(void) {
 // This function can ONLY be called from Check() This to ensure only ONE alarm master!!
 void AlarmBasic::UpdateAlarm(int ValueStatus) {
 #ifdef S2TXU
-    if ( RunningTime > PROProjectInfo::AlarmSystemStartUpDelay ){
+    if (RunningTime > PROProjectInfo::AlarmSystemStartUpDelay) {
         AlarmSema.Acquire();
         if (IsVisible) {
             switch (State) {
@@ -976,16 +976,12 @@ int AlarmBasic::SendData(U16 cmd) {
             case  CMD_GENERIC_REALTIME_DATA:
                 if (StateAtLastSend != State) {
                     if (ANPRO10SendUrgent(&Cmd)) return (E_OK);
-                } else if ( IsTimeToSend() )     {
-                    LastRTTxTime = clock();
+                } else  {
                     if (ANPRO10SendNormal(&Cmd)) return (E_OK);
                 }
                 break;
             case  CMD_GENERIC_STATIC_DATA:
-                if (IsTimeToSend())     {
-                    LastRTTxTime = clock();
-                    if (ANPRO10SendNormal(&Cmd)) return (E_OK);
-                }
+                if (ANPRO10SendNormal(&Cmd)) return (E_OK);
                 break;
             }
             StateAtLastSend = State;

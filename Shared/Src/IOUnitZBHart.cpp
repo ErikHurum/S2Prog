@@ -29,7 +29,6 @@ IOUnitZBHart::IOUnitZBHart(PROIOComponent *IOCompPtr, PRogramObject *ElementPtr)
     ObjectSet.insert(this);
     Type        = C_IO_AN_ZBHART;
     IDNumber    = (C_IO_AN_ZBHART << 16) + ObjectSet.size();
-    ReceiveCnt  = 0;
     for ( int i = 0; i < MAX_AN_ZBANA_CHANNELS; i++ ) {
         Filters[i]      = 0;
         Status[i]       = 0;
@@ -170,8 +169,6 @@ struct mAHartMeasuredDataStruct {
 ///////////////////////////////////////////////////////////////
     #ifdef S2TXU
 bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
-    ReceiveCnt++;
-    int StartTime = OS_Time;
     ANPRO10_PacketHeading *pPH = (ANPRO10_PacketHeading *)Buf;
     bool MyPacket = (pPH->txadr == this->IOAddress);
     if ( MyPacket ) {
@@ -254,15 +251,19 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                 CompPtr->ActiveAlarms = CheckAlarms(CompPtr->AlarmSet, &CompPtr->MyHWFailure);
                                 if ( !CompPtr->ActiveAlarms ) {
                                     CompPtr->SetTimeStamp();
-                                    // Also set time stamp on the e.g. linked tank object
-                                    if ( CompPtr->PROPtr ) {
-                                        CompPtr->PROPtr->SetTimeStamp();
-                                    }
                                 }
                                 CompPtr->SendData();
                             }
                         }
                     }
+                }
+                 // Also set time stamp on the e.g. linked tank object
+                {
+                    set<PRogramObject*>::iterator pBIt;
+                    for (pBIt = IOUniquePROSet.begin(); pBIt != IOUniquePROSet.end(); pBIt++) {
+                        (*pBIt)->SetTimeStamp();
+                    }
+                    
                 }
                 break;
             case CMD_REP_HART_FILTER:
@@ -288,7 +289,6 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
             }
         } while ( MoreCommands && (Buf < EndPtr) );
     }
-    int HandlingTime = OS_Time-StartTime;
     return (MyPacket);
 }
 
@@ -345,14 +345,8 @@ void IOUnitZBHart::HandleIO(int Delay) {
             Restart = false;
         }
     } else if ( MyCurentTime > (PowerOnTime) ) {
-        int StartTime = OS_Time;
         Request(CMD_REQ_HART_DATA);
-        int SendTime = OS_Time;
         ANPRO10_IO_Receive();
-        int ReceiveTime = OS_Time;
-        int ReqTime = SendTime - StartTime;
-        int ReplyTime = ReceiveTime - SendTime;
-        int TotalTime = ReqTime+ReplyTime;
         //Request(CMD_REQ_ANA_DATA);
         //ANPRO10_IO_Receive();
         //TSN_Delay(Delay);
@@ -495,8 +489,7 @@ int IOUnitZBHart::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
 			QueueANPRO10_COMMAND_2603 Cmd;
             Cmd.TxInfo.Port        = NULL;
             Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;

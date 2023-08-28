@@ -602,10 +602,6 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                             CompPtr->Calculate();
                                             if ( !CompPtr->ActiveAlarms ) {
                                                 CompPtr->SetTimeStamp();
-                                                // Also set time stamp on the e.g. linked tank object
-                                                if ( CompPtr->PROPtr ) {
-                                                    CompPtr->PROPtr->SetTimeStamp();
-                                                }
                                             }
                                             CompPtr->SendData();
                                         } else {
@@ -618,6 +614,14 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                 }
                                 if ( memcmp((void *)&ADConfigData, &tmpADConfigData, sizeof(ADConfigData)) ) {
                                     SendData(CMD_GENERIC_STATIC_DATA);
+                                }
+                                 // Also set time stamp on the e.g. linked tank object
+                                {
+                                    set<PRogramObject *>::iterator pBIt;
+                                    for (pBIt = UniquePROList.begin(); pBIt != UniquePROList.end(); pBIt++) {
+                                        (*pBIt)->SetTimeStamp();
+                                    }
+                                    
                                 }
                             }
                             SetHWFailure((bool)ActiveAlarms);
@@ -857,8 +861,7 @@ int SCADCard::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2620 Cmd;
             Cmd.TxInfo.Port = NULL;
             Cmd.TxInfo.rxAddr = DEVICE_BROADCAST_ADDR;

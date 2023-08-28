@@ -744,7 +744,7 @@ U8* CheckMem(U8 *StartPtr, U8 *EndPtr) {
 unsigned short ReadPDataRegister(void)
 {
     // write a word (16 bits) regOffset to IO port number CS8900_PPTR
-    U16 *RegPtr = (U16*)(CS8900_PDATA);
+    U16 *RegPtr = (U16*)(CS8900_PDATA); 
     return *RegPtr;
 }
 

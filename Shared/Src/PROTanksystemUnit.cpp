@@ -29,15 +29,17 @@ ValueList PROTanksystemUnit::TCU_R1UnitValueList[] =  {
     { L_WORD374, L_WORD237, SVT_FLASH_ERROR_STATUS },              //   {"Flash Status" ,"",SVT_FLASH_ERROR_STATUS},
     { L_WORD375, L_WORD237, SVT_LAST_OS_ERROR_TASK },              //   {"Task Name"    ,"",SVT_LAST_OS_ERROR_TASK},
     { L_WORD376, L_WORD237, SVT_RUNNING_HOURS },                   //   {"Running hours","",SVT_RUNNING_HOURS},
-    { L_WORD1007, L_WORD237, SVT_CPU_LOAD_RAW },                    //   {"CPU Load Raw" ,"", SVT_CPU_LOAD_RAW),
-    { L_WORD1008, L_WORD237, SVT_CPU_LOAD_AVG },                    //   {"CPU Load Avg" ,"", SVT_CPU_LOAD_AVG),
-    { L_WORD1009, L_WORD237, SVT_CPU_LOAD_MAX },                    //   {"CPU Load Max" ,"", SVT_CPU_LOAD_Max),
+    { L_WORD1007, L_WORD237, SVT_CPU_LOAD_RAW },                   //   {"CPU Load Raw" ,"", SVT_CPU_LOAD_RAW),
+    { L_WORD1008, L_WORD237, SVT_CPU_LOAD_AVG },                   //   {"CPU Load Avg" ,"", SVT_CPU_LOAD_AVG),
+    { L_WORD1009, L_WORD237, SVT_CPU_LOAD_MAX },                   //   {"CPU Load Max" ,"", SVT_CPU_LOAD_Max),
     { L_WORD670, L_WORD237, SVT_RXERR_ID },                        //   {"ComErr Id"  ",""},
     { L_WORD671, L_WORD237, SVT_RXERR_CMD },                       //   {"ComErr Cmd" ",""},
     { L_WORD672, L_WORD237, SVT_RXERR_MSG },                       //   {"ComErr Msg" ",""},
     { L_WORD673, L_WORD237, SVT_RXERR_CNT },                       //   {"ComErr Cnt" ",""},
     { L_WORD674, L_WORD237, SVT_RXERR_TIME },                      //   {"ComErr Time"",""},
-    { L_WORD846, L_WORD237, SVT_IO_SYSTEM_DELAY },                 //   {"IO sys Delay"",""},
+    { L_WORD846, L_WORD237, SVT_IO_TIME_SLICE },                   //   {"IO sys Delay"",""},
+    { L_WORD1129, L_WORD237, SVT_IO_CALCULATION_PERIOD },          //   {"CalcPeriod"",""},
+
     { L_WORD905, L_WORD237, SVT_ROLLING_PERIOD },                 //   {"Rol periode",""},
     { L_WORD906, L_WORD237, SVT_ROLLING_FREQUENCY },              //   {"Rol Frequency",""},
     { L_WORD907, L_WORD237, SVT_LIST_BUF_MAX_P },                 //   {"Max list P",""},
@@ -68,7 +70,8 @@ ValueList PROTanksystemUnit::TCU_R2UnitValueList[] =  {
     { L_WORD672, L_WORD237, SVT_RXERR_MSG },                      //   {"ComErr Msg ",""},
     { L_WORD673, L_WORD237, SVT_RXERR_CNT },                      //   {"ComErr Cnt ",""},
     { L_WORD674, L_WORD237, SVT_RXERR_TIME },                     //   {"ComErr Time",""},
-    { L_WORD846, L_WORD237, SVT_IO_SYSTEM_DELAY },                //   {"IO sys Delay",""},
+    { L_WORD846, L_WORD237, SVT_IO_TIME_SLICE },                  //   {"IO sys Delay",""},
+    { L_WORD1129, L_WORD237, SVT_IO_CALCULATION_PERIOD },         //   {"CalcPeriod"",""},
     { L_WORD1007, L_WORD237, SVT_CPU_LOAD_RAW },                  //   {"CPU Load Raw" ,"", SVT_CPU_LOAD_RAW),
     { L_WORD1008, L_WORD237, SVT_CPU_LOAD_AVG },                  //   {"CPU Load Avg" ,"", SVT_CPU_LOAD_AVG),
     { L_WORD1009, L_WORD237, SVT_CPU_LOAD_MAX },                  //   {"CPU Load Max" ,"", SVT_CPU_LOAD_Max),
@@ -76,9 +79,9 @@ ValueList PROTanksystemUnit::TCU_R2UnitValueList[] =  {
     { L_WORD906, L_WORD237, SVT_ROLLING_FREQUENCY },              //   {"Rol Frequency",""},
     { L_WORD907, L_WORD237, SVT_LIST_BUF_MAX_P },                 //   {"Max list P",""},
     { L_WORD908, L_WORD237, SVT_LIST_BUF_MAX_S },                 //   {"Max list S",""},
-    { L_WORD24, L_WORD237, SVT_UNIT_PROGRAM_VERSION },           //   {"Program version",""},
+    { L_WORD24, L_WORD237, SVT_UNIT_PROGRAM_VERSION },            //   {"Program version",""},
     { L_WORD483, L_WORD237, SVT_UNIT_BOOTLOADER_VERSION },        //   {"Bootloader",""},
-    { L_WORD25, L_WORD237, SVT_DATA_VERSION },                   //   {"Data version",""},
+    { L_WORD25, L_WORD237, SVT_DATA_VERSION },                    //   {"Data version",""},
     { L_WORD1090, L_WORD237, SVT_TASK_NUMBER },                   //   {"Task number",""},
     //{ L_WORD1088, L_WORD237, SVT_TASK_NAME },                   //   {"Task name",""},
     //{ L_WORD1089, L_WORD237, SVT_TASK_STACK_USED },                   //   {"Task stack",""},
@@ -343,30 +346,32 @@ void PROTanksystemUnit::Initiate(void) {
 
     }
 #if defined(S2TXU) || defined(ANBOOTLOADER)
-    LastOSErr             = LastOSError;
-    LastErrAddr           = LastErrAddress;
-    FlashErrStatus        = FlashErrorStatus;
-    RunningHours          = 0.0;
-    LastOSErrTask         = LastOSErrorTask;
+    LastOSErr           = LastOSError;
+    LastErrAddr         = LastErrAddress;
+    FlashErrStatus      = FlashErrorStatus;
+    RunningHours        = 0.0;
+    LastOSErrTask       = LastOSErrorTask;
 #else
-    LastOSErr             = 0;
-    LastErrAddr           = 0;
-    FlashErrStatus        = 0;
-    RunningHours          = 0.0;
-    LastOSErrTask    = "Unknown";
-#endif
-    RxErrId          = 0;
-    RxErrCmd         = 0;
-    RxErrMsg         = 0;
-    RxErrCnt         = 0;
-    RxErrTime        = time(NULL);
+    LastOSErr           = 0;
+    LastErrAddr         = 0;
+    FlashErrStatus      = 0;
+    RunningHours        = 0.0;
+    LastOSErrTask       = "Unknown";
+#endif                  
+    RxErrId             = 0;
+    RxErrCmd            = 0;
+    RxErrMsg            = 0;
+    RxErrCnt            = 0;
+    RxErrTime           = time(NULL);
 
-    SysInfoRxFailCnt = 0;
-    IOLoadDelay      = 0;
-    RawLoad          = 0.0;
-    AvgLoad          = 0.0;
-    MaxLoad          = 0.0;
-    ActualDataVersion = 0;
+    SysInfoRxFailCnt    = 0;
+    IOLoadDelay         = 0;
+    IO_ScanPeriod       = REAL_TIME_UPDATE_PERIOD;
+
+    RawLoad             = 0.0;
+    AvgLoad             = 0.0;
+    MaxLoad             = 0.0;
+    ActualDataVersion   = 0;
 #if defined(S2TXU) | defined(ANTDUSIM)
 #else
     {
@@ -1387,8 +1392,13 @@ int PROTanksystemUnit::GetValue(int ValueId, int Index, float &MyRetValue,  int 
         DecPnt     = 0;
         Unit       = NO_UNIT;
         break;
-    case SVT_IO_SYSTEM_DELAY:
+    case SVT_IO_TIME_SLICE:
         MyRetValue = IOLoadDelay;
+        DecPnt     = 0;
+        Unit       = MSECOND_UNIT;
+        break;
+    case SVT_IO_CALCULATION_PERIOD:
+        MyRetValue = IO_ScanPeriod;
         DecPnt     = 0;
         Unit       = MSECOND_UNIT;
         break;
@@ -1677,9 +1687,6 @@ void PROTanksystemUnit::Calculate(void) {
     AvgLoad = AvgPerformance;
     MaxLoad = MaxPerformance;
     RunningHours = RunningTime;
-    SendData();
-    OS_Delay(100);
-    SendData(CMD_GENERIC_STATIC_DATA);
 #endif
 }
 
@@ -1712,22 +1719,23 @@ int PROTanksystemUnit::ReceiveData(U8 *data) {
                 ADResults[i] = pData->ADResults[i];
             }
             for (int i = 0; i < MAX_COM_PORTS; i++) {
-                RxLoad[i] = pData->RxLoad[i];
-                TxLoad[i] = pData->TxLoad[i];
-                TxCnt[i] = pData->TxCnt[i];
-                RxCnt[i] = pData->RxCnt[i];
+                RxLoad[i]       = pData->RxLoad[i];
+                TxLoad[i]       = pData->TxLoad[i];
+                TxCnt[i]        = pData->TxCnt[i];
+                RxCnt[i]        = pData->RxCnt[i];
             }
-            RunningHours    = pData->RunningHours;
-            RxErrId         = pData->RxErrId;
-            RxErrCmd        = pData->RxErrCmd;
-            RxErrMsg        = pData->RxErrMsg;
-            RxErrCnt        = pData->RxErrCnt;
-            RxErrTime       = pData->RxErrTime;
-            IOLoadDelay     = pData->IOLoadDelay;
-            SysInfoRxFailCnt = pData->SysInfoRxFailCnt;
-            RawLoad         = pData->RawLoad;
-            AvgLoad         = pData->AvgLoad;
-            MaxLoad         = pData->MaxLoad;
+            RunningHours        = pData->RunningHours;
+            RxErrId             = pData->RxErrId;
+            RxErrCmd            = pData->RxErrCmd;
+            RxErrMsg            = pData->RxErrMsg;
+            RxErrCnt            = pData->RxErrCnt;
+            RxErrTime           = pData->RxErrTime;
+            IOLoadDelay         = pData->IOLoadDelay;
+            IO_ScanPeriod   = pData->IO_ScanPeriod;
+            SysInfoRxFailCnt    = pData->SysInfoRxFailCnt;
+            RawLoad             = pData->RawLoad;
+            AvgLoad             = pData->AvgLoad;
+            MaxLoad             = pData->MaxLoad;
 
             ErrorStatus =  E_OK;
             if (Master && SendFlashDataInProgress == FLASH_IDLE) {
@@ -1783,8 +1791,7 @@ int PROTanksystemUnit::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2700 Cmd;
             Cmd.TxInfo.Port      = NULL;
             Cmd.TxInfo.rxAddr    = DEVICE_BROADCAST_ADDR;
@@ -1808,6 +1815,8 @@ int PROTanksystemUnit::SendData(U16 cmd) {
             Cmd.Data.RxErrCnt         = RxErrCnt;
             Cmd.Data.RxErrTime        = RxErrTime;
             Cmd.Data.IOLoadDelay      = IOLoadDelay;
+            Cmd.Data.IO_ScanPeriod= IO_ScanPeriod;
+            
             Cmd.Data.SysInfoRxFailCnt = SysInfoRxFailCnt;
 
             Cmd.Data.RawLoad          = RawLoad;
@@ -2292,6 +2301,16 @@ void PROTanksystemUnit::SetIOLoadDelay(int Delay) {
 int PROTanksystemUnit::GetIOLoadDelay(void) {
     return IOLoadDelay;
 }
+void PROTanksystemUnit::SetIO_ScanPeriod(int CalcPeriod) {
+    IO_ScanPeriod = CalcPeriod;
+}
+
+int PROTanksystemUnit::GetIO_ScanPeriod(void) {
+    return IO_ScanPeriod;
+}
+
+
+
 
 
 PROTanksystemUnit* PROTanksystemUnit::FindTCU(int Address) {

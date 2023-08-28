@@ -28,6 +28,7 @@
 #include <System.ImageList.hpp>
 #include <Vcl.ImgList.hpp>
 #include "tmsAdvGridExcel.hpp"
+#include "frCoreClasses.hpp"
 
 // ---------------------------------------------------------------------------
 class TGroupTable : public TChildForm {

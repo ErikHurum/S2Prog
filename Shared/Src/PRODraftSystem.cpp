@@ -7,18 +7,18 @@
 
 set<PRogramObjectBase *>PRODraftSystem::ObjectSet;
 ValueList PRODraftSystem::DraftSystemValueList[] =  {
-    { L_WORD304 , L_WORD237, SVT_BLANK },         // {"Unused"           ,"",SVT_BLANK
-    { L_WORD430 , L_WORD237, SVT_DF_MARK },       // {"DF@Mark"          ,"",SVT_DF_MARK},
-    { L_WORD431 , L_WORD237, SVT_DA_MARK },       // {"DA@Mark"          ,"",SVT_DA_MARK},
-    { L_WORD432 , L_WORD237, SVT_DF_PP },         // {"DF@PP"            ,"",SVT_DF_PP},
-    { L_WORD433 , L_WORD237, SVT_DA_PP },         // {"DA@PP"            ,"",SVT_DA_PP},
-    { L_WORD421 , L_WORD237, SVT_DP },            // {"DP"               ,"",SVT_DP},
-    { L_WORD422 , L_WORD237, SVT_DS },            // {"DS"               ,"",SVT_DS},
+    { L_WORD304, L_WORD237, SVT_BLANK },         // {"Unused"           ,"",SVT_BLANK
+    { L_WORD430, L_WORD237, SVT_DF_MARK },       // {"DF@Mark"          ,"",SVT_DF_MARK},
+    { L_WORD431, L_WORD237, SVT_DA_MARK },       // {"DA@Mark"          ,"",SVT_DA_MARK},
+    { L_WORD432, L_WORD237, SVT_DF_PP },         // {"DF@PP"            ,"",SVT_DF_PP},
+    { L_WORD433, L_WORD237, SVT_DA_PP },         // {"DA@PP"            ,"",SVT_DA_PP},
+    { L_WORD421, L_WORD237, SVT_DP },            // {"DP"               ,"",SVT_DP},
+    { L_WORD422, L_WORD237, SVT_DS },            // {"DS"               ,"",SVT_DS},
     { L_WORD1066, L_WORD237, SVT_DFP },           // {"DFP"              ,"",SVT_DFP},
     { L_WORD1067, L_WORD237, SVT_DFS },           // {"DFS"              ,"",SVT_DFS},
     { L_WORD1066, L_WORD237, SVT_DAP },           // {"DAP"              ,"",SVT_DAP
     { L_WORD1067, L_WORD237, SVT_DAS },           // {"DAS"              ,"",SVT_DAS},
-    { L_WORD83  , L_WORD237, SVT_DENSITY },       // {"Density"          ,"",SVT_DENSITY},
+    { L_WORD83, L_WORD237, SVT_DENSITY },       // {"Density"          ,"",SVT_DENSITY},
     { L_WORD1086, L_WORD237, SVT_FREEBOARD },     // {"Freeboard"        ,"",SVT_FREEBOARD},
 
 };
@@ -71,7 +71,7 @@ void PRODraftSystem::Initiate(void) {
     HasTrimValue       = false;
     HasListValue       = false;
     HasDeflection      = false;
-	StatusDftFwd       = GETVAL_ERROR;
+    StatusDftFwd       = GETVAL_ERROR;
     StatusDftAft       = GETVAL_ERROR;
     StatusDftP         = GETVAL_ERROR;
     StatusDftS         = GETVAL_ERROR;
@@ -336,7 +336,7 @@ bool PRODraftSystem::RestoreSettings(TSNConfigString *SettingsString) {
                 }
                 break;
             case C_DRAFT_DS  :
-				if (DSPtr) {
+                if (DSPtr) {
                     DSPtr->RestoreSettings(SettingsString);
                 }
                 break;
@@ -381,9 +381,9 @@ void PRODraftSystem::Calculate(void) {
         if (!StatusDftFwd) {
             DftAft =  DftFwd - PROInclinometer::TrimValue * PROProjectInfo::LengthBetweenPP;
             HasTrimValue = false;
-            MeanDraft     = (DftFwd + DftAft ) / 2.0;
-			StatusDftMean = GETVAL_NO_ERR;
-        }else{
+            MeanDraft     = (DftFwd + DftAft) / 2.0;
+            StatusDftMean = GETVAL_NO_ERR;
+        } else {
             MeanDraft     = 0.0;
         }
         // Now, we can calculate DP, DS
@@ -400,9 +400,9 @@ void PRODraftSystem::Calculate(void) {
         if (!StatusDftAft) {
             DftFwd =  DftAft + PROInclinometer::TrimValue * PROProjectInfo::LengthBetweenPP;
             HasTrimValue = false;
-            MeanDraft     = (DftFwd + DftAft ) / 2.0;
+            MeanDraft     = (DftFwd + DftAft) / 2.0;
             StatusDftMean = GETVAL_NO_ERR;
-        }else{
+        } else {
             MeanDraft     = 0.0;
         }
         // Now, we can calculate DP, DS
@@ -432,18 +432,18 @@ void PRODraftSystem::Calculate(void) {
         DftS = (DftFwd + DftAft) / 2 + PROInclinometer::ListValue * PROProjectInfo::Width / 2.0;
         // Should check inclinometer status
         if (!StatusDftFwd || !StatusDftAft) {
-			StatusDftP    = GETVAL_NOT_MEASURED;
+            StatusDftP    = GETVAL_NOT_MEASURED;
             StatusDftS    = GETVAL_NOT_MEASURED;
             MeanDraft     = (DftFwd + DftAft) / 2.0;
-			StatusDftMean = GETVAL_NO_ERR;
+            StatusDftMean = GETVAL_NO_ERR;
         } else {
             if ((StatusDftFwd == GETVAL_HW_ALARM) && (StatusDftFwd == GETVAL_HW_ALARM)) {
                 StatusDftP   = GETVAL_HW_ALARM;
                 StatusDftS   = GETVAL_HW_ALARM;
-            }else if((StatusDftFwd == GETVAL_DRY_SENSOR) && (StatusDftFwd == GETVAL_DRY_SENSOR)) {
+            } else if ((StatusDftFwd == GETVAL_DRY_SENSOR) && (StatusDftFwd == GETVAL_DRY_SENSOR)) {
                 StatusDftP   = GETVAL_DRY_SENSOR;
                 StatusDftS   = GETVAL_DRY_SENSOR;
-            }else{
+            } else {
                 StatusDftP   = GETVAL_UNKNOWN_ERROR;
                 StatusDftS   = GETVAL_UNKNOWN_ERROR;
             }
@@ -495,9 +495,9 @@ void PRODraftSystem::Calculate(void) {
                 }
             }
             // Now, we can calculate DP, DS
-			if (!StatusDftFwd && (!StatusDftP || !StatusDftS)) {
-                MeanDraft     =(DftFwd + DftAft) / 2.0;
-				StatusDftMean = GETVAL_NO_ERR;
+            if (!StatusDftFwd && (!StatusDftP || !StatusDftS)) {
+                MeanDraft     = (DftFwd + DftAft) / 2.0;
+                StatusDftMean = GETVAL_NO_ERR;
                 DftP          = MeanDraft - CurrentList * PROProjectInfo::Width / 2;
                 DftS          = MeanDraft + CurrentList * PROProjectInfo::Width / 2;
                 TrimValue     = (DftFwd - DftAft) / PROProjectInfo::LengthBetweenPP;
@@ -864,7 +864,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         }
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftAft;
         }
         break;
@@ -874,7 +874,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         MyRetValue = DftAftMark;
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftAft;
         }
         break;
@@ -884,7 +884,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         MyRetValue = DftAft;
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftAft;
         }
         break;
@@ -898,7 +898,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         }
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftFwd;
         }
         break;
@@ -908,7 +908,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         MyRetValue = DftFwdMark;
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftFwd;
         }
         break;
@@ -918,7 +918,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         MyRetValue = DftFwd;
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftFwd;
         }
         break;
@@ -928,7 +928,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         MyRetValue = DftP;
         if (HWFailure && DPPtr) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftP;
         }
         break;
@@ -938,7 +938,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         MyRetValue = DftS;
         if (HWFailure && DSPtr) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftS;
         }
         break;
@@ -952,7 +952,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         }
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftFwdP;
         }
         break;
@@ -966,7 +966,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         }
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftFwdS;
         }
         break;
@@ -980,7 +980,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         }
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftAftP;
         }
         break;
@@ -994,7 +994,7 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         }
         if (HWFailure) {
             Status = GETVAL_HW_ALARM;
-        }else{
+        } else {
             Status     = StatusDftAftS;
         }
         break;
@@ -1015,17 +1015,17 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
     case SVT_DRAFT_MID:
         DecPnt     = 2;
         Unit       = LENGTH_UNIT;
-		if (StatusDftMean != GETVAL_HW_ALARM) {
+        if (StatusDftMean != GETVAL_HW_ALARM) {
             MyRetValue = MeanDraft;
-		}
+        }
         Status     = StatusDftMean;
         break;
     case SVT_FREEBOARD:
         DecPnt     = 2;
         Unit       = LENGTH_UNIT;
-		if (StatusDftMean != GETVAL_HW_ALARM) {
+        if (StatusDftMean != GETVAL_HW_ALARM) {
             MyRetValue = MaxSummerDraft - MeanDraft;
-		}
+        }
         Status     = StatusDftMean;
         break;
     case SVT_DENSITY:
@@ -1033,15 +1033,15 @@ int PRODraftSystem::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         Unit       = DENSITY_UNIT;
         MyRetValue = PROSystemData::SeaWaterDensity;
         break;
-	case SVT_TRIM_MARKS_M:
-		if (( StatusDftFwd== GETVAL_NO_ERR) && (StatusDftAft==GETVAL_NO_ERR )){
-			DecPnt     = 1;
-			Unit       = LENGTH_UNIT;
-			MyRetValue = DftFwdMark - DftAftMark;
-		}else{
-			return  GETVAL_ERROR;
+    case SVT_TRIM_MARKS_M:
+        if ((StatusDftFwd == GETVAL_NO_ERR) && (StatusDftAft == GETVAL_NO_ERR)) {
+            DecPnt     = 1;
+            Unit       = LENGTH_UNIT;
+            MyRetValue = DftFwdMark - DftAftMark;
+        } else {
+            return  GETVAL_ERROR;
         }
-		break;
+        break;
     default:
         Status = PRogramObject::GetValue(ValueId, Index, MyRetValue,  DecPnt, Unit);
         break;
@@ -1445,8 +1445,7 @@ int PRODraftSystem::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2730 Cmd;
             Cmd.TxInfo.Port        = NULL;
             Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;
@@ -1645,24 +1644,24 @@ TColor PRODraftSystem::GetStatusColor(int Status) {
     TColor tmpColor; // = (TColor)0x1fffffff;
     switch (Status) {
     case GETVAL_NOT_MEASURED    :
-		tmpColor = (TColor)	0xFACE87; //clBlue
-		break;
-	case GETVAL_DRY_SENSOR      :
-		tmpColor = (TColor)0x00D7FF; //clYellow;
-		break;
-	case GETVAL_ERROR           :
-		tmpColor = (TColor)0x00D7FF; //clYellow;
-		break;
+        tmpColor = (TColor)0xFACE87; //clBlue
+        break;
+    case GETVAL_DRY_SENSOR      :
+        tmpColor = (TColor)0x00D7FF; //clYellow;
+        break;
+    case GETVAL_ERROR           :
+        tmpColor = (TColor)0x00D7FF; //clYellow;
+        break;
     case GETVAL_NOT_AVAILABLE   :
-	case GETVAL_HW_ALARM        :
-		tmpColor = (TColor)0x3C14DC; //clRed;
-		break;
-	case GETVAL_NO_ERR          :
-		tmpColor = clWindow;//0x9AFA00;//clGreen;
-		break;
+    case GETVAL_HW_ALARM        :
+        tmpColor = (TColor)0x3C14DC; //clRed;
+        break;
+    case GETVAL_NO_ERR          :
+        tmpColor = clWindow; //0x9AFA00;//clGreen;
+        break;
     case GETVAL_UNKNOWN_ERROR   :
-	default                     :
-		tmpColor = (TColor)0x8080F0; //clFuchsia;
+    default                     :
+        tmpColor = (TColor)0x8080F0; //clFuchsia;
         break;
     }
     return tmpColor;

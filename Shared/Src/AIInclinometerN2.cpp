@@ -1,12 +1,12 @@
 #include "TSNIncludes.h"
 #pragma hdrstop
 #ifdef BORLAND
-#pragma package(smart_init)
+    #pragma package(smart_init)
 #endif
 
 //---------------------------------------------------------------------------
 
-AIInclinometerN2::AIInclinometerN2(int SnsType):AIInclinometer(SnsType) {
+AIInclinometerN2::AIInclinometerN2(int SnsType) : AIInclinometer(SnsType) {
     Type                = SnsType;
     BasicSensorType     = AI_SENSOR_INCLINOMETER;
     BasicSensorTypeWord = L_WORD551;    //Inclinometer
@@ -30,7 +30,7 @@ void AIInclinometerN2::NewValue(float NewVal) {
 
     TimeStamp  = clock();
     RawValue    = FilterVal(RawValue, NewVal, 16);
-    if ( IsStartUp ) {
+    if (IsStartUp) {
         IsStartUp       = false;
         FilteredValue   = RawValue;
     } else {
@@ -40,7 +40,7 @@ void AIInclinometerN2::NewValue(float NewVal) {
 
 // Should support correction of the inclinometer
 float AIInclinometerN2::Calculate(void) {
-    if ( CanCalculate() ) {
+    if (CanCalculate()) {
         CalcValue = Gain * FilteredValue * Sign / RAD_FACTOR - Offset;
         ResultOK  = true;
     } else {
@@ -70,7 +70,7 @@ AnsiString AIInclinometerN2::MakeConfigString(int ExtraTabs) {
     AnsiString LocalString;
     LocalString += TabStr1 + KeyWord(Type) + CrLfStr;
 //  LocalString += AnalogInput::MakeConfigString();  //common
-    if ( SerialNumber.IsEmpty() ) {
+    if (SerialNumber.IsEmpty()) {
         SerialNumber = "None";
     }
     LocalString += TabStr3 + KeyWord(C_AI_SERIALNO) + SerialNumber + CrLfStr;
@@ -89,13 +89,13 @@ bool AIInclinometerN2::LoadConfigString(TSNConfigString &ConfigString) {
     int Key;
     do {
         AnsiString InputKeyWord = ConfigString.NextWord(ErrorLine);
-        if ( ErrorLine ) {
-            if ( ErrorLine != EOF ) {
+        if (ErrorLine) {
+            if (ErrorLine != EOF) {
                 GiveConfigWarning("Inclinometer sensor", ErrorLine);
             }
         } else {
             Key = FindConfigKey(InputKeyWord);
-            switch ( Key ) {
+            switch (Key) {
             default:
                 GiveConfigWarning("Inclinometer sensor", InputKeyWord, ConfigString.LineCount);
                 break;
@@ -119,7 +119,7 @@ bool AIInclinometerN2::LoadConfigString(TSNConfigString &ConfigString) {
                 break;
             }
         }
-    }while ( NoError && (ErrorLine != EOF) && (Key != C_AI_END) );
+    }while (NoError && (ErrorLine != EOF) && (Key != C_AI_END));
     return (NoError);
 }
 //---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ int AIInclinometerN2::PutValue(int ValueId, int Index, AnsiString NewValue, bool
     //      break;
     //}
 
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_AI_OFFSET   :
         Offset = ConvertToSi(NewValue, ValUnitId = ANGLE_UNIT, Status, -15.0, 15.0, Offset);
         break;
@@ -156,10 +156,10 @@ int AIInclinometerN2::PutValue(int ValueId, int Index, AnsiString NewValue, bool
         break;
     }
 
-    if ( Status == E_NO_ERR ) {
+    if (Status == E_NO_ERR) {
         SetModifiedFlag();
     }
-    if ( UnitId ) {
+    if (UnitId) {
         *UnitId = ValUnitId;
     }
     return (Status);
@@ -167,7 +167,7 @@ int AIInclinometerN2::PutValue(int ValueId, int Index, AnsiString NewValue, bool
 
 int  AIInclinometerN2::GetValue(int ValueId, int Index, float &MyRetValue, int &DecPnt, int &Unit) {
     int Status = GETVAL_NO_ERR;
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_AI_OFFSET   :
         DecPnt     = 2;
         Unit       = ANGLE_UNIT;
@@ -187,7 +187,7 @@ int  AIInclinometerN2::GetValue(int ValueId, int Index, float &MyRetValue, int &
 
 int AIInclinometerN2::GetStringValue(int ValueId, int Index, AnsiString &MyString) {
     int Status = GETVAL_NO_ERR;
-    switch ( ValueId ) {
+    switch (ValueId) {
     case SVT_AI_UNIT:
         MyString = GetUnitName(ANGLE_UNIT);
         break;
@@ -209,8 +209,8 @@ int AIInclinometerN2::PutFloatValue(int ValueId, float NewValue) {
 ///////////////////////////////////////////////////////////////////
 int AIInclinometerN2::CheckInput(float Operator_Val, int &Action) {
     int InpStat   = E_NO_ERR;
-    if ( Enable ) {
-        if ( ActiveAlarms ) {
+    if (Enable) {
+        if (ActiveAlarms) {
             InpStat = E_SENSOR_ERROR;
             Action  = SNS_ADJUST_ABORT;
         } else {
@@ -227,7 +227,7 @@ int AIInclinometerN2::CheckInput(float Operator_Val, int &Action) {
 
 int AIInclinometerN2::ReceiveData(U8 *data) {
     ANPRO10_CommandHeading *pCH = (ANPRO10_CommandHeading *)data;
-    switch ( pCH->CommandNo ) {
+    switch (pCH->CommandNo) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             ANPRO10_COMMAND_2522  *pData = (ANPRO10_COMMAND_2522 *)data;
@@ -249,10 +249,9 @@ int AIInclinometerN2::ReceiveData(U8 *data) {
 }
 int AIInclinometerN2::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
-    switch ( cmd ) {
+    switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2522  Cmd;
             Cmd.TxInfo.Port         = NULL;
             Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
@@ -271,7 +270,7 @@ int AIInclinometerN2::SendData(U16 cmd) {
             Cmd.Data.ResultOK       = ResultOK;
 
             bool sent = ANPRO10SendNormal(&Cmd);
-            if ( !sent ) ErrorStatus = E_QUEUE_FULL;
+            if (!sent) ErrorStatus = E_QUEUE_FULL;
             else ErrorStatus = E_OK;
         }
         break;

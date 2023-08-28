@@ -1317,11 +1317,6 @@
 // Relay on TCU
 //#define MAX_CTRL_ALARM_TYPES 15
 // IO related constants
-#define POWER_ON_ZBANA_START_DELAY  5
-#define POWER_ON_ZB485_START_DELAY  10
-#define RS485_IO_PERIODE            2000
-#define MIN_IO_DELAY                10
-#define MAX_IO_RESPONSE_TIME        50
 #define MAX_AN_ZBANA_CHANNELS       12
 #define MAX_AN_ZB485_CHANNELS        8
 #define MAX_TCU_AD_CHANNELS          8
@@ -1333,9 +1328,6 @@
 #define MAX_WASHTRACK_CHANNELS      4
 #define MAX_LEVEL_SWITCH_CHANNELS   8
 
-#define RS485_DELAY                 200
-#define RS485_ON_DELAY              2
-#define RS485_EXTRA_DELAY           2
 
 
 // Max values for TPC
@@ -1786,6 +1778,7 @@
 #define SVT_PRO_SORTNO              1304
 #define SVT_PRO_STATUS              1305
 #define SVT_PRO_TIMESTAMP           1306
+#define SVT_PRO_UPDATE_PERIOD       1307
 
 // PROSystemData, Range: 1400 -> 1450
 #define SVT_ATM_PRESSURE            1351
@@ -1998,10 +1991,11 @@
 #define SVT_RXERR_CNT               4018
 #define SVT_RXERR_TIME              4019
 #define SVT_ERROR_ADDRESS           4020
-#define SVT_IO_SYSTEM_DELAY         4021
-#define SVT_CPU_LOAD_RAW            4022
-#define SVT_CPU_LOAD_AVG            4023
-#define SVT_CPU_LOAD_MAX            4024
+#define SVT_IO_TIME_SLICE           4021
+#define SVT_IO_CALCULATION_PERIOD   4022
+#define SVT_CPU_LOAD_RAW            4023
+#define SVT_CPU_LOAD_AVG            4024
+#define SVT_CPU_LOAD_MAX            4025
 
 
 #define SVT_TXU_RX_BYTES            4100
@@ -3291,14 +3285,36 @@
 #define SVT_FLAG_NO_VAL_NO_VAL      2   // If no value return no value
 #define SVT_FLAG_MARK_NO_VAL        3   // If no value return *****
 
-#define DEFAULT_LOAD_TIME   24.0
 
-#define ANPRO3_DEFAULT_DELAY    1000
+#define RS485_DELAY                 200
+#define RS485_ON_DELAY              2
+#define RS485_EXTRA_DELAY           2
+
+#define POWER_ON_ZBANA_START_DELAY  5
+#define POWER_ON_ZB485_START_DELAY  10
+#define MIN_IO_DELAY                2
+#define MAX_IO_RESPONSE_TIME        50
+
+
+
+#define ANPRO3_DEFAULT_DELAY        1000
 #define EXTERNAL_ALARM_SILENCE      1
 
-#define DATA_EXPIRATION_TIME    (5*RS485_IO_PERIODE)
-#define SEND_MIN_INTERVAL       250
-#define MODBUS_UPDATE_INTERVAL  2000
+#define DATA_EXPIRATION_TIME        (5*SCAN_IO_INTERVAL)
+#define SCAN_IO_INTERVAL            1000
+#define SEND_MIN_INTERVAL           250
+#define MODBUS_UPDATE_INTERVAL      1000
+#define REAL_TIME_UPDATE_PERIOD     2000
+
+
+#define STATIC_UPDATE_PERIOD_COM    (1*60 * 1000)
+#define STATIC_UPDATE_MIN_DELAY     5               // C00614 has 57 as calculated delay and it works on the Hudong series C00610 and related
+
+#define CALCULATION_PERIOD          1000  
+
+
+#define DEFAULT_LOAD_TIME           24.0        // Related to Load rate calculation
+
 
 /////////////////////////////////////////////////////
 //
@@ -3374,14 +3390,15 @@
 //  Task priorities
 //
 /////////////////////////////////////////////////////////////
-#define WATCHDOG_TASK_PRIORITY      5
-#define TPCX_TASK_PRIORITY          50
-#define ANPRO10_TASK_PRIORITY       95
-#define SAAB_TASK_PRIORITY          130
-#define COM_SEND_TASK_PRIORITY      140
-#define MODBUS_TASK_PRIORITY        170
-#define CALCULATE_OBJ_TASK_PRIORITY 90
-
+#define WATCHDOG_TASK_PRIORITY          5
+#define TPCX_TASK_PRIORITY              50
+#define ANPRO10_TASK_PRIORITY           95
+#define SAAB_TASK_PRIORITY              130
+#define COM_SEND_TASK_PRIORITY          140
+#define MODBUS_TASK_PRIORITY            170
+#define CALCULATE_OBJ_TASK_PRIORITY     90
+#define SEND_STATIC_DATA_TASK_PRIORITY  90     
+#define EXTERNAL_ALARM_SILENCE_PRIORITY 100
 
 
 /////////////////////////////////////////////////////////////

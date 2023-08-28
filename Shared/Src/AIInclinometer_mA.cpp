@@ -256,8 +256,7 @@ int AIInclinometer_mA::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch ( cmd ) {
     case CMD_GENERIC_REALTIME_DATA:
-        if ( IsTimeToSend() )     {
-            LastRTTxTime = clock();
+        {
             QueueANPRO10_COMMAND_2522  Cmd;
             Cmd.TxInfo.Port         = NULL;
             Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
