@@ -661,12 +661,12 @@ int PROLinePressure::ReceiveData(U8* data)
         UpdatePeriod = clock() - TimeStamp;
         {
             ANPRO10_COMMAND_2104  *pData = (ANPRO10_COMMAND_2104*) data;
-            HasPressure = pData->HasPressure;
-            HWFailure   = pData->HWFailure;
-            IsNewData   = pData->IsNewData;
-            Pressure    = pData->Pressure;
-            UpdatePeriod= pData->UpdatePeriod;
-            TimeStamp   = pData->TimeStamp;
+            HasPressure     = pData->HasPressure;
+            HWFailure       = pData->HWFailure;
+            IsNewData       = pData->IsNewData;
+            Pressure        = pData->Pressure;
+            UpdatePeriod    = clock() - TimeStamp; // pData->UpdatePeriod ;
+            TimeStamp       = clock();  //pData->TimeStamp;
             if ( PROPtr ) {
                 // Can update tank value here
             }

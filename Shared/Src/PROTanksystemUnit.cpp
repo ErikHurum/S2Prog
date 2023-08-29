@@ -1687,6 +1687,13 @@ void PROTanksystemUnit::Calculate(void) {
     AvgLoad = AvgPerformance;
     MaxLoad = MaxPerformance;
     RunningHours = RunningTime;
+    /*
+    SendData();
+    if (!Master) {
+        OS_Delay(100);
+        SendData(CMD_GENERIC_STATIC_DATA);
+    }
+    */
 #endif
 }
 

@@ -45,13 +45,10 @@ PROTankPressure::PROTankPressure(int IdNum, PROXRefObject *CreatedFromTank, bool
         AddToIOObjectList();
         SetIdNumber(this, IdNum, C_PRO_TANKPRESS, ObjectSet);
     }
-
-    if (!AnalogInList.empty()) {
-        HighPressurePtr          = new AlarmHighPressure(this);
-        LowPressurePtr           = new AlarmLowPressure(this);
-        AlarmSet.insert(HighPressurePtr);
-        AlarmSet.insert(LowPressurePtr);
-    }
+    HighPressurePtr          = new AlarmHighPressure(this);
+    LowPressurePtr           = new AlarmLowPressure(this);
+    AlarmSet.insert(HighPressurePtr);
+    AlarmSet.insert(LowPressurePtr);
     AddAlarms(CompleteAlarmInfoList);
     if (AddToList) {
         DataTransferSet.insert(this);
@@ -1655,12 +1652,12 @@ int PROTankPressure::ReceiveData(U8 *data) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             ANPRO10_COMMAND_2104  *pData = (ANPRO10_COMMAND_2104 *)data;
-            HasPressure = pData->HasPressure;
-            HWFailure   = pData->HWFailure;
-            IsNewData   = pData->IsNewData;
-            Pressure    = pData->Pressure;
-            UpdatePeriod= pData->UpdatePeriod;
-            TimeStamp   = pData->TimeStamp;
+            HasPressure     = pData->HasPressure;
+            HWFailure       = pData->HWFailure;
+            IsNewData       = pData->IsNewData;
+            Pressure        = pData->Pressure;
+            UpdatePeriod    = clock() - TimeStamp; // pData->UpdatePeriod ;
+            TimeStamp       = clock();  //pData->TimeStamp;
             if (CreatedFromThisTank) {
                 // Can update tank value here
                 CreatedFromThisTank->SetPressure(Pressure);
@@ -1709,7 +1706,7 @@ int PROTankPressure::SendData(U16 cmd) {
             Cmd.Data.TimeStamp      = TimeStamp;
             Cmd.Data.UpdatePeriod   = UpdatePeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
-            if (!sent) ErrorStatus =E_QUEUE_FULL;
+            if (!sent) ErrorStatus = E_QUEUE_FULL;
             else ErrorStatus = E_OK;
         }
         break;
@@ -1835,13 +1832,13 @@ void PROTankPressure::SetPressureAlarmMode(LimitState NewMode) {
     }
 }
 void PROTankPressure::SetHighPressure_Locked(bool Locked) {
-    if ( HighPressurePtr ) {
+    if (HighPressurePtr) {
         HighPressurePtr->Locked         = Locked;
     }
 }
 
 void PROTankPressure::SetLowPressure_Locked(bool Locked) {
-    if ( LowPressurePtr ) {
+    if (LowPressurePtr) {
         LowPressurePtr->Locked         = Locked;
     }
 }

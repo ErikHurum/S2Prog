@@ -48,20 +48,20 @@ static void SaveSettingsTask(void) {
     TSN_Delay(500);
 
     FlashErrorStatus = WD_SETTINGS_OK;
-    if ( FlashErrorStatus != WD_SETTINGS_OK ) {
+    if (FlashErrorStatus != WD_SETTINGS_OK) {
         PRogramObjectBase::WriteAll = true;
     } else {
         FlashErrorStatus = WD_SETTINGS_READ;
         TSNSaveSettings *SaveSettings = new TSNSaveSettings();
         SaveSettings->LoadFromFile();
-        if ( !RestoreSettingsWarningsString.IsEmpty() ) {
+        if (!RestoreSettingsWarningsString.IsEmpty()) {
             CurrentWinID = TDU_WARNING_WIN;
         }
         FlashErrorStatus = WD_SETTINGS_OK;
         delete SaveSettings;
     }
 
-    switch ( CurrentDeviceId ) {
+    switch (CurrentDeviceId) {
     case DEVICE_TDU:
         TDUBasicWin::RepaintAll();
         TDUBasicWin::NewLanguage();
@@ -72,12 +72,12 @@ static void SaveSettingsTask(void) {
     }
 #ifdef S2TXU
     OS_Delay(60 * 1000);
-    while ( 1 ) {
+    while (1) {
         // First we wait for user input
         volatile char Status = OS_WaitEvent(FLASH_SAVE_SETTINGS);
         do {
             Status = OS_WaitSingleEventTimed(FLASH_SAVE_SETTINGS, 60000);    //Shall be 60000 EHSMark
-        }while ( Status );
+        }while (Status);
 
         FlashErrorStatus = WD_SETTINGS_WRITE;
         PRogramObjectBase::WriteAll = true;
@@ -88,7 +88,7 @@ static void SaveSettingsTask(void) {
         FlashErrorStatus = WD_SETTINGS_OK;
     }
 #else
-    while ( 1 ) {
+    while (1) {
         TSN_Delay(1 * 60 * 1000);
         TSNSaveSettings *SaveSettings = new TSNSaveSettings();
         SaveSettings->WriteToFile();
@@ -105,13 +105,13 @@ int SaveConfigTaskStack[4*1024];
 static void SaveConfigTask(void) {
 #ifdef S2TXU
     volatile char Status = OS_WaitEvent(FLASH_WRITE_CONFIG_DELAY | FLASH_WRITE_CONFIG_NO_DELAY);
-    if ( Status == FLASH_WRITE_CONFIG_DELAY ) {
+    if (Status == FLASH_WRITE_CONFIG_DELAY) {
         do {
             Status = OS_WaitSingleEventTimed(FLASH_WRITE_CONFIG_DELAY, 600000);  //Shall be 600000 (10 minutes) EHSMark
-        }while ( Status == FLASH_WRITE_CONFIG_DELAY );
+        }while (Status == FLASH_WRITE_CONFIG_DELAY);
     }
 
-    if ( PROSystemData::HasConfigWritePermission || TSNConfigInfo::HasConfigWritePermission ) {
+    if (PROSystemData::HasConfigWritePermission || TSNConfigInfo::HasConfigWritePermission) {
         FlashErrorStatus = WD_CONFIG_WRITE;
         WriteConfigToFile("Config.txt");
         FlashErrorStatus = WD_SETTINGS_OK;
@@ -132,13 +132,13 @@ void ExternalAlarmSilenceTask(void) {
 #ifdef S2TXU
     int orgVal = rGPFDAT & (1 << INTOFF_SILENCE);
     char Status = OS_WaitSingleEvent(EXTERNAL_ALARM_SILENCE);
-    switch ( Status ) {
+    switch (Status) {
     case EXTERNAL_ALARM_SILENCE:
         {
             int tmpReg = rGPFDAT & (1 << INTOFF_SILENCE);
-            if ( orgVal != tmpReg ) {
+            if (orgVal != tmpReg) {
                 orgVal = tmpReg;
-                if ( orgVal ) {
+                if (orgVal) {
                     SendAlarmSilence();
                 }
             }
@@ -159,10 +159,10 @@ void ExternalAlarmSilenceTask(void) {
 **********************************************************************/
 void MakeLog(int ReportId) {
     PROPrinter *Prn = PROPrinter::FindPrinter(PROPrinter::LogPrinterId);
-    if ( Prn ) {
+    if (Prn) {
         AnsiString Report;
         MakeReport(ReportId, Report);
-        if ( !Report.IsEmpty() ) {
+        if (!Report.IsEmpty()) {
             Prn->Print((char *)Report.c_str());
         }
     }
@@ -173,22 +173,22 @@ int LogTaskStack[4*1024];
 static void LogTask(void) {
     TSN_Delay(MIN_TO_MSEC);
     FOREVER{
-        if ( PROSystemData::LogBallastExchange ) {
+        if (PROSystemData::LogBallastExchange) {
             // To be handled different
         }
-        if ( PROSystemData::LogCargo ) {
+        if (PROSystemData::LogCargo) {
             MakeLog(REPORT_CARGO);
         }
-        if ( PROSystemData::LogService ) {
+        if (PROSystemData::LogService) {
             MakeLog(REPORT_SERVICE);
         }
-        if ( PROSystemData::LogTemperature ) {
+        if (PROSystemData::LogTemperature) {
             MakeLog(REPORT_TEMPERATURE);
         }
-        if ( PROSystemData::LogTankPressure ) {
+        if (PROSystemData::LogTankPressure) {
             MakeLog(REPORT_T_PRESSURE);
         }
-        if ( !PROSystemData::LogTime ) {
+        if (!PROSystemData::LogTime) {
             TSN_Delay(MSEC_TO_SEC * SEC_TO_DAYS); // Default to log every 24 hour if 0
         } else {
             TSN_Delay(PROSystemData::LogTime);
@@ -201,14 +201,14 @@ static void LogTask(void) {
 *       AlarmWindowTask
 */
 static void AlarmWindowTask(void) {
-    while ( true ) {
+    while (true) {
         TSN_Delay(1000);
-        if ( AlarmWindow ) {
+        if (AlarmWindow) {
             AlarmWindow->PWTimer();
-        } else if ( (CurrentWinID == TDU_WATERINGR_WIN) && WaterIngrWindow ) {
+        } else if ((CurrentWinID == TDU_WATERINGR_WIN) && WaterIngrWindow) {
             WaterIngrWindow->PWTimer();
         }
-        if ( PhysKeyPressed & TOUCH_ALARMWIN_FLAG ) {
+        if (PhysKeyPressed & TOUCH_ALARMWIN_FLAG) {
             PhysKeyPressed &= ~TOUCH_ALARMWIN_FLAG;
             TSN_Delay(25);
         }
@@ -221,10 +221,10 @@ static void AlarmWindowTask(void) {
 static void AlarmTask(void) {
     bool TypeAlarmButton = true;
     int LastAlarm = AlarmBasic::AlIdle;
-    while ( 1 ) {
-        if ( !AlarmBasic::PROActiveAlarmList.isEmpty() ) {
+    while (1) {
+        if (!AlarmBasic::PROActiveAlarmList.isEmpty()) {
             LastAlarm = AlarmBasic::AlActive;
-            if ( TypeAlarmButton ) {
+            if (TypeAlarmButton) {
                 BUTTON_SetBkColor(MainWindow->ButtonAlarm, 0, TDU_C_AL_BACK_ACTIVE);
                 BUTTON_SetTextColor(MainWindow->ButtonAlarm, 0, TDU_C_AL_TEXT_ACTIVE);
                 TSN_Delay(750);
@@ -235,15 +235,15 @@ static void AlarmTask(void) {
                 TSN_Delay(250);
                 TypeAlarmButton = true;
             }
-        } else if ( !AlarmBasic::PROAcknowAlarmList.isEmpty() ) {
-            if ( LastAlarm == AlarmBasic::AlAknowledged ) {} else {
+        } else if (!AlarmBasic::PROAcknowAlarmList.isEmpty()) {
+            if (LastAlarm == AlarmBasic::AlAknowledged) {} else {
                 LastAlarm = AlarmBasic::AlAknowledged;
                 BUTTON_SetBkColor(MainWindow->ButtonAlarm, 0, TDU_C_AL_BACK_ACTIVE);
                 BUTTON_SetTextColor(MainWindow->ButtonAlarm, 0, TDU_C_AL_TEXT_ACTIVE);
             }
             TSN_Delay(1000);
         } else {
-            if ( LastAlarm == AlarmBasic::AlIdle ) {} else {
+            if (LastAlarm == AlarmBasic::AlIdle) {} else {
                 LastAlarm = AlarmBasic::AlIdle;
                 BUTTON_SetBkColor(MainWindow->ButtonAlarm, 0, TDU_C_AL_BACK_NOAL);
                 BUTTON_SetTextColor(MainWindow->ButtonAlarm, 0, TDU_C_AL_TEXT_NOAL);
@@ -350,8 +350,8 @@ void tPCxTestTask(void) {
     static U8 PacketTPC140[] = { 2, 2, 31, 254, 0, 16, 50, 6, 0, 0, 50, 51, 52, 53, 0, 0, 249, 3 };
     static U8 PacketTPC196[] = { 2, 2, 32, 254, 0, 16, 50, 6, 0, 0, 51, 52, 53, 54, 0, 0,  70, 3 };
     TSNUart *Port = TSNUart::Channels[5];
-    if ( Port ) {
-        while ( true ) {
+    if (Port) {
+        while (true) {
             TSN_Delay(1000);
             bool Status;
             TSN_Delay(1000);
@@ -375,16 +375,14 @@ static TSN_STACKPTR int InclinometerStack[1024];
 TSN_TASK InclinometerHandle;                                                         /* Task control blocks */
 
 void InclinometerTask(void) {
-#ifndef WIN32
+#ifdef S2TXU
+    if (!PROInclinometer::PROInclinPtr) {
+        OS_Terminate(NULL);
+    }
     OS_Delay(10000);
     FOREVER {
         OS_Delay(1000);
-        PROTanksystemUnit::MySelf->Calculate();
-        if ( CurrentDeviceId == DEVICE_TCU ) {
-            if ( PROInclinometer::PROInclinPtr ) {
-                PROInclinometer::PROInclinPtr->Calculate();
-            }
-        }
+        PROInclinometer::PROInclinPtr->Calculate();
     }
 #endif
 }
@@ -405,34 +403,36 @@ void CalcMiscObjectsTask(void) {
         }
     */
 
-    switch ( CurrentDeviceId ) {
-        case DEVICE_TCU:
-        if ( Master ) {
+    switch (CurrentDeviceId) {
+    case DEVICE_TCU:
+        if (Master) {
             set<PRogramObject *>ExternalObjects;
             set<PRogramObject *>::iterator pBIt;
             set<PRogramObjectBase *>::iterator pPrgObjetBIt;
-            for ( pBIt = PRogramObject::ObjectSet.begin(); pBIt != PRogramObject::ObjectSet.end(); pBIt++ ) {
+            for (pBIt = PRogramObject::ObjectSet.begin(); pBIt != PRogramObject::ObjectSet.end(); pBIt++) {
                 PRogramObject *tmpPtr = (PRogramObject *)*pBIt;
-                if ( (*pBIt)->DataFromOther ) {
+                if ((*pBIt)->DataFromOther) {
                     ExternalObjects.insert(*pBIt);
                 }
             }
             int t0 = OS_Time;
             FOREVER {
-                if ( PROSystemData::TXUSystemData ) {
+                PROTanksystemUnit::MySelf->Calculate();
+                PROTanksystemUnit::MySelf->SendData();
+                if (PROSystemData::TXUSystemData) {
                     PROSystemData::TXUSystemData->Calculate();
                     PROSystemData::TXUSystemData->SendData();
                 }
-                if ( PRODraftSystem::PRODraftSysPtr ) {
+                if (PRODraftSystem::PRODraftSysPtr) {
                     PRODraftSystem::PRODraftSysPtr->Calculate();
                 }
-                if ( PROAtmReference::PROAtmRefPtr &&  PROAtmReference::PROAtmRefPtr->SensorOnTCU ) {
+                if (PROAtmReference::PROAtmRefPtr &&  PROAtmReference::PROAtmRefPtr->SensorOnTCU) {
                     PROAtmReference::PROAtmRefPtr->Calculate();
                 }
-                if ( !ExternalObjects.empty() ) {
-                    for ( pBIt = ExternalObjects.begin();  pBIt != ExternalObjects.end(); pBIt++ ) {
+                if (!ExternalObjects.empty()) {
+                    for (pBIt = ExternalObjects.begin();  pBIt != ExternalObjects.end(); pBIt++) {
                         PRogramObject *tmpPtr = *pBIt;
-                        if ( tmpPtr->IsAvailableNewData() ) {
+                        if (tmpPtr->IsAvailableNewData()) {
                             tmpPtr->Calculate();
                             CheckAlarms(tmpPtr->AlarmSet);
                         }
@@ -441,7 +441,7 @@ void CalcMiscObjectsTask(void) {
                 }
 
                 //Should calculate elsewhere
-                for ( unsigned i = 0; i < PROWaterHeater::ObjectVector.size(); i++ ) {
+                for (unsigned i = 0; i < PROWaterHeater::ObjectVector.size(); i++) {
                     PROWaterHeater::ObjectVector[i]->Calculate();
                     //CheckAlarms((*pBIt)->AlarmSet);
                 }
@@ -459,7 +459,7 @@ void CalcMiscObjectsTask(void) {
                 OS_DelayUntil(t0 += CALCULATION_PERIOD);
             }
         }
-        case DEVICE_TDU:
+    case DEVICE_TDU:
         FOREVER {
             OS_Delay(10000);
             PROTanksystemUnit::MySelf->Calculate();
@@ -474,9 +474,9 @@ void CheckComActivity(void) {
 #ifndef WIN32 //RBMARK
     OS_RetriggerTimer(&ComActivityTimer);       /* make timer periodical */
 #endif
-    for ( int i = 0; i < MAX_COM_PORTS; i++ ) {
+    for (int i = 0; i < MAX_COM_PORTS; i++) {
         TSNUart *UartPtr = TSNUart::Channels[i];
-        if ( UartPtr ) {
+        if (UartPtr) {
             UartPtr->RxBytePerSecond = UartPtr->RxByteCnt;
             UartPtr->RxByteCnt       = 0;
             UartPtr->TxBytePerSecond = UartPtr->TxByteCnt;
@@ -490,12 +490,12 @@ void CheckComActivity(void) {
 */
 void ActivateCtrl(char TestMode) {
 
-    if ( PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr1 ) PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr1->Update(TestMode);
-    if ( PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr2 ) PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr2->Update(TestMode);
-    if ( PROTanksystemUnit::MySelf->CtrlBuzzerPtr )     PROTanksystemUnit::MySelf->CtrlBuzzerPtr->Update(TestMode);
-    if ( PROTanksystemUnit::MySelf->CtrlLightPtr )      PROTanksystemUnit::MySelf->CtrlLightPtr->Update(TestMode);
-    if ( PROTanksystemUnit::MySelf->CtrlHornPtr )       PROTanksystemUnit::MySelf->CtrlHornPtr->Update(TestMode);
-    if ( PROTanksystemUnit::MySelf->CtrlLampPtr )       PROTanksystemUnit::MySelf->CtrlLampPtr->Update(TestMode);
+    if (PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr1) PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr1->Update(TestMode);
+    if (PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr2) PROTanksystemUnit::MySelf->CtrlAlarmRelayPtr2->Update(TestMode);
+    if (PROTanksystemUnit::MySelf->CtrlBuzzerPtr)     PROTanksystemUnit::MySelf->CtrlBuzzerPtr->Update(TestMode);
+    if (PROTanksystemUnit::MySelf->CtrlLightPtr)      PROTanksystemUnit::MySelf->CtrlLightPtr->Update(TestMode);
+    if (PROTanksystemUnit::MySelf->CtrlHornPtr)       PROTanksystemUnit::MySelf->CtrlHornPtr->Update(TestMode);
+    if (PROTanksystemUnit::MySelf->CtrlLampPtr)       PROTanksystemUnit::MySelf->CtrlLampPtr->Update(TestMode);
 }
 
 #ifdef S2TXU
@@ -504,17 +504,17 @@ char ControllerTaskStack[2 * 1024];
 
 char TestMode;
 static void ControllerTask(void) {
-    if ( PROTanksystemUnit::MySelf ) {
-        while ( 1 ) {
+    if (PROTanksystemUnit::MySelf) {
+        while (1) {
             TestMode = OS_WaitEventTimed(BUZZER_TEST_PRESSED, 1000);
             ActivateCtrl(TestMode);
-            switch ( TestMode ) {
+            switch (TestMode) {
             case BUZZER_NO_TEST:
             case BUZZER_TEST_RELEASED:
                 break;
             case BUZZER_TEST_PRESSED:
                 TestMode = OS_WaitEventTimed(BUZZER_TEST_RELEASED, 15000);
-                if ( TestMode & BUZZER_TEST_RELEASED ) {
+                if (TestMode & BUZZER_TEST_RELEASED) {
                     ActivateCtrl(BUZZER_TEST_OFF);
                 } else {
                     ActivateCtrl(BUZZER_NO_TEST);
@@ -528,7 +528,7 @@ static void ControllerTask(void) {
 #else
 static void ControllerTask(void) {
     TSN_Delay(1000);
-    if ( PROTanksystemUnit::MySelf ) {
+    if (PROTanksystemUnit::MySelf) {
         ActivateCtrl(BUZZER_NO_TEST);
     }
 }
@@ -551,11 +551,11 @@ void MsgBoxTimerTask(void) {
     CloseWinPacket *MsgBuf = new CloseWinPacket[2];
     OS_CreateMB(&CloseWinTimerBuf, sizeof(CloseWinPacket), 2, (char *)MsgBuf);
 
-    while ( true ) {
+    while (true) {
         CloseWinPacket CWinPacket;
         OS_GetMail(&CloseWinTimerBuf, (char *)&CWinPacket);
         OS_DeleteTimer((OS_TIMER *)&CWinPacket.m_UserTimer);
-        if ( CWinPacket.IsDialogWin ) {
+        if (CWinPacket.IsDialogWin) {
             GUI_EndDialog(CWinPacket.m_WinHandl, 0);
         } else {
             WM_DeleteWindow(CWinPacket.m_WinHandl);
@@ -578,7 +578,7 @@ static TSN_STACKPTR int CheckFreeAlarmsStack[512];
 TSN_TASK tCheckFreeAlarms;                                                   /* Task control blocks */
 
 static void CheckFreeAlarmsTask(void) {
-    while ( 1 ) {
+    while (1) {
         TSN_Delay(1000);
         CheckAlarms(FreeAlarmInfoList);
     }
@@ -593,112 +593,112 @@ static void PresentWindowsTask(void) {
 #ifdef ANTDUSIM
     PWEventHandl = CreateEvent(NULL, true, true, "PWEvent");
 #endif
-    if ( !ConfigWarningsString.IsEmpty() ) {
+    if (!ConfigWarningsString.IsEmpty()) {
         CurrentWinID = TDU_WARNING_WIN;
     }
 
-    while ( 1 ) {
+    while (1) {
 
 #ifdef ANTDUSIM
         ResetEvent(PWEventHandl);
         WaitForSingleObject(PWEventHandl, 1000);
 #else
-        if ( OS_WaitEventTimed(1, 1000) ) {
+        if (OS_WaitEventTimed(1, 1000)) {
             TSN_Delay(50); // If we get one event, wait a little moment
         }
 #endif
         PhysKeyPressed &= ~TOUCH_PRESWIN_FLAG;
         TDUBasicWin::Protect();
 
-        switch ( CurrentWinID ) {
+        switch (CurrentWinID) {
         case TDU_WARNING_WIN    :
-            if ( ConfigWarnings  ) {
+            if (ConfigWarnings) {
                 WM_BringToTop(ConfigWarnings->WinHandl);
                 //ConfigWarnings->Repaint();
             }
             break;
         case TDU_WATERINGR_WIN  :
-            if ( WaterIngrWindow ) WaterIngrWindow->Paintnew();
+            if (WaterIngrWindow) WaterIngrWindow->Paintnew();
             break;
         case TDU_SYSTEM_WIN :
-            if ( SystemWindow ) {
+            if (SystemWindow) {
                 SystemWindow->Protect();
-                if ( !SystemWindow->SysWin1IsClosed )       SystemWindow->SysWin1->UpdateSysWin();
-                if ( !SystemWindow->SysWin2IsClosed )       SystemWindow->SysWin2->UpdateSysWin();
-                if ( !SystemWindow->SysWin3IsClosed )       SystemWindow->SysWin3->UpdateSysWin();
-                if ( !SystemWindow->SysWin4IsClosed )       SystemWindow->SysWin4->UpdateSysWin();
-                if ( !SystemWindow->SysWin5IsClosed )       SystemWindow->SysWin5->UpdateSysWin();
+                if (!SystemWindow->SysWin1IsClosed)       SystemWindow->SysWin1->UpdateSysWin();
+                if (!SystemWindow->SysWin2IsClosed)       SystemWindow->SysWin2->UpdateSysWin();
+                if (!SystemWindow->SysWin3IsClosed)       SystemWindow->SysWin3->UpdateSysWin();
+                if (!SystemWindow->SysWin4IsClosed)       SystemWindow->SysWin4->UpdateSysWin();
+                if (!SystemWindow->SysWin5IsClosed)       SystemWindow->SysWin5->UpdateSysWin();
                 SystemWindow->UnProtect();
             }
             break;
         case TDU_CARGO_WIN :
-            if ( CargoWindow ) {
-                if ( AppSetupCargoIsClosed ) {
+            if (CargoWindow) {
+                if (AppSetupCargoIsClosed) {
                     CargoWindow->PWTimer();
-                } else if ( AppSetupCargo ) {
+                } else if (AppSetupCargo) {
                     AppSetupCargo->Update();
                 }
             }
             break;
         case TDU_TANKFARM_WIN :
-            if ( TankFarmWindow ) {
-                if ( AppSetupTankFarmIsClosed ) {
+            if (TankFarmWindow) {
+                if (AppSetupTankFarmIsClosed) {
                     TankFarmWindow->PWTimer();
-                } else if ( AppSetupTankFarm ) {
+                } else if (AppSetupTankFarm) {
                     AppSetupTankFarm->Update();
                 }
             }
             break;
         case TDU_BALLAST_WIN :
-            if ( BallastWindow ) {
-                if ( AppSetupBallastIsClosed ) {
+            if (BallastWindow) {
+                if (AppSetupBallastIsClosed) {
                     BallastWindow->PWTimer();
-                } else if ( AppSetupBallast ) {
+                } else if (AppSetupBallast) {
                     AppSetupBallast->Update();
                 }
             }
             break;
         case TDU_SERVICE_WIN :
-            if ( ServiceWindow ) {
-                if ( AppSetupServiceIsClosed ) {
+            if (ServiceWindow) {
+                if (AppSetupServiceIsClosed) {
                     ServiceWindow->PWTimer();
-                } else if ( AppSetupService ) {
+                } else if (AppSetupService) {
                     AppSetupService->Update();
                 }
             }
             break;
         case TDU_TANKPRESS_WIN :
-            if ( TankPressWindow ) TankPressWindow->PWTimer();
+            if (TankPressWindow) TankPressWindow->PWTimer();
             break;
         case TDU_LEVELSWITCH_WIN:
-            if ( LevelSwitchWindow ) LevelSwitchWindow->PWTimer();
+            if (LevelSwitchWindow) LevelSwitchWindow->PWTimer();
             break;
         case TDU_TEMP_WIN :
-            if ( TempWindow ) {
-                if ( AppSetupTempIsClosed ) {
+            if (TempWindow) {
+                if (AppSetupTempIsClosed) {
                     TempWindow->PWTimer();
-                } else if ( AppSetupTemp ) {
+                } else if (AppSetupTemp) {
                     AppSetupTemp->Update();
                 }
             }
         case TDU_LINEPRESS_WIN :
-            if ( LinePressWindow ) LinePressWindow->PWTimer();
+            if (LinePressWindow) LinePressWindow->PWTimer();
             break;
             //case TDU_ALARM_WIN:
             //  break;
         case TDU_VOIDSPACE_WIN :
-            if ( VoidSpaceWindow ) {
-                if ( AppSetupVoidSpaceIsClosed ) {
+            if (VoidSpaceWindow) {
+                if (AppSetupVoidSpaceIsClosed) {
                     VoidSpaceWindow->PWTimer();
-                } else if ( AppSetupVoidSpace ) {
+                } else if (AppSetupVoidSpace) {
                     AppSetupVoidSpace->Update();
                 }
             }
             break;
         }
-        if ( TankDetails && !TankDetails->Closed ) {
+        if (TankDetails && !TankDetails->Closed) {
             TankDetails->Update();
-        } else if ( SensorDetails && !SensorDetails->IsClosed ) {
+        } else if (SensorDetails && !SensorDetails->IsClosed) {
             SensorDetails->Update();
         }
         TDUBasicWin::UnProtect();
@@ -713,7 +713,7 @@ static void PresentWindowsTask(void) {
 *  evaluating mouse or touch input may also be done.
 */
 static void _GUI_Task(void) {
-    while ( true ) {
+    while (true) {
         GUI_Exec();                                         /* Do the background work ... Update windows etc.) */
         //      GUI_TOUCH_Exec();
         GUI_X_ExecIdle();                       /* Nothing left to do for the moment ... Idle processing */
@@ -728,7 +728,7 @@ static void _GUI_Task(void) {
 #ifdef S2TXU
 OS_TASK *ANPRO10IOTask;
 #endif
-void ANPRO10_IO_Handler(TSNUart * CompPtr) {
+void ANPRO10_IO_Handler(TSNUart *CompPtr) {
 #ifdef S2TXU
     ANPRO10IOTask = OS_GetpCurrentTask();
     OS_SetPriority(ANPRO10IOTask, ANPRO10_TASK_PRIORITY);
@@ -738,14 +738,14 @@ void ANPRO10_IO_Handler(TSNUart * CompPtr) {
     unsigned NumberOfRequests = 0;
     set<IOUnit *>IOUnitSet;
     set<PRogramObject *>TaskUniquePROSet;
-    if ( !IOUnitList.empty() ) {
+    if (!IOUnitList.empty()) {
         set<PRogramObjectBase *>::iterator pBIt;
-        for ( pBIt = IOUnitList.begin(); pBIt != IOUnitList.end(); pBIt++ ) {
+        for (pBIt = IOUnitList.begin(); pBIt != IOUnitList.end(); pBIt++) {
             IOUnit *IOElement = (IOUnit *)(*pBIt);
             NumberOfRequests += IOElement->GetRequestNumber();
             IOUnitSet.insert(IOElement);
             set<PRogramObject *>::iterator pBIt;
-            for ( pBIt = IOElement->IOUniquePROSet.begin(); pBIt != IOElement->IOUniquePROSet.end(); pBIt++ ) {
+            for (pBIt = IOElement->IOUniquePROSet.begin(); pBIt != IOElement->IOUniquePROSet.end(); pBIt++) {
                 PRogramObject *IOElement = *pBIt;
                 TaskUniquePROSet.insert(IOElement);
             }
@@ -753,36 +753,36 @@ void ANPRO10_IO_Handler(TSNUart * CompPtr) {
         // Include all Modbus register in
         {
             set<PRogramObjectBase *>::iterator pBIt;
-            for (pBIt = ModbusRegisterIn::ModbusSet.begin(); pBIt !=ModbusRegisterIn::ModbusSet.end(); pBIt++) {
-                PRogramObject *IOElement = (PRogramObject*)(((ModbusRegisterIn*)(*pBIt))->GetObjectPointer());
+            for (pBIt = ModbusRegisterIn::ModbusSet.begin(); pBIt != ModbusRegisterIn::ModbusSet.end(); pBIt++) {
+                PRogramObject *IOElement = (PRogramObject *)(((ModbusRegisterIn *)(*pBIt))->GetObjectPointer());
                 if (IOElement) {
                     TaskUniquePROSet.insert(IOElement);
-                }else{
+                } else {
                     continue;
                 }
-           }
+            }
         }
-        if ( !PROProjectInfo::SimulateIO && NumberOfRequests ) { 
+        if (!PROProjectInfo::SimulateIO && NumberOfRequests) {
             // Forever
-            int   Delay         = 2*MIN_IO_DELAY;
+            int   Delay         = 2 * MIN_IO_DELAY;
             int   RS485_Period  = PROTanksystemUnit::MySelf->GetIO_ScanPeriod();
             FOREVER {
                 int StartTime = OS_Time;
                 set<IOUnit *>::iterator pBIt;
-                for ( pBIt = IOUnitSet.begin(); pBIt != IOUnitSet.end(); pBIt++ ) {
+                for (pBIt = IOUnitSet.begin(); pBIt != IOUnitSet.end(); pBIt++) {
                     IOUnit *IOElement = *pBIt;
                     IOElement->HandleIO(Delay);
                 }
-                RecalcProgramObjects(TaskUniquePROSet,Delay);
+                RecalcProgramObjects(TaskUniquePROSet, Delay);
                 // Let us wait
                 OS_DelayUntil(StartTime + RS485_Period);
                 // After wait, see if any speed adjustmens are required
-                int TimeUsed = abs( OS_Time - StartTime);
+                int TimeUsed = abs(OS_Time - StartTime);
                 int TimeMargin = RS485_Period - TimeUsed;
                 if (TimeUsed < RS485_Period) {
                     Delay++;
                     // See if we can speed up things
-                    if (( TimeMargin > 500) && ( RS485_Period > SCAN_IO_INTERVAL)) {
+                    if ((TimeMargin > 500) && (RS485_Period > SCAN_IO_INTERVAL)) {
                         RS485_Period -= 500;    // Subtract half a second
                         Delay = 10;             // Set to a reasonable value
                         PROTanksystemUnit::MySelf->SetIO_ScanPeriod(RS485_Period);
@@ -790,14 +790,14 @@ void ANPRO10_IO_Handler(TSNUart * CompPtr) {
                 } else if (TimeUsed > RS485_Period && Delay >= MIN_IO_DELAY) {
                     Delay--;
                     // See if we must reduce speed
-                    if (Delay <= MIN_IO_DELAY ) {
+                    if (Delay <= MIN_IO_DELAY) {
                         RS485_Period += 500;    // Add half a second
                         Delay = 10;             // Set to a reasonable value
                         PROTanksystemUnit::MySelf->SetIO_ScanPeriod(RS485_Period);
                     }
                 }
 
-                if ( PROTanksystemUnit::MySelf ) PROTanksystemUnit::MySelf->SetIOLoadDelay(Delay);
+                if (PROTanksystemUnit::MySelf) PROTanksystemUnit::MySelf->SetIOLoadDelay(Delay);
             }
         } else { //End if (NumberOfRequests)
             OS_Terminate(NULL);
@@ -838,7 +838,7 @@ void StartSendStaticDataTask(void) {
 
 }
 void StartMiscTasks(void) {
-    if ( Master ) {
+    if (Master) {
         CREATE_TASK(&LogTaskHandle, "LogTask", LogTask,  78, LogTaskStack);
     }
     CREATE_TASK(&ControllerTaskHandle, "ControllerTask", ControllerTask,  79, ControllerTaskStack);
@@ -875,11 +875,11 @@ void StartCommunication(void) {
     TSNAsyncSender::FindANPRO10ComPorts();
     // com server tasks
     CREATE_TASK(&aTCB[19], "NetSendTask", AsyncsenderNetwork::TaskEntryPoint, COM_SEND_TASK_PRIORITY, AsyncSendStackNet);
-    if ( !TSNAsyncSender::ANPRO10ComPorts.empty() ) {
+    if (!TSNAsyncSender::ANPRO10ComPorts.empty()) {
         CREATE_TASK(&aTCB[5], "ComSendTask", TSNAsyncSender::TaskEntryPoint, COM_SEND_TASK_PRIORITY, AsyncSendStackCom);
     }
     // create recive tasks
-    for ( int i = 0; i < ASYNC_RECEIVER_TASKS; i++ ) {
+    for (int i = 0; i < ASYNC_RECEIVER_TASKS; i++) {
         const char *TaskName[ASYNC_RECEIVER_TASKS] = {
             "ReceiveTask1",
             "ReceiveTask2",
@@ -889,22 +889,22 @@ void StartCommunication(void) {
             "ReceiveTask6",
             "ReceiveTask7",
         };
-        if ( TSNUart::Channels[i] ) {
+        if (TSNUart::Channels[i]) {
             OS_CREATETASK_EX(&ReceiverTCB[i], TaskName[i], TSNAsyncReceiver::EntryPoint, 100, ReceiveStack[i], (void *)i);
         }
     }
 #endif
-    switch ( CurrentDeviceId ) {
+    switch (CurrentDeviceId) {
     case DEVICE_TDU:        // TCU
         FreeAlarmInfoList.insert(new AlarmCriticalComFailure("TCU", ALARM_ANPRO10_SYNC_TIMEOUT));
-        if ( !FreeAlarmInfoList.empty() ) {
+        if (!FreeAlarmInfoList.empty()) {
             CREATE_TASK(&tCheckFreeAlarms, "CheckFreeAlarms", CheckFreeAlarmsTask, 60, CheckFreeAlarmsStack);
         }
         break;
     case DEVICE_TCU:
-        if ( !Master ) {
+        if (!Master) {
             FreeAlarmInfoList.insert(new AlarmCriticalComFailure("TCU", ALARM_ANPRO10_SYNC_TIMEOUT));
-            if ( !FreeAlarmInfoList.empty() ) {
+            if (!FreeAlarmInfoList.empty()) {
                 CREATE_TASK(&tCheckFreeAlarms, "CheckFreeAlarms", CheckFreeAlarmsTask, 60, CheckFreeAlarmsStack);
             }
         }
@@ -919,10 +919,10 @@ void StartSimulatorCommunication(void) {
     /* com server tasks */
     CREATE_TASK(&aTCB[5], "ComSendTask", TSNAsyncSender::TaskEntryPoint, COM_SEND_TASK_PRIORITY, AsyncSendStack);
     // create recive tasks
-    if ( TSNUart::Channels[0] ) {
+    if (TSNUart::Channels[0]) {
         //              CREATE_TASK(&ReceiverTCB[0],"ReceiveTask1", TSNAsyncReceiver::EntryPoint0, 100, ReceiveStack_1);
     }
-    if ( TSNUart::Channels[1] ) {
+    if (TSNUart::Channels[1]) {
         //              CREATE_TASK(&ReceiverTCB[1],"ReceiveTask2", TSNAsyncReceiver::EntryPoint1, 100, ReceiveStack_2);
     }
 }
@@ -956,14 +956,14 @@ void StatTask(void) {
         TaskVector.push_back(taskPtr);
         PROTanksystemUnit::MySelf->TaskName[i++] = TName;
         taskPtr = taskPtr->pNext;
-    }while ( taskPtr );
+    }while (taskPtr);
 
     PROTanksystemUnit::MySelf->NumberOfTasks = TaskVector.size();
     FOREVER{
         OS_Delay(4000);
         OS_STAT_Sample();
         float tmpRawLoad = 0.0;
-        for ( int i = 0; i < TaskVector.size() && i < MAX_ANPRO10_NUMBER_OF_TASKS; i++ ) {
+        for (int i = 0; i < TaskVector.size() && i < MAX_ANPRO10_NUMBER_OF_TASKS; i++) {
             PROTanksystemUnit::MySelf->RawPerformance[i] = OS_STAT_GetLoad(TaskVector[i]);
             tmpRawLoad  += PROTanksystemUnit::MySelf->RawPerformance[i] / 10.0;
 #if (STACK_CHECK == 1)
@@ -985,12 +985,12 @@ void StartTasks(void) {
 
     CREATE_TASK(&aTCB[3], "StaticTask", StatTask,  20, StatTaskStack);   // Measure performance
 
-    if ( ConfigWarningsString.IsEmpty() ) {
+    if (ConfigWarningsString.IsEmpty()) {
         CREATE_TASK(&SaveSettingsTaskHandle, "Save Settings", SaveSettingsTask,  78, SaveSettingsTaskStack);
         CREATE_TASK(&SaveConfigTaskHandle, "Write Config", SaveConfigTask,  78, SaveConfigTaskStack);
     }
 #endif
-    switch ( CurrentDeviceId ) {
+    switch (CurrentDeviceId) {
 #ifndef ANTDUSIM
     case DEVICE_TDU:
         Master = false;
@@ -1012,7 +1012,7 @@ void StartTasks(void) {
         LastStartTime = time(NULL);
         ProgProgress  = WD_START_OK;
 #endif
-        if ( !ConfigWarningsString.IsEmpty() ) {
+        if (!ConfigWarningsString.IsEmpty()) {
             ProgProgress = WD_START_WIN_TASKS;
             StartWindowTasks();
             ProgProgress = WD_CONFIG_WARNING;
@@ -1030,7 +1030,7 @@ void StartTasks(void) {
         }
         break;
     case DEVICE_TCU:
-        if ( CurrentDeviceAddress ) {
+        if (CurrentDeviceAddress) {
             StartUploadTask();
             ProgProgress = WD_START_COM_TASKS;
             //PROTanksystemUnit::MySelf->InitTDUWinUarts();
@@ -1062,7 +1062,7 @@ void StartTasks(void) {
             CREATE_TASK(&InclinometerHandle, "Inclinometer", InclinometerTask, 149, InclinometerStack);
             CREATE_TASK(&CalcMiscObjectsHandle, "CalcMiscObjects", CalcMiscObjectsTask,  90, CalcMiscObjectsStack);
             ModbusObject::StartExchangeData();
-            if ( PROProjectInfo::SimulateIO ) {
+            if (PROProjectInfo::SimulateIO) {
                 StartSimulatorTasks();
             }
             //OS_SignalCSema(&SaveSettingSema);
@@ -1099,7 +1099,7 @@ void StartTasks(void) {
 //      StartSimulatorTasks();
         break;
     case DEVICE_TDU_SIMULATOR:
-        if ( !ConfigWarningsString.IsEmpty() ) {
+        if (!ConfigWarningsString.IsEmpty()) {
             ProgProgress = WD_CONFIG_WARNING;
             ConfigWarnings->ExecDialogBox(NULL);
             GUI_ExecCreatedDialog(ConfigWarnings->WinHandl);

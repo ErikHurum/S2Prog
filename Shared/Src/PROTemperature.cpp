@@ -976,16 +976,16 @@ int PROTemperature::ReceiveData(U8 *data) {
     case CMD_GENERIC_REALTIME_DATA:
         if (IsOnline) {
             ANPRO10_COMMAND_2106 *pCommand = (ANPRO10_COMMAND_2106 *)data;
-            HasTemp     = pCommand->HasTemp;
-            HWFailure   = pCommand->HWFailure;
-            IsNewData   = pCommand->IsNewData;
-            StatusTemp  = pCommand->StatusTemp;
-            Temperature = pCommand->Temperature;
-            VaporTemp   = pCommand->VaporTemp;
-            BottomTemp  = pCommand->BottomTemp;
-            IsOnline    = pCommand->IsOnline;
-            UpdatePeriod= pCommand->UpdatePeriod;
-            TimeStamp   = pCommand->TimeStamp;
+            HasTemp         = pCommand->HasTemp;
+            HWFailure       = pCommand->HWFailure;
+            IsNewData       = pCommand->IsNewData;
+            StatusTemp      = pCommand->StatusTemp;
+            Temperature     = pCommand->Temperature;
+            VaporTemp       = pCommand->VaporTemp;
+            BottomTemp      = pCommand->BottomTemp;
+            IsOnline        = pCommand->IsOnline;
+            UpdatePeriod    = clock() - TimeStamp; // pCommand->UpdatePeriod ;
+            TimeStamp       = clock();  //pCommand->TimeStamp;
             if (CreatedFromThisTank) {
                 CreatedFromThisTank->SetTemperature(Temperature);
             }

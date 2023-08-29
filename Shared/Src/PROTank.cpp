@@ -6231,8 +6231,8 @@ int PROTank::ReceiveData(U8 *data) {
             memmove(&LevelHistory[1], &LevelHistory[0], sizeof(float) * (LEVEL_HISTORY_ENTRIES - 1));
             LevelHistory[0] = Level;
             IsOnline        = pData->IsOnline;
-            TimeStamp       = pData->TimeStamp;
-            UpdatePeriod    = pData->UpdatePeriod;
+            UpdatePeriod    = clock() - TimeStamp; // pData->UpdatePeriod ;
+            TimeStamp       = clock();  //pData->TimeStamp;
             ErrorStatus     = E_OK;
         }
         break;
