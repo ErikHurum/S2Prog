@@ -732,6 +732,12 @@ void ANPRO10_IO_Handler(TSNUart *CompPtr) {
 #ifdef S2TXU
     ANPRO10IOTask = OS_GetpCurrentTask();
     OS_SetPriority(ANPRO10IOTask, ANPRO10_TASK_PRIORITY);
+    int MinDelay;
+    if (TSNAsyncSender::ANPRO10ComPorts.empty()) {
+        MinDelay = 0;
+    }else{
+        MinDelay = MIN_IO_DELAY;
+    }
 
 
     set<PRogramObjectBase *>IOUnitList = PROTanksystemUnit::MySelf->UnitPortList[CompPtr->PortNumber];
@@ -764,7 +770,7 @@ void ANPRO10_IO_Handler(TSNUart *CompPtr) {
         }
         if (!PROProjectInfo::SimulateIO && NumberOfRequests) {
             // Forever
-            int   Delay         = 2 * MIN_IO_DELAY;
+            int   Delay         = 2 * MinDelay;
             int   RS485_Period  = PROTanksystemUnit::MySelf->GetIO_ScanPeriod();
             FOREVER {
                 int StartTime = OS_Time;
@@ -774,11 +780,13 @@ void ANPRO10_IO_Handler(TSNUart *CompPtr) {
                     IOElement->HandleIO(Delay);
                 }
                 RecalcProgramObjects(TaskUniquePROSet, Delay);
+                // Measure time
+                int TimeUsed = abs(OS_Time - StartTime);
+                int TimeMargin = RS485_Period - TimeUsed;
+
                 // Let us wait
                 OS_DelayUntil(StartTime + RS485_Period);
                 // After wait, see if any speed adjustmens are required
-                int TimeUsed = abs(OS_Time - StartTime);
-                int TimeMargin = RS485_Period - TimeUsed;
                 if (TimeUsed < RS485_Period) {
                     Delay++;
                     // See if we can speed up things
@@ -787,10 +795,10 @@ void ANPRO10_IO_Handler(TSNUart *CompPtr) {
                         Delay = 10;             // Set to a reasonable value
                         PROTanksystemUnit::MySelf->SetIO_ScanPeriod(RS485_Period);
                     }
-                } else if (TimeUsed > RS485_Period && Delay >= MIN_IO_DELAY) {
+                } else if (TimeUsed > RS485_Period && Delay >= MinDelay) {
                     Delay--;
                     // See if we must reduce speed
-                    if (Delay <= MIN_IO_DELAY) {
+                    if (Delay <= MinDelay) {
                         RS485_Period += 500;    // Add half a second
                         Delay = 10;             // Set to a reasonable value
                         PROTanksystemUnit::MySelf->SetIO_ScanPeriod(RS485_Period);

@@ -658,15 +658,14 @@ int PROLinePressure::ReceiveData(U8* data)
     ANPRO10_CommandHeading *pCH = (ANPRO10_CommandHeading*)data;
     switch ( pCH->CommandNo ) {
     case  CMD_GENERIC_REALTIME_DATA: // Real time Data
-        UpdatePeriod = clock() - TimeStamp;
         {
             ANPRO10_COMMAND_2104  *pData = (ANPRO10_COMMAND_2104*) data;
             HasPressure     = pData->HasPressure;
             HWFailure       = pData->HWFailure;
             IsNewData       = pData->IsNewData;
             Pressure        = pData->Pressure;
-            UpdatePeriod    = clock() - TimeStamp; // pData->UpdatePeriod ;
-            TimeStamp       = clock();  //pData->TimeStamp;
+            UpdatePeriod    = clock() - TimeStamp; 
+            TimeStamp       = clock();  
             if ( PROPtr ) {
                 // Can update tank value here
             }
@@ -696,8 +695,6 @@ int PROLinePressure::SendData(U16 cmd)
             Cmd.Data.HWFailure      = HWFailure;
             Cmd.Data.IsNewData      = IsNewData;
             Cmd.Data.Pressure       = Pressure;
-            Cmd.Data.TimeStamp      = TimeStamp;
-            Cmd.Data.UpdatePeriod   = UpdatePeriod;
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent )

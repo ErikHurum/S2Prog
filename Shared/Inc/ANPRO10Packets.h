@@ -233,8 +233,6 @@ struct ANPRO10_COMMAND_2100 {
     float   FilteredVolPercent;
     float   UllageRef;
     bool    IsOnline;
-    clock_t TimeStamp;
-    int     UpdatePeriod;
 };
 
 struct QueueANPRO10_COMMAND_2100 {
@@ -275,8 +273,6 @@ struct ANPRO10_COMMAND_2104 {
 
     float   Pressure;
     bool    IsNewData;
-    clock_t TimeStamp;
-    int     UpdatePeriod;
 };
 
 struct QueueANPRO10_COMMAND_2104 {
@@ -311,8 +307,6 @@ struct ANPRO10_COMMAND_2106 {
     bool    IsNewData;
     float   BottomTemp;
     bool    IsOnline;
-    clock_t TimeStamp;
-    int     UpdatePeriod;
 };
 
 struct QueueANPRO10_COMMAND_2106 {

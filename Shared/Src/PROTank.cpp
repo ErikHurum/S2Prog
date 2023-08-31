@@ -6231,8 +6231,8 @@ int PROTank::ReceiveData(U8 *data) {
             memmove(&LevelHistory[1], &LevelHistory[0], sizeof(float) * (LEVEL_HISTORY_ENTRIES - 1));
             LevelHistory[0] = Level;
             IsOnline        = pData->IsOnline;
-            UpdatePeriod    = clock() - TimeStamp; // pData->UpdatePeriod ;
-            TimeStamp       = clock();  //pData->TimeStamp;
+            UpdatePeriod    = clock() - TimeStamp; 
+            TimeStamp       = clock();  
             ErrorStatus     = E_OK;
         }
         break;
@@ -6271,7 +6271,6 @@ int PROTank::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        UpdatePeriod = clock() - TimeStamp;
         {
             QueueANPRO10_COMMAND_2100 Cmd;
             Cmd.TxInfo.Port             = NULL;
@@ -6306,8 +6305,6 @@ int PROTank::SendData(U16 cmd) {
             Cmd.Data.HasWater           = HasWater;
             Cmd.Data.FilteredVolPercent = FilteredVolPercent;
             Cmd.Data.IsOnline           = IsOnline;
-            Cmd.Data.TimeStamp          = TimeStamp;
-            Cmd.Data.UpdatePeriod       = UpdatePeriod;
 
             /*
             bool sent;

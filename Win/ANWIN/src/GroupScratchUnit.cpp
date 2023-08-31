@@ -15,6 +15,8 @@
 #pragma link "AdvUtil"
 #pragma link "BaseGrid"
 #pragma link "asgprint"
+#pragma link "frCoreClasses"
+#pragma link "tmsAdvGridExcel"
 #pragma resource "*.dfm"
 TGroupTableScratchPage *GroupTableScratchPage;
 //---------------------------------------------------------------------------
@@ -79,6 +81,7 @@ void __fastcall TGroupTableScratchPage::SetPopupMenuInsertTank(void) {
 			}
 		}
 		int Index = 0;
+		/*
 		if (TankEntries) {
 			TShortCut AShortCut = NULL;
 			SubMenuTankPopUp = NewSubMenu("Tank", AShortCut, "SubMenuTankPopUp",
@@ -86,6 +89,8 @@ void __fastcall TGroupTableScratchPage::SetPopupMenuInsertTank(void) {
 			PopupMenuInsertTank->Items->Items[2]->Insert(Index++, SubMenuTankPopUp);
 
 		}
+		*/
+		/*
 		if (TankPressEntries) {
 			TShortCut AShortCut = NULL;
 			SubMenuTankPressurePopUp = NewSubMenu("Tank Pressure", AShortCut, "SubMenuTankPressurePopUp",
@@ -93,6 +98,8 @@ void __fastcall TGroupTableScratchPage::SetPopupMenuInsertTank(void) {
 			PopupMenuInsertTank->Items->Items[2]->Insert(Index++, SubMenuTankPressurePopUp);
 
 		}
+        */
+		/*
 		if (TempEntries) {
 			TShortCut AShortCut = NULL;
 			SubMenuTemperaturePopUp = NewSubMenu("Temperature", AShortCut, "SubMenuTemperaturePopUp",
@@ -100,18 +107,21 @@ void __fastcall TGroupTableScratchPage::SetPopupMenuInsertTank(void) {
 			PopupMenuInsertTank->Items->Items[2]->Insert(Index++, SubMenuTemperaturePopUp-1);
 
 		}
+		*/
+		/*
 		if (LinePressEntries) {
 			TShortCut AShortCut = NULL;
 			SubMenuLinePressurePopUp = NewSubMenu("Line Pressure", AShortCut, "SubMenuLinePressurePopUp",
 												 (TMenuItem *const *)LinePressArray, LinePressEntries-1);
-			PopupMenuInsertTank->Items->Items[2]->Insert(Index++, SubMenuLinePressurePopUp);
+			PopupMenuInsertTank->Items->Items[3]->Insert(Index++, SubMenuLinePressurePopUp);
 
 		}
+        */
 		if (DraftEntries) {
 			TShortCut AShortCut = NULL;
 			SubMenuDraftPopUp = NewSubMenu("Draft", AShortCut, "SubMenuDraftPopUp",
 												 (TMenuItem *const *)DraftArray, DraftEntries-1);
-			PopupMenuInsertTank->Items->Items[2]->Insert(Index++, SubMenuDraftPopUp);
+			PopupMenuInsertTank->Items->Items[4]->Insert(Index++, SubMenuDraftPopUp);
 
 		}
 	}

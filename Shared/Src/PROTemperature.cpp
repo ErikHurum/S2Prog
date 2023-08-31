@@ -1003,7 +1003,6 @@ int PROTemperature::SendData(U16 CommandNo) {
     int ErrorStatus = E_OK;
     switch (CommandNo) {
     case CMD_GENERIC_REALTIME_DATA:
-        UpdatePeriod = clock() - TimeStamp;
         {
             QueueANPRO10_COMMAND_2106 Cmd;
             Cmd.TxInfo.Port         = NULL;
@@ -1020,8 +1019,6 @@ int PROTemperature::SendData(U16 CommandNo) {
             Cmd.Data.VaporTemp      = VaporTemp;
             Cmd.Data.BottomTemp     = BottomTemp;
             Cmd.Data.IsOnline       = IsOnline;
-            Cmd.Data.TimeStamp      = TimeStamp;
-            Cmd.Data.UpdatePeriod   = UpdatePeriod;
             // post command on messageQ
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus =  E_QUEUE_FULL;

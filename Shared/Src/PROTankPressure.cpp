@@ -1656,8 +1656,8 @@ int PROTankPressure::ReceiveData(U8 *data) {
             HWFailure       = pData->HWFailure;
             IsNewData       = pData->IsNewData;
             Pressure        = pData->Pressure;
-            UpdatePeriod    = clock() - TimeStamp; // pData->UpdatePeriod ;
-            TimeStamp       = clock();  //pData->TimeStamp;
+            UpdatePeriod    = clock() - TimeStamp; 
+            TimeStamp       = clock(); 
             if (CreatedFromThisTank) {
                 // Can update tank value here
                 CreatedFromThisTank->SetPressure(Pressure);
@@ -1690,7 +1690,6 @@ int PROTankPressure::SendData(U16 cmd) {
     int ErrorStatus = E_OK;
     switch (cmd) {
     case CMD_GENERIC_REALTIME_DATA:
-        UpdatePeriod = clock() - TimeStamp;
         {
             QueueANPRO10_COMMAND_2104 Cmd;
             Cmd.TxInfo.Port         = NULL;
@@ -1703,8 +1702,6 @@ int PROTankPressure::SendData(U16 cmd) {
             Cmd.Data.HWFailure      = HWFailure;
             Cmd.Data.IsNewData      = IsNewData;
             Cmd.Data.Pressure       = Pressure;
-            Cmd.Data.TimeStamp      = TimeStamp;
-            Cmd.Data.UpdatePeriod   = UpdatePeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus = E_QUEUE_FULL;
             else ErrorStatus = E_OK;
