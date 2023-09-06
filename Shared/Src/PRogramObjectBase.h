@@ -41,6 +41,7 @@ public:
     int         SortNo;
     unsigned    IDNumber;
     int         Type;
+    unsigned    LegacyIDNumber;
 
 
 // Routines for the Configuration

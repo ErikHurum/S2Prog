@@ -230,6 +230,7 @@ bool TSNSaveSettings::RestoreSettings(TSNConfigString *SettingsString) {
                         CurrentPRO->RestoreSettings(SettingsString);
                     } else {
                         NoError = false;
+                        RestoreSettingsWarning((AnsiString)"Object IDNumber "+(AnsiString)IDNumber+"not found:\nUnknown error started at line:" + (AnsiString)ErrorLine + NewLineStr);
                     }
                 } else {
                     NoError = false;

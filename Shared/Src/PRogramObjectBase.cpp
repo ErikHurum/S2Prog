@@ -32,6 +32,7 @@ PRogramObjectBase::PRogramObjectBase(bool AddToList) {
     IDNumber        = 0;
 
     IDNumber 	    = (C_PRO_BASIC << 16) + MySet.size();
+    LegacyIDNumber  = (C_PRO_BASIC << 16) + MySet.size();
     Type            = 0;
     HWFailure       = false;
     UpdatePeriod    = 0;
@@ -762,7 +763,8 @@ void PRogramObjectBase::SetIdNumber(PRogramObjectBase *ObjPtr, int ProposedId, i
         ObjPtr->IDNumber = ProposedId;
     }
     if (CreatedFromOther) {
-        ObjPtr->IDNumber += 0x8000; // Was 0x1000
+        ObjPtr->IDNumber        += 0x8000; // Was 0x1000
+        ObjPtr->LegacyIDNumber   = (ObjectType << 16) + ObjVector.size() + 0x1000; // For backward compatibility to restore settings file correctly
     }
 }
 
