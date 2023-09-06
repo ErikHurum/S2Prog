@@ -1894,11 +1894,6 @@ PRogramObjectBase* FindComponent(int Command, int CurrentType, AnsiString Name, 
                 break;
             }
             if (!LocalSet.empty()) {
-                unsigned IDNumbers[200];
-                int i = 0;
-                for (int j = 0; j < 200; j++) {
-                    IDNumbers[j] = 0;
-                }
                 PRogramObjectBase *tmpPROPtr = NULL;
                 set<PRogramObjectBase *>::iterator pBIt;
                 for (pBIt = LocalSet.begin(); !tmpPROPtr && pBIt != LocalSet.end(); pBIt++) {
@@ -1915,8 +1910,6 @@ PRogramObjectBase* FindComponent(int Command, int CurrentType, AnsiString Name, 
                         break;
                     case FIND_ID     :
                         {
-                            int ObjIDNumber = (*pBIt)->LegacyIDNumber;
-							IDNumbers[i++] = ObjIDNumber;
                             if ((*pBIt)->IDNumber == IDNumber  || (*pBIt)->LegacyIDNumber == IDNumber) {
                                 tmpPROPtr = (*pBIt);
                             }
