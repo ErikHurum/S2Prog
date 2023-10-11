@@ -895,22 +895,20 @@ void AcknowledgeSoftAlarms(set<AlarmBasic *> &AlarmSet) {
 }
 
 void SetDataTime(set<PRogramObject *> &PROSet) {
-    clock_t CurrentClock = clock();
     if (!PROSet.empty()) {
         set<PRogramObject *>::iterator pBIt;
         for (pBIt = PROSet.begin(); pBIt != PROSet.end(); pBIt++) {
             PRogramObject *TempElement = *pBIt;
-            TempElement->TimeStamp = CurrentClock;
+            TempElement->SetTimeStamp();
         }
     }
 }
 
 void SetDataTime(set<PRogramObjectBase *> &PROList) {
-    clock_t CurrentClock = clock();
     set<PRogramObjectBase *>::iterator pBIt;
     for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
         PRogramObject *TempElement = (PRogramObject *)*pBIt;
-        TempElement->TimeStamp = CurrentClock;
+        TempElement->SetTimeStamp();
     }
 }
 

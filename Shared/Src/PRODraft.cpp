@@ -820,7 +820,8 @@ int PRODraft::ReceiveData(U8 *data) {
             DraftAtPP     = pData->DraftAtPP;
             Draft         = pData->Draft;
             DraftStatus   = pData->DraftStatus;
-        }
+            UpdateTimeInfo(pData->TimeStampPeriod);
+		}
         break;
     case CMD_GENERIC_STATIC_DATA:
         {
@@ -843,17 +844,18 @@ int PRODraft::SendData(U16 cmd) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             QueueANPRO10_COMMAND_2732 Cmd;
-            Cmd.TxInfo.Port        = NULL;
-            Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId        = DEVICE_BROADCAST_TXU;
+            Cmd.TxInfo.Port          = NULL;
+            Cmd.TxInfo.rxAddr        = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId          = DEVICE_BROADCAST_TXU;
 
-            Cmd.Data.ObjectId      = IDNumber;
-            Cmd.Data.ndb           = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo     = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.DraftAtMark   = DraftAtMark;
-            Cmd.Data.DraftAtPP     = DraftAtPP;
-            Cmd.Data.DraftStatus   = DraftStatus;
-            Cmd.Data.Draft         = Draft;
+            Cmd.Data.ObjectId        = IDNumber;
+            Cmd.Data.ndb             = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo       = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.DraftAtMark     = DraftAtMark;
+            Cmd.Data.DraftAtPP       = DraftAtPP;
+            Cmd.Data.DraftStatus     = DraftStatus;
+            Cmd.Data.Draft           = Draft;
+            Cmd.Data.TimeStampPeriod = TimeStampPeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus =  E_QUEUE_FULL;
             else ErrorStatus =  E_OK;

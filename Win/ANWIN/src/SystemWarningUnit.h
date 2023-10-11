@@ -10,6 +10,8 @@
 #include <StdCtrls.hpp>
 #include <ToolWin.hpp>
 #include <Vcl.Menus.hpp>
+#include <System.ImageList.hpp>
+#include <Vcl.ImgList.hpp>
 #include <vector>
 #include <utility>
 //---------------------------------------------------------------------------

@@ -6,7 +6,7 @@
  **
  ***************************************************************************/
 
-#define PROG_VERSION     14            // version of the program
+#define PROG_VERSION     15            // version of the program
 #define COMP_VERSION     2            // compability with the PC on structs and com.
 #define STORE_VERSION    3            // Store format in the EEPROM
 

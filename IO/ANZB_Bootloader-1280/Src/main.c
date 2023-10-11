@@ -25,21 +25,8 @@
 
 extern char MyAddress(void);
 
-__C_task void main(void){
-    //
-    // watchdog off
-    // if we don't do this, watchdog keeps
-    // reseting the system in case of
-    // intentional reset by app
-    //
-
-    /*
-    asm("WDR");
-    char status = MCUSR;
-    MCUSR &= ~(1<<WDRF);
-    WDTCSR = 0x00;
-    (void)status;
-    */
+void WDT_off(void)
+{
     __disable_interrupt();
     __watchdog_reset();
     /* Clear WDRF in MCUSR */
@@ -51,9 +38,37 @@ __C_task void main(void){
     /* Turn off WDT */
     WDTCSR = 0x00;
     __enable_interrupt();
+}
 
-    while ( (EECR & 1<<EEPE) != 0 ) //chech if EEPROM is ready
-        ;
+void WDT_Prescaler_Change(void)
+{
+    __disable_interrupt();
+    __watchdog_reset();
+    /* Start timed equence */
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    /* Set new prescaler(time-out) value = 64K cycles (~0.5 s) */
+    //WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP0);
+    /* Set new prescaler(time-out) value = 256K cycles (~2.0 s) */
+    //WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+    /* Set new prescaler(time-out) value = 256K cycles (~4.0 s) */
+    WDTCSR = (1<<WDE) | (1<<WDP3) ;
+
+
+__enable_interrupt();
+}
+
+
+
+__C_task void main(void){
+    //
+    // watchdog off
+    // if we don't do this, watchdog keeps
+    // reseting the system in case of
+    // intentional reset by app
+    //
+    WDT_off();
+    WDT_Prescaler_Change();
+    while ( (EECR & 1<<EEPE) != 0 );        //chech if EEPROM is ready
     EEARL = (0x0fff & 0xff);                // check high byte of eeprom 
     EEARH = (0x0fff >> 8);                  // if date = 0xaa enter uploader mode
     EECR |= (1<<EERE);                      // else jump to program
@@ -61,11 +76,11 @@ __C_task void main(void){
         EEDR = 0;
         InitSystem();                       // Init the system
 
-        GoToSyncUART() ;                   // go to sync modus for recive
+        GoToSyncUART() ;                    // go to sync modus for recive
         UART_DATA_REG0 ;                    // read dummy byte
         for(;;) {                           // suuuuuuperloooop here!!
-            recchar();
-             if(myUART.RxState == HANDLE){ // Package OK
+            recchar(); 
+             if(myUART.RxState == HANDLE){  // Package OK
                  UsartCheckPackage();
              }
         }                            

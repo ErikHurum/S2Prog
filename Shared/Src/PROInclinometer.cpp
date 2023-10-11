@@ -581,6 +581,7 @@ int PROInclinometer::ReceiveData(U8* data)
             AvgFrequency    = pData->RolFrequency;
             MaxBufListS     = pData->MaxS;
             MaxBufListP     = pData->MaxP;
+            UpdateTimeInfo(pData->TimeStampPeriod);
         }
         break;
     case CMD_GENERIC_STATIC_DATA :
@@ -616,6 +617,7 @@ int PROInclinometer::SendData(U16 cmd)
             Cmd.Data.RolFrequency   = AvgFrequency;
             Cmd.Data.MaxP           = MaxBufListP;
             Cmd.Data.MaxS           = MaxBufListS;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent ) {
                 ErrorStatus =  E_QUEUE_FULL;

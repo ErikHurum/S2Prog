@@ -23,7 +23,7 @@
                                                                             //
 #define VERSION_PROD_NO         2  // Major version number, Tanksystem product number
 #define VERSION_TXU_NEW_FUNC    10  // Minor version number and/or change of packet format (i.e. new objects)
-#define VERSION_TXU_BUILD_NO    23 // Build number
+#define VERSION_TXU_BUILD_NO    25 // Build number
 
 #define VERSION_BOOT_NEW_FUNC   9  // Minor version number and/or change of packet format (i.e. new objects)
 #define VERSION_BOOT_BUG_FIX    1  // Build number
@@ -73,7 +73,7 @@
 * x is the version number
 *
 ***********************************************************/
-#define VERSION_ANZBHART_PROG       14
+#define VERSION_ANZBHART_PROG       15
 #define VERSION_ANZBHART_COMP       2
 #define VERSION_ANZBHART_EEPROM     3
 

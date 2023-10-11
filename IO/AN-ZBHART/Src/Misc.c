@@ -12,8 +12,40 @@
 #include "string.h"
 #include "hart.h"
 
-__no_init int RestartCnt             @0x21FD;
+_//_no_init int RestartCnt             @0x21FD;
 volatile char RestartCmd = 0;
+
+
+void WDT_off(void)
+{
+    __disable_interrupt();
+    __watchdog_reset();
+    /* Clear WDRF in MCUSR */
+    MCUSR &= ~(1<<WDRF);
+    /* Write logical one to WDCE and WDE */
+    /* Keep old prescaler setting to prevent unintentional time-out
+    */
+    WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+    /* Turn off WDT */
+    WDTCSR = 0x00;
+    __enable_interrupt();
+}
+
+void WDT_Prescaler_Change(void)
+{
+    __disable_interrupt();
+    __watchdog_reset();
+    /* Start timed equence */
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    /* Set new prescaler(time-out) value = 64K cycles (~0.5 s) */
+    //WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP0);
+    /* Set new prescaler(time-out) value = 256K cycles (~2.0 s) */
+    WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+
+
+__enable_interrupt();
+}
+
 /*************************************************************************
 *   (This is a task)
 *  Watchdog handler

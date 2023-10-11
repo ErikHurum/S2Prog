@@ -471,7 +471,7 @@ struct ANPRO10_COMMAND_2522 {
     int     ActiveAlarms;
     float   CalcValue;
     float   FilteredValue;
-    clock_t TimeStamp;
+    clock_t TimeStampPeriod;
 
 };
 

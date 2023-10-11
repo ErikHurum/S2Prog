@@ -321,7 +321,7 @@ bool PROLevelSwitch::RestoreSettings(TSNConfigString *SettingsString) {
 int PROLevelSwitch::FindPROStatus(AnsiString &MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
-    if ( HWFailure ) {
+    if ( HWFailure || !IsAvailableNewData() ) {
         PROStatus1 = ST_ERROR;
     }
     if ( PROStatus1 != ST_ERROR ) {
@@ -497,6 +497,7 @@ int PROLevelSwitch::ReceiveData(U8 *data) {
             IsFailure      = pData->IsFailure;
             IsNewData      = pData->IsNewData;
             State          = (TankState)pData->State;
+            UpdateTimeInfo(pData->TimeStampPeriod);
             ErrorStatus    = E_OK;
         }
         break;
@@ -524,6 +525,7 @@ int PROLevelSwitch::SendData(U16 cmd) {
             Cmd.Data.IsActive       = IsActive;
             Cmd.Data.IsFailure      = IsFailure;
             Cmd.Data.State          = State;
+            Cmd.Data.TimeStampPeriod= clock()-TimeStampPeriod;
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent ) ErrorStatus = E_QUEUE_FULL;

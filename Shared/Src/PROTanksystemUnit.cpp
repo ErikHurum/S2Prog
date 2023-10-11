@@ -2126,7 +2126,7 @@ void PROTanksystemUnit::Update_Unit_Info(TSNUart *Port, ANPRO10_COMMAND_2001 *In
 }
 
 void PROTanksystemUnit::VersionControl(TSNUart *Port) {
-#if !defined(ANBOOTLOADER) && !defined(WIN32)
+#ifdef S2TXU    // !defined(ANBOOTLOADER) && !defined(WIN32)
     bool Upgraded = false;
     switch (Port->Device) {
         case C_UART_DEVICE_PC :

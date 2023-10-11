@@ -817,7 +817,7 @@ void do_hart_transaction(HartTaskStruct *task, const hart_channel_t current_chnl
 void HART_Task(void *pVoid) {
     HartTaskStruct *HartTasks[3] = { &_hart_task0, &_hart_task1, &_hart_task2 };
     char ModemNo            = (char)pVoid;
-    OS_TASK *taskPtr        = OS_GetpCurrentTask();
+    //OS_TASK *taskPtr        = OS_GetpCurrentTask();
     //HartTaskStruct *myTask  = container_of(taskPtr, HartTaskStruct, tcb);
     HartTaskStruct *myTask  = HartTasks[ModemNo];
 

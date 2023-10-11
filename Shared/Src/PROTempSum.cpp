@@ -83,7 +83,7 @@ int PROTempSum::GetValue(int ValueId, int Index, float &MyRetValue,  int &DecPnt
 				int TmpCntV     = 0;
 				for ( int i=MyStart; i < MyEnd; i++ ) {
 					PROTemperature *TPtr = (PROTemperature*)TempTable[i];
-					if ( TPtr && TPtr->IsNewData && TPtr->HasTemp ) {
+					if ( TPtr && TPtr->IsAvailableNewData() /*IsNewData*/ && TPtr->HasTemp ) {
 						if ( TPtr->Level ) {
 							TmpCntV++;
 							tmpTempV += TPtr->Temperature;

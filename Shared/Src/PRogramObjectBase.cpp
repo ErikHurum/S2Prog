@@ -35,8 +35,11 @@ PRogramObjectBase::PRogramObjectBase(bool AddToList) {
     LegacyIDNumber  = (C_PRO_BASIC << 16) + MySet.size();
     Type            = 0;
     HWFailure       = false;
+    RecTimeStamp    = clock();
     UpdatePeriod    = 0;
     TimeStamp       = clock();
+    TimeStampPeriod = 0;
+
     LineNumber      = -1;
 }
 //---------------------------------------------------------------------------
@@ -257,7 +260,7 @@ int PRogramObjectBase::GetValue(int ValueId, int Index, float &MyValue, int &Dec
     int Status = E_NO_ERR;
     switch (ValueId) {
     case SVT_PRO_TIMESTAMP:
-        MyValue = TimeStamp;
+        MyValue = TimeStampPeriod;
         DecPnt = 0;
         Unit   = MSECOND_UNIT;
         break;
@@ -674,9 +677,9 @@ void PRogramObjectBase::SetIdNumber(unsigned IDNum) {
 bool PRogramObjectBase::IsAvailableNewData(void) {
 #ifdef S2TXU
 #pragma diag_suppress=Pa082
-    return bool(abs(OS_Time - TimeStamp)<4*DATA_EXPIRATION_TIME);
+    return bool(abs(OS_Time - TimeStampPeriod)<4*DATA_EXPIRATION_TIME);
 #else
-    return bool(abs(clock() - TimeStamp)<4*DATA_EXPIRATION_TIME);
+    return bool(abs(clock() - TimeStampPeriod)<4*DATA_EXPIRATION_TIME);
 #endif
 }
 bool PRogramObjectBase::IsTimeToSend(void) {
@@ -802,9 +805,15 @@ bool PRogramObjectBase::Compare(PRogramObjectBase *Ptr1, PRogramObjectBase *Ptr2
 }
 
 void PRogramObjectBase::SetTimeStamp(void) {
-    TimeStamp    = clock();
+    TimeStampPeriod = clock() - TimeStamp;
+    TimeStamp       = clock();  //pCommand->TimeStampPeriod;
 }
 
+void PRogramObjectBase::UpdateTimeInfo(clock_t NewTimeStampPeriod){
+    TimeStampPeriod = NewTimeStampPeriod;
+    UpdatePeriod    = clock() - RecTimeStamp;
+    RecTimeStamp    = clock();  
+}
 vector<PRogramObjectBase *> PRogramObjectBase::SortVector(vector<PRogramObjectBase *>UnsortedVector) {
     vector<PRogramObjectBase *>TempVector;
     if (UnsortedVector.size()) {

@@ -9,7 +9,7 @@
 #include "math.h"
 #include "externals.h"
 #include "assembly.h"
-
+#include <intrinsics.h>
 __near char TxBufferCh0[TXSIZE_UART];            // set up buffer size
 __near char RxBufferCh0[RXSIZE_UART];
 
@@ -255,6 +255,7 @@ void EraseFlash(void) {
 *
 *************************************************************************/
 void ProgramFlash(unsigned Pointer) {
+    __watchdog_reset();
 
     unsigned ntna;
     myUART.RxSendReply = true;                               // flag for answering
@@ -309,8 +310,9 @@ void ProgramFlash(unsigned Pointer) {
 *
 *************************************************************************/
 void ReadFlash(unsigned Pointer) {
+    __watchdog_reset();
 
-    unsigned short ntna, intval;
+    unsigned short ntna;
     myUART.RxSendReply = true;                               // flag for answering
 
     TxBufferCh0[myUART.TxFirst++] = CMD_REP_FLASH_READ & 0xff;
@@ -363,7 +365,10 @@ void ExitBootloader(char ch) {
     EECR |= (1 << EEMPE);
     EECR |= (1 << EEPE);
     while ( EECR & (1 << EEPE) );
-    WDTCSR = 0x08;               //Start watchdog to genetate restart
+    while (1) {
+        // Dummy loop!
+    }
+    //WDTCSR = 0x08;               //Start watchdog to genetate restart
     //AppStart();        					// Jump to Reset vector 0x0000 in Application Section
 
 }
@@ -381,6 +386,7 @@ void SendPacketUart(void) {
         asm("nop");
         cnt++;
     }
+    __watchdog_reset();
 
     while ( myUART.TxCount > 0 ) {               // Any characters to send?
         sendchar(TxBufferCh0[myUART.TxLast]);  // Send a character
@@ -400,6 +406,7 @@ void SendPacketUart(void) {
 *
 *************************************************************************/
 void ReceivePacketUart(char ch) {
+    __watchdog_reset();
 
     switch ( myUART.RxState ) {                  // check status
     case SYNC :
@@ -496,6 +503,7 @@ short CalcDSRxChecksum(char ch, unsigned short len) {
 *
 *************************************************************************/
 __monitor void GoToSyncUART() {
+    __watchdog_reset();
 
     myUART.SyncCnt = 0;                        // ready for sync
     myUART.RxState = SYNC;

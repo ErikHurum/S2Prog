@@ -287,7 +287,7 @@ void __fastcall TChildForm::UpdateStringGrid(vector<PRogramObjectBase *>ObjectTa
 								CurrentStringGrid->Colors[Col][Row + 2] = clRed;
 							} else if (tempValue == "W") {
 								CurrentStringGrid->FontColors[Col][Row + 2] = clBlack;
-								CurrentStringGrid->Colors[Col][Row + 2] = clYellow;
+								CurrentStringGrid->Colors[Col][Row + 2] = clWebOrange;
 							} else if (tempValue == "L") {
 								CurrentStringGrid->FontColors[Col][Row + 2] = clWhite;
 								CurrentStringGrid->Colors[Col][Row + 2] = clGreen;
@@ -313,7 +313,7 @@ void __fastcall TChildForm::UpdateStringGrid(vector<PRogramObjectBase *>ObjectTa
 									StatusColor = clGreen;
 									break;
 								case AD_EEPROM_ERROR :
-									StatusColor = clYellow;
+									StatusColor = clWebOrange;
 									break;
 								case AD_NOT_USED     :
 									//StatusColor = clBlack;

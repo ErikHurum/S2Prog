@@ -13,7 +13,7 @@
 #include "version.h"
 #include "structs.h"
 
-__no_init int RestartCnt             @0x21FD;
+//__no_init int RestartCnt             @0x21FD;
 
 char hasStartedUARTTask = 0;
 

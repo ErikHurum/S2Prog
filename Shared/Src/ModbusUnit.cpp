@@ -417,7 +417,7 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
         Offset = 0;
         break;
     }
-    TimeStamp  = clock();
+    SetTimeStamp();
     switch (RequestData[MODBUS_INDEX_COMMAND]) {
     case MBUS_CMD_READ_COIL_STATUS          :
     case MBUS_CMD_READ_INPUT_STATUS         :
@@ -739,7 +739,7 @@ void ModbusUnit::HandleIO(void) {
         }
     } else {
         ComFailCount = 0;
-        TimeStamp  = clock();
+        SetTimeStamp();
     }
     SendData();
     CheckAlarms(AlarmSet, &HWFailure);

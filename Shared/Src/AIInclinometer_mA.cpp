@@ -26,9 +26,8 @@ AIInclinometer_mA::~AIInclinometer_mA(void) {
 //---------------------------------------------------------------------------
 
 void AIInclinometer_mA::NewValue(float NewVal) {
+    SetTimeStamp();
     HWFailure     = false;
-
-    TimeStamp     = clock();
     FilteredValue = NewVal;//FilterVal(FilteredValue, NewVal, 1);
 }
 
@@ -243,7 +242,7 @@ int AIInclinometer_mA::ReceiveData(U8 *data) {
             ActiveAlarms    = pData->ActiveAlarms;
             FilteredValue   = pData->FilteredValue;
             CalcValue       = pData->CalcValue;
-            TimeStamp       = pData->TimeStamp;
+            UpdateTimeInfo(pData->TimeStampPeriod);
         }
         return (E_OK);
     case CMD_GENERIC_STATIC_DATA:
@@ -271,7 +270,7 @@ int AIInclinometer_mA::SendData(U16 cmd) {
             Cmd.Data.ActiveAlarms   = ActiveAlarms;
             Cmd.Data.FilteredValue  = FilteredValue;
             Cmd.Data.CalcValue      = CalcValue;
-            Cmd.Data.TimeStamp      = /*clock() -*/ TimeStamp;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
             Cmd.Data.ResultOK       = ResultOK;
 
             bool sent = ANPRO10SendNormal(&Cmd);

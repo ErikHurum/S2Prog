@@ -800,7 +800,7 @@ AnsiString PROTankPressure::ZeroSetTankPressureSensor(bool Local) {
 int PROTankPressure::FindPROStatus(AnsiString &MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
-    if (HWFailure) {
+    if (HWFailure || !IsAvailableNewData()) {
         PROStatus1 = ST_ERROR;
     }
     if (PROStatus1 != ST_ERROR) {
@@ -1577,7 +1577,7 @@ ValueList PROTankPressure::TankPressValueList[] =  {
 
     { L_WORD52, L_WORD52, SVT_SUBMENU               },
     { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO        },           // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
-    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },           // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },           // {"TimeStampPeriod" ,"TimeStampPeriod",SVT_PRO_TIMESTAMP},
     { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },           // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
     { L_WORD813, L_WORD813, SVT_SUBMENU_END         },
 };
@@ -1656,8 +1656,7 @@ int PROTankPressure::ReceiveData(U8 *data) {
             HWFailure       = pData->HWFailure;
             IsNewData       = pData->IsNewData;
             Pressure        = pData->Pressure;
-            UpdatePeriod    = clock() - TimeStamp; 
-            TimeStamp       = clock(); 
+            UpdateTimeInfo(pData->TimeStampPeriod);
             if (CreatedFromThisTank) {
                 // Can update tank value here
                 CreatedFromThisTank->SetPressure(Pressure);
@@ -1698,10 +1697,11 @@ int PROTankPressure::SendData(U16 cmd) {
             Cmd.Data.ObjectId       = IDNumber;
             Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
             Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.HasPressure     = HasPressure;
+            Cmd.Data.HasPressure    = HasPressure;
             Cmd.Data.HWFailure      = HWFailure;
             Cmd.Data.IsNewData      = IsNewData;
             Cmd.Data.Pressure       = Pressure;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus = E_QUEUE_FULL;
             else ErrorStatus = E_OK;

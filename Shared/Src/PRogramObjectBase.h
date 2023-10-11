@@ -24,6 +24,8 @@ private:
 protected:
     volatile bool IsModified;
     int LineNumber;
+    time_t RecTimeStamp;
+
 public:
 	static set<PRogramObjectBase *>DataTransferSet;
     set<unsigned>ReadPermissionSet;
@@ -31,6 +33,7 @@ public:
     volatile int        ActiveAlarms;
     volatile bool       HWFailure;
     volatile clock_t    TimeStamp;
+    volatile clock_t    TimeStampPeriod;
     volatile int        UpdatePeriod;
     static volatile bool WriteAll;
     PRogramObjectBase(bool AddToList = true);
@@ -111,6 +114,7 @@ public:
     int GetLineNumber(void);
     static bool Compare(PRogramObjectBase *Ptr1, PRogramObjectBase *Ptr2);
     void SetTimeStamp(void);
+    void UpdateTimeInfo(clock_t NewTimeStampPeriod);
     static vector<PRogramObjectBase *>SortVector(vector<PRogramObjectBase *>UnsortedVector);
     static vector<PRogramObjectBase*> GetReadPermissionVector(vector<PRogramObjectBase*>MyVect , unsigned  pIDNumber=0);
     static vector<PRogramObjectBase*> GetWritePermissionVector(vector<PRogramObjectBase*>MyVect, unsigned  pIDNumber=0);

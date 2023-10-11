@@ -286,7 +286,7 @@ int PROVOCTrack::FindPROStatus(AnsiString& MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
 
-    if (HWFailure) {
+    if (HWFailure || !IsAvailableNewData()) {
         PROStatus1 = ST_ERROR;
     }
     if (PROStatus1 != ST_ERROR) {

@@ -106,6 +106,9 @@ void PRogramObject::SortAnalogInputs(void) {
         float MinDistance = AnalogInList[j]->Distance;
         int MinDistIndex = j;
         for (unsigned i = j + 1; i < AnalogInList.size(); i++) {
+            if (!AnalogInList[i]->Distance && AnalogInList[i]->GetIsPressureSns()) {
+                AnalogInList[i]->Distance = 100.0;
+            }
             if (AnalogInList[i]->Distance < MinDistance) {
                 MinDistance  = AnalogInList[i]->Distance;
                 MinDistIndex = i;

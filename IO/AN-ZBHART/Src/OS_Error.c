@@ -115,7 +115,7 @@ OS_ERR_SUSPEND_TOO_OFTEN              (200 = 0xC8)
 OS_ERR_RESUME_BEFORE_SUSPEND          (201 = 0xC9)
 
 */
-__no_init int RestartCnt             @0x21FD;
+//__no_init int RestartCnt             @0x21FD;
 
 void OS_Error(int ErrCode) {
     switch ( ErrCode ) {
@@ -138,7 +138,6 @@ void OS_Error(int ErrCode) {
         OS_DICnt = 0;         /* Allow interrupts so we can communicate */
         OS_EI();
         OS_Status = (OS_U8)ErrCode;
-        RestartCnt++;
         while ( OS_Status );
     }
 }

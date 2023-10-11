@@ -382,7 +382,7 @@ static void _HandleIncomingPacket(void) {
 *
 *  Additional information
 *    Format as follows:
-*      01 <DropCnt><TimeStamp>  Max. packet len is 1 + 5 + 5 = 11
+*      01 <DropCnt><TimeStampPeriod>  Max. packet len is 1 + 5 + 5 = 11
 *
 *    Example packets sent
 *      01 20 40
@@ -393,7 +393,7 @@ static void _HandleIncomingPacket(void) {
 *
 */
 static int _TrySendOverflowPacket(void) {
-  U32 TimeStamp;
+  U32 TimeStampPeriod;
   I32 Delta;
   int Status;
   U8  aPacket[11];
@@ -405,8 +405,8 @@ static int _TrySendOverflowPacket(void) {
   //
   // Compute time stamp delta and append it to packet.
   //
-  TimeStamp  = SEGGER_SYSVIEW_GET_TIMESTAMP();
-  Delta = TimeStamp - _SYSVIEW_Globals.LastTxTimeStamp;
+  TimeStampPeriod  = SEGGER_SYSVIEW_GET_TIMESTAMP();
+  Delta = TimeStampPeriod - _SYSVIEW_Globals.LastTxTimeStamp;
   MAKE_DELTA_32BIT(Delta);
   ENCODE_U32(pPayload, Delta);
   //
@@ -414,7 +414,7 @@ static int _TrySendOverflowPacket(void) {
   //
   Status = SEGGER_RTT_WriteSkipNoLock(CHANNEL_ID_UP, aPacket, pPayload - aPacket);
   if (Status) {
-    _SYSVIEW_Globals.LastTxTimeStamp = TimeStamp;
+    _SYSVIEW_Globals.LastTxTimeStamp = TimeStampPeriod;
     _SYSVIEW_Globals.EnableState--; // EnableState has been 2, will be 1. Always.
   } else {
     _SYSVIEW_Globals.DropCount++;
@@ -444,7 +444,7 @@ static int _TrySendOverflowPacket(void) {
 */
 static void _SendPacket(U8* pStartPacket, U8* pEndPacket, unsigned EventId) {
   unsigned  NumBytes;
-  U32 TimeStamp;
+  U32 TimeStampPeriod;
   I32 Delta;
   int Status;
 
@@ -492,8 +492,8 @@ Send:
   //
   // Compute time stamp delta and append it to packet.
   //
-  TimeStamp  = SEGGER_SYSVIEW_GET_TIMESTAMP();
-  Delta = TimeStamp - _SYSVIEW_Globals.LastTxTimeStamp;
+  TimeStampPeriod  = SEGGER_SYSVIEW_GET_TIMESTAMP();
+  Delta = TimeStampPeriod - _SYSVIEW_Globals.LastTxTimeStamp;
   MAKE_DELTA_32BIT(Delta);
   ENCODE_U32(pEndPacket, Delta);
   //
@@ -501,7 +501,7 @@ Send:
   //
   Status = SEGGER_RTT_WriteSkipNoLock(CHANNEL_ID_UP, pStartPacket, pEndPacket - pStartPacket);
   if (Status) {
-    _SYSVIEW_Globals.LastTxTimeStamp = TimeStamp;
+    _SYSVIEW_Globals.LastTxTimeStamp = TimeStampPeriod;
   } else {
     _SYSVIEW_Globals.EnableState++; // EnableState has been 1, will be 2. Always.
   }
@@ -898,7 +898,7 @@ void SEGGER_SYSVIEW_RecordEnterISR(void) {
 *
 *  Additional information
 *    Format as follows:
-*      03 <TimeStamp>        // Max. packet len is 6
+*      03 <TimeStampPeriod>        // Max. packet len is 6
 *
 *    Example packets sent
 *      03 20                // ISR Exit. Timestamp is 32 (0x20)
@@ -920,7 +920,7 @@ void SEGGER_SYSVIEW_RecordExitISR(void) {
 *
 *  Additional information
 *    Format as follows:
-*      18 <TimeStamp>        // Max. packet len is 6
+*      18 <TimeStampPeriod>        // Max. packet len is 6
 *
 *    Example packets sent
 *      18 20                // ISR Exit to Scheduler. Timestamp is 32 (0x20)

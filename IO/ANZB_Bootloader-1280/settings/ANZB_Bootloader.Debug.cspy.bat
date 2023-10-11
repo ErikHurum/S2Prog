@@ -25,7 +25,7 @@ if not "%~1" == "" goto debugFile
 
 @echo on 
 
-"C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" --backend -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
+"C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" --backend -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
 
 @echo off 
 goto end 
@@ -34,7 +34,7 @@ goto end
 
 @echo on 
 
-"C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" "--debug_file=%~1" --backend -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
+"C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" "--debug_file=%~1" --backend -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
 
 @echo off 
 :end

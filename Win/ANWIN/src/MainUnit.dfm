@@ -2,8 +2,8 @@ object MainForm: TMainForm
   Left = 378
   Top = 321
   Caption = 'ANWin'
-  ClientHeight = 778
-  ClientWidth = 1531
+  ClientHeight = 777
+  ClientWidth = 1527
   Color = clBtnFace
   DefaultMonitor = dmMainForm
   DoubleBuffered = True
@@ -844,14 +844,14 @@ object MainForm: TMainForm
   object Splitter1: TSplitter
     Left = 158
     Top = 79
-    Height = 699
+    Height = 698
     ExplicitTop = 75
     ExplicitHeight = 581
   end
   object ToolBar2: TToolBar
     Left = 0
     Top = 0
-    Width = 1531
+    Width = 1527
     Height = 44
     Margins.Left = 1
     Margins.Top = 1
@@ -951,7 +951,7 @@ object MainForm: TMainForm
   object Panel1: TPanel
     Left = 0
     Top = 44
-    Width = 1531
+    Width = 1527
     Height = 35
     Align = alTop
     TabOrder = 1
@@ -1376,7 +1376,7 @@ object MainForm: TMainForm
     Left = 0
     Top = 79
     Width = 158
-    Height = 699
+    Height = 698
     SelectionPen.Color = clBtnShadow
     Align = alLeft
     ChangeDelay = 1

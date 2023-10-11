@@ -251,7 +251,7 @@ int PROWaterHeater::LoadConfigFromFile(TSNConfigString &ConfigString) {
 
 /*bool PROWaterHeater::IsAvailableNewData(void)
 {
-    return bool(abs(clock() - TimeStamp) < 4*RS485_IO_PERIODE);
+    return bool(abs(clock() - TimeStampPeriod) < 4*RS485_IO_PERIODE);
 }*/
 //---------------------------------------------------------------------------
 

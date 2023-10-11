@@ -1025,7 +1025,7 @@ bool AnalogInput::GetIsPressureSns(void) {
 bool AnalogInput::CanCalculate(void) {
     bool CanCalc = false;
     if ( Enable ) {
-        if ( HWFailure || MyHWFailure ) {
+        if ( IsAvailableNewData() /*HWFailure || MyHWFailure */) {
             // HWFailure is set by e.g. ZBAna or SCADCard
             CalcValue = 0.0;
             ResultOK  = false;

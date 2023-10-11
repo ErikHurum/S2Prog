@@ -2,18 +2,17 @@ inherited SystemWarningForm: TSystemWarningForm
   Left = 424
   Top = 228
   Caption = 'System Warning'
-  ClientHeight = 331
-  ClientWidth = 508
+  ClientHeight = 330
+  ClientWidth = 504
   OnPaint = OnFormPaint
-  ExplicitWidth = 524
-  ExplicitHeight = 370
-  PixelsPerInch = 96
+  ExplicitWidth = 520
+  ExplicitHeight = 369
   TextHeight = 13
   object RichEdit1: TRichEdit [0]
     Left = 0
     Top = 0
-    Width = 508
-    Height = 331
+    Width = 504
+    Height = 330
     Align = alClient
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
@@ -26,10 +25,6 @@ inherited SystemWarningForm: TSystemWarningForm
     ReadOnly = True
     TabOrder = 0
     StyleElements = [seFont, seBorder]
-    Zoom = 100
-    ExplicitTop = 29
-    ExplicitWidth = 417
-    ExplicitHeight = 302
   end
   inherited StringGridRefreshTimer: TTimer
     Left = 184

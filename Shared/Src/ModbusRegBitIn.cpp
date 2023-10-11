@@ -273,7 +273,7 @@ void ModbusRegBitIn::Update(void) {
 
             for (pBIt = PROList.begin(); pBIt != PROList.end(); pBIt++) {
                 PRogramObject *ObjectPtr = (PRogramObject *)*pBIt;
-                ObjectPtr->TimeStamp = tm;
+                ObjectPtr->TimeStampPeriod = tm;
                 ObjectPtr->PutFloatValue(ValueKey, float(tmpIsActive));
             }
         }

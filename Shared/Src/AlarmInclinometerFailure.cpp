@@ -74,7 +74,7 @@ int  AlarmInclinometerFailure::GetValue(int ValueId, int Index, float& MyRetValu
         Unit       = MSECOND_UNIT;
         break;
     case SVT_AL_VALUE:
-        MyRetValue = float(PROPointer->TimeStamp);
+        MyRetValue = float(PROPointer->TimeStampPeriod);
         DecPnt     = 0;
         Unit       = MSECOND_UNIT;
         break;

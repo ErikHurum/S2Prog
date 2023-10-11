@@ -233,6 +233,7 @@ struct ANPRO10_COMMAND_2100 {
     float   FilteredVolPercent;
     float   UllageRef;
     bool    IsOnline;
+    clock_t TimeStampPeriod;
 };
 
 struct QueueANPRO10_COMMAND_2100 {
@@ -273,6 +274,7 @@ struct ANPRO10_COMMAND_2104 {
 
     float   Pressure;
     bool    IsNewData;
+    clock_t TimeStampPeriod;
 };
 
 struct QueueANPRO10_COMMAND_2104 {
@@ -307,6 +309,7 @@ struct ANPRO10_COMMAND_2106 {
     bool    IsNewData;
     float   BottomTemp;
     bool    IsOnline;
+    clock_t TimeStampPeriod;
 };
 
 struct QueueANPRO10_COMMAND_2106 {
@@ -317,15 +320,16 @@ struct QueueANPRO10_COMMAND_2106 {
 
 // PROLevelSwitch realtime data
 struct ANPRO10_COMMAND_2120 {
-    U16       CommandNo;
-    U16       ndb;
+    U16     CommandNo;
+    U16     ndb;
 
-    U32       ObjectId;
-    bool      IsActive;
-    bool      IsFailure;
-    bool      HWFailure;
-    bool      IsNewData;
-    U8        State;
+    U32     ObjectId;
+    bool    IsActive;
+    bool    IsFailure;
+    bool    HWFailure;
+    bool    IsNewData;
+    U8      State;
+    clock_t TimeStampPeriod;
 };
 
 struct QueueANPRO10_COMMAND_2120 {
@@ -506,7 +510,7 @@ struct ANPRO10_COMMAND_2520 {
     float   FilteredValue;
     float   HartValue;
     int     HartComErrorCnt;
-    clock_t TimeStamp;
+    clock_t TimeStampPeriod;
 
 };
 
@@ -528,7 +532,7 @@ struct ANPRO10_COMMAND_2522 {
     int     ActiveAlarms;
     float   CalcValue;
     float   FilteredValue;
-    clock_t TimeStamp;
+    clock_t TimeStampPeriod;
 
 };
 
@@ -822,15 +826,16 @@ struct QueueANPRO10_COMMAND_2701 {
 
 // PROInclinometer RT data
 struct ANPRO10_COMMAND_2710 {
-    U16   CommandNo;
-    U16   ndb;
-    U32   ObjectId;
-    float Trim;
-    float List;
-    float RolPeriod;
-    float RolFrequency;
-    float MaxP;
-    float MaxS;
+    U16     CommandNo;
+    U16     ndb;
+    U32     ObjectId;
+    float   Trim;
+    float   List;
+    float   RolPeriod;
+    float   RolFrequency;
+    float   MaxP;
+    float   MaxS;
+    clock_t TimeStampPeriod;
 };
 
 struct QueueANPRO10_COMMAND_2710 {
@@ -915,44 +920,45 @@ struct QueueANPRO10_COMMAND_2721 {
 
 
 struct ANPRO10_COMMAND_2730 {
-    U16   CommandNo;
-    U16   ndb;
+    U16     CommandNo;
+    U16     ndb;
 
-    U32   ObjectId;
-    bool  HasTrimValue;
-    bool  HasListValue;
-    bool  HasDeflection;
-    bool  DraftAtPP;
-    float TrimValue;
-    float ListValue;
-    float DftFwdMark;
-    float DftAftMark;
-    float DftFwd;
-    float DftAft;
-    float DftP;
-    float DftS;
+    U32     ObjectId;
+    bool    HasTrimValue;
+    bool    HasListValue;
+    bool    HasDeflection;
+    bool    DraftAtPP;
+    float   TrimValue;
+    float   ListValue;
+    float   DftFwdMark;
+    float   DftAftMark;
+    float   DftFwd;
+    float   DftAft;
+    float   DftP;
+    float   DftS;
 
-    float Deflection;
-    float MaxDraft;
-    float MeanDraft;
-    int   StatusDftFwd;
-    int   StatusDftAft;
-    int   StatusDftP;
-    int   StatusDftS;
+    float   Deflection;
+    float   MaxDraft;
+    float   MeanDraft;
+    int     StatusDftFwd;
+    int     StatusDftAft;
+    int     StatusDftP;
+    int     StatusDftS;
 
-    float DftAftP    ;  // New values
-    float DftAftS    ;
-    float DftFwdP    ;
-    float DftFwdS    ;
-    float DftFwdMarkP;
-    float DftFwdMarkS;
-    float DftAftMarkP;
-    float DftAftMarkS;
-    int   StatusDftAftP;
-    int   StatusDftAftS;
-    int   StatusDftFwdP;
-    int   StatusDftFwdS;
-    int   StatusDftMean;
+    float   DftAftP    ;  // New values
+    float   DftAftS    ;
+    float   DftFwdP    ;
+    float   DftFwdS    ;
+    float   DftFwdMarkP;
+    float   DftFwdMarkS;
+    float   DftAftMarkP;
+    float   DftAftMarkS;
+    int     StatusDftAftP;
+    int     StatusDftAftS;
+    int     StatusDftFwdP;
+    int     StatusDftFwdS;
+    int     StatusDftMean;
+    clock_t TimeStampPeriod;
 };
 
 struct QueueANPRO10_COMMAND_2730 {
@@ -975,14 +981,16 @@ struct QueueANPRO10_COMMAND_2731 {
 
 
 struct ANPRO10_COMMAND_2732 {
-    U16   CommandNo;
-    U16   ndb;
+    U16     CommandNo;
+    U16     ndb;
 
-    U32   ObjectId;
-    float Draft;
-    float DraftAtMark;
-    float DraftAtPP;
-    int   DraftStatus;
+    U32     ObjectId;
+    float   Draft;
+    float   DraftAtMark;
+    float   DraftAtPP;
+    int     DraftStatus;
+    clock_t TimeStampPeriod;
+
 };
 
 struct QueueANPRO10_COMMAND_2732 {
@@ -1007,13 +1015,15 @@ struct QueueANPRO10_COMMAND_2733 {
 
 
 struct ANPRO10_COMMAND_2740 {
-    U16   CommandNo;
-    U16   ndb;
+    U16     CommandNo;
+    U16     ndb;
 
-    U32   ObjectId;
-    float ManualPressure;
-    float AtmPressure;
-    bool  UseManual;
+    U32     ObjectId;
+    float   ManualPressure;
+    float   AtmPressure;
+    bool    UseManual;
+    clock_t TimeStampPeriod;
+
 };
 
 struct QueueANPRO10_COMMAND_2740 {

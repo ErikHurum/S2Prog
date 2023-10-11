@@ -245,7 +245,7 @@ int AIRadarSensorHart::ReceiveData(U8 *data) {
             CalcValue       = pData->CalcValue;
             HartValue       = pData->HartValue;
             HartComErrorCnt = pData->HartComErrorCnt;
-            TimeStamp       = pData->TimeStamp;
+            UpdateTimeInfo(pData->TimeStampPeriod);
         }
         return (E_OK);
     case CMD_GENERIC_STATIC_DATA:
@@ -276,7 +276,7 @@ int AIRadarSensorHart::SendData(U16 cmd) {
             Cmd.Data.HartValue          = HartValue;
             Cmd.Data.HartComErrorCnt    = HartComErrorCnt;
             Cmd.Data.ResultOK           = ResultOK;
-            Cmd.Data.TimeStamp          = TimeStamp;
+            Cmd.Data.TimeStampPeriod    = TimeStampPeriod;
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus = E_QUEUE_FULL;

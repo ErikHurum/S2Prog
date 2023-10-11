@@ -23,9 +23,9 @@
 
 if ($debugfile -eq "")
 {
-& "C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" --backend -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
+& "C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" --backend -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
 }
 else
 {
-& "C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" --debug_file=$debugfile --backend -f "D:\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
+& "C:\Program Files\IAR Systems\Embedded Workbench 9.1\common\bin\cspybat" -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.general.xcl" --debug_file=$debugfile --backend -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1280\settings\ANZB_Bootloader.Debug.driver.xcl" 
 }

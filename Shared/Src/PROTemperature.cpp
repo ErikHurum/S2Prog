@@ -98,6 +98,12 @@ PROTemperature::~PROTemperature(void) {
 }
 //---------------------------------------------------------------------------
 void PROTemperature::SortAnalogInputs(void) {
+    for (unsigned i = 0; i < AnalogInList.size(); i++) {
+        if (!AnalogInList[i]->Distance && AnalogInList[i]->GetIsPressureSns()) {
+            AnalogInList[i]->Distance = 100.0;
+        }
+    }
+
     PRogramObject::SortAnalogInputs();
     for (unsigned j = 0; j < AnalogInList.size(); j++) {
         if (AnalogInList[j]->GetIsPressureSns()) {
@@ -341,7 +347,7 @@ int PROTemperature::FindPROStatus(AnsiString &MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
 
-    if (HWFailure) {
+    if ( HWFailure || !IsAvailableNewData() ) {
         PROStatus1 = ST_ERROR;
     }
     if (PROStatus1 != ST_ERROR) {
@@ -353,7 +359,7 @@ int PROTemperature::FindPROStatus(AnsiString &MyString) {
         }
     }
     if (PROStatus1 != ST_ERROR) {
-        bool                        AlActive = false;
+        bool AlActive = false;
         set<AlarmBasic *>::iterator pBIt;
         for (pBIt = AlarmSet.begin(); pBIt != AlarmSet.end(); pBIt++) {
             AlarmBasic *Element = *pBIt;
@@ -501,7 +507,7 @@ int PROTemperature::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         DecPnt     = 1;
         Unit       = TEMP_UNIT;
         if (IsOnline) {
-            if (HasTemp && IsNewData) {
+            if (HasTemp && IsAvailableNewData() /*IsNewData*/) {
                 MyRetValue = Temperature;
                 Status     = StatusTemp;
             } else {
@@ -874,6 +880,7 @@ int PROTemperature::PutFloatValue(int ValueId, float NewValue) {
         HasTemp   	= true;
         IsNewData 	= true;
         Temperature = NewValue;
+        SetTimeStamp();
         StatusTemp 	= GETVAL_NO_ERR;
         break;
     case SVT_HI_TEMP_LIMIT:
@@ -975,18 +982,17 @@ int PROTemperature::ReceiveData(U8 *data) {
     switch (pCH->CommandNo) {
     case CMD_GENERIC_REALTIME_DATA:
         if (IsOnline) {
-            ANPRO10_COMMAND_2106 *pCommand = (ANPRO10_COMMAND_2106 *)data;
-            HasTemp         = pCommand->HasTemp;
-            HWFailure       = pCommand->HWFailure;
-            IsNewData       = pCommand->IsNewData;
-            StatusTemp      = pCommand->StatusTemp;
-            Temperature     = pCommand->Temperature;
-            VaporTemp       = pCommand->VaporTemp;
-            BottomTemp      = pCommand->BottomTemp;
-            IsOnline        = pCommand->IsOnline;
-            UpdatePeriod    = clock() - TimeStamp; // pCommand->UpdatePeriod ;
-            TimeStamp       = clock();  //pCommand->TimeStamp;
-            if (CreatedFromThisTank) {
+			ANPRO10_COMMAND_2106 *pData = (ANPRO10_COMMAND_2106 *)data;
+			HasTemp         = pData->HasTemp;
+			HWFailure       = pData->HWFailure;
+			IsNewData       = pData->IsNewData;
+			StatusTemp      = pData->StatusTemp;
+			Temperature     = pData->Temperature;
+			VaporTemp       = pData->VaporTemp;
+			BottomTemp      = pData->BottomTemp;
+			IsOnline        = pData->IsOnline;
+            UpdateTimeInfo(pData->TimeStampPeriod);
+			if (CreatedFromThisTank) {
                 CreatedFromThisTank->SetTemperature(Temperature);
             }
             ErrorStatus =  E_OK;
@@ -1019,6 +1025,7 @@ int PROTemperature::SendData(U16 CommandNo) {
             Cmd.Data.VaporTemp      = VaporTemp;
             Cmd.Data.BottomTemp     = BottomTemp;
             Cmd.Data.IsOnline       = IsOnline;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
             // post command on messageQ
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus =  E_QUEUE_FULL;
@@ -1064,7 +1071,7 @@ ValueList PROTemperature::TempValueList1[] =  {
     { L_WORD363, L_WORD367, SVT_TT },                       // {"Top Temp"  ,"TT",SVT_TT},
     { L_WORD52, L_WORD52, SVT_SUBMENU },
     { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO     },         // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
-    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP  },         // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP  },         // {"TimeStampPeriod" ,"TimeStampPeriod",SVT_PRO_TIMESTAMP},
     { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },      // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
 };
@@ -1086,7 +1093,7 @@ ValueList PROTemperature::TempValueList2[] =  {
     { L_WORD363, L_WORD367 , SVT_TT },                       // {"Top Temp"  ,"TT",SVT_TT},
     { L_WORD52, L_WORD52, SVT_SUBMENU },
     { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO     },          // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
-    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP  },          // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP  },          // {"TimeStampPeriod" ,"TimeStampPeriod",SVT_PRO_TIMESTAMP},
     { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },       // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
 };
@@ -1373,7 +1380,7 @@ void PROTemperature::SetState(TankState newState) {
 
 float PROTemperature::GetTemperature(void) {
     if (IsOnline) {
-        if (HasTemp && IsNewData) {
+        if (HasTemp && IsAvailableNewData() /*IsNewData*/) {
             return Temperature;
         } else {
             return 0.0;
@@ -1389,13 +1396,13 @@ void PROTemperature::SetTemperature(float NewTemp) {
 
 bool PROTemperature::IsAvailableNewData(void) {
     bool Expired;
-    if (abs(double(clock() - TimeStamp)) < 5 * DATA_EXPIRATION_TIME) {
+    if (abs(double(clock() - TimeStampPeriod)) < 5 * DATA_EXPIRATION_TIME) {
         Expired = false;
     } else {
         Expired = true;
     }
     return !Expired;
-    //return bool(abs(clock() - TimeStamp)<3*DATA_EXPIRATION_TIME);
+    //return bool(abs(clock() - TimeStampPeriod)<3*DATA_EXPIRATION_TIME);
 }
 
 

@@ -1752,7 +1752,7 @@ void ANPRO10_FlashHandler(TSNUart *port, ANPRO10_PacketHeading *pPH, U8 *Buf) {
                 TSN_Delay(50);
                 ANPRO10SendCommand(port, pPH->txadr, pPH->txtypeid, CMD_ACK_FLASH_PROG, RequestStatus);
 
-                ANPRO10_FLASH_DATA *pCommand      = (ANPRO10_FLASH_DATA *)Buf;
+               // ANPRO10_FLASH_DATA *pCommand      = (ANPRO10_FLASH_DATA *)Buf;
             }
             break;
         case CMD_SEND_CONFIG:
@@ -1769,9 +1769,9 @@ void ANPRO10_FlashHandler(TSNUart *port, ANPRO10_PacketHeading *pPH, U8 *Buf) {
                 */
                 U8 RequestStatus = ANPRO10_ReceiveFlashData(Buf, SectorConfigStart, SectorConfigEnd);
 #endif
-                TSN_Delay(10);
+                TSN_Delay(50);
                 ANPRO10SendCommand(port, pPH->txadr, pPH->txtypeid, CMD_ACK_CONFIG, RequestStatus);
-                ANPRO10_FLASH_DATA *pCommand      = (ANPRO10_FLASH_DATA *)Buf;
+                //ANPRO10_FLASH_DATA *pCommand      = (ANPRO10_FLASH_DATA *)Buf;
             }
             break;
         case CMD_SEND_SETTINGS:
@@ -1784,7 +1784,7 @@ void ANPRO10_FlashHandler(TSNUart *port, ANPRO10_PacketHeading *pPH, U8 *Buf) {
 #endif
                 TSN_Delay(50);
                 ANPRO10SendCommand(port, pPH->txadr, pPH->txtypeid, CMD_ACK_SETTINGS, RequestStatus);
-                ANPRO10_FLASH_DATA *pCommand      = (ANPRO10_FLASH_DATA *)Buf;
+                //ANPRO10_FLASH_DATA *pCommand      = (ANPRO10_FLASH_DATA *)Buf;
             }
             break;
 
@@ -1895,9 +1895,17 @@ void SuspendIO(int TimeOut) {
 #endif
 }
 U8 ANPRO10_ReceiveFlashData(U8 *Buf, U32 FirstSector, U32 LastSector) {
-    SuspendIO(4 * 60 * 1000);
     static int Size;
     U8         ErrorStatus = 0;
+
+    switch (CurrentDeviceId) {
+    case DEVICE_TDU:
+        break;
+    default:
+    case DEVICE_TCU:
+        SuspendIO(4 * 60 * 1000);
+        break;
+    }
 #ifndef WIN32
     ANPRO10_FLASH_DATA *pCommand = (ANPRO10_FLASH_DATA*)Buf;
 #ifndef ANBOOTLOADER
@@ -2212,7 +2220,7 @@ U8 ANPRO10_ReceiveFlashData(ANPRO10_FLASH_DATA *Cmd) {
 *************************************************************************************************/
 
 int ANPRO10_SendFlashData(TSNUart *port, U32 Address, U32 DeviceId, U16 CmdNo, U32 FirstSector, U32 LastSector) {
-    SuspendIO(4 * 60 * 1000);
+    SuspendIO(5 * 60 * 1000);
     int ErrorStatus = FLASH_NO_ERROR;
 #ifdef S2TXU
     if ( SendFlashDataInProgress == FLASH_IDLE ) {

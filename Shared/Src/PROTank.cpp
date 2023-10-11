@@ -328,7 +328,7 @@ ValueList PROTank::AllTankValueList[] = {
     { L_WORD883, L_WORD884, SVT_RADAR_THRESHOLD   },       // {"Radar Threshold" ,"RTrH",SVT_RADAR_THRESHOLD},
     { L_WORD918, L_WORD919, SVT_DISTANCE_SNS_UTI  },       // {"DistSnsUTI" ,"DUTI",SVT_DISTANCE_SNS_UTI},
     { L_WORD1084, L_WORD1085, SVT_LEVEL_OFFSET      },       // {"Level offset" ,"LOff",SVT_LEVEL_OFFSET},
-    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },       // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },       // {"TimeStampPeriod" ,"TimeStampPeriod",SVT_PRO_TIMESTAMP},
     { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },       // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
 
 
@@ -551,7 +551,7 @@ ValueList PROTank::AllTankValueList2[] = {
     { L_WORD918, L_WORD919, SVT_DISTANCE_SNS_UTI  },       // {"DistSnsUTI" ,"DUTI",SVT_DISTANCE_SNS_UTI},
     { L_WORD1084, L_WORD1085, SVT_LEVEL_OFFSET      },       // {"Level offset" ,"LOff",SVT_LEVEL_OFFSET},
     { L_WORD1122, L_WORD1123, SVT_PRO_SORTNO        },       // {"Tank num" ,"TNum",SVT_PRO_SORTNO},
-    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },       // {"TimeStamp" ,"TimeStamp",SVT_PRO_TIMESTAMP},
+    { L_WORD1127, L_WORD1127, SVT_PRO_TIMESTAMP     },       // {"TimeStampPeriod" ,"TimeStampPeriod",SVT_PRO_TIMESTAMP},
     { L_WORD1128, L_WORD1128, SVT_PRO_UPDATE_PERIOD },       // {"Age" ,"Age",SVT_PRO_TIMESTAMP},
 
     { L_WORD813, L_WORD813, SVT_SUBMENU_END },
@@ -2710,7 +2710,7 @@ bool PROTank::HasLCData(void) {
 int PROTank::FindPROStatus(AnsiString &MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
-    if (GetNumberOfHWAlarms()) {
+    if (GetNumberOfHWAlarms() || !IsAvailableNewData()) {
         PROStatus1 = ST_ERROR;
     }
     if (PROStatus1 != ST_ERROR) {
@@ -6231,9 +6231,8 @@ int PROTank::ReceiveData(U8 *data) {
             memmove(&LevelHistory[1], &LevelHistory[0], sizeof(float) * (LEVEL_HISTORY_ENTRIES - 1));
             LevelHistory[0] = Level;
             IsOnline        = pData->IsOnline;
-            UpdatePeriod    = clock() - TimeStamp; 
-            TimeStamp       = clock();  
-            ErrorStatus     = E_OK;
+            UpdateTimeInfo(pData->TimeStampPeriod);
+			ErrorStatus     = E_OK;
         }
         break;
     case CMD_GENERIC_STATIC_DATA:
@@ -6305,6 +6304,7 @@ int PROTank::SendData(U16 cmd) {
             Cmd.Data.HasWater           = HasWater;
             Cmd.Data.FilteredVolPercent = FilteredVolPercent;
             Cmd.Data.IsOnline           = IsOnline;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
 
             /*
             bool sent;

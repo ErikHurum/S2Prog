@@ -1425,6 +1425,7 @@ int PRODraftSystem::ReceiveData(U8 *data) {
             StatusDftAftS       = pData->StatusDftAftS;
             StatusDftFwdP       = pData->StatusDftFwdP;
             StatusDftFwdS       = pData->StatusDftFwdS;
+            UpdateTimeInfo(pData->TimeStampPeriod);
         }
         break;
     case CMD_GENERIC_STATIC_DATA:
@@ -1447,32 +1448,32 @@ int PRODraftSystem::SendData(U16 cmd) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             QueueANPRO10_COMMAND_2730 Cmd;
-            Cmd.TxInfo.Port        = NULL;
-            Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId        = DEVICE_BROADCAST_TXU;
-
-            Cmd.Data.ObjectId      = IDNumber;
-            Cmd.Data.ndb           = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo     = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.HasTrimValue  = HasTrimValue;
-            Cmd.Data.HasListValue  = HasListValue;
-            Cmd.Data.HasDeflection = HasDeflection;
-            Cmd.Data.TrimValue     = TrimValue;
-            Cmd.Data.ListValue     = ListValue;
-            Cmd.Data.DftFwdMark    = DftFwdMark;
-            Cmd.Data.DftAftMark    = DftAftMark;
-            Cmd.Data.DftFwd        = DftFwd;
-            Cmd.Data.DftAft        = DftAft;
-            Cmd.Data.DftP          = DftP;
-            Cmd.Data.DftS          = DftS;
-            Cmd.Data.Deflection    = Deflection;
-            Cmd.Data.MaxDraft      = MaxDraft;
-            Cmd.Data.MeanDraft     = MeanDraft;
-            Cmd.Data.StatusDftFwd  = StatusDftFwd;
-            Cmd.Data.StatusDftAft  = StatusDftAft;
-            Cmd.Data.StatusDftP    = StatusDftP;
-            Cmd.Data.StatusDftS    = StatusDftS;
-            Cmd.Data.DraftAtPP     = DraftIndicationAtPP;
+            Cmd.TxInfo.Port         = NULL;
+            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
+                                    
+            Cmd.Data.ObjectId       = IDNumber;
+            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.HasTrimValue   = HasTrimValue;
+            Cmd.Data.HasListValue   = HasListValue;
+            Cmd.Data.HasDeflection  = HasDeflection;
+            Cmd.Data.TrimValue      = TrimValue;
+            Cmd.Data.ListValue      = ListValue;
+            Cmd.Data.DftFwdMark     = DftFwdMark;
+            Cmd.Data.DftAftMark     = DftAftMark;
+            Cmd.Data.DftFwd         = DftFwd;
+            Cmd.Data.DftAft         = DftAft;
+            Cmd.Data.DftP           = DftP;
+            Cmd.Data.DftS           = DftS;
+            Cmd.Data.Deflection     = Deflection;
+            Cmd.Data.MaxDraft       = MaxDraft;
+            Cmd.Data.MeanDraft      = MeanDraft;
+            Cmd.Data.StatusDftFwd   = StatusDftFwd;
+            Cmd.Data.StatusDftAft   = StatusDftAft;
+            Cmd.Data.StatusDftP     = StatusDftP;
+            Cmd.Data.StatusDftS     = StatusDftS;
+            Cmd.Data.DraftAtPP      = DraftIndicationAtPP;
 
             Cmd.Data.DftAftP        = DftAftP;
             Cmd.Data.DftAftS        = DftAftS;
@@ -1486,6 +1487,7 @@ int PRODraftSystem::SendData(U16 cmd) {
             Cmd.Data.StatusDftAftS  = StatusDftAftS;
             Cmd.Data.StatusDftFwdP  = StatusDftFwdP;
             Cmd.Data.StatusDftFwdS  = StatusDftFwdS;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus =  E_QUEUE_FULL;

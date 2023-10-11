@@ -448,7 +448,9 @@ int PROAtmReference::ReceiveData(U8* data)
             ANPRO10_COMMAND_2740  *pData = (ANPRO10_COMMAND_2740*) data;
             AIPressSensor::AtmPressure = pData->AtmPressure;
             ManualPressure  = pData->ManualPressure;
-            UseManual       = pData->UseManual;
+			UseManual       = pData->UseManual;
+            UpdateTimeInfo(pData->TimeStampPeriod);
+
             ErrorStatus     =  E_UNKNOWN_OBJECT;
             ErrorStatus =  E_OK;
         }
@@ -474,16 +476,17 @@ int PROAtmReference::SendData(U16 cmd)
         {
             QueueANPRO10_COMMAND_2740 Cmd;
 
-            Cmd.TxInfo.Port        = NULL;
-            Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId        = DEVICE_BROADCAST_TXU;
+            Cmd.TxInfo.Port          = NULL;
+            Cmd.TxInfo.rxAddr        = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId          = DEVICE_BROADCAST_TXU;
 
-            Cmd.Data.ObjectId      = IDNumber;
-            Cmd.Data.ndb           = sizeof(Cmd)-sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo     = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.AtmPressure   = AIPressSensor::AtmPressure;
-            Cmd.Data.ManualPressure= ManualPressure;
-            Cmd.Data.UseManual     = UseManual;
+            Cmd.Data.ObjectId        = IDNumber;
+            Cmd.Data.ndb             = sizeof(Cmd)-sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo       = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.AtmPressure     = AIPressSensor::AtmPressure;
+            Cmd.Data.ManualPressure  = ManualPressure;
+            Cmd.Data.UseManual       = UseManual;
+            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent )
                 ErrorStatus =  E_QUEUE_FULL;
