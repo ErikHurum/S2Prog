@@ -14,7 +14,9 @@
   Revision list.
 
   Bootloader:
-  V11   Released 13.Feb-2023
+  V12   Released 2.10.2023  EHS
+        - Now Watchdog is enabled and supported in the bootloader
+  V11   Released 13.Feb-2023    EHS
         - Fixes Watchdog problem when "Goto bootloader" from main program
   V10   
         Only change is corrected output from linker

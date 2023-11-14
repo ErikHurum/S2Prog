@@ -800,14 +800,14 @@ AnsiString PROTankPressure::ZeroSetTankPressureSensor(bool Local) {
 int PROTankPressure::FindPROStatus(AnsiString &MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
-    if (HWFailure || !IsAvailableNewData()) {
+    if (HWFailure ) {
         PROStatus1 = ST_ERROR;
     }
     if (PROStatus1 != ST_ERROR) {
         switch (State) {
         case tSeaGoing      :
         case tTankCleaning  :
-            PROStatus1 = ST_WARNING;
+			PROStatus1 = ST_WARNING;
             break;
         default:
             break;
@@ -829,8 +829,11 @@ int PROTankPressure::FindPROStatus(AnsiString &MyString) {
         }
         if (AlActive) PROStatus2 = ST_ALARM;
         if (PROStatus2 > PROStatus1) PROStatus1 = PROStatus2;
+	}
+    if ( !IsAvailableNewData() ) {
+        PROStatus1 = ST_TIME_OUT;
     }
-    MyString = FindStatusChar(PROStatus1);
+	MyString = FindStatusChar(PROStatus1);
     return (PROStatus1);
 }
 
@@ -844,7 +847,7 @@ int PROTankPressure::GetValue(int ValueId, int Index, float &MyRetValue,  int &D
     case SVT_PRESSURE:
         DecPnt     = 1;
         Unit       = PRESSURE_UNIT1;
-        if (HasPressure && IsNewData) {
+        if ( HasPressure && IsAvailableNewData() ) {
             MyRetValue = Pressure;
         } else {
             Status = GETVAL_FLOAT_NOT_LEGAL;
@@ -1413,7 +1416,7 @@ int PROTankPressure::PutFloatValue(int ValueId, float NewValue) {
             SetTimeStamp();
             tankPressures[0]->PutFloatValue(ValueId, NewValue);
             tankPressures[0]->SendData();
-            //RefreshData(ValueId);
+            RefreshData(ValueId);
         }
         break;
     case SVT_AL_LIMIT_TYPE_PRESS:

@@ -483,6 +483,7 @@
 #define C_AI_Pt100              2142    // Temp
 #define C_AI_Pt1000             2143    // Temp
 #define C_AI_TEMP_mA            2150    // Temp
+#define C_AI_TEMP_Hart          2151    // Temp
 #define C_AI_TEMP_AD590         2152    // Temp
 #define C_AI_LeSw_ADCard        2153    // Level switch
 #define C_AI_LeSw_Valcom        2154    // Level switch
@@ -844,12 +845,13 @@
 
 
 // Status on PRogramObject: Range 3900 -> 3999
-#define ST_NONE                3900
-#define ST_OK                  3901
+#define ST_NONE                     3900
+#define ST_OK                       3901
 #define ST_LOADCALC                 3902
 #define ST_WARNING                  3903
 #define ST_ALARM                    3904
 #define ST_ERROR                    3905
+#define ST_TIME_OUT                 3906
 
 // FREE: Range 4000 -> 4999
 #define C_PRO_SAAB_PROTOCOL         4000
@@ -1680,40 +1682,41 @@
 #define SVT_METRI_TAPE_SNS          1145
 #define SVT_HSH_FLOAT_SNS           1146
 #define SVT_HART_RADAR              1147
-#define SVT_HART_MA				    1148
-#define SVT_HART_STATUS             1149
-#define SVT_HART_ERROR_CNT          1150
-#define SVT_HART_OPEN_LOOP          1151
-#define SVT_HART_SHORT_CIRCUIT      1152
-#define SVT_AP_LEVEL                1153
-#define SVT_AP_LEVEL2               1154
-#define SVT_AP_LEVEL_PRESSURE_MH2O  1155
-#define SVT_AP_TANK_PRESSURE_MB     1156
-#define SVT_AP_LEVEL_PRESSURE_MB    1157
-#define SVT_AP_LPRESS_SNS_FAIL      1158
-#define SVT_AP_LPRESS_SNS_FAIL2     1159
-#define SVT_AP_TPRESS_SNS_FAIL      1160
-#define SVT_AP_SYS_FAIL             1161
-#define SVT_AP_POWER_FAIL           1162
-#define SVT_AP_COMMON_ALM           1163
-#define SVT_AP_LOW_PRESS            1164
-#define SVT_MB_MA_PRESSURE    		1165
-#define SVT_LEVEL_SWITCH_STATUS     1167
-#define SVT_LEVEL_SWITCH_STATUS2    1168
-#define SVT_VOLUME_OFFSET           1169
-#define SVT_OFFSET_VOLUME           1170
-#define SVT_OFFSET_VOL_AT_REF_TMP   1171
-#define SVT_OFFSET_WEIGHT           1172
-#define SVT_VOLUME_CORRECTION       1173
-#define SVT_CUSTODY_TRF_LEVEL1      1174
-#define SVT_CUSTODY_TRF_LEVEL2      1175
-#define SVT_CUSTODY_TRF_LEVEL3      1176
-#define SVT_CUSTODY_TRF_LEVEL4      1177
-#define SVT_CUSTODY_TRF_LEVEL5      1178
-#define SVT_CUSTODY_TRF_AVG_LEVEL   1179
-#define SVT_CUSTODY_TRF_TRIM_CORR   1180
-#define SVT_CUSTODY_TRF_LIST_CORR   1181
-#define SVT_CUSTODY_TRF_CORR_LEVEL  1182
+#define SVT_HART_TEMPERATURE        1148
+#define SVT_HART_MA				    1149
+#define SVT_HART_STATUS             1150
+#define SVT_HART_ERROR_CNT          1151
+#define SVT_HART_OPEN_LOOP          1152
+#define SVT_HART_SHORT_CIRCUIT      1153
+#define SVT_AP_LEVEL                1154
+#define SVT_AP_LEVEL2               1155
+#define SVT_AP_LEVEL_PRESSURE_MH2O  1156
+#define SVT_AP_TANK_PRESSURE_MB     1157
+#define SVT_AP_LEVEL_PRESSURE_MB    1158
+#define SVT_AP_LPRESS_SNS_FAIL      1159
+#define SVT_AP_LPRESS_SNS_FAIL2     1160
+#define SVT_AP_TPRESS_SNS_FAIL      1161
+#define SVT_AP_SYS_FAIL             1162
+#define SVT_AP_POWER_FAIL           1163
+#define SVT_AP_COMMON_ALM           1164
+#define SVT_AP_LOW_PRESS            1165
+#define SVT_MB_MA_PRESSURE    		1167
+#define SVT_LEVEL_SWITCH_STATUS     1168
+#define SVT_LEVEL_SWITCH_STATUS2    1169
+#define SVT_VOLUME_OFFSET           1170
+#define SVT_OFFSET_VOLUME           1171
+#define SVT_OFFSET_VOL_AT_REF_TMP   1172
+#define SVT_OFFSET_WEIGHT           1173
+#define SVT_VOLUME_CORRECTION       1174
+#define SVT_CUSTODY_TRF_LEVEL1      1175
+#define SVT_CUSTODY_TRF_LEVEL2      1176
+#define SVT_CUSTODY_TRF_LEVEL3      1177
+#define SVT_CUSTODY_TRF_LEVEL4      1178
+#define SVT_CUSTODY_TRF_LEVEL5      1179
+#define SVT_CUSTODY_TRF_AVG_LEVEL   1180
+#define SVT_CUSTODY_TRF_TRIM_CORR   1181
+#define SVT_CUSTODY_TRF_LIST_CORR   1182
+#define SVT_CUSTODY_TRF_CORR_LEVEL  1183
 
 // AnalogInput, Range: 1200 -> 1249
 #define SVT_AI_TYPE                 1200
@@ -1768,8 +1771,10 @@
 #define SVT_IO_CH_WT_COUNT          1268
 #define SVT_IO_CH_LEVEL_SWITCH      1269
 
-#define SVT_IO_CH_HART_FAIL_COUNT1  1270
-#define SVT_IO_CH_HART_FAIL_COUNT2  1271
+#define SVT_IO_CH_HART_PV1          1270
+#define SVT_IO_CH_HART_PV2          1271
+#define SVT_IO_CH_HART_FAIL_COUNT1  1272
+#define SVT_IO_CH_HART_FAIL_COUNT2  1273
 
 //EEPromStatus PRogram Objects,     Range: 1300 -> 1500
 #define SVT_PRO_NAME                1301

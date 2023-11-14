@@ -64,13 +64,6 @@ int AIAtmPressSensor_mA::PutValue( int ValueId, int Index, AnsiString NewValue,b
 //
 //////////////////////////////////////////////////////////////////
 
-
-void AIAtmPressSensor_mA::NewValue(float NewValue)
-{
-    HWFailure           = false;
-    FilteredValue       = NewValue;
-}
-
 void AIAtmPressSensor_mA::FilterValue(float NewCalcVal,float FilterDegree)
 {
     CalcValue += (NewCalcVal - CalcValue)/(FilterDegree+1.0);

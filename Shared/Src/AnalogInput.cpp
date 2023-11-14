@@ -574,7 +574,10 @@ int AnalogInput::FindPROStatus(AnsiString &MyString) {
         PROStatus = ST_ERROR;
     } else if ( !Enable ) {
         PROStatus = ST_WARNING;
-    }
+    }else if (!IsAvailableNewData()) {
+		PROStatus = ST_TIME_OUT;
+	}
+
     MyString = FindStatusChar(PROStatus);
     return (PROStatus);
 }
@@ -912,6 +915,8 @@ int AnalogInput::ReceiveData(U8 *data) {
             FilteredValue   = pData->FilteredValue;
             CalcValue       = pData->CalcValue;
             ResultOK        = pData->ResultOK;
+            UpdateTimeInfo(pData->TimeStampPeriod);
+
             // Only check alarm for Master TCU for now
             if ( !CurrentDeviceAddress && CurrentDeviceId == DEVICE_TCU ) {
                 CheckAlarms(AlarmSet);
@@ -941,19 +946,21 @@ int AnalogInput::SendData(U16 cmd) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             QueueANPRO10_COMMAND_2508  Cmd;
-            Cmd.TxInfo.Port         = NULL;
-            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
+            Cmd.TxInfo.Port             = NULL;
+            Cmd.TxInfo.rxAddr           = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId             = DEVICE_BROADCAST_TXU;
 
-            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.ObjectId       = IDNumber;
-            Cmd.Data.HWFailure      = HWFailure;
-            Cmd.Data.MyHWFailure    = MyHWFailure;
-            Cmd.Data.ActiveAlarms   = ActiveAlarms;
-            Cmd.Data.FilteredValue  = FilteredValue;
-            Cmd.Data.CalcValue      = CalcValue;
-            Cmd.Data.ResultOK       = ResultOK;
+            Cmd.Data.CommandNo          = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.ndb                = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.ObjectId           = IDNumber;
+            Cmd.Data.HWFailure          = HWFailure;
+            Cmd.Data.MyHWFailure        = MyHWFailure;
+            Cmd.Data.ActiveAlarms       = ActiveAlarms;
+            Cmd.Data.FilteredValue      = FilteredValue;
+            Cmd.Data.CalcValue          = CalcValue;
+            Cmd.Data.ResultOK           = ResultOK;
+            Cmd.Data.TimeStampPeriod    = TimeStampPeriod;
+            
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent ) ErrorStatus = E_QUEUE_FULL;
@@ -994,6 +1001,7 @@ int AnalogInput::SendData(U16 cmd) {
 void AnalogInput::NewValue(float NewValue) {
     HWFailure     = false;
     FilteredValue = NewValue;
+    SetTimeStamp();
 }
 
 void AnalogInput::SetStatus(U8 *NewStatus) {
@@ -1025,12 +1033,12 @@ bool AnalogInput::GetIsPressureSns(void) {
 bool AnalogInput::CanCalculate(void) {
     bool CanCalc = false;
     if ( Enable ) {
-        if ( IsAvailableNewData() /*HWFailure || MyHWFailure */) {
+        if ( IsAvailableNewData() ) {           /*!HWFailure || !MyHWFailure */
+            CanCalc = true;
+        } else {
             // HWFailure is set by e.g. ZBAna or SCADCard
             CalcValue = 0.0;
             ResultOK  = false;
-        } else {
-            CanCalc = true;
         }
     } else {
         CalcValue = 0.0;

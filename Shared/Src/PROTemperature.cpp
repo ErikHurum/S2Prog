@@ -210,6 +210,13 @@ int PROTemperature::LoadConfigFromFile(TSNConfigString &ConfigString) {
                     AnalogInList.push_back((AnalogInput *)AnalogInPtr);
                 }
                 break;
+            case C_AI_TEMP_Hart:
+                {
+                    AITempSensor_Hart *AnalogInPtr = new AITempSensor_Hart();
+                    AnalogInPtr->LoadConfigString(ConfigString);
+                    AnalogInList.push_back((AnalogInput *)AnalogInPtr);
+                }
+                break;
             case C_AI_TEMP_AD590:
                 {
                     AITempSensor_AD590 *AnalogInPtr = new AITempSensor_AD590();
@@ -347,7 +354,7 @@ int PROTemperature::FindPROStatus(AnsiString &MyString) {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
 
-    if ( HWFailure || !IsAvailableNewData() ) {
+    if ( HWFailure ) {
         PROStatus1 = ST_ERROR;
     }
     if (PROStatus1 != ST_ERROR) {
@@ -369,6 +376,9 @@ int PROTemperature::FindPROStatus(AnsiString &MyString) {
         if (PROStatus2 > PROStatus1) {
             PROStatus1 = PROStatus2;
         }
+    }
+    if ( !IsAvailableNewData() ) {
+        PROStatus1 = ST_TIME_OUT;
     }
     MyString = FindStatusChar(PROStatus1);
     return (PROStatus1);
@@ -489,7 +499,7 @@ int PROTemperature::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
 
             }
             if (SnsPtr) {
-                if ((SnsValId == SVT_AI_CALC_VAL) && (!SnsPtr->CanCalculate() || !SnsPtr->ResultOK)) {
+				if ((SnsValId == SVT_AI_CALC_VAL) && (!SnsPtr->CanCalculate() || !SnsPtr->ResultOK )) {
                     DecPnt = 1;
                     Unit   = TEMP_UNIT;
                     Status = GETVAL_FLOAT_NOT_LEGAL;
@@ -507,7 +517,7 @@ int PROTemperature::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         DecPnt     = 1;
         Unit       = TEMP_UNIT;
         if (IsOnline) {
-            if (HasTemp && IsAvailableNewData() /*IsNewData*/) {
+            if (HasTemp && IsAvailableNewData() ) {
                 MyRetValue = Temperature;
                 Status     = StatusTemp;
             } else {
@@ -522,7 +532,7 @@ int PROTemperature::GetValue(int ValueId, int Index, float &MyRetValue,  int &De
         DecPnt     = 1;
         Unit       = TEMP_UNIT;
         if (IsOnline) {
-            if (HasTemp && IsNewData) {
+            if (HasTemp && IsAvailableNewData() ) {
                 MyRetValue = VaporTemp;
                 Status     = StatusTemp;
             } else {
@@ -903,6 +913,20 @@ int PROTemperature::PutFloatValue(int ValueId, float NewValue) {
             Status = LowBotTempPtr->PutFloatValue(SVT_AL_LIMIT, NewValue);
         }
         break;
+    case SVT_HART_MA            :
+    case SVT_HART_TEMPERATURE   :
+    case SVT_HART_STATUS        :
+    case SVT_HART_OPEN_LOOP     :
+    case SVT_HART_SHORT_CIRCUIT :
+        if (!AnalogInList.empty()) {
+            AITempSensor_Hart *tmpPtr = (AITempSensor_Hart *)AnalogInList[0];
+            tmpPtr->PutFloatValue(ValueId, NewValue);
+            //tmpPtr->ActiveAlarms = CheckAlarms(tmpPtr->AlarmSet,&tmpPtr->HWFailure);
+            if (ValueId == SVT_HART_TEMPERATURE) {
+                tmpPtr->SendData();
+            }
+        }
+        break;
     default:
         Status = PRogramObject::PutFloatValue(ValueId, NewValue);
         break;
@@ -1244,6 +1268,7 @@ void PROTemperature::Calculate(void) {
                 }
             }
         }   // End for
+        // Do we have any temperature sensors at all?
         if (unsigned(HWFailureCnt) == AnalogInList.size()) {
             HWFailure  = true;
             HasTemp    = false;
@@ -1393,18 +1418,6 @@ float PROTemperature::GetTemperature(void) {
 void PROTemperature::SetTemperature(float NewTemp) {
     Temperature = NewTemp;
 }
-
-bool PROTemperature::IsAvailableNewData(void) {
-    bool Expired;
-    if (abs(double(clock() - TimeStampPeriod)) < 5 * DATA_EXPIRATION_TIME) {
-        Expired = false;
-    } else {
-        Expired = true;
-    }
-    return !Expired;
-    //return bool(abs(clock() - TimeStampPeriod)<3*DATA_EXPIRATION_TIME);
-}
-
 
 void PROTemperature::UpdateLevelInfo(float pLevel, bool pEmpty) {
     Level 	     = pLevel;

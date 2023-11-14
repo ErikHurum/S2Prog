@@ -24,7 +24,6 @@ private:
 protected:
     volatile bool IsModified;
     int LineNumber;
-    time_t RecTimeStamp;
 
 public:
 	static set<PRogramObjectBase *>DataTransferSet;
@@ -113,7 +112,7 @@ public:
     void SetLineNumber(int pLineNumber);
     int GetLineNumber(void);
     static bool Compare(PRogramObjectBase *Ptr1, PRogramObjectBase *Ptr2);
-    void SetTimeStamp(void);
+    bool SetTimeStamp(void);
     void UpdateTimeInfo(clock_t NewTimeStampPeriod);
     static vector<PRogramObjectBase *>SortVector(vector<PRogramObjectBase *>UnsortedVector);
     static vector<PRogramObjectBase*> GetReadPermissionVector(vector<PRogramObjectBase*>MyVect , unsigned  pIDNumber=0);

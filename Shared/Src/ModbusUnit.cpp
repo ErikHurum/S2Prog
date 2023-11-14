@@ -42,6 +42,10 @@ ModbusUnit::ModbusUnit(int Addr, int ComPortNo) {
     HasDigitalOut      = false;
     HasAnalogIn        = false;
     HasDigitalIn       = false;
+    StatusAnalogIn     = 0;
+    StatusAnalogOut    = 0;
+    StatusDigitalIn    = 0;
+    StatusDigitalOut   = 0;
     ComFailCount       = 0;
     ComTotalFailCount   = 0;
     hasNewRegOutput    = false;
@@ -398,6 +402,12 @@ bool ModbusUnit::NewDigitalIn(int Channel, bool CurrentState) {
     }
     return true;
 }
+/*
+StatusAnalogIn  
+StatusAnalogOut 
+StatusDigitalIn 
+StatusDigitalOut
+*/
 void ModbusUnit::HandleRequest(U8 *RequestData) {
     int Offset;
     switch (myPort->Device) {
@@ -432,8 +442,8 @@ void ModbusUnit::HandleRequest(U8 *RequestData) {
             // Not that the Packet contains 3 times 0x0 to make space for CRC
             U8 Packet[MAX_QUERY_LENGTH + CHECKSUM_SIZE + 1];
 
-            Packet[MODBUS_INDEX_SLAVE_ADDRESS + Offset] = Address;
-            Packet[MODBUS_INDEX_COMMAND       + Offset] = RequestData[MODBUS_INDEX_COMMAND];
+            Packet[MODBUS_INDEX_SLAVE_ADDRESS + Offset ] = Address;
+            Packet[MODBUS_INDEX_COMMAND       + Offset ] = RequestData[MODBUS_INDEX_COMMAND];
             Packet[MODBUS_INDEX_EXCEPTION_CODE + Offset] = NumberOfBytes;
             U8 *tmpCoilPtr;
             switch (RequestData[MODBUS_INDEX_COMMAND]) {
@@ -685,7 +695,7 @@ void ModbusUnit::HandleIO(void) {
     for (unsigned i = 0; i < AddressesVectAnalogIn.size(); i++) {
         unsigned Channel = AddressesVectAnalogIn[i].First;
         unsigned Count   = AddressesVectAnalogIn[i].NumberOfAddr;
-        if (Get_Multiple(myPort, myPort->ModbusCmdInputRegister, Address, Channel, Count, (U8 *)&AnalogIn[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
+        if (StatusAnalogIn = Get_Multiple(myPort, myPort->ModbusCmdInputRegister, Address, Channel, Count, (U8 *)&AnalogIn[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
             Cnt++;
         } else {
             FlagNewValues(Channel, Count);
@@ -696,7 +706,7 @@ void ModbusUnit::HandleIO(void) {
         unsigned Channel = AddressesVectDigitalIn[i].First;
         unsigned Count   = AddressesVectDigitalIn[i].NumberOfAddr;
         U8 tmpReplyData[256];
-        if (Get_Multiple(myPort, myPort->ModbusCmdInputStatus, Address, Channel, Count, tmpReplyData, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
+        if (StatusDigitalIn = Get_Multiple(myPort, myPort->ModbusCmdInputStatus, Address, Channel, Count, tmpReplyData, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
             Cnt++;
         } else {
             SetCoils(Channel, Count, tmpReplyData);
@@ -709,7 +719,7 @@ void ModbusUnit::HandleIO(void) {
         for (unsigned i = 0; i < AddressesVectAnalogOut.size(); i++) {
             unsigned Channel = AddressesVectAnalogOut[i].First;
             unsigned Count   = AddressesVectAnalogOut[i].NumberOfAddr;
-            if (WriteMultipleRegisters(myPort, Address, Channel, Count, (U8 *)&AnalogOut[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
+            if (StatusAnalogOut = WriteMultipleRegisters(myPort, Address, Channel, Count, (U8 *)&AnalogOut[Channel], myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
                 Cnt++;
             }
         }
@@ -722,13 +732,12 @@ void ModbusUnit::HandleIO(void) {
             unsigned NCoils = AddressesVectDigitalOut[i].NumberOfAddr;
             U8 Packet[MAX_QUERY_LENGTH];  // Could subtract REQUEST_MULTIPLE_SIZE
             if (GetCoils(DigitalOut, FCoil, NCoils, Packet)) {
-                if (WriteMultipleCoils(myPort, Address, FCoil, NCoils, Packet, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
+                if (StatusDigitalOut = WriteMultipleCoils(myPort, Address, FCoil, NCoils, Packet, myTimeOut, myFrameSpaceTime, myFrameTimeOut) == PORT_FAILURE) {
                     Cnt++;
                 }
             }
         }
     }
-    //TSN_Delay(myRequestDelay * 2);
     if (Cnt) {
         if (myPort->Relaxed) {
             ComFailCount++;
@@ -952,6 +961,10 @@ int ModbusUnit::ReceiveData(U8 *data) {
             ANPRO10_COMMAND_2750 *pData = (ANPRO10_COMMAND_2750 *)data;
             ComFailCount        = pData->ComFailCount;
             ComTotalFailCount   = pData->ComTotalFailCount;
+            StatusAnalogIn      = pData->StatusAnalogIn  ;
+            StatusAnalogOut     = pData->StatusAnalogOut ;
+            StatusDigitalIn     = pData->StatusDigitalIn ;
+            StatusDigitalOut    = pData->StatusDigitalOut;
             memcpy(DigitalIn, pData->DigitalIn, MODBUS_MAX_COILS / 8);
             ErrorStatus         = E_OK;
         }
@@ -970,14 +983,27 @@ int ModbusUnit::SendData(U16 cmd) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             QueueANPRO10_COMMAND_2750 Cmd;
-            Cmd.TxInfo.Port         = NULL;
-            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
-            Cmd.Data.ObjectId       = IDNumber;
-            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.ComFailCount   = ComFailCount;
-            Cmd.Data.ComTotalFailCount = ComTotalFailCount;
+            Cmd.TxInfo.Port             = NULL;
+            Cmd.TxInfo.rxAddr           = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId             = DEVICE_BROADCAST_TXU;
+            Cmd.Data.ObjectId           = IDNumber;
+            Cmd.Data.ndb                = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo          = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.ComFailCount       = ComFailCount;
+            Cmd.Data.ComTotalFailCount  = ComTotalFailCount;
+            Cmd.Data.StatusAnalogIn     = StatusAnalogIn  ;
+            Cmd.Data.StatusAnalogOut    = StatusAnalogOut ;
+            Cmd.Data.StatusDigitalIn    = StatusDigitalIn ;
+            Cmd.Data.StatusDigitalOut   = StatusDigitalOut;
+
+            /*
+            int numberOfDigitalIn       = LastDigitalIn - StartDigitalIn;
+            int numberOfBytes           = numberOfDigitalIn/8;
+            if (numberOfDigitalIn % 8 ){
+                numberOfBytes++;
+            }
+            memcpy(Cmd.Data.DigitalIn, DigitalIn, numberOfBytes);
+            */
             memcpy(Cmd.Data.DigitalIn, DigitalIn, MODBUS_MAX_COILS / 8);
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus = E_QUEUE_FULL;
@@ -1044,4 +1070,7 @@ void ModbusUnit::SetUpCom(TSNUart *Port, int RequestDelay, int TimeOut, int Fram
     SetAddressRanges(DigitalInSet, AddressesVectDigitalIn, MaxCoils);
 }
 
+bool ModbusUnit::GetIsMaster(void){
+    return IsMaster;
+}
 

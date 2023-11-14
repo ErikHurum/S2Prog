@@ -12,7 +12,6 @@ public:
 	~AIAtmPressSensor_mA(void);
 
 	virtual float Calculate(void);
-	void NewValue(float NewValue);
 	void FilterValue(float NewVal,float FilterDegree);
 // Routines for the librarian
 	int PutValue( int ValueId, int Index, AnsiString NewValue,bool Local=true, int *UnitId=NULL);

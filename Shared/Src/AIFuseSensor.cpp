@@ -95,7 +95,6 @@ int AIFuseSensor::PutFloatValue( int ValueId, float NewValue)
 
 void AIFuseSensor::NewValue(float NewValue)
 {
-#ifndef ANCONF
     FilteredValue = NewValue;
     CalcValue     = NewValue;
     HWFailure     = false;
@@ -105,7 +104,6 @@ void AIFuseSensor::NewValue(float NewValue)
         CheckAlarms(AlarmSet);
         SendData();
     }
-#endif
 }
 
 float AIFuseSensor::Calculate(void)

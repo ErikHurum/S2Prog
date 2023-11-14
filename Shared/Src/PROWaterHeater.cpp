@@ -172,6 +172,13 @@ int PROWaterHeater::LoadConfigFromFile(TSNConfigString &ConfigString) {
                     AnalogInList.push_back((AnalogInput *)AnalogInPtr);
                 }
                 break;
+            case C_AI_TEMP_Hart:
+                {
+                    AITempSensor_Hart *AnalogInPtr = new AITempSensor_Hart();
+                    AnalogInPtr->LoadConfigString(ConfigString);
+                    AnalogInList.push_back((AnalogInput *)AnalogInPtr);
+                }
+                break;
             case C_AI_P906_0110:
             case C_AI_P906_0111:
                 if ( ptrPipePressure != NULL ) {

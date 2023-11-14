@@ -14,6 +14,7 @@ TProtocolInfoForm *ProtocolInfoForm;
 // ---------------------------------------------------------------------------
 __fastcall TProtocolInfoForm::TProtocolInfoForm(TComponent* Owner)
 	: TForm(Owner) {
+    ModbusUnitPtr = NULL;
 }
 
 // ---------------------------------------------------------------------------
@@ -23,8 +24,7 @@ void __fastcall TProtocolInfoForm::Timer1Timer(TObject *Sender) {
 		StringGridInputRegisters->RowCount = ModbusMap.size() + 1;
 		int Row = 1;
 		multimap<unsigned, ModbusObject*>::iterator ObjMapIterator;
-		for (ObjMapIterator = ModbusMap.begin();
-		ObjMapIterator != ModbusMap.end(); Row++, ObjMapIterator++) {
+		for (ObjMapIterator = ModbusMap.begin(); ObjMapIterator != ModbusMap.end(); Row++, ObjMapIterator++) {
 			ModbusObject *ModbusObjectPtr = (ModbusObject*)(*ObjMapIterator).second; ;
 			PRogramObjectBase *ObjectPtr = 	PRogramObjectBase::FindObject(ModbusObjectPtr->GetObjectId());
 			if (CheckBoxRegOffset->Checked) {
@@ -91,6 +91,13 @@ void __fastcall TProtocolInfoForm::Timer1Timer(TObject *Sender) {
 				break;
 			};
 		}
+		if (ModbusUnitPtr) {
+			LabelReadInputRegisterStatus->Caption 		=  ModbusUnitPtr->StatusAnalogIn;
+			LabelReadInputStatusStatus->Caption 		=  ModbusUnitPtr->StatusDigitalIn;
+			LabelWriteHoldingRegisterStatus->Caption 	=  ModbusUnitPtr->StatusAnalogOut;
+			LabelWriteCoilStatusStatus->Caption 		=  ModbusUnitPtr->StatusDigitalOut;
+		}
+
 
 	}else{
 		StringGridInputRegisters->RowCount = 2;
@@ -149,6 +156,10 @@ void __fastcall TProtocolInfoForm::SortIdNumbers(set<PRogramObjectBase *>ObjectS
 		if (ModbusObjectPtr->GetTCUAddress()== TCUNumber && ModbusObjectPtr->GetAddress()== Address && ModbusObjectPtr->GetTCUPortNo() == ComPort) {
 			ModbusMap.insert(pair<unsigned, ModbusObject *>(ModbusObjectPtr->GetChannel(), ModbusObjectPtr));
 		}
+	}
+	if (!ObjectSet.empty()) {
+		ModbusObject *ModbusObjectPtr = (ModbusObject*)*ObjectSet.begin();
+		ModbusUnitPtr =  ModbusObjectPtr->FindUnit();
 	}
 }
 
@@ -231,6 +242,9 @@ void __fastcall TProtocolInfoForm::InitSpinBoxes(set<PRogramObjectBase *>ObjectS
 void __fastcall TProtocolInfoForm::ComboBoxComPortsChange(TObject *Sender)
 {
 	SortIdNumbers(CurrentModbusSet);
+	if (ModbusUnitPtr ) {
+		GroupBoxComStatus->Visible = ModbusUnitPtr->GetIsMaster();
+	}
 }
 //---------------------------------------------------------------------------
 

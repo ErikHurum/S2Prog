@@ -47,6 +47,15 @@ __published:	// IDE-managed Components
 	TExcelWorkbook *ExcelWorkbook1;
 	TExcelWorksheet *ExcelWorksheet1;
 	TExcelApplication *ExcelApplication1;
+	TGroupBox *GroupBoxComStatus;
+	TLabel *Label8;
+	TLabel *Label9;
+	TLabel *Label10;
+	TLabel *Label11;
+	TLabel *LabelReadInputRegisterStatus;
+	TLabel *LabelReadInputStatusStatus;
+	TLabel *LabelWriteHoldingRegisterStatus;
+	TLabel *LabelWriteCoilStatusStatus;
 	void __fastcall Timer1Timer(TObject *Sender);
 	void __fastcall FormCreate(TObject *Sender);
 	void __fastcall SpinEditTCUChange(TObject *Sender);
@@ -60,6 +69,7 @@ private:	// User declarations
 	set<unsigned>ComPorts;
 	set<unsigned>Address;
 	set<PRogramObjectBase*>CurrentModbusSet;
+	ModbusUnit *ModbusUnitPtr;
 
 	void __fastcall SortIdNumbers(set<PRogramObjectBase *>ObjectSet);
 	void __fastcall InitSpinBoxes(set<PRogramObjectBase *>ObjectSet);

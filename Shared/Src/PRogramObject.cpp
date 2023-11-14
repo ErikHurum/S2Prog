@@ -576,8 +576,7 @@ void PRogramObject::RefreshData(int ValueKey) {
         if (IsAvailableNewData()) {
             if (DataFromOther) {
                 HWFailure = CheckAlarms(ExternalAlarmList);
-            }
-            if (!DataFromOther || !HWFailure) {
+            }else if (!HWFailure) {
                 Calculate();
                 IsNewData = true;
                 // HWFailure set elsewhere when our IO-system
@@ -585,7 +584,8 @@ void PRogramObject::RefreshData(int ValueKey) {
                 //TSN_Delay(10);
             }
         } else {
-            IsNewData = false;
+            IsNewData       = false;
+            TimeStampPeriod = 30000;    // To indicate that we could not calculate
             SetAlarmsToNormal(AlarmSet);
             SendData();
         }

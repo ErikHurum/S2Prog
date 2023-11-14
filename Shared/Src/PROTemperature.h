@@ -67,7 +67,6 @@ public:
     virtual int SendData(U16 CommandNo = CMD_GENERIC_REALTIME_DATA);
     float GetTemperature(void);
     void SetTemperature(float NewTemp);
-    bool IsAvailableNewData(void);
     void UpdateLevelInfo(float pLevel, bool pEmpty);
     int WriteXML(char *StrBuf, bool IncAlarms);
     static int GetMaxTempSensors(void);

@@ -159,6 +159,7 @@ PROTemperature *PROWaterIngress::AddTemperature(void)
         case C_AI_Pt100             :
         case C_AI_Pt1000            :
         case C_AI_TEMP_mA           :
+        case C_AI_TEMP_Hart         :
         case C_AI_TEMP_AD590        :
         case C_AI_WATERINGR_TEMP    :
         case C_AI_WATERINGR_TEMP_M  :
@@ -178,6 +179,7 @@ PROTemperature *PROWaterIngress::AddTemperature(void)
             case C_AI_Pt100             :
             case C_AI_Pt1000            :
             case C_AI_TEMP_mA           :
+            case C_AI_TEMP_Hart         :
             case C_AI_TEMP_AD590        :
             case C_AI_WATERINGR_TEMP    :
             case C_AI_WATERINGR_TEMP_M  :
@@ -271,7 +273,7 @@ int PROWaterIngress::FindPROStatus(AnsiString &MyString)
 {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
-    if ( HWFailure || !IsAvailableNewData() ) {
+    if ( HWFailure ) {
         PROStatus1 = ST_ERROR;
     }
     if ( PROStatus1 != ST_ERROR ) {
@@ -304,6 +306,9 @@ int PROWaterIngress::FindPROStatus(AnsiString &MyString)
         }
         if ( AlActive ) PROStatus2 = ST_ALARM;
         if ( PROStatus2>PROStatus1 ) PROStatus1 = PROStatus2;
+    }
+    if ( !IsAvailableNewData() ) {
+        PROStatus1 = ST_TIME_OUT;
     }
     MyString = FindStatusChar(PROStatus1);
     return(PROStatus1);

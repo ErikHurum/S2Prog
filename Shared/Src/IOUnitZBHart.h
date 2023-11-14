@@ -11,8 +11,8 @@ public:
     static set<PRogramObjectBase *>ObjectSet;
     unsigned short  FailCnt1[12];
     unsigned short  FailCnt2[12];
-    float Distance[MAX_AN_ZBANA_CHANNELS];
-    float Level[MAX_AN_ZBANA_CHANNELS];
+    float ProcessValue1[MAX_AN_ZBANA_CHANNELS];
+    float ProcessValue2[MAX_AN_ZBANA_CHANNELS];
     IOUnitZBHart(PROIOComponent *IOCompPtr, PRogramObject *ElementPtr);
     ~IOUnitZBHart(void);
     bool Add(PROIOComponent *IOCompPtr, PRogramObject *ElementPtr);

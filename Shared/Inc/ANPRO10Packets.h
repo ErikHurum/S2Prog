@@ -439,6 +439,8 @@ struct ANPRO10_COMMAND_2508 {
     float   CalcValue;
     float   FilteredValue;
     float   FreeValue;
+    clock_t TimeStampPeriod;
+
 
 };
 
@@ -589,6 +591,7 @@ struct ANPRO10_COMMAND_2603 {
     float   mAValues[MAX_AN_ZBANA_CHANNELS];
     U16     FailCnt1[MAX_AN_ZBANA_CHANNELS];
     U16     FailCnt2[MAX_AN_ZBANA_CHANNELS];
+    float   ProcessValue1[MAX_AN_ZBANA_CHANNELS];
 };
 
 struct QueueANPRO10_COMMAND_2603 {
@@ -1044,12 +1047,18 @@ struct QueueANPRO10_COMMAND_2741 {
     ANPRO10_COMMAND_2741   Data;
 };
 
+// Not documented in ANPRO10.docx yet
 struct ANPRO10_COMMAND_2750 {
     U16 CommandNo;
     U16 ndb;
     U32 ObjectId;
     U16 ComFailCount;
     U16 ComTotalFailCount;
+    I16 StatusAnalogIn  ;
+    I16 StatusAnalogOut ;
+    I16 StatusDigitalIn ;
+    I16 StatusDigitalOut;
+
     U8  DigitalIn[MODBUS_MAX_COILS / 8];
 
 };

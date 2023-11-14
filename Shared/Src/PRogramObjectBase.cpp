@@ -35,7 +35,6 @@ PRogramObjectBase::PRogramObjectBase(bool AddToList) {
     LegacyIDNumber  = (C_PRO_BASIC << 16) + MySet.size();
     Type            = 0;
     HWFailure       = false;
-    RecTimeStamp    = clock();
     UpdatePeriod    = 0;
     TimeStamp       = clock();
     TimeStampPeriod = 0;
@@ -230,12 +229,19 @@ AnsiString PRogramObjectBase::FindStatusChar(int Stat) {
     case ST_LOADCALC:
         StrPtr = "L";
         break;
+    case ST_TIME_OUT:
+        StrPtr = "T";
+        break;
     }
     return (StrPtr);
 }
 
 int PRogramObjectBase::FindPROStatus(AnsiString &MyString) {
     int PROStatus = ST_OK;
+	if (!IsAvailableNewData()) {
+		PROStatus = ST_TIME_OUT;
+	}
+
     MyString = FindStatusChar(PROStatus);
     return (PROStatus);
 }
@@ -460,7 +466,7 @@ void PRogramObjectBase::SendStaticData(void) {
                             Delay++;
                         }
                     case E_OK:
-                        if ((Delay > 5) && ( PROTanksystemUnit::MySelf->GetIOLoadDelay() >= 10)) {
+                        if ((Delay > 5) && (PROTanksystemUnit::MySelf->GetIOLoadDelay() >= 10)) {
                             Delay--;
                         }
                         TSN_Delay(Delay);
@@ -677,9 +683,9 @@ void PRogramObjectBase::SetIdNumber(unsigned IDNum) {
 bool PRogramObjectBase::IsAvailableNewData(void) {
 #ifdef S2TXU
 #pragma diag_suppress=Pa082
-    return bool(abs(OS_Time - TimeStampPeriod)<4*DATA_EXPIRATION_TIME);
+    return bool((TimeStampPeriod<2*DATA_EXPIRATION_TIME)&&(abs(OS_Time - TimeStamp)<4*DATA_EXPIRATION_TIME));
 #else
-    return bool(abs(clock() - TimeStampPeriod)<4*DATA_EXPIRATION_TIME);
+    return bool((TimeStampPeriod<2*DATA_EXPIRATION_TIME)&&(abs(clock() - TimeStamp)<4*DATA_EXPIRATION_TIME));
 #endif
 }
 bool PRogramObjectBase::IsTimeToSend(void) {
@@ -804,15 +810,28 @@ bool PRogramObjectBase::Compare(PRogramObjectBase *Ptr1, PRogramObjectBase *Ptr2
     } else return true;
 }
 
-void PRogramObjectBase::SetTimeStamp(void) {
-    TimeStampPeriod = clock() - TimeStamp;
-    TimeStamp       = clock();  //pCommand->TimeStampPeriod;
+bool PRogramObjectBase::SetTimeStamp(void) {
+    bool hasUpdatedTimeStamp = false;
+#ifdef S2TXU
+    if (OS_Time  - TimeStamp > 10) {
+        TimeStampPeriod     = OS_Time - TimeStamp;
+        TimeStamp           = OS_Time;
+        hasUpdatedTimeStamp = true;
+    }
+#else
+    if (clock() - TimeStamp > 10) {
+        TimeStampPeriod     = clock() - TimeStamp;
+        TimeStamp           = clock();
+        hasUpdatedTimeStamp = true;
+    }
+#endif
+return hasUpdatedTimeStamp;
 }
 
-void PRogramObjectBase::UpdateTimeInfo(clock_t NewTimeStampPeriod){
+void PRogramObjectBase::UpdateTimeInfo(clock_t NewTimeStampPeriod) {
     TimeStampPeriod = NewTimeStampPeriod;
-    UpdatePeriod    = clock() - RecTimeStamp;
-    RecTimeStamp    = clock();  
+    UpdatePeriod    = clock() - TimeStamp;
+    TimeStamp       = clock();
 }
 vector<PRogramObjectBase *> PRogramObjectBase::SortVector(vector<PRogramObjectBase *>UnsortedVector) {
     vector<PRogramObjectBase *>TempVector;

@@ -316,4 +316,5 @@ void AIRadarSensorHart::SetNewStatus(bool NewStatus) {
 void AIRadarSensorHart::NewValue(float NewValue) {
     HWFailure = false;
     HartValue = NewValue;
+    SetTimeStamp();
 }

@@ -15,7 +15,6 @@ public:
     bool LoadConfigString(TSNConfigString &ConfigString);
     float Get_Angle(float Amp);
     float Calculate(void);
-    void NewValue(float NewVal);
     void MakeConstants(void);
 
 

@@ -600,9 +600,11 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                             CompPtr->NewValue(MsrdValues[i]);
                                             CompPtr->ActiveAlarms = CheckAlarms(CompPtr->AlarmSet, &CompPtr->MyHWFailure);
                                             CompPtr->Calculate();
+                                            /*
                                             if ( !CompPtr->ActiveAlarms ) {
                                                 CompPtr->SetTimeStamp();
                                             }
+                                            */
                                             CompPtr->SendData();
                                         } else {
                                             RequestADConfig = 3;
@@ -623,6 +625,7 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                     }
                                     
                                 }
+                            } else{  // Endif (!ActiveAlarms && !TmpStatus)
                             }
                             SetHWFailure((bool)ActiveAlarms);
                             SendData();

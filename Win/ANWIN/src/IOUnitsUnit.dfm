@@ -2,8 +2,8 @@ object IOUnitForm: TIOUnitForm
   Left = 134
   Top = 113
   Caption = 'IO Units'
-  ClientHeight = 489
-  ClientWidth = 829
+  ClientHeight = 488
+  ClientWidth = 825
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -19,8 +19,8 @@ object IOUnitForm: TIOUnitForm
   object PageControl1: TPageControl
     Left = 0
     Top = 0
-    Width = 829
-    Height = 489
+    Width = 825
+    Height = 488
     ActivePage = TabSheet2
     Align = alClient
     DoubleBuffered = True
@@ -54,8 +54,8 @@ object IOUnitForm: TIOUnitForm
       object StringGrid1: TStringGrid
         Left = 0
         Top = 49
-        Width = 821
-        Height = 405
+        Width = 817
+        Height = 404
         Align = alClient
         DefaultColWidth = 80
         RowCount = 20
@@ -67,6 +67,8 @@ object IOUnitForm: TIOUnitForm
         ParentFont = False
         TabOrder = 1
         OnSelectCell = StringGrid1SelectCell
+        ExplicitWidth = 821
+        ExplicitHeight = 405
         ColWidths = (
           80
           80
@@ -102,7 +104,7 @@ object IOUnitForm: TIOUnitForm
       object Panel2: TPanel
         Left = 0
         Top = 0
-        Width = 821
+        Width = 817
         Height = 49
         Align = alTop
         DoubleBuffered = True
@@ -128,8 +130,8 @@ object IOUnitForm: TIOUnitForm
       object StringGrid2: TStringGrid
         Left = 0
         Top = 49
-        Width = 821
-        Height = 405
+        Width = 817
+        Height = 404
         Align = alClient
         DefaultColWidth = 80
         DoubleBuffered = True

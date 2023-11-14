@@ -439,14 +439,16 @@ void __fastcall TIOUnitForm::UpdateSysWin(void) {
 							AnsiString RawVal 		= LibGetValue(SVT_IO_CH_RAW_VAL			, index, ePtr);
 							AnsiString FailCount1 	= LibGetValue(SVT_IO_CH_HART_FAIL_COUNT1, index, ePtr);
 							AnsiString FailCount2 	= LibGetValue(SVT_IO_CH_HART_FAIL_COUNT2, index, ePtr);
+							AnsiString ValueStr 	= LibGetValue(SVT_IO_CH_HART_PV1 		, index, ePtr);
 
-							AnsiString ValueStr, GainStr, OffsetStr, EnableStr,  UnitStr;
+
+							AnsiString /*ValueStr, */GainStr, OffsetStr, EnableStr,  UnitStr;
 							PROIOComponent *SnsPtr = ePtr->IOComponent[index];
 							if (SnsPtr) {
 								GainStr = LibGetValue(SVT_AI_GAIN, index, SnsPtr);
 								OffsetStr =	LibGetValue(SVT_AI_OFFSET		, index, SnsPtr);
 								EnableStr = LibGetValue(SVT_AI_ENABLE_TEXT	, index, SnsPtr);
-								ValueStr = 	LibGetValue(SVT_AI_CALC_VAL		, index, SnsPtr, &UnitStr);
+								//ValueStr = 	LibGetValue(SVT_AI_CALC_VAL		, index, SnsPtr, &UnitStr);
 							}
 							SetListviewRow(LCnt++, index, Name, Loc, Type, RawVal, ValueStr, GainStr, OffsetStr, EnableStr, UnitStr,FailCount1,FailCount2);
 						}

@@ -301,6 +301,7 @@ struct ANPRO10_COMMAND_2106 {
     int     StatusTemp;
     float   Temperature;
     bool    IsNewData;
+    bool    ResultOK;
 };
 
 struct QueueANPRO10_COMMAND_2106 {

@@ -52,13 +52,6 @@ int AIDiffPressSensor_mA::PutValue( int ValueId, int Index, AnsiString NewValue,
 //////////////////////////////////////////////////////////////////
 
 
-void AIDiffPressSensor_mA::NewValue(float NewValue)
-{
-    HWFailure     = false;
-    FilteredValue = NewValue;
-}
-
-
 float AIDiffPressSensor_mA::Calculate(void)
 {
     if ( CanCalculate() ) {

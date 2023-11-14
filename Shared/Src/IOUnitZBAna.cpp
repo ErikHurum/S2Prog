@@ -299,9 +299,11 @@ bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                 CompPtr->NewValue(mAValues[i] / 1000.0); // Convert to Ampere
                                 CompPtr->Calculate();
                                 CompPtr->ActiveAlarms = CheckAlarms(CompPtr->AlarmSet, &CompPtr->MyHWFailure);
+                                /*
                                 if (!CompPtr->ActiveAlarms) {
                                     CompPtr->SetTimeStamp();
                                  }
+                                */
                                 CompPtr->SendData();
                             }
                         }

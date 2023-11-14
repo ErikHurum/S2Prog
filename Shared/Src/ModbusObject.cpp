@@ -350,14 +350,12 @@ void ModbusObject::ModbusTask(TSNUart *Port) {
                     }
                 }
                 FOREVER{
-                    int t0 = OS_GetTime();
                     set<ModbusUnit *>::iterator MBUnitIt;
                     for (MBUnitIt = ModbusUnitSet.begin(); MBUnitIt != ModbusUnitSet.end(); MBUnitIt++) {
                         ModbusUnit *tmpPtr = *MBUnitIt;
                         tmpPtr->HandleIO();
-                        CheckAlarms(tmpPtr->AlarmSet);
                     }
-                    OS_DelayUntil(t0 + RequestDelay);
+                    OS_Delay(RequestDelay);
                 }
             }
         case C_UART_DEVICE_MODICON_SLAVE        :

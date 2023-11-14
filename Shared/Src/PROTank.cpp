@@ -1230,11 +1230,12 @@ void PROTank::CheckForTPAndTemp(void) { //If tank has pressure mesurements or te
                 tPSensor->AddTempRefSensor(&Temperature);
             }
             break;
-        case C_AI_Pt100 :
-        case C_AI_Pt1000 :
-        case C_AI_TEMP_mA :
+        case C_AI_Pt100         :
+        case C_AI_Pt1000        :
+        case C_AI_TEMP_mA       :
         case C_AI_WATERINGR_TEMP:
-        case C_AI_TEMP_AD590 :
+        case C_AI_TEMP_AD590    :
+        case C_AI_TEMP_Hart     :
             HasTemp = true;
             break;
         case C_AI_Radar_4_20mA :
@@ -1345,11 +1346,12 @@ void PROTank::CheckForTPAndTemp(void) { //If tank has pressure mesurements or te
         unsigned AISize = AnalogInList.size();
         for (unsigned i = 0; i < AnalogInList.size(); i++) {
             switch (AnalogInList[i]->Type) {
-            case C_AI_Pt100 :
-            case C_AI_Pt1000 :
-            case C_AI_TEMP_mA :
+            case C_AI_Pt100         :
+            case C_AI_Pt1000        :
+            case C_AI_TEMP_mA       :
+            case C_AI_TEMP_Hart     :
             case C_AI_WATERINGR_TEMP:
-            case C_AI_TEMP_AD590 :
+            case C_AI_TEMP_AD590    :
                 Temp->AnalogInList.push_back(AnalogInList[i]);
                 break;
             default:
@@ -1363,11 +1365,12 @@ void PROTank::CheckForTPAndTemp(void) { //If tank has pressure mesurements or te
                 default:
                     i++;
                     break;
-                case C_AI_Pt100 :
-                case C_AI_Pt1000 :
-                case C_AI_TEMP_mA :
+                case C_AI_Pt100         :
+                case C_AI_Pt1000        :
+                case C_AI_TEMP_mA       :
+                case C_AI_TEMP_Hart     :
                 case C_AI_WATERINGR_TEMP:
-                case C_AI_TEMP_AD590 :
+                case C_AI_TEMP_AD590    :
                     AnalogInList.erase(AnalogInList.begin() + i);
                     break;
                 }
@@ -1415,14 +1418,15 @@ void PROTank::CheckForTPAndTemp(void) { //If tank has pressure mesurements or te
                 }
             }
             break;
-        case C_AI_Radar_4_20mA :
-        case C_AI_Radar_Hart :
-        case C_AI_Float_4_20mA :
-        case C_AI_Pt100 :
-        case C_AI_Pt1000 :
-        case C_AI_TEMP_mA :
-        case C_AI_TEMP_AD590 :
-            break;
+        case C_AI_Radar_4_20mA  :
+        case C_AI_Radar_Hart    :
+        case C_AI_Float_4_20mA  :
+        case C_AI_Pt100         :
+        case C_AI_Pt1000        :
+        case C_AI_TEMP_mA       :
+        case C_AI_TEMP_Hart     :
+        case C_AI_TEMP_AD590    :
+            break;  
         }
     }
     for (unsigned i = 0; i < LevelPressures.size(); i++) {
@@ -2237,6 +2241,13 @@ int PROTank::LoadConfigFromFile(TSNConfigString &ConfigString) {
                     AnalogInList.push_back((AnalogInput *)AnalogInPtr);
                 }
                 break;
+            case C_AI_TEMP_Hart:
+                {
+                    AITempSensor_Hart *AnalogInPtr = new AITempSensor_Hart();
+                    AnalogInPtr->LoadConfigString(ConfigString);
+                    AnalogInList.push_back((AnalogInput *)AnalogInPtr);
+                }
+                break;
             case C_AI_TEMP_AD590:
                 {
                     AITempSensor_AD590 *AnalogInPtr = new AITempSensor_AD590();
@@ -2649,6 +2660,7 @@ bool PROTank::RestoreSettings(TSNConfigString *SettingsString) {
             case C_AI_Pt100             :
             case C_AI_Pt1000            :
             case C_AI_TEMP_mA           :
+            case C_AI_TEMP_Hart         :
             case C_AI_TEMP_AD590        :
             case C_AI_DIFF_PRESSURE_mA  :
             case C_AI_MetriTape         :
@@ -2708,16 +2720,16 @@ bool PROTank::HasLCData(void) {
 
 
 int PROTank::FindPROStatus(AnsiString &MyString) {
-    int PROStatus1 = ST_OK;
-    int PROStatus2 = ST_OK;
-    if (GetNumberOfHWAlarms() || !IsAvailableNewData()) {
-        PROStatus1 = ST_ERROR;
-    }
-    if (PROStatus1 != ST_ERROR) {
+	int PROStatus1 = ST_OK;
+	int PROStatus2 = ST_OK;
+	if (GetNumberOfHWAlarms() ) {
+		PROStatus1 = ST_ERROR;
+	}
+	if (PROStatus1 == ST_OK) {
         switch (State) {
         case tSeaGoing :
-        case tTankCleaning :
-            PROStatus1 = ST_WARNING;
+		case tTankCleaning :
+			PROStatus1 = ST_WARNING;
             break;
         default:
             break;
@@ -2728,7 +2740,7 @@ int PROTank::FindPROStatus(AnsiString &MyString) {
         }
         */
     }
-    if ((PROStatus1 != ST_ERROR) && TemperaturePtr) {
+	if ((PROStatus1 != ST_ERROR) && TemperaturePtr) {
         PROStatus2 = TemperaturePtr->FindPROStatus(MyString);
         if (PROStatus2 > PROStatus1) {
             PROStatus1 = PROStatus2;
@@ -2761,22 +2773,25 @@ int PROTank::FindPROStatus(AnsiString &MyString) {
             PROStatus1 = PROStatus2;
         }
     }
-    if (PROStatus1 == ST_OK && HasLCData()) {
+	if (PROStatus1 == ST_OK && HasLCData()) {
         PROStatus1 = ST_LOADCALC;
+    }else if ( !IsAvailableNewData()) {
+        PROStatus1 = ST_TIME_OUT;
     }
-    MyString = FindStatusChar(PROStatus1);
-    return (PROStatus1);
+
+	MyString = FindStatusChar(PROStatus1);
+	return (PROStatus1);
 }
 
 int PROTank::GetValue(int ValueId, int Index, float &MyRetValue, int &DecPnt, int &Unit) {
-    int Status = GETVAL_NO_ERR;
-    //IsNewData = true;
-    //HasLevelSensors = true;
-    switch (ValueId) {
-    case SVT_VOLUME_SETPOINT:
-        DecPnt = 1;
-        Unit = PERCENT_UNIT;
-        MyRetValue = StartVolPercent;
+	int Status = GETVAL_NO_ERR;
+	//IsNewData = true;
+	//HasLevelSensors = true;
+	switch (ValueId) {
+	case SVT_VOLUME_SETPOINT:
+		DecPnt = 1;
+		Unit = PERCENT_UNIT;
+		MyRetValue = StartVolPercent;
         break;
     case SVT_LC_WEIGHT:
     case SVT_WEIGHT:
@@ -3520,10 +3535,10 @@ int PROTank::GetValue(int ValueId, int Index, float &MyRetValue, int &DecPnt, in
             Status = GETVAL_NOT_AVAILABLE;
         }
         break;
-    case SVT_HART_MA :
-    case SVT_HART_RADAR :
-    case SVT_HART_STATUS :
-    case SVT_HART_OPEN_LOOP :
+    case SVT_HART_MA            :
+    case SVT_HART_RADAR         :
+    case SVT_HART_STATUS        :
+    case SVT_HART_OPEN_LOOP     :
     case SVT_HART_SHORT_CIRCUIT :
         if (!RadarSensors.empty()) {
             AIRadarSensorHart *tmpPtr = (AIRadarSensorHart *)RadarSensors[0];
@@ -5306,10 +5321,10 @@ int PROTank::PutFloatValue(int ValueId, float NewValue) {
             HSH_FloatSns->SendData();
         }
         break;
-    case SVT_HART_MA :
-    case SVT_HART_RADAR :
-    case SVT_HART_STATUS :
-    case SVT_HART_OPEN_LOOP :
+    case SVT_HART_MA            :
+    case SVT_HART_RADAR         :
+    case SVT_HART_STATUS        :
+    case SVT_HART_OPEN_LOOP     :
     case SVT_HART_SHORT_CIRCUIT :
         if (!RadarSensors.empty()) {
             AIRadarSensorHart *tmpPtr = (AIRadarSensorHart *)RadarSensors[0];
@@ -6304,7 +6319,7 @@ int PROTank::SendData(U16 cmd) {
             Cmd.Data.HasWater           = HasWater;
             Cmd.Data.FilteredVolPercent = FilteredVolPercent;
             Cmd.Data.IsOnline           = IsOnline;
-            Cmd.Data.TimeStampPeriod= TimeStampPeriod;
+            Cmd.Data.TimeStampPeriod    = TimeStampPeriod;
 
             /*
             bool sent;

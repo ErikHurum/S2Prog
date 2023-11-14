@@ -122,6 +122,7 @@
     #include "AIWaterIngressSensor.h"
     #include "AIWIngressTempSensor.h"
     #include "AITempSensor_mA.h"
+    #include "AITempSensor_Hart.h"
     #include "AIVoltageSensor.h"
     #include "AICoilInSensor.h"
     #include "AIMetriTapeSensor.h"

@@ -50,13 +50,18 @@ private:
     bool HasAnalogIn    ;
     bool HasDigitalIn   ;
     int  ComFailCount   ;
-    int  ComTotalFailCount;
+	int  ComTotalFailCount;
     set<PRogramObject*>IOUniquePROSet;
     bool hasNewRegOutput;
     bool hasNewCoilOutput;
 
 public:
     static set<PRogramObjectBase*>ObjectSet;
+    short StatusAnalogIn  ;
+    short StatusAnalogOut ;
+    short StatusDigitalIn ;
+    short StatusDigitalOut;
+
     ModbusUnit(int Addr, int ComPortNo);
     ~ModbusUnit();
     U16  GetOutputRegister(int Index, bool LittleEndian = false);
@@ -111,7 +116,7 @@ public:
 	int SendData(U16 Cmd=CMD_GENERIC_REALTIME_DATA);
     int GetActiveAlarms(void);
     void SetUpCom(TSNUart *Port, int RequestDelay, int TimeOut, int FrameSpaceTime, int FrameTimeOut);
-
+    bool GetIsMaster(void);
 };
 
 #endif

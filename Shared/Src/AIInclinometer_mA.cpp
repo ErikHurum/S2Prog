@@ -25,12 +25,6 @@ AIInclinometer_mA::~AIInclinometer_mA(void) {
 }
 //---------------------------------------------------------------------------
 
-void AIInclinometer_mA::NewValue(float NewVal) {
-    SetTimeStamp();
-    HWFailure     = false;
-    FilteredValue = NewVal;//FilterVal(FilteredValue, NewVal, 1);
-}
-
 //////////////////////////////////////////////////////////////////
 //
 // Sensor calculations

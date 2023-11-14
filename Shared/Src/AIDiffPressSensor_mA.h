@@ -9,7 +9,6 @@ public:
 	~AIDiffPressSensor_mA(void);
 
 	virtual float Calculate(void);
-	void NewValue(float NewValue);
 // Routines for the librarian
 	int PutValue( int ValueId, int Index, AnsiString NewValue,bool Local=true, int *UnitId=NULL);
 

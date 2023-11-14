@@ -2,19 +2,17 @@ object ProtocolInfoForm: TProtocolInfoForm
   Left = 0
   Top = 0
   Caption = 'Protocols Information'
-  ClientHeight = 633
-  ClientWidth = 748
+  ClientHeight = 740
+  ClientWidth = 747
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  OldCreateOrder = False
   Visible = True
   OnClose = FormClose
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 13
   object Label2: TLabel
     Left = 14
@@ -26,21 +24,24 @@ object ProtocolInfoForm: TProtocolInfoForm
   object PageControl1: TPageControl
     Left = 0
     Top = 0
-    Width = 748
-    Height = 633
+    Width = 747
+    Height = 740
     ActivePage = TabSheet1
     Align = alClient
     TabOrder = 0
+    ExplicitWidth = 744
+    ExplicitHeight = 632
     object TabSheet1: TTabSheet
       Caption = 'Modbus'
       object GroupBox1: TGroupBox
         Left = 0
         Top = 0
-        Width = 740
+        Width = 743
         Height = 170
         Align = alTop
         Caption = 'Communication parameters'
         TabOrder = 0
+        ExplicitWidth = 736
         object LabelDeviceName: TLabel
           Left = 272
           Top = 22
@@ -241,17 +242,20 @@ object ProtocolInfoForm: TProtocolInfoForm
       end
       object GroupBox2: TGroupBox
         Left = 0
-        Top = 170
-        Width = 740
-        Height = 435
+        Top = 281
+        Width = 739
+        Height = 431
         Align = alClient
         Caption = 'Regsisters and digital I/O'
         TabOrder = 1
+        ExplicitTop = 328
+        ExplicitWidth = 743
+        ExplicitHeight = 385
         object TabControl1: TTabControl
           Left = 2
           Top = 15
-          Width = 736
-          Height = 418
+          Width = 739
+          Height = 415
           Align = alClient
           RaggedRight = True
           TabOrder = 0
@@ -265,14 +269,17 @@ object ProtocolInfoForm: TProtocolInfoForm
           object StringGridInputRegisters: TStringGrid
             Left = 4
             Top = 24
-            Width = 728
-            Height = 390
+            Width = 727
+            Height = 386
             Align = alClient
             ColCount = 6
             DoubleBuffered = True
             Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goTabs]
             ParentDoubleBuffered = False
             TabOrder = 0
+            ExplicitLeft = 3
+            ExplicitTop = 25
+            ExplicitWidth = 731
             ColWidths = (
               64
               64
@@ -287,6 +294,120 @@ object ProtocolInfoForm: TProtocolInfoForm
               24
               24)
           end
+        end
+      end
+      object GroupBoxComStatus: TGroupBox
+        Left = 0
+        Top = 170
+        Width = 739
+        Height = 111
+        Align = alTop
+        Caption = 'Communication status'
+        TabOrder = 2
+        ExplicitWidth = 743
+        object Label8: TLabel
+          Left = 24
+          Top = 16
+          Width = 126
+          Height = 18
+          Caption = 'Read Input register'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object Label9: TLabel
+          Left = 24
+          Top = 40
+          Width = 119
+          Height = 18
+          Caption = 'Read Input Status'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object Label10: TLabel
+          Left = 24
+          Top = 64
+          Width = 142
+          Height = 18
+          Caption = 'Write Holding Register'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object Label11: TLabel
+          Left = 24
+          Top = 88
+          Width = 106
+          Height = 18
+          Caption = 'Write Coil Status'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object LabelReadInputRegisterStatus: TLabel
+          Left = 183
+          Top = 16
+          Width = 20
+          Height = 18
+          Caption = 'OK'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object LabelReadInputStatusStatus: TLabel
+          Left = 183
+          Top = 40
+          Width = 20
+          Height = 18
+          Caption = 'OK'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object LabelWriteHoldingRegisterStatus: TLabel
+          Left = 183
+          Top = 64
+          Width = 20
+          Height = 18
+          Caption = 'OK'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+        end
+        object LabelWriteCoilStatusStatus: TLabel
+          Left = 183
+          Top = 88
+          Width = 20
+          Height = 18
+          Caption = 'OK'
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -15
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
         end
       end
     end

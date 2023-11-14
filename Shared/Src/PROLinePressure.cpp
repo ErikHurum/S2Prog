@@ -357,7 +357,7 @@ int PROLinePressure::FindPROStatus(AnsiString &MyString)
 {
     int PROStatus1 = ST_OK;
     int PROStatus2 = ST_OK;
-    if ( HWFailure || !IsAvailableNewData() ) {
+    if ( HWFailure ) {
         PROStatus1 = ST_ERROR;
     }
     if ( PROStatus1 != ST_ERROR ) {
@@ -376,6 +376,9 @@ int PROLinePressure::FindPROStatus(AnsiString &MyString)
         }
         if ( AlActive ) PROStatus2 = ST_ALARM;
         if ( PROStatus2>PROStatus1 ) PROStatus1 = PROStatus2;
+    }
+    if (  !IsAvailableNewData()) {
+        PROStatus1 = ST_TIME_OUT;
     }
     MyString = FindStatusChar(PROStatus1);
     return(PROStatus1);

@@ -116,6 +116,17 @@ int  IOUnitZBHart::GetValue(int ValueId, int Index, float &MyRetValue, int &DecP
         DecPnt     = 0;
         Unit       = NO_UNIT;
         break;
+    case SVT_IO_CH_HART_PV1:
+        MyRetValue = ProcessValue1[Index];
+        DecPnt     = 3;
+        Unit       = NO_UNIT;
+        break;
+    case SVT_IO_CH_HART_PV2:
+        MyRetValue = ProcessValue2[Index];
+        DecPnt     = 3;
+        Unit       = NO_UNIT;
+        break;
+
     default:
         ErrorStatus = IOUnitZBAna::GetValue(ValueId,Index, MyRetValue,  DecPnt,Unit);
         break;
@@ -155,8 +166,8 @@ ValueList* IOUnitZBHart::GetValueInfoTable(int &Entries, int Index) {
 struct mAHartMeasuredDataStruct {
     short FailCnt1;
     short FailCnt2;
-    float Distance;
-    float Level;
+    float ProcessValue1;
+    float ProcessValue2;
     float ADCurrent;
 };
 
@@ -231,14 +242,15 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                             FailCnt1[i] = MsrdData[i].FailCnt1;
                             FailCnt2[i] = MsrdData[i].FailCnt2;
                             mAValues[i] = MsrdData[i].ADCurrent;
-                            Distance[i] = MsrdData[i].Distance;
-                            Level[i]    = MsrdData[i].Level;
+                            ProcessValue1[i] = MsrdData[i].ProcessValue1;
+                            ProcessValue2[i] = MsrdData[i].ProcessValue2;
                             AnalogInput *CompPtr = (AnalogInput*)IOComponent[i];
                             if ( CompPtr ) {
                                 //CompPtr->SetStatus((U8 *)Status[i]);
                                 switch ( CompPtr->Type ) {
+                                case C_AI_TEMP_Hart :
                                 case C_AI_Radar_Hart:
-                                    CompPtr->NewValue(Distance[i]);
+                                    CompPtr->NewValue(ProcessValue1[i]);
                                     CompPtr->PutFloatValue(SVT_HART_MA       , mAValues[i]); // Convert to Ampere
                                     CompPtr->PutFloatValue(SVT_HART_ERROR_CNT, FailCnt1[i]); 
                                     break;
@@ -249,9 +261,11 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                 //CompPtr->PutFloatValue(SVT_HART_STATUS,FailCnt1[i]);// Convert to Ampere
                                 CompPtr->Calculate();
                                 CompPtr->ActiveAlarms = CheckAlarms(CompPtr->AlarmSet, &CompPtr->MyHWFailure);
+                                /*
                                 if ( !CompPtr->ActiveAlarms ) {
                                     CompPtr->SetTimeStamp();
                                 }
+                                */
                                 CompPtr->SendData();
                             }
                         }
@@ -452,10 +466,11 @@ int IOUnitZBHart::ReceiveData(U8 *data) {
             FailCnt      = pData->FailCnt;
             FailCntTotal = pData->FailCntTotal;
             for ( int i = 0; i < MAX_AN_ZBANA_CHANNELS; i++ ) {
-                mAValues[i] = pData->mAValues[i];
-                FailCnt1[i] = pData->FailCnt1[i];
-                FailCnt2[i] = pData->FailCnt2[i];
-                Status[i]   = pData->Status[i];
+                mAValues[i]         = pData->mAValues[i];
+                ProcessValue1[i]    = pData->ProcessValue1[i];
+                FailCnt1[i]         = pData->FailCnt1[i];
+                FailCnt2[i]         = pData->FailCnt2[i];
+                Status[i]           = pData->Status[i];
             }
             ErrorStatus =  E_OK;
         }
@@ -502,10 +517,11 @@ int IOUnitZBHart::SendData(U16 cmd) {
             Cmd.Data.FailCnt        = FailCnt;
             Cmd.Data.FailCntTotal   = FailCntTotal;
             for ( int i = 0; i < MAX_AN_ZBANA_CHANNELS; i++ ) {
-                Cmd.Data.mAValues[i] = mAValues[i];
-				Cmd.Data.Status[i]   = Status[i];
-				Cmd.Data.FailCnt1[i] = FailCnt1[i];
-				Cmd.Data.FailCnt2[i] = FailCnt2[i];
+                Cmd.Data.mAValues[i]       = mAValues[i];
+                Cmd.Data.ProcessValue1[i]  = ProcessValue1[i];
+				Cmd.Data.Status[i]         = Status[i];
+				Cmd.Data.FailCnt1[i]       = FailCnt1[i];
+				Cmd.Data.FailCnt2[i]       = FailCnt2[i];
             }
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent ) ErrorStatus =  E_QUEUE_FULL;

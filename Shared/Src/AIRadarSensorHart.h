@@ -5,9 +5,10 @@
 class AIRadarSensorHart:
     public AIRadarSensor
 {
+private:
+    float HartValue;
 
 public:
-	float HartValue;
     int   HartComErrorCnt;
     AIRadarSensorHart(void);
     ~AIRadarSensorHart(void);
