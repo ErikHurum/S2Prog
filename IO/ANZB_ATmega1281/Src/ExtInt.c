@@ -154,7 +154,7 @@ _16552_driver_task(void)
 }
 
 static OS_TASK TCB_16552_DRIVER;
-static OS_STACKPTR int stack[50]; /* Task stacks */
+static OS_STACKPTR int stack[150]; /* Task stacks */
 
 void
 _16552_driver_task_init(void)

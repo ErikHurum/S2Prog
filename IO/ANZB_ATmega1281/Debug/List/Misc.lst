@@ -1,28 +1,39 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       12/Jun/2023  13:06:03
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       21/Nov/2023  09:48:26
 # Copyright 1996-2022 IAR Systems AB.
 # Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
-#    Source file  =  D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
+#    Source file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
 #    Command line =  
-#        -f C:\Users\ESY\AppData\Local\Temp\EW11C1.tmp
-#        (D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c --cpu=m1281 -ms -o
-#        D:\S2Prog\IO\ANZB_ATmega1281\Debug\Obj -D OS_LIBMODE_D -D OS_UART=-1
-#        -D USE_16552_DRIVER_TASK=1 -D USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=1
-#        -lCN D:\S2Prog\IO\ANZB_ATmega1281\Debug\List -y
+#        -f C:\Users\ESY\AppData\Local\Temp\EWAE33.tmp ("C:\Users\ESY\OneDrive
+#        - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c"
+#        --cpu=m1281 -ms -o "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Debug\Obj" -D
+#        OS_LIBMODE_D -D OS_UART=-1 -D USE_16552_DRIVER_TASK=1 -D
+#        USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=0 -D __ATMEGA_1281__ -lCN
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Debug\List" -y
 #        --initializers_in_flash --no_cse --no_inline --no_code_motion
 #        --no_cross_call --no_clustering --no_tbaa --debug
-#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB_ATmega1281\INC\\ -I
-#        D:\S2Prog\IO\ANZB_ATmega1281\..\..\SHARED\INC\\ --eeprom_size 4096
-#        --clib -On)
+#        -DENABLE_BIT_DEFINITIONS -e -I "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\INC\\" -I
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\..\..\SHARED\INC\\"
+#        --eeprom_size 4096 --clib -On)
 #    Locale       =  English_USA.1252
-#    List file    =  D:\S2Prog\IO\ANZB_ATmega1281\Debug\List\Misc.lst
-#    Object file  =  D:\S2Prog\IO\ANZB_ATmega1281\Debug\Obj\Misc.r90
+#    List file    =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Debug\List\Misc.lst
+#    Object file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Debug\Obj\Misc.r90
 #
 ###############################################################################
 
-D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
+C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
       1          /****************************************************************************************
       2          /  Misc. routines
       3          /
@@ -32,6 +43,11 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
    \                                 In  segment ABSOLUTE, at 0x60
    \   union <unnamed> volatile __io _A_WDTCSR
    \                     _A_WDTCSR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x29
+   \   union <unnamed> volatile __io _A_PIND
+   \                     _A_PIND:
    \   00000000                      DS8 1
       6          #include "stdio.h"
       7          #include "math.h"
@@ -54,7 +70,7 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
    \   00000000   E604               LDI     R16, 100
    \   00000002   E010               LDI     R17, 0
    \   00000004   ........           CALL    OS_Delay
-     21              asm("WDR");                             // kick the dog!!
+     21              __watchdog_reset();               //kick the dog
    \   00000008   95A8               WDR
      22              WDTCSR = 0x1f;
    \   0000000A   E10F               LDI     R16, 31
@@ -62,7 +78,7 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
      23              WDTCSR = 0x0f;
    \   00000010   E00F               LDI     R16, 15
    \   00000012   9300....           STS     _A_WDTCSR, R16
-     24              asm("WDR");                             // kick the dog!!
+     24              __watchdog_reset();               //kick the dog
    \   00000016   95A8               WDR
      25              while (1) {
      26                  OS_Delay(500);
@@ -84,42 +100,40 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
      35          *
      36          *************************************************************************/
 
-   \                                 In  segment NEAR_Z, align 1, keep-with-next
-   \   00000000                      REQUIRE `?<Segment init: NEAR_Z>`
-     37          char MySimAddress = 0;
-   \                     MySimAddress:
-   \   00000000                      DS8 1
-
    \                                 In  segment CODE, align 2, keep-with-next
-     38          char MyAddress(void) {
+     37          char MyAddress(void) {
    \                     MyAddress:
-     39          
-     40          #if (OS_UART == 0)
-     41              return 0;                   // Debug only
-     42          #else
-     43              return MySimAddress;
-   \   00000000   9100....           LDS     R16, MySimAddress
-   \   00000004   9508               RET
-     44              //return(~(PIND>>4) & 0x0f) ;
-     45          #endif
-     46          }
-     47          
-     48          /*************************************************************************
+     38          
+     39          #if (OS_UART == 0)
+     40              return 0;                   // Debug only
+     41          #else
+     42              return(~(PIND>>4) & 0x0f) ;
+   \   00000000   B109               IN      R16, 0x09
+   \   00000002   9502               SWAP    R16
+   \   00000004   700F               ANDI    R16, 0x0F
+   \   00000006   9500               COM     R16
+   \   00000008   700F               ANDI    R16, 0x0F
+   \   0000000A   9508               RET
+   \   0000000C                      REQUIRE _A_PIND
+     43          #endif
+     44          }
+     45          
+     46          /*************************************************************************
+     47          *
+     48          *  Check for legal float
      49          *
-     50          *  Check for legal float
-     51          *
-     52          *************************************************************************/
+     50          *************************************************************************/
 
    \                                 In  segment CODE, align 2, keep-with-next
-     53          char IsFloat(float A){
+     51          char IsFloat(float A){
    \                     IsFloat:
    \   00000000   ........           CALL    ?PROLOGUE4_L09
    \   00000004   01A8               MOVW    R21:R20, R17:R16
    \   00000006   01B9               MOVW    R23:R22, R19:R18
-     54            long exp;
-     55          	// A NAN has an exponent of 255 (shifted left 23 positions) and
-     56          	// Denormalized has an exponent set to 0
-     57          	exp = *(long*)&A & 0x7F800000L;
+     52            long exp;
+     53          	// A NAN has an exponent of 255 (shifted left 23 positions) and
+     54          	// Denormalized has an exponent set to 0
+     55          	exp = *(long*)&A & 0x7F800000L;
    \   00000008   018A               MOVW    R17:R16, R21:R20
    \   0000000A   019B               MOVW    R19:R18, R23:R22
    \   0000000C   7000               ANDI    R16, 0x00
@@ -128,8 +142,8 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
    \   00000012   773F               ANDI    R19, 0x7F
    \   00000014   01C8               MOVW    R25:R24, R17:R16
    \   00000016   01D9               MOVW    R27:R26, R19:R18
-     58          	//int mantissa = *(int*)&A & 0x007FFFFF;
-     59          	if ( exp && (exp != 0x7F800000L)  ) {
+     56          	//int mantissa = *(int*)&A & 0x007FFFFF;
+     57          	if ( exp && (exp != 0x7F800000L)  ) {
    \   00000018   2F08               MOV     R16, R24
    \   0000001A   2B09               OR      R16, R25
    \   0000001C   2B0A               OR      R16, R26
@@ -143,17 +157,17 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
    \   0000002C   E70F               LDI     R16, 127
    \   0000002E   07B0               CPC     R27, R16
    \   00000030   F011               BREQ    ??IsFloat_0
-     60          		return(true);
+     58          		return(true);
    \   00000032   E001               LDI     R16, 1
    \   00000034   C001               RJMP    ??IsFloat_1
-     61            }
-     62          	return(false);
+     59            }
+     60          	return(false);
    \                     ??IsFloat_0:
    \   00000036   E000               LDI     R16, 0
    \                     ??IsFloat_1:
    \   00000038   E0E4               LDI     R30, 4
    \   0000003A   ........           JMP     ?EPILOGUE_B4_L09
-     63          }
+     61          }
 
    Maximum stack usage in bytes:
 
@@ -170,20 +184,17 @@ D:\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
    Bytes  Function/Label
    -----  --------------
       62  IsFloat
-       6  MyAddress
-       1  MySimAddress
+      12  MyAddress
       36  WatchDogHandler
+       1  _A_PIND
        1  _A_WDTCSR
-       7  -- Other
 
  
-   1 byte  in segment ABSOLUTE
- 104 bytes in segment CODE
-   7 bytes in segment INITTAB
-   1 byte  in segment NEAR_Z
+   2 bytes in segment ABSOLUTE
+ 110 bytes in segment CODE
  
- 104 bytes of CODE memory (+ 7 bytes shared)
-   1 byte  of DATA memory (+ 1 byte  shared)
+ 110 bytes of CODE memory
+   0 bytes of DATA memory (+ 2 bytes shared)
 
 Errors: none
 Warnings: none

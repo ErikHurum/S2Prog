@@ -13,7 +13,7 @@
 #include "string.h"
 
 
-OS_STACKPTR int Stack0[160], Stack1[160], Stack3[100], Stack10[200], Stack11[200]; /* Task stacks */
+OS_STACKPTR int Stack0[160], Stack1[160], Stack3[150], Stack10[200], Stack11[200]; /* Task stacks */
 OS_TASK     TCB_USART0, TCB_USART1, TCB_WATCHDOG, TCB_RS485Ctl, TCB_RS485Rec, TCB_AD7715;               /* Task-control-blocks */
 OS_RSEMA    UARTSEND;
 OS_TIMER    TimerUSART0, TimerUSART1, TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
@@ -29,10 +29,10 @@ OS_RSEMA    rs485_tx_lock[2];
 **********************************************************/
 
 void main(void) {
-    asm("WDR");                             // Enable watchdog here because the OS hang some times during startup
+    __watchdog_reset();               //kick the dog
     WDTCSR = 0x1f;
     WDTCSR = 0x0f;
-    asm("WDR");                             // kick the dog!!
+    __watchdog_reset();               //kick the dog
 
     
     OS_IncDI();

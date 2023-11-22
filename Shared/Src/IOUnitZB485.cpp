@@ -442,10 +442,10 @@ int IOUnitZB485::ReceiveData(U8 *data) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             ANPRO10_COMMAND_2610  *pData = (ANPRO10_COMMAND_2610 *)data;
-            PowerStatus   = pData->PowerStatus;
-            FailCnt      = pData->FailCnt;
-            FailCntTotal = pData->FailCntTotal;
-            ErrorStatus =  E_OK;
+            PowerStatus     = pData->PowerStatus;
+            FailCnt         = pData->FailCnt;
+            FailCntTotal    = pData->FailCntTotal;
+            ErrorStatus     = E_OK;
         }
         break;
     case CMD_GENERIC_STATIC_DATA    :
@@ -480,17 +480,17 @@ int IOUnitZB485::SendData(U16 cmd) {
         {
             QueueANPRO10_COMMAND_2610 Cmd;
 
-            Cmd.TxInfo.Port        = NULL;
-            Cmd.TxInfo.rxAddr      = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId        = DEVICE_BROADCAST_TXU;
+            Cmd.TxInfo.Port         = NULL;
+            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
 
-            Cmd.Data.ObjectId      = IDNumber;
-            Cmd.Data.ndb           = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo     = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.ObjectId       = IDNumber;
+            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
 
-            Cmd.Data.PowerStatus   = PowerStatus;
-            Cmd.Data.FailCnt      = FailCnt;
-            Cmd.Data.FailCntTotal = FailCntTotal;
+            Cmd.Data.PowerStatus    = PowerStatus;
+            Cmd.Data.FailCnt        = FailCnt;
+            Cmd.Data.FailCntTotal   = FailCntTotal;
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent ) ErrorStatus =  E_QUEUE_FULL;
             else ErrorStatus =  E_OK;

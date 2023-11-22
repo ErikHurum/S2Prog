@@ -276,6 +276,7 @@ int AIPressSensor_mV::ReceiveData(U8 *data) {
             FilteredValue   = pData->FilteredValue;
             CalcValue       = pData->CalcValue;
             ResultOK        = pData->ResultOK;
+            UpdateTimeInfo(pData->TimeStampPeriod);
             // Only check alarm for Master TCU for now
             if (!CurrentDeviceAddress && CurrentDeviceId == DEVICE_TCU) {
                 CheckAlarms(AlarmSet);
@@ -316,19 +317,20 @@ int AIPressSensor_mV::SendData(U16 cmd) {
     case CMD_GENERIC_REALTIME_DATA:
         {
             QueueANPRO10_COMMAND_2508  Cmd;
-            Cmd.TxInfo.Port         = NULL;
-            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
+            Cmd.TxInfo.Port             = NULL;
+            Cmd.TxInfo.rxAddr           = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId             = DEVICE_BROADCAST_TXU;
 
-            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.ndb            = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.ObjectId       = IDNumber;
-            Cmd.Data.HWFailure      = HWFailure;
-            Cmd.Data.MyHWFailure    = MyHWFailure;
-            Cmd.Data.ActiveAlarms   = ActiveAlarms;
-            Cmd.Data.FilteredValue  = FilteredValue;
-            Cmd.Data.CalcValue      = CalcValue;
-            Cmd.Data.ResultOK       = ResultOK;
+            Cmd.Data.CommandNo          = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.ndb                = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.ObjectId           = IDNumber;
+            Cmd.Data.HWFailure          = HWFailure;
+            Cmd.Data.MyHWFailure        = MyHWFailure;
+            Cmd.Data.ActiveAlarms       = ActiveAlarms;
+            Cmd.Data.FilteredValue      = FilteredValue;
+            Cmd.Data.CalcValue          = CalcValue;
+            Cmd.Data.ResultOK           = ResultOK;
+            Cmd.Data.TimeStampPeriod    = TimeStampPeriod;
 
             bool sent = ANPRO10SendNormal(&Cmd);
             if (!sent) ErrorStatus = E_QUEUE_FULL;

@@ -282,7 +282,7 @@ void __fastcall TChildForm::UpdateStringGrid(vector<PRogramObjectBase *>ObjectTa
 							CurrentStringGrid->FontColors[Col][Row + 2] = clBlack;
 							CurrentStringGrid->Colors[Col][Row + 2] = (TColor)0x1fffffff;;
 						}else{
-							if ((tempValue == "A") || (tempValue == "E")) {
+							if ((tempValue == "A") || (tempValue == "E")|| (tempValue == "T")) {
 								CurrentStringGrid->FontColors[Col][Row + 2] = clWhite;
 								CurrentStringGrid->Colors[Col][Row + 2] = clRed;
 							} else if (tempValue == "W") {

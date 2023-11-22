@@ -23,9 +23,9 @@
 
 if ($debugfile -eq "")
 {
-& "C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "D:\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.general.xcl" --backend -f "D:\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.driver.xcl" 
+& "C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.general.xcl" --backend -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.driver.xcl" 
 }
 else
 {
-& "C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "D:\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.general.xcl" --debug_file=$debugfile --backend -f "D:\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.driver.xcl" 
+& "C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.4\common\bin\cspybat" -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.general.xcl" --debug_file=$debugfile --backend -f "C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\settings\ANZB5.Release.driver.xcl" 
 }

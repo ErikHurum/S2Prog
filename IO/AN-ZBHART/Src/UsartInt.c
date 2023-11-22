@@ -18,7 +18,7 @@ extern OS_TASK     TCB_USART0;                                         /* Task-c
 
 // USART0
 void INT_Handler_RX_USART0( void ){   
-    OS_DI();             // Disable before allowing new Rx interrupt
+    //OS_DI();             // Disable before allowing new Rx interrupt
     if ( UCSR0A & __BIT_MASK( DOR0 ) ) {                // Overrun error? 
     }
 
@@ -56,7 +56,7 @@ void INT_Handler_UDRE_USART0( void ){
         UDR0 = My485UART.pTxBuffer[ My485UART.TxLast ];     // Send a character
         My485UART.TxLast++;
     } else{   
-        OS_DI();             // Disable before allowing Tx interrupt
+        //OS_DI();             // Disable before allowing Tx interrupt
         UCSR0B &= ~(__BIT_MASK( UDRIE0)) ;            // transmission end, disable int.
         UCSR0A |= (__BIT_MASK( TXC0)) ;               // Clear int bit in TXC.
         UCSR0B |= __BIT_MASK( TXCIE0) ;               // Enable TXC int.

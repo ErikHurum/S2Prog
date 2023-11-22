@@ -18,10 +18,10 @@
 void WatchDogHandler(void) {
 
     OS_Delay(100);                         // wait 1 seconds for other tasks to start and set TaskStatus
-    asm("WDR");                             // kick the dog!!
+    __watchdog_reset();               //kick the dog
     WDTCSR = 0x1f;
     WDTCSR = 0x0f;
-    asm("WDR");                             // kick the dog!!
+    __watchdog_reset();               //kick the dog
     while (1) {
         OS_Delay(500);
         __watchdog_reset();               //kick the dog
@@ -34,14 +34,12 @@ void WatchDogHandler(void) {
 *  Get my address
 *
 *************************************************************************/
-char MySimAddress = 0;
 char MyAddress(void) {
 
 #if (OS_UART == 0)
     return 0;                   // Debug only
 #else
-    return MySimAddress;
-    //return(~(PIND>>4) & 0x0f) ;
+    return(~(PIND>>4) & 0x0f) ;
 #endif
 }
 

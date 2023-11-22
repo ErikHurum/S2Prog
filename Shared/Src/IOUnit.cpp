@@ -39,7 +39,7 @@ IOUnit::IOUnit(int PortNo):ANPRO10Object(TSNUart::Channels[PortNo])
     DataTransferSet.insert(this);
 
 #ifndef ANCONF
-	AlarmIOComFailure  *tmpPtr = new AlarmIOComFailure( this, 10);
+	AlarmIOComFailure  *tmpPtr = new AlarmIOComFailure( this, 5); //EHSMark Was 10
 	AlarmSet.insert(tmpPtr);
 	AddAlarms(CompleteAlarmInfoList);
 #endif

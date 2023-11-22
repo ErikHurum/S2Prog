@@ -3,7 +3,13 @@
 /
 ***************************************************************************************/
 
+#ifdef __ATMEGA_1280__
+#include	"iom1280.h"
+#endif
+
+#ifdef __ATMEGA_1281__
 #include "iom1281.h"
+#endif
 #include "stdio.h"
 #include "math.h"
 #include "string.h"
@@ -139,44 +145,44 @@ char CheckActionUart(char ch, unsigned short pointer) {
         break;
 
     case CMD_GET_STACKSTATUS :                        // Request stck status
-        BuildStackStatus(ch, pointer+4) ;                     // receive package
+        BuildStackStatus(ch, pointer+4) ;                     // receive package	
         break ;
 
     case CMD_EEPROM_RESET :                        // Reset EEPROM??
-        GetResetEEPROM(ch, pointer+4) ;                     // receive package
+        GetResetEEPROM(ch, pointer+4) ;                     // receive package	
         break ;
 
     case CMD_GOTO_BOOTLOADER :                        // Goto bootlaoder??
-        GetGotoBootloader(ch, pointer+4) ;                     // receive package
+        GetGotoBootloader(ch, pointer+4) ;                     // receive package	
         break ;
 
     case CMD_SND_EEPROM_DATA :                              // Receive EEPROM data
-        GetEEPROMData(ch, pointer+4) ;                     // receive package
+        GetEEPROMData(ch, pointer+4) ;                     // receive package	
         break ;
 
     case CMD_REQ_EEPROM_DATA :                              // Request to send EEPROM data
-        BuildEEPROMData(ch, pointer+4) ;                     // receive package
+        BuildEEPROMData(ch, pointer+4) ;                     // receive package	
         break ;
 
     case CMD_REQ_INT_DATA :                              // Request external data
-        BuildADInt(ch, pointer+4) ;                     // receive package
+        BuildADInt(ch, pointer+4) ;                     // receive package	
         break ;
 
     case CMD_SND_RS4_SETUP :                              // Receive sertup of AN-RS485
         if (UnitID == AN_ZB485) {
-            GetRS4Setup(ch, pointer+4) ;                     // receive package
+            GetRS4Setup(ch, pointer+4) ;                     // receive package	
         }
         break ;
 
     case CMD_REQ_RS4_SETUP :                              // Request for sertup of AN-RS485
         if (UnitID == AN_ZB485) {
-            BuildRS4Setup(ch, pointer+4) ;                     // receive package
+            BuildRS4Setup(ch, pointer+4) ;                     // receive package	
         }
         break ;
 
     case CMD_SND_RS4_ADBUF :                              // Request external AD data
         if (UnitID == AN_ZB485) {
-            GetADData(ch, pointer+4) ;                     // receive package
+            GetADData(ch, pointer+4) ;                     // receive package	
         }
         break;
 
@@ -184,7 +190,7 @@ char CheckActionUart(char ch, unsigned short pointer) {
         if (UnitID == AN_ZB485) {
             switch (UART[ch].pRxBuffer[pointer+4]) {
             case 0:                                         // Measure data
-                BuildMData485(ch, pointer+5) ;              // receive package
+                BuildMData485(ch, pointer+5) ;              // receive package	
                 if (TData.RS4.FromTargetBuffer[0][0] == true) {     // send eepromdata ch 0?
                   BuildADEpromdata(ch, 0);
                   TData.RS4.FromTargetBuffer[0][0] = false ;  // Marked as sent
@@ -199,7 +205,7 @@ char CheckActionUart(char ch, unsigned short pointer) {
                 }
                 break;
             case 1:                                         // Raw and cal data
-                BuildRData485(ch, pointer+5) ;                     // receive package
+                BuildRData485(ch, pointer+5) ;                     // receive package	
                 break;
             }
         }
@@ -207,25 +213,25 @@ char CheckActionUart(char ch, unsigned short pointer) {
 
     case CMD_SND_ANA_SETUP :                              // Receive sertup of AN-RSANA
         if (UnitID == AN_ZBANA) {
-            GetANASetup(ch, pointer+4) ;                     // receive package
+            GetANASetup(ch, pointer+4) ;                     // receive package	
         }
         break ;
 
     case CMD_REQ_ANA_SETUP :                              // Request for sertup of AN-RSANA
         if (UnitID == AN_ZBANA) {
-            BuildANASetup(ch, pointer+4) ;                     // receive package
+            BuildANASetup(ch, pointer+4) ;                     // receive package	
         }
         break ;
 
     case CMD_SND_ANA_FILTER :                              // Receive filter of AN-RSANA
         if (UnitID == AN_ZBANA) {
-            GetANAFilter(ch, pointer+4) ;                     // receive package
+            GetANAFilter(ch, pointer+4) ;                     // receive package	
         }
         break ;
 
     case CMD_REQ_ANA_FILTER :                              // Request filter of AN-RSANA
         if (UnitID == AN_ZBANA) {
-            BuildANAFilter(ch, pointer+4) ;                     // receive package
+            BuildANAFilter(ch, pointer+4) ;                     // receive package	
         }
         break ;
 
@@ -808,7 +814,6 @@ void GetANAFilter(char ch, short pointer) {
 *  Receive data on USARTs
 *
 *************************************************************************/
-extern char MySimAddress;
 void ReceivePacketUart(char ch) {
 
     switch (UART[ch].RxState) {                  // check status
@@ -836,9 +841,8 @@ void ReceivePacketUart(char ch) {
         if (++UART[ch].RxCount >= UART[ch].RxPacklen) {
             if ((UART[ch].pRxBuffer[UART[ch].RxPacklen -1]) == ANPRO10_EOT) {
                 if (CalcDSRxChecksum(ch, UART[ch].RxPacklen-2)) {
-                    if ((UART[ch].pRxBuffer[1] >= 2 && UART[ch].pRxBuffer[1] != 1  && UART[ch].pRxBuffer[1] != 7 && UART[ch].pRxBuffer[1] != 11 && UART[ch].pRxBuffer[1] != 12 /*MyAddress()*/ )||      // message to me? or
+                    if ((UART[ch].pRxBuffer[1] == MyAddress())||      // message to me? or
                         (UART[ch].pRxBuffer[1] == 0xff)) {            // broadcast
-                        MySimAddress = UART[ch].pRxBuffer[1];
                         hostAddress = UART[ch].pRxBuffer[3];            // address to sender (host)
                         UART[ch].RxState = HANDLE ;                     // Package OK
                         if (ch == 0) {

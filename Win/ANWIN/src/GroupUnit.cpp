@@ -1916,16 +1916,6 @@ void __fastcall TGroupTable::StringGridAllTanksGetEditorType(TObject *Sender, in
 }
 //---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
 void __fastcall TGroupTable::Button1Click(TObject *Sender)
 {
 	CurrentStringGrid->Print();
@@ -1947,17 +1937,17 @@ void __fastcall TGroupTable::StringGridAllTanksGridHint(TObject *Sender, int ARo
 			if (Str == "A") {
 				hintstr = "ALARM(S):" + CrStr + PRoPtr->GetAlarms();
 				StringGrid->ShowHint = true;
-			}
-			else if (Str == "E") {
+			} else if (Str == "E") {
 				hintstr = "HARDWARE ERROR(S):" + CrStr + PRoPtr->GetHWAlarms();
 				StringGrid->ShowHint = true;
-			}
-			else if (Str == "W") {
+			} else if (Str == "W") {
 				AnsiString AlarmWarnings = PRoPtr->GetWarnings();
 				hintstr = "WARNINGS:" + CrStr + PRoPtr->GetWarnings();
 				StringGrid->ShowHint = true;
-			}
-			else {
+			} else if (Str == "T") {
+				hintstr = "Time out!";
+				StringGrid->ShowHint = true;
+			} else {
 				// StringGrid->ShowHint = false;
 			}
 		}

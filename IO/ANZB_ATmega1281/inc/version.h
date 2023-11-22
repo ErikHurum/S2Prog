@@ -6,7 +6,7 @@
  **
  ***************************************************************************/
 
-#define PROG_VERSION    42            // version of the program
+#define PROG_VERSION    43            // version of the program
 #define COMP_VERSION     1            // compability with the PC on structs and com.
 #define STORE_VERSION    2            // Store format in the EEPROM
 
@@ -15,6 +15,12 @@
 
   Program:
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  V 43                       Released: 20 November 2023    EHS
+     -  Increased stack size for 16552_DRIVER task to 300   
+     -  Increased stack size for Watchdog task to 300
+     -  Upgraded OS to V 3.86g
+ +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
   V 31                       Released: In progress
       -
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
