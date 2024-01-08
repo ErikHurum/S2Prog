@@ -918,11 +918,7 @@ void ReceivePacketUart16552(char ch) {
                 if (CalcDSRxChecksum16552(ch)) {
                     if (UART16552[ch].pRxBuffer[0] == MY_SGCNV_ADDR) {     // reply from AN_SGCNV
                         UART16552[ch].RxState = HANDLE;                   // Package OK
-                        if (ch == 0) {
-                            OS_SignalEvent(1, &TCB_RS485Rec);
-                        } else if (ch == 1) {
-                            OS_SignalEvent(2, &TCB_RS485Rec);
-                        }
+                        OS_SignalEvent(Ch+1, &TCB_RS485Rec);
                     } else {
                         GoToSyncUART16552(ch);                             // go to sync modus for recive
                     }
@@ -952,12 +948,8 @@ void ReceivePacketUart16552(char ch) {
 *
 *************************************************************************/
 char CalcDSTxChecksumUART16552(char ch, unsigned short len) {
-
-    unsigned short cnt;
-    unsigned char csum;
-
-    csum = 0;
-    for (cnt = 2; cnt < len; cnt++) {
+    unsigned char csum = 0;
+    for (unsigned cnt = 2; cnt < len; cnt++) {
         csum = crc[csum ^ UART16552[ch].pTxBuffer[cnt]];
     }
     return csum;
@@ -969,12 +961,8 @@ char CalcDSTxChecksumUART16552(char ch, unsigned short len) {
 *
 *************************************************************************/
 short CalcDSRxChecksum16552(char ch) {
-
-    short cnt;
-    unsigned char csum;
-
-    csum = 0;
-    for (cnt = 0; cnt < (UART16552[ch].RxPacklen - 2); cnt++) {
+    unsigned char csum = 0;
+    for (int cnt = 0; cnt < (UART16552[ch].RxPacklen - 2); cnt++) {
         csum = crc[csum ^ UART16552[ch].pRxBuffer[cnt]];
     }
     if (csum == UART16552[ch].pRxBuffer[UART16552[ch].RxPacklen - 2]) {
@@ -992,9 +980,9 @@ short CalcDSRxChecksum16552(char ch) {
 void GoToSyncUART16552(char ch) {
 
     if (ch < 2) {
-        UART16552[ch].SyncCnt = 0;                        // ready for sync
-        UART16552[ch].RxState = SYNC;
-        UART16552[ch].RxFirst = 0;
+        UART16552[ch].SyncCnt   = 0;                        // ready for sync
+        UART16552[ch].RxState   = SYNC;
+        UART16552[ch].RxFirst   = 0;
         UART16552[ch].RxPacklen = 0;
     }
 }
@@ -1028,14 +1016,14 @@ void EmptyRxBuf16552(char uartno) {
 void Init16552(char channel, unsigned long baud) {
 
     /*--- Configure UART data block ---*/
-    UART16552[channel].TxFirst = 0x00;
-    UART16552[channel].TxLast = 0x00;
-    UART16552[channel].TxCount = 0x00;
-    UART16552[channel].RxFirst = 0x00;
-    UART16552[channel].RxLast = 0x00;
-    UART16552[channel].RxCount = 0x00;
-    UART16552[channel].RxState = SYNC;
-    UART16552[channel].SyncCnt = 0;
+    UART16552[channel].TxFirst  = 0x00;
+    UART16552[channel].TxLast   = 0x00;
+    UART16552[channel].TxCount  = 0x00;
+    UART16552[channel].RxFirst  = 0x00;
+    UART16552[channel].RxLast   = 0x00;
+    UART16552[channel].RxCount  = 0x00;
+    UART16552[channel].RxState  = SYNC;
+    UART16552[channel].SyncCnt  = 0;
     UART16552[channel].TxStatus = 0x00;
 
     switch (channel) {

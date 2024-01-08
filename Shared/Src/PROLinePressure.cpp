@@ -687,17 +687,17 @@ int PROLinePressure::SendData(U16 cmd)
     case CMD_GENERIC_REALTIME_DATA:
         {
             QueueANPRO10_COMMAND_2104 Cmd;
-			Cmd.TxInfo.Port         = NULL;
-            Cmd.TxInfo.rxAddr       = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId         = DEVICE_BROADCAST_TXU;
-            Cmd.Data.ObjectId       = IDNumber;
-            Cmd.Data.ndb            = sizeof(Cmd)-sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo      = CMD_GENERIC_REALTIME_DATA;
-            Cmd.Data.HasPressure    = HasPressure;
-            Cmd.Data.HWFailure      = HWFailure;
-            Cmd.Data.IsNewData      = IsNewData;
-            Cmd.Data.Pressure       = Pressure;
-            Cmd.Data.TimeStampPeriod= clock()-TimeStampPeriod;
+			Cmd.TxInfo.Port          = NULL;
+            Cmd.TxInfo.rxAddr        = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId          = DEVICE_BROADCAST_TXU;
+            Cmd.Data.ObjectId        = IDNumber;
+            Cmd.Data.ndb             = sizeof(Cmd)-sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo       = CMD_GENERIC_REALTIME_DATA;
+            Cmd.Data.HasPressure     = HasPressure;
+            Cmd.Data.HWFailure       = HWFailure;
+            Cmd.Data.IsNewData       = IsNewData;
+            Cmd.Data.Pressure        = Pressure;
+            Cmd.Data.TimeStampPeriod = TimeStampPeriod;
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent )
                 ErrorStatus = E_QUEUE_FULL;

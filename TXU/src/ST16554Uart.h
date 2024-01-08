@@ -68,11 +68,11 @@ public:
 
 #define IIR_IP	    0x01	/* interrupt pending bit */
 #define IIR_MASK	0x0F	/* interrupt id bits mask */
-#define IIR_MSTAT 0x00	/* modem status interrupt */
+#define IIR_MSTAT   0x00	/* modem status interrupt */
 #define IIR_THRE	0X02	/* transmit holding register empty */
 #define IIR_RBRF	0x04	/* receiver buffer register full */
 #define IIR_SEOB	0x06	/* serialization error or break */
-#define IIR_TOUT   0x0c	/* char receive timeout */
+#define IIR_TOUT    0x0c	/* char receive timeout */
 
 /* equates for line control register */
 

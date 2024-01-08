@@ -2,8 +2,8 @@ inherited SetupForm: TSetupForm
   Caption = 'Preferences'
   ClientHeight = 351
   ClientWidth = 457
-  ExplicitWidth = 473
-  ExplicitHeight = 390
+  ExplicitWidth = 469
+  ExplicitHeight = 389
   TextHeight = 13
   object Label1: TLabel [0]
     Left = 216
@@ -20,6 +20,8 @@ inherited SetupForm: TSetupForm
     ActivePage = TabSheet1
     Align = alClient
     TabOrder = 0
+    ExplicitWidth = 453
+    ExplicitHeight = 350
     object TabSheet1: TTabSheet
       Caption = 'Data logs'
       object WarningLabel: TRzLabel
@@ -70,7 +72,7 @@ inherited SetupForm: TSetupForm
           SpinType = sptTime
           TabOrder = 0
           Visible = True
-          Version = '2.0.1.2'
+          Version = '2.0.2.6'
           OnChange = LogTimeEditChange
           ButtonColor = clWhite
           ButtonColorHot = 15917525
@@ -109,7 +111,7 @@ inherited SetupForm: TSetupForm
           MinValue = 2
           TabOrder = 1
           Visible = True
-          Version = '2.0.1.2'
+          Version = '2.0.2.6'
           OnChange = DataLogDaysAdvSpinEditChange
           ButtonColor = clWhite
           ButtonColorHot = 15917525
@@ -121,8 +123,8 @@ inherited SetupForm: TSetupForm
         object DataLogCheckBox: TRzCheckBox
           Left = 16
           Top = 23
-          Width = 85
-          Height = 15
+          Width = 89
+          Height = 19
           Caption = 'Log tank data'
           State = cbUnchecked
           TabOrder = 2
@@ -162,7 +164,7 @@ inherited SetupForm: TSetupForm
           SpinType = sptTime
           TabOrder = 0
           Visible = True
-          Version = '2.0.1.2'
+          Version = '2.0.2.6'
           OnChange = mASensorLogTimeEditChange
           ButtonColor = clWhite
           ButtonColorHot = 15917525
@@ -201,7 +203,7 @@ inherited SetupForm: TSetupForm
           MinValue = 2
           TabOrder = 1
           Visible = True
-          Version = '2.0.1.2'
+          Version = '2.0.2.6'
           OnChange = SensorLogDaysAdvSpinEditChange
           ButtonColor = clWhite
           ButtonColorHot = 15917525
@@ -213,9 +215,9 @@ inherited SetupForm: TSetupForm
         object mASensorLogCheckBox: TRzCheckBox
           Left = 16
           Top = 26
-          Width = 94
-          Height = 15
-          Caption = 'Log mA sensors'
+          Width = 125
+          Height = 19
+          Caption = 'Log pressure sensors'
           State = cbUnchecked
           TabOrder = 2
           OnClick = mASensorLogCheckBoxClick
@@ -341,7 +343,7 @@ inherited SetupForm: TSetupForm
       object configGroupBox: TGroupBox
         Left = 231
         Top = 95
-        Width = 197
+        Width = 193
         Height = 130
         Anchors = [akLeft, akTop, akRight]
         Caption = 'Registry'
@@ -360,6 +362,7 @@ inherited SetupForm: TSetupForm
           Top = 55
           Width = 167
           Height = 66
+          Color = 15987699
           TabOrder = 1
           DesignSize = (
             167
@@ -483,7 +486,7 @@ inherited SetupForm: TSetupForm
           Visible = True
           OnExit = MinTankPressEditExit
           OnKeyDown = MinTankPressEditKeyDown
-          Version = '4.0.3.7'
+          Version = '4.0.4.3'
         end
         object MaxTankPressEdit: TAdvEdit
           Left = 64
@@ -520,7 +523,7 @@ inherited SetupForm: TSetupForm
           Visible = True
           OnExit = MaxTankPressEditExit
           OnKeyDown = MaxTankPressEditKeyDown
-          Version = '4.0.3.7'
+          Version = '4.0.4.3'
         end
         object DividerTankPressEdit: TAdvEdit
           Left = 64
@@ -557,7 +560,7 @@ inherited SetupForm: TSetupForm
           Visible = True
           OnExit = DividerTankPressEditExit
           OnKeyDown = DividerTankPressEditKeyDown
-          Version = '4.0.3.7'
+          Version = '4.0.4.3'
         end
         object AdvSmoothGaugeTankPressure: TAdvSmoothGauge
           Left = 136
@@ -711,7 +714,7 @@ inherited SetupForm: TSetupForm
           Visible = True
           OnExit = MinLinePressEditExit
           OnKeyDown = MinLinePressEditKeyDown
-          Version = '4.0.3.7'
+          Version = '4.0.4.3'
         end
         object MaxLinePressEdit: TAdvEdit
           Left = 64
@@ -749,7 +752,7 @@ inherited SetupForm: TSetupForm
           Visible = True
           OnExit = MaxLinePressEditExit
           OnKeyDown = MaxLinePressEditKeyDown
-          Version = '4.0.3.7'
+          Version = '4.0.4.3'
         end
         object DividerLinePressEdit: TAdvEdit
           Left = 64
@@ -786,7 +789,7 @@ inherited SetupForm: TSetupForm
           Visible = True
           OnExit = DividerLinePressEditExit
           OnKeyDown = DividerLinePressEditKeyDown
-          Version = '4.0.3.7'
+          Version = '4.0.4.3'
         end
         object AdvSmoothGaugeLinePressure: TAdvSmoothGauge
           Left = 146

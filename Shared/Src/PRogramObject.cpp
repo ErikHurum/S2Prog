@@ -576,7 +576,7 @@ void PRogramObject::RefreshData(int ValueKey) {
         if (IsAvailableNewData()) {
             if (DataFromOther) {
                 HWFailure = CheckAlarms(ExternalAlarmList);
-            }else if (!HWFailure) {
+            }else  {
                 Calculate();
                 IsNewData = true;
                 // HWFailure set elsewhere when our IO-system

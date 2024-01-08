@@ -3344,9 +3344,11 @@ bool __fastcall TMainForm::ExitProgram(void) {
 
 	CloseHandle(m_hAccessMutex);
 	CloseHandle(LoadCalcAccessMutex);
+	SensorLogLiteConnection->Disconnect();
 	DataLogLiteConnection->Connected = false;
 	AlarmLogLiteConnection->Connected = false;
 	WashTrackLiteConnection->Connected = false;
+	Sleep(5);
 	return true;
 
 }

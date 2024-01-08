@@ -1,31 +1,52 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V6.70.1.929 for Atmel AVR            07/Feb/2017  14:17:40
-# Copyright 1996-2015 IAR Systems AB.
-# Standalone license - IAR Embedded Workbench for Atmel AVR 6.80
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       02/Jan/2024  12:26:16
+# Copyright 1996-2022 IAR Systems AB.
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
-#    Source file  =  D:\S2Prog\IO\ANZB\Src\Misc.c
+#    Source file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
 #    Command line =  
-#        D:\S2Prog\IO\ANZB\Src\Misc.c --cpu=m128 -ms -o
-#        D:\S2Prog\IO\ANZB\Release_debug\Obj -D OS_LIBMODE_S -D OS_UART=0 -lCN
-#        D:\S2Prog\IO\ANZB\Release_debug\List -y --initializers_in_flash
-#        --no_tbaa -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB\INC\ -I
-#        D:\S2Prog\IO\ANZB\..\..\SHARED\INC\ --eeprom_size 4096 --clib -Ohz
-#    List file    =  D:\S2Prog\IO\ANZB\Release_debug\List\Misc.lst
-#    Object file  =  D:\S2Prog\IO\ANZB\Release_debug\Obj\Misc.r90
+#        -f C:\Users\ESY\AppData\Local\Temp\EW9964.tmp ("C:\Users\ESY\OneDrive
+#        - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c"
+#        --cpu=m128 -ms -o "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release_debug\Obj"
+#        -D OS_LIBMODE_S -D OS_UART=-1 -D USE_16552_DRIVER_TASK=1 -D
+#        USE_1281_RX_INT_TASK=1 -D USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=0 -D
+#        __ATMEGA_1281__ -lCN "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release_debug\List"
+#        -y --initializers_in_flash -DENABLE_BIT_DEFINITIONS -e -I
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\INC\\" -I
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\..\..\SHARED\INC\\"
+#        --eeprom_size 4096 --clib -Ohz)
+#    Locale       =  English_USA.1252
+#    List file    =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release_debug\List\Misc.lst
+#    Object file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release_debug\Obj\Misc.r90
 #
 ###############################################################################
 
-D:\S2Prog\IO\ANZB\Src\Misc.c
+C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
       1          /****************************************************************************************
       2          /  Misc. routines
       3          /
       4          ***************************************************************************************/
-      5          #include "iom128.h"
+      5          #include "iom1281.h"
 
-   \                                 In  segment ABSOLUTE, at 0x41
-   \   union <unnamed> volatile __io _A_WDTCR
-   \                     _A_WDTCR:
+   \                                 In  segment ABSOLUTE, at 0x60
+   \   union <unnamed> volatile __io _A_WDTCSR
+   \                     _A_WDTCSR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x29
+   \   union <unnamed> volatile __io _A_PIND
+   \                     _A_PIND:
    \   00000000                      DS8 1
       6          #include "stdio.h"
       7          #include "math.h"
@@ -48,26 +69,25 @@ D:\S2Prog\IO\ANZB\Src\Misc.c
    \   00000000   E604               LDI     R16, 100
    \   00000002   E010               LDI     R17, 0
    \   00000004   ........           CALL    OS_Delay
-     21              asm("WDR");                             // kick the dog!!
+     21              __watchdog_reset();               //kick the dog
    \   00000008   95A8               WDR
-     22              WDTCR = 0x1f;
+     22              WDTCSR = 0x1f;
    \   0000000A   E10F               LDI     R16, 31
-   \   0000000C   BD01               OUT     0x21, R16
-     23              WDTCR = 0x0f;
-   \   0000000E   E00F               LDI     R16, 15
-   \   00000010   BD01               OUT     0x21, R16
-     24              asm("WDR");                             // kick the dog!!
-   \   00000012   95A8               WDR
+   \   0000000C   9300....           STS     _A_WDTCSR, R16
+     23              WDTCSR = 0x0f;
+   \   00000010   E00F               LDI     R16, 15
+   \   00000012   9300....           STS     _A_WDTCSR, R16
+     24              __watchdog_reset();               //kick the dog
+   \                     ??WatchDogHandler_0:
+   \   00000016   95A8               WDR
      25              while (1) {
      26                  OS_Delay(500);
-   \                     ??WatchDogHandler_0:
-   \   00000014   EF04               LDI     R16, 244
-   \   00000016   E011               LDI     R17, 1
-   \   00000018   ........           CALL    OS_Delay
+   \   00000018   EF04               LDI     R16, 244
+   \   0000001A   E011               LDI     R17, 1
+   \   0000001C   ........           CALL    OS_Delay
      27                  __watchdog_reset();               //kick the dog
-   \   0000001C   95A8               WDR
-   \   0000001E   CFFA               RJMP    ??WatchDogHandler_0
-   \   00000020                      REQUIRE _A_WDTCR
+   \   00000020   CFFA               RJMP    ??WatchDogHandler_0
+   \   00000022                      REQUIRE _A_WDTCSR
      28              }
      29          }
      30          
@@ -84,10 +104,15 @@ D:\S2Prog\IO\ANZB\Src\Misc.c
      38          
      39          #if (OS_UART == 0)
      40              return 0;                   // Debug only
-   \   00000000   E000               LDI     R16, 0
-   \   00000002   9508               RET
      41          #else
      42              return(~(PIND>>4) & 0x0f) ;
+   \   00000000   B109               IN      R16, 0x09
+   \   00000002   9502               SWAP    R16
+   \   00000004   700F               ANDI    R16, 0x0F
+   \   00000006   9500               COM     R16
+   \   00000008   700F               ANDI    R16, 0x0F
+   \   0000000A   9508               RET
+   \   0000000C                      REQUIRE _A_PIND
      43          #endif
      44          }
      45          
@@ -139,16 +164,17 @@ D:\S2Prog\IO\ANZB\Src\Misc.c
    Bytes  Function/Label
    -----  --------------
       24  IsFloat
-       4  MyAddress
-      32  WatchDogHandler
-       1  _A_WDTCR
+      12  MyAddress
+      34  WatchDogHandler
+       1  _A_PIND
+       1  _A_WDTCSR
 
  
-  1 byte  in segment ABSOLUTE
- 60 bytes in segment CODE
+  2 bytes in segment ABSOLUTE
+ 70 bytes in segment CODE
  
- 60 bytes of CODE memory
-  0 bytes of DATA memory (+ 1 byte shared)
+ 70 bytes of CODE memory
+  0 bytes of DATA memory (+ 2 bytes shared)
 
 Errors: none
 Warnings: none

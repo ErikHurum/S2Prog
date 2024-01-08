@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       20/Nov/2023  14:43:39
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       02/Jan/2024  12:42:50
 # Copyright 1996-2022 IAR Systems AB.
 # Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
@@ -8,16 +8,16 @@
 #        C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c
 #    Command line =  
-#        -f C:\Users\ESY\AppData\Local\Temp\EWA162.tmp ("C:\Users\ESY\OneDrive
+#        -f C:\Users\ESY\AppData\Local\Temp\EWC760.tmp ("C:\Users\ESY\OneDrive
 #        - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\Misc.c"
 #        --cpu=m1281 -ms -o "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release\Obj" -D
 #        OS_LIBMODE_R -D OS_UART=-1 -D USE_16552_DRIVER_TASK=1 -D
-#        USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=1 -D __ATMEGA_1281__ -lCN
-#        "C:\Users\ESY\OneDrive -
+#        USE_1281_RX_INT_TASK=1 -D USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=0 -D
+#        __ATMEGA_1281__ -lCN "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release\List" -y
-#        --initializers_in_flash --no_tbaa --enable_external_bus
-#        -DENABLE_BIT_DEFINITIONS -e -I "C:\Users\ESY\OneDrive -
+#        --initializers_in_flash -DENABLE_BIT_DEFINITIONS -e -I
+#        "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\INC\\" -I
 #        "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\..\..\SHARED\INC\\"
@@ -64,13 +64,12 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\M
    \                                 In  segment CODE, align 2, keep-with-next
      18          void WatchDogHandler(void) {
    \                     WatchDogHandler:
-   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
      19          
      20              OS_Delay(100);                         // wait 1 seconds for other tasks to start and set TaskStatus
    \   00000000   E604               LDI     R16, 100
    \   00000002   E010               LDI     R17, 0
    \   00000004   ........           CALL    OS_Delay
-     21              asm("WDR");                             // kick the dog!!
+     21              __watchdog_reset();               //kick the dog
    \   00000008   95A8               WDR
      22              WDTCSR = 0x1f;
    \   0000000A   E10F               LDI     R16, 31
@@ -78,18 +77,17 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\M
      23              WDTCSR = 0x0f;
    \   00000010   E00F               LDI     R16, 15
    \   00000012   9300....           STS     _A_WDTCSR, R16
-     24              asm("WDR");                             // kick the dog!!
+     24              __watchdog_reset();               //kick the dog
+   \                     ??WatchDogHandler_0:
    \   00000016   95A8               WDR
      25              while (1) {
      26                  OS_Delay(500);
-   \                     ??WatchDogHandler_0:
    \   00000018   EF04               LDI     R16, 244
    \   0000001A   E011               LDI     R17, 1
    \   0000001C   ........           CALL    OS_Delay
      27                  __watchdog_reset();               //kick the dog
-   \   00000020   95A8               WDR
-   \   00000022   CFFA               RJMP    ??WatchDogHandler_0
-   \   00000024                      REQUIRE _A_WDTCSR
+   \   00000020   CFFA               RJMP    ??WatchDogHandler_0
+   \   00000022                      REQUIRE _A_WDTCSR
      28              }
      29          }
      30          
@@ -103,7 +101,6 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\M
    \                                 In  segment CODE, align 2, keep-with-next
      37          char MyAddress(void) {
    \                     MyAddress:
-   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
      38          
      39          #if (OS_UART == 0)
      40              return 0;                   // Debug only
@@ -128,7 +125,6 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\M
    \                                 In  segment CODE, align 2, keep-with-next
      51          char IsFloat(float A){
    \                     IsFloat:
-   \   00000000                      REQUIRE __RSTACK_in_external_ram_new_way
      52            long exp;
      53          	// A NAN has an exponent of 255 (shifted left 23 positions) and
      54          	// Denormalized has an exponent set to 0
@@ -169,15 +165,15 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\M
    -----  --------------
       24  IsFloat
       12  MyAddress
-      36  WatchDogHandler
+      34  WatchDogHandler
        1  _A_PIND
        1  _A_WDTCSR
 
  
   2 bytes in segment ABSOLUTE
- 72 bytes in segment CODE
+ 70 bytes in segment CODE
  
- 72 bytes of CODE memory
+ 70 bytes of CODE memory
   0 bytes of DATA memory (+ 2 bytes shared)
 
 Errors: none

@@ -3,10 +3,16 @@
 /
 ***************************************************************************************/
 
-#include <math.h>
+#ifdef __ATMEGA_1280__
+#include	"iom1280.h"
+#endif
+
+#ifdef __ATMEGA_1281__
 #include "iom1281.h"
+#endif
 #include "stdio.h"
 #include "math.h"
+#include "string.h"
 #include "externals.h"
 #include "version.h"
 
@@ -197,7 +203,7 @@ void AD7715(void) {
 *  Read from AD-converter
 *
 *************************************************************************/
-
+#pragma diag_suppress=Pe550
     void SPI_Write(char data) {       /* SPI write data function */
         char flush_buffer;
         SPDR = data;            /* Write data to SPI data register */
@@ -208,8 +214,8 @@ void AD7715(void) {
 
     char SPI_Read() {             /* SPI read data function */
         SPDR = 0xFF;
-        while (!(SPSR & (1 << SPIF))); /* Wait till reception complete */
-        return (SPDR);           /* Return received data */
+        while (!(SPSR & (1 << SPIF)));  /* Wait till reception complete */
+        return (SPDR);                  /* Return received data         */
     }
 
     char ReadAdByte(void) {

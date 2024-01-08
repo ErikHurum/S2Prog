@@ -1005,7 +1005,7 @@ void Init16552(char channel, unsigned long baud) {
         U0_FCR = 0x01;          // enable FIFO ..
         U0_FCR = 0xC1;          // and set RXLevel to 14
         U0_IER = 0x03;          // enable TX and RX int.
-        U0_MCR = 0x00;          // RTS off
+        U0_MCR &= ~RTS;      // set RTS off
         break;
     case 0x01 :
         UART16552[channel].RxTimeout = RX_TO_TIME;   // reset timeout
@@ -1018,7 +1018,7 @@ void Init16552(char channel, unsigned long baud) {
         U1_FCR = 0x01;          // enable FIFO ..
         U1_FCR = 0xC1;          // and set RXLevel to 14
         U1_IER = 0x03;          // enable TX and RX int.
-        U1_MCR = 0x00;          // RTS off
+        U1_MCR &= ~RTS;      // set RTS off
         break;
     default:
         break;

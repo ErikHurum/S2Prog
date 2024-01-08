@@ -207,12 +207,12 @@ typedef struct {
 
 OS_TIME OS__Gettime(void);
 
-void OS_EnableInterrupts      (void);
-void OS_DisableInterrupts     (void);
-void OS_CallISR               (void (*pRoutine)(void));
-void OS_CallNestableISR       (void (*pRoutine)(void));
-void OS_CallISR_Debug         (void (*pRoutine)(void));
-void OS_CallNestableISR_Debug (void (*pRoutine)(void));
+__version_3 void OS_EnableInterrupts      (void);
+__version_3 void OS_DisableInterrupts     (void);
+__version_3 void OS_CallISR               (void (*pRoutine)(void));
+__version_3 void OS_CallNestableISR       (void (*pRoutine)(void));
+__version_3 void OS_CallISR_Debug         (void (*pRoutine)(void));
+__version_3 void OS_CallNestableISR_Debug (void (*pRoutine)(void));
 
 #ifdef __cplusplus
   }
@@ -1617,24 +1617,24 @@ void OS_ExtendTaskContext(const OS_EXTEND_TASK_CONTEXT * pExtendContext);
 *
 **********************************************************************
 */
-void     OS_AddOnTerminateHook       (OS_ON_TERMINATE_HOOK * pHook, OS_ON_TERMINATE_FUNC * pfUser);
-void     OS_Delay                    (OS_TIME ms);            /* OSKern.c              */
-void     OS_DelayUntil               (OS_TIME t);             /* OSKern.c              */
-void     OS_Delayus                  (OS_U16  us);            /* OS_Delayus.c          */
-OS_U8    OS_GetSuspendCnt            (OS_CONST_PTR OS_TASK* pTask);  /* OS_GetSuspendCnt.c    */
-void     OS_GetState                 (OS_TASK* pTask);
-OS_BOOL  OS_IsTask                   (OS_CONST_PTR OS_TASK* pTask);  /* OSIsTask.c            */
-void     OS_Resume                   (OS_TASK* pTask);        /* OS_Suspend.c          */
-void     OS_ResumeAllSuspendedTasks  (void);                  /* OS_ResumeAllTasks.c   */
-void     OS_SetTaskName              (OS_TASK * pTask, OS_ROM_DATA const char* s);
-void     OS_SetPriority              (OS_TASK* pTask, OS_U8 Prio); /* OSSetP.c   */
-void     OS_SetInitialSuspendCnt     (OS_U8 SuspendCnt);      /* OS_SetSuspendCnt.c    */
-void     OS_Suspend                  (OS_TASK* pTask);        /* OS_Suspend.c          */
-void     OS_SuspendAllTasks          (void);                  /* OS_SuspendAllTasks.c  */
-void     OS_TerminateTask            (OS_TASK* pTask);        /* OSTerm.c              */
-void     OS_TerminateError           (void);                  /* OSTermE.c             */
-void     OS_WakeTask                 (OS_TASK* pTask);        /* OSWake.c              */
-void     OS_Yield                    (void);                  /* OS_Yield              */
+__version_3 void     OS_AddOnTerminateHook       (OS_ON_TERMINATE_HOOK * pHook, OS_ON_TERMINATE_FUNC * pfUser);
+__version_3 void     OS_Delay                    (OS_TIME ms);            /* OSKern.c              */
+__version_3 void     OS_DelayUntil               (OS_TIME t);             /* OSKern.c              */
+__version_3 void     OS_Delayus                  (OS_U16  us);            /* OS_Delayus.c          */
+__version_3 OS_U8    OS_GetSuspendCnt            (OS_CONST_PTR OS_TASK* pTask);  /* OS_GetSuspendCnt.c    */
+__version_3 void     OS_GetState                 (OS_TASK* pTask);
+__version_3 OS_BOOL  OS_IsTask                   (OS_CONST_PTR OS_TASK* pTask);  /* OSIsTask.c            */
+__version_3 void     OS_Resume                   (OS_TASK* pTask);        /* OS_Suspend.c          */
+__version_3 void     OS_ResumeAllSuspendedTasks  (void);                  /* OS_ResumeAllTasks.c   */
+__version_3 void     OS_SetTaskName              (OS_TASK * pTask, OS_ROM_DATA const char* s);
+__version_3 void     OS_SetPriority              (OS_TASK* pTask, OS_U8 Prio); /* OSSetP.c   */
+__version_3 void     OS_SetInitialSuspendCnt     (OS_U8 SuspendCnt);      /* OS_SetSuspendCnt.c    */
+__version_3 void     OS_Suspend                  (OS_TASK* pTask);        /* OS_Suspend.c          */
+__version_3 void     OS_SuspendAllTasks          (void);                  /* OS_SuspendAllTasks.c  */
+__version_3 void     OS_TerminateTask            (OS_TASK* pTask);        /* OSTerm.c              */
+__version_3 void     OS_TerminateError           (void);                  /* OSTermE.c             */
+__version_3 void     OS_WakeTask                 (OS_TASK* pTask);        /* OSWake.c              */
+__version_3 void     OS_Yield                    (void);                  /* OS_Yield              */
 #if OS_SUSPEND_TASK_ON_TERMINATE           /* Set task state of a terminated task to "suspended" */
   #define OS_SUSPEND_TERMINATED_TASK(pTask) (pTask->Stat = 0x01)
 #else
@@ -1648,19 +1648,19 @@ void     OS_Yield                    (void);                  /* OS_Yield       
 **********************************************************************
 */
 
-OS_ROM_DATA const char* OS_GetCPU(void);
-OS_ROM_DATA const char* OS_GetLibMode(void);
-OS_ROM_DATA const char* OS_GetModel(void);
-OS_ROM_DATA const char* OS_GetLibName(void);
+__version_3 OS_ROM_DATA const char* OS_GetCPU(void);
+__version_3 OS_ROM_DATA const char* OS_GetLibMode(void);
+__version_3 OS_ROM_DATA const char* OS_GetModel(void);
+__version_3 OS_ROM_DATA const char* OS_GetLibName(void);
 
-OS_UINT OS_GetVersion(void);
-#define OS_GetType() OS_GetLibMode()
+__version_3 OS_UINT OS_GetVersion(void);
+__version_3 #define OS_GetType() OS_GetLibMode()
 
 #define OS_TASKID OS_TASK *
-#define OS_GetTaskID() OS_pCurrentTask
+__version_3 #define OS_GetTaskID() OS_pCurrentTask
 
-#define OS_GetpCurrentTask()    OS_pCurrentTask
-#define OS_IsRunning()          OS_Running
+__version_3 #define OS_GetpCurrentTask()    OS_pCurrentTask
+__version_3 #define OS_IsRunning()          OS_Running
 
 #if OS_SUPPORT_TIMER
   #define OS_GetpCurrentTimer()   OS_pCurrentTimer
@@ -1668,17 +1668,17 @@ OS_UINT OS_GetVersion(void);
 #endif  // OS_SUPPORT_TIMER
 
 #if OS_TRACKNAME
-  OS_ROM_DATA const char* OS_GetTaskName(OS_CONST_PTR OS_TASK OS_TCBPTR *pTask);
+  __version_3 OS_ROM_DATA const char* OS_GetTaskName(OS_CONST_PTR OS_TASK OS_TCBPTR *pTask);
 #else
   #define OS_GetTaskName(pt)  ("n/a")
 #endif
 
 #if OS_CHECKSTACK
-  void              OS_CheckStack(void);              /* internal usage */
-  unsigned int      OS_GetStackSpace(OS_TASK * pTask);
-  unsigned int      OS_GetStackUsed (OS_TASK * pTask);
-  unsigned int      OS_GetStackSize (OS_TASK OS_TCBPTR * pTask);
-  void OS_STACKPTR* OS_GetStackBase(OS_TASK OS_TCBPTR *pTask);
+  __version_3 void              OS_CheckStack(void);              /* internal usage */
+  __version_3 unsigned int      OS_GetStackSpace(OS_TASK * pTask);
+  __version_3 unsigned int      OS_GetStackUsed (OS_TASK * pTask);
+  __version_3 unsigned int      OS_GetStackSize (OS_TASK OS_TCBPTR * pTask);
+  __version_3 void OS_STACKPTR* OS_GetStackBase(OS_TASK OS_TCBPTR *pTask);
 #else
   #define OS_CheckStack()
   #define OS_GetStackSpace(pt) 0
@@ -1688,58 +1688,58 @@ OS_UINT OS_GetVersion(void);
 #endif
 
 #if OS_SUPPORT_SYSSTACK_INFO
-  void OS_STACKPTR* OS_GetSysStackBase (void); /* RTOS asm part or OS_StackInfo.c */
-  unsigned int      OS_GetSysStackSize (void); /* RTOS asm part or OS_StackInfo.c */
+  __version_3 void OS_STACKPTR* OS_GetSysStackBase (void); /* RTOS asm part or OS_StackInfo.c */
+  __version_3 unsigned int      OS_GetSysStackSize (void); /* RTOS asm part or OS_StackInfo.c */
 #else
   #define OS_GetSysStackBase()   0
   #define OS_GetSysStackSize()   0
 #endif
 
 #if OS_CHECKSTACK && OS_SUPPORT_SYSSTACK_INFO
-  unsigned int OS_GetSysStackSpace(void); /* OS_SysStackInfo.c               */
-  unsigned int OS_GetSysStackUsed (void); /* OS_SysStackInfo.c               */
+  __version_3 unsigned int OS_GetSysStackSpace(void); /* OS_SysStackInfo.c               */
+  __version_3 unsigned int OS_GetSysStackUsed (void); /* OS_SysStackInfo.c               */
 #else
   #define OS_GetSysStackSpace()  0
   #define OS_GetSysStackUsed()   0
 #endif
 
 #if OS_SUPPORT_INTSTACK_INFO
-  void OS_STACKPTR* OS_GetIntStackBase(void);  /* RTOS asm part or OS_StackInfo.c */
-  unsigned int      OS_GetIntStackSize(void);  /* RTOS asm part or OS_StackInfo.c */
+  __version_3 void OS_STACKPTR* OS_GetIntStackBase(void);  /* RTOS asm part or OS_StackInfo.c */
+  __version_3 unsigned int      OS_GetIntStackSize(void);  /* RTOS asm part or OS_StackInfo.c */
 #else
   #define OS_GetIntStackBase()   0
   #define OS_GetIntStackSize()   0
 #endif
 
 #if OS_CHECKSTACK && OS_SUPPORT_INTSTACK_INFO
-  unsigned int OS_GetIntStackSpace(void); /* OS_IntStackInfo.c               */
-  unsigned int OS_GetIntStackUsed (void); /* OS_IntStackInfo.c               */
+  __version_3 unsigned int OS_GetIntStackSpace(void); /* OS_IntStackInfo.c               */
+  __version_3 unsigned int OS_GetIntStackUsed (void); /* OS_IntStackInfo.c               */
 #else
   #define      OS_GetIntStackSpace()  0
   #define      OS_GetIntStackUsed()   0
 #endif
 
 #if OS_RR_SUPPORTED
-  OS_U8 OS_SetTimeSlice(OS_TASK * pTask, OS_U8 TimeSlice);
-  OS_U8 OS_GetTimeSliceRem(OS_CONST_PTR OS_TASK OS_TCBPTR * pTask);
-  #define OS_GetTimeSliceReload(pTask)  (pTask)->TimeSliceReload
+  __version_3 OS_U8 OS_SetTimeSlice(OS_TASK * pTask, OS_U8 TimeSlice);
+  __version_3 OS_U8 OS_GetTimeSliceRem(OS_CONST_PTR OS_TASK OS_TCBPTR * pTask);
+  __version_3 #define OS_GetTimeSliceReload(pTask)  (pTask)->TimeSliceReload
 #else
   #define OS_GetTimeSliceRem(pTask)     0
   #define OS_GetTimeSliceReload(pTask)  0
 #endif
 
-OS_PRIO OS_GetPriority(OS_CONST_PTR OS_TASK * pTask);  /* OS_GetPrio.c       */
+__version_3 OS_PRIO OS_GetPriority(OS_CONST_PTR OS_TASK * pTask);  /* OS_GetPrio.c       */
 #define OS_GET_PRIORITY(pt) (pt)->Priority
 
 int     OS_GetNumTasks(void);              /* OS_GetNumTasks.c   */
 
-OS_TASK* OS_TaskIndex2Ptr(int TaskIndex);  /* OS_TaskIndex2Ptr.c */
+__version_3 OS_TASK* OS_TaskIndex2Ptr(int TaskIndex);  /* OS_TaskIndex2Ptr.c */
 
 #if OS_PROFILE >=1
-  OS_U32 OS_STAT_GetExecTime_Cycles (OS_TASK *pTask);  /* OSStat.c   */
-  int    OS_STAT_GetLoad            (OS_TASK *pTask);  /* OSStatGL.c */
-  void   OS_STAT_NotifyReadyStart   (OS_TASK *pTask);  /* OSStat.c   */
-  void   OS_STAT_Sample(void);                         /* OSStat.c   */
+  __version_3 OS_U32 OS_STAT_GetExecTime_Cycles (OS_TASK *pTask);  /* OSStat.c   */
+  __version_3 int    OS_STAT_GetLoad            (OS_TASK *pTask);  /* OSStatGL.c */
+  __version_3 void   OS_STAT_NotifyReadyStart   (OS_TASK *pTask);  /* OSStat.c   */
+  __version_3 void   OS_STAT_Sample(void);                         /* OSStat.c   */
 #else
   #define OS_STAT_NotifyExecEnd()
   #define OS_STAT_GetExecTime_Cycles(pTask)   0
@@ -1751,8 +1751,8 @@ OS_TASK* OS_TaskIndex2Ptr(int TaskIndex);  /* OS_TaskIndex2Ptr.c */
 
 
 #if OS_SUPPORT_STAT
-  OS_U32 OS_STAT_GetNumActivations  (OS_TASK *pTask);  /* OSStat.c   */
-  OS_U32 OS_STAT_GetNumPreemptions  (OS_TASK *pTask);  /* OSStat.c   */
+  __version_3 OS_U32 OS_STAT_GetNumActivations  (OS_TASK *pTask);  /* OSStat.c   */
+  __version_3 OS_U32 OS_STAT_GetNumPreemptions  (OS_TASK *pTask);  /* OSStat.c   */
 #else
   #define OS_STAT_GetNumActivations(pTask)    0
   #define OS_STAT_GetNumPreemptions(pTask)    0
@@ -1765,24 +1765,24 @@ OS_TASK* OS_TaskIndex2Ptr(int TaskIndex);  /* OS_TaskIndex2Ptr.c */
 **********************************************************************
 */
 
-int OS_WAIT_OBJ_GetSize(void);
-int OS_WAIT_OBJ_EX_GetSize(void);
-int OS_WAIT_LIST_GetSize(void);
-int OS_EXTEND_TASK_CONTEXT_GetSize(void);
-int OS_TASK_GetSize(void);
-int OS_REGS_GetSize(void);
-int OS_TICK_HOOK_GetSize(void);
-int OS_RSEMA_GetSize(void);
-int OS_CSEMA_GetSize(void);
-int OS_MAILBOX_GetSize(void);
-int OS_Q_GetSize(void);
-int OS_MEMF_GetSize(void);
-int OS_EVENT_GetSize(void);
-int OS_TRACE_ENTRY_GetSize(void);
+int __version_3 OS_WAIT_OBJ_GetSize(void);
+int __version_3 OS_WAIT_OBJ_EX_GetSize(void);
+int __version_3 OS_WAIT_LIST_GetSize(void);
+int __version_3 OS_EXTEND_TASK_CONTEXT_GetSize(void);
+int __version_3 OS_TASK_GetSize(void);
+int __version_3 OS_REGS_GetSize(void);
+int __version_3 OS_TICK_HOOK_GetSize(void);
+int __version_3 OS_RSEMA_GetSize(void);
+int __version_3 OS_CSEMA_GetSize(void);
+int __version_3 OS_MAILBOX_GetSize(void);
+int __version_3 OS_Q_GetSize(void);
+int __version_3 OS_MEMF_GetSize(void);
+int __version_3 OS_EVENT_GetSize(void);
+int __version_3 OS_TRACE_ENTRY_GetSize(void);
 
 #if OS_SUPPORT_TIMER
-  int OS_TIMER_GetSize(void);
-  int OS_TIMER_EX_GetSize(void);
+  __version_3 int OS_TIMER_GetSize(void);
+  __version_3 int OS_TIMER_EX_GetSize(void);
 #endif
 
 /*********************************************************************
@@ -1846,8 +1846,8 @@ void OS_RestoreI(void);  /* OS_Kern.c */
 #endif
 
 #if OS_SUPPORT_CALL_ISR            // Not allowed for some CPUs
-void OS_CallISR        (void (*pRoutine)(void));
-void OS_CallNestableISR(void (*pRoutine)(void));
+__version_3 void OS_CallISR        (void (*pRoutine)(void));
+__version_3 void OS_CallNestableISR(void (*pRoutine)(void));
 #endif
 
 #if (OS_SUPPORT_ENTER_INTERRUPT == 0) || ((OS_SWITCH_FROM_INT_MODIFIES_STACK == 0) && (OS_INTERRUPTS_ARE_NESTABLE_ON_ENTRY != 0) && (OS_SCHEDULER_ACTIVATED_BY_EXCEPTION == 0))
@@ -1953,19 +1953,19 @@ void OS_CallNestableISR(void (*pRoutine)(void));
 #endif
 
 #ifndef OS_EnterIntStack
-  void OS__EnterIntStack(void);
+  __version_3 void OS__EnterIntStack(void);
   #define OS_EnterIntStack() {OS_DI(); OS__EnterIntStack(); OS_RESTORE_I(); }
 #endif
 
 #ifndef OS_LeaveIntStack
-  void OS__LeaveIntStack(void);
+  __version_3 void OS__LeaveIntStack(void);
   #define OS_LeaveIntStack() {OS_DI(); OS__LeaveIntStack(); }
 #endif
 
 void OS_SetFastIntPriorityLimit(OS_UINT Priority);
 
 #if OS_DEBUG
-  void OS_AssertCPUInISRMode(void);                   /* OSKern.c   */
+  __version_3 void OS_AssertCPUInISRMode(void);                   /* OSKern.c   */
 #endif
 
 
@@ -1976,15 +1976,15 @@ void OS_SetFastIntPriorityLimit(OS_UINT Priority);
 **********************************************************************
 */
 
-int      OS_Use             (OS_RSEMA * pRSema);                  /* OSRsem.c      */
-int      OS_UseTimed        (OS_RSEMA * pRSema, OS_TIME TimeOut); /* OS_UseTimed.c */
-void     OS_Unuse           (OS_RSEMA * pRSema);                  /* OSRsem.c      */
-char     OS_Request         (OS_RSEMA * pRSema);                  /* OSRsemRQ.c    */
-int      OS_GetSemaValue    (OS_CONST_PTR OS_RSEMA * pRSema);     /* OSRSemGV.c    */
-OS_TASK* OS_GetResourceOwner(OS_CONST_PTR OS_RSEMA * pRSema);     /* OSRsemGO.c    */
-
-void     OS_CreateRSema     (OS_RSEMA * pRSema);                  /* OSRsem.c      */
-void     OS_DeleteRSema     (OS_RSEMA * pRSema);                  /* OSDelRS.c     */
+__version_3 int      OS_Use             (OS_RSEMA * pRSema);                  /* OSRsem.c      */
+__version_3 int      OS_UseTimed        (OS_RSEMA * pRSema, OS_TIME TimeOut); /* OS_UseTimed.c */
+__version_3 void     OS_Unuse           (OS_RSEMA * pRSema);                  /* OSRsem.c      */
+__version_3 char     OS_Request         (OS_RSEMA * pRSema);                  /* OSRsemRQ.c    */
+__version_3 int      OS_GetSemaValue    (OS_CONST_PTR OS_RSEMA * pRSema);     /* OSRSemGV.c    */
+__version_3 OS_TASK* OS_GetResourceOwner(OS_CONST_PTR OS_RSEMA * pRSema);     /* OSRsemGO.c    */
+__version_3 
+__version_3 void     OS_CreateRSema     (OS_RSEMA * pRSema);                  /* OSRsem.c      */
+__version_3 void     OS_DeleteRSema     (OS_RSEMA * pRSema);                  /* OSDelRS.c     */
 
 #define  OS_CREATERSEMA(ps) OS_CreateRSema(ps)
 
@@ -1995,15 +1995,15 @@ void     OS_DeleteRSema     (OS_RSEMA * pRSema);                  /* OSDelRS.c  
 **********************************************************************
 */
 
-void    OS_CreateCSema    (OS_CSEMA * pCSema, OS_UINT InitValue);  /* OSCSEM.c             */
-void    OS_DeleteCSema    (OS_CSEMA * pCSema);                     /* OSDELCS.c            */
-int     OS_GetCSemaValue  (OS_CONST_PTR OS_CSEMA *pCSema);         /* OSCSEMGV.c           */
-OS_U8   OS_SetCSemaValue  (OS_CSEMA * pCSema, OS_UINT value);      /* OS_SetCSemaValue.c   */
-void    OS_SignalCSema    (OS_CSEMA * pCSema);                     /* OSCSEM.c             */
-void    OS_SignalCSemaMax (OS_CSEMA * pCSema, OS_UINT MaxValue);   /* OS_CSEMA_SignalMax.c */
-void    OS_WaitCSema      (OS_CSEMA * pCSema);                     /* OSCSEM.c             */
-OS_BOOL OS_WaitCSemaTimed (OS_CSEMA * pCSema, OS_TIME TimeOut);    /* OSCSEMT.c            */
-OS_BOOL OS_CSemaRequest   (OS_CSEMA * pCSema);                     /* OSCSEMRQ.c           */
+__version_3 void    OS_CreateCSema    (OS_CSEMA * pCSema, OS_UINT InitValue);  /* OSCSEM.c             */
+__version_3 void    OS_DeleteCSema    (OS_CSEMA * pCSema);                     /* OSDELCS.c            */
+__version_3 int     OS_GetCSemaValue  (OS_CONST_PTR OS_CSEMA *pCSema);         /* OSCSEMGV.c           */
+__version_3 OS_U8   OS_SetCSemaValue  (OS_CSEMA * pCSema, OS_UINT value);      /* OS_SetCSemaValue.c   */
+__version_3 void    OS_SignalCSema    (OS_CSEMA * pCSema);                     /* OSCSEM.c             */
+__version_3 void    OS_SignalCSemaMax (OS_CSEMA * pCSema, OS_UINT MaxValue);   /* OS_CSEMA_SignalMax.c */
+__version_3 void    OS_WaitCSema      (OS_CSEMA * pCSema);                     /* OSCSEM.c             */
+__version_3 OS_BOOL OS_WaitCSemaTimed (OS_CSEMA * pCSema, OS_TIME TimeOut);    /* OSCSEMT.c            */
+__version_3 OS_BOOL OS_CSemaRequest   (OS_CSEMA * pCSema);                     /* OSCSEMRQ.c           */
 
 #define OS_CREATECSEMA(ps) OS_CreateCSema((ps), 0)
 
@@ -2014,25 +2014,25 @@ OS_BOOL OS_CSemaRequest   (OS_CSEMA * pCSema);                     /* OSCSEMRQ.c
 **********************************************************************
 */
 #define CREATEMB(MAILBOX, size, max, Buffer) OS_CreateMB((MAILBOX), (size), (max), (Buffer));
-void OS_CreateMB          (OS_MAILBOX * pMB, OS_U8 sizeofMsg, OS_UINT maxnofMsg, void* Buffer);    /* initialize mailbox */
-void OS_ClearMB           (OS_MAILBOX * pMB);
-void OS_PutMail           (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
-char OS_PutMailCond       (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
-void OS_PutMailFront      (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
-char OS_PutMailFrontCond  (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
-void OS_PutMail1          (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
-char OS_PutMailCond1      (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
-void OS_PutMailFront1     (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
-char OS_PutMailFrontCond1 (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
-void OS_GetMail           (OS_MAILBOX * pMB, void* pDest);
-char OS_GetMailCond       (OS_MAILBOX * pMB, void* pDest);
-void OS_GetMail1          (OS_MAILBOX * pMB, char* pDest);
-char OS_GetMailCond1      (OS_MAILBOX * pMB, char* pDest);
-char OS_GetMailTimed      (OS_MAILBOX * pMB, void* pDest, OS_TIME Timeout);
-void OS_DeleteMB          (OS_MAILBOX * pMB);
-char OS_PeekMail          (OS_MAILBOX * pMB, void* pDest);
-void OS_WaitMail          (OS_MAILBOX * pMB);
-char OS_WaitMailTimed     (OS_MAILBOX * pMB, OS_TIME Timeout);
+__version_3 void OS_CreateMB          (OS_MAILBOX * pMB, OS_U8 sizeofMsg, OS_UINT maxnofMsg, void* Buffer);    /* initialize mailbox */
+__version_3 void OS_ClearMB           (OS_MAILBOX * pMB);
+__version_3 void OS_PutMail           (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
+__version_3 char OS_PutMailCond       (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
+__version_3 void OS_PutMailFront      (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
+__version_3 char OS_PutMailFrontCond  (OS_MAILBOX * pMB, OS_CONST_PTR void* pMail);
+__version_3 void OS_PutMail1          (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
+__version_3 char OS_PutMailCond1      (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
+__version_3 void OS_PutMailFront1     (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
+__version_3 char OS_PutMailFrontCond1 (OS_MAILBOX * pMB, OS_CONST_PTR char* pMail);
+__version_3 void OS_GetMail           (OS_MAILBOX * pMB, void* pDest);
+__version_3 char OS_GetMailCond       (OS_MAILBOX * pMB, void* pDest);
+__version_3 void OS_GetMail1          (OS_MAILBOX * pMB, char* pDest);
+__version_3 char OS_GetMailCond1      (OS_MAILBOX * pMB, char* pDest);
+__version_3 char OS_GetMailTimed      (OS_MAILBOX * pMB, void* pDest, OS_TIME Timeout);
+__version_3 void OS_DeleteMB          (OS_MAILBOX * pMB);
+__version_3 char OS_PeekMail          (OS_MAILBOX * pMB, void* pDest);
+__version_3 void OS_WaitMail          (OS_MAILBOX * pMB);
+__version_3 char OS_WaitMailTimed     (OS_MAILBOX * pMB, OS_TIME Timeout);
 
 #if OS_DEBUG == 0
   #define OS_GetMessageCnt(pMB) (*(pMB)).nofMsg
@@ -2047,17 +2047,17 @@ char OS_WaitMailTimed     (OS_MAILBOX * pMB, OS_TIME Timeout);
 **********************************************************************
 */
 
-void    OS_Q_Create       (OS_Q* pQ, void*pData, OS_UINT Size);
-void    OS_Q_Clear        (OS_Q* pQ);                                /* OSQCL.c  */
-void    OS_Q_Delete       (OS_Q* pQ);                                /* OSQDEL.c */
-int     OS_Q_GetMessageCnt(OS_CONST_PTR OS_Q* pQ);                   /* OSQGMC.c */
-int     OS_Q_Put          (OS_Q* pQ, OS_CONST_PTR void* pSrc, OS_UINT Size);
-void    OS_Q_PutBlocked   (OS_Q* pQ, OS_CONST_PTR void* pSrc, OS_UINT Size);
-int     OS_Q_GetPtr       (OS_Q* pQ, void**ppData);
-int     OS_Q_GetPtrCond   (OS_Q* pQ, void**ppData);                  /* OSQGPC.c */
-int     OS_Q_GetPtrTimed  (OS_Q* pQ, void**ppData, OS_TIME Timeout); /* OSQGPT.c */
-void    OS_Q_Purge        (OS_Q* pQ);
-OS_BOOL OS_Q_IsInUse      (OS_CONST_PTR OS_Q* pQ);
+__version_3 void    OS_Q_Create       (OS_Q* pQ, void*pData, OS_UINT Size);
+__version_3 void    OS_Q_Clear        (OS_Q* pQ);                                /* OSQCL.c  */
+__version_3 void    OS_Q_Delete       (OS_Q* pQ);                                /* OSQDEL.c */
+__version_3 int     OS_Q_GetMessageCnt(OS_CONST_PTR OS_Q* pQ);                   /* OSQGMC.c */
+__version_3 int     OS_Q_Put          (OS_Q* pQ, OS_CONST_PTR void* pSrc, OS_UINT Size);
+__version_3 void    OS_Q_PutBlocked   (OS_Q* pQ, OS_CONST_PTR void* pSrc, OS_UINT Size);
+__version_3 int     OS_Q_GetPtr       (OS_Q* pQ, void**ppData);
+__version_3 int     OS_Q_GetPtrCond   (OS_Q* pQ, void**ppData);                  /* OSQGPC.c */
+__version_3 int     OS_Q_GetPtrTimed  (OS_Q* pQ, void**ppData, OS_TIME Timeout); /* OSQGPT.c */
+__version_3 void    OS_Q_Purge        (OS_Q* pQ);
+__version_3 OS_BOOL OS_Q_IsInUse      (OS_CONST_PTR OS_Q* pQ);
 
 /*********************************************************************
 *
@@ -2066,13 +2066,13 @@ OS_BOOL OS_Q_IsInUse      (OS_CONST_PTR OS_Q* pQ);
 **********************************************************************
 */
 
-OS_TASK_EVENT OS_ClearEvents          (OS_TASK * pTask);                          /* OSEVENCL.c  */
-OS_TASK_EVENT OS_GetEventsOccurred    (OS_CONST_PTR OS_TASK * pTask);             /* OSEVENGE.c  */
-void          OS_SignalEvent          (OS_TASK_EVENT Event, OS_TASK * pTask);     /* OSENENS.c   */
-OS_TASK_EVENT OS_WaitEvent            (OS_TASK_EVENT EventMask);                  /* OSEVENW.c   */
-OS_TASK_EVENT OS_WaitEventTimed       (OS_TASK_EVENT EventMask, OS_TIME TimeOut); /* OSEVENT.c   */
-OS_TASK_EVENT OS_WaitSingleEvent      (OS_TASK_EVENT EventMask);                  /* OSEVENWS.c  */
-OS_TASK_EVENT OS_WaitSingleEventTimed (OS_TASK_EVENT EventMask, OS_TIME TimeOut); /* OSEVENWST.c */
+__version_3 OS_TASK_EVENT OS_ClearEvents          (OS_TASK * pTask);                          /* OSEVENCL.c  */
+__version_3 OS_TASK_EVENT OS_GetEventsOccurred    (OS_CONST_PTR OS_TASK * pTask);             /* OSEVENGE.c  */
+__version_3 void          OS_SignalEvent          (OS_TASK_EVENT Event, OS_TASK * pTask);     /* OSENENS.c   */
+__version_3 OS_TASK_EVENT OS_WaitEvent            (OS_TASK_EVENT EventMask);                  /* OSEVENW.c   */
+__version_3 OS_TASK_EVENT OS_WaitEventTimed       (OS_TASK_EVENT EventMask, OS_TIME TimeOut); /* OSEVENT.c   */
+__version_3 OS_TASK_EVENT OS_WaitSingleEvent      (OS_TASK_EVENT EventMask);                  /* OSEVENWS.c  */
+__version_3 OS_TASK_EVENT OS_WaitSingleEventTimed (OS_TASK_EVENT EventMask, OS_TIME TimeOut); /* OSEVENWST.c */
 
 /*********************************************************************
 *
@@ -2093,15 +2093,15 @@ OS_TASK_EVENT OS_WaitSingleEventTimed (OS_TASK_EVENT EventMask, OS_TIME TimeOut)
   #endif
 #endif
 
-void    OS_CreateTimer    (OS_TIMER * pTimer, OS_TIMERROUTINE* Callback, OS_TIME Timeout);
-void    OS_RetriggerTimer (OS_TIMER * pTimer);
-void    OS_StartTimer     (OS_TIMER * pTimer);
-void    OS_StopTimer      (OS_TIMER * pTimer);
-void    OS_DeleteTimer    (OS_TIMER * pTimer);                  /* OSTIMED.c  */
-OS_TIME OS_GetTimerPeriod (OS_CONST_PTR OS_TIMER * pTimer);     /* OSTIMEGP.c */
-OS_BOOL OS_GetTimerStatus (OS_CONST_PTR OS_TIMER * pTimer);     /* OSTIMEGS.c */
-OS_TIME OS_GetTimerValue  (OS_CONST_PTR OS_TIMER * pTimer);     /* OSTIMEGV.c */
-void    OS_SetTimerPeriod (OS_TIMER * pTimer, OS_TIME Period);  /* OSTIMES.c  */
+__version_3 void    OS_CreateTimer    (OS_TIMER * pTimer, OS_TIMERROUTINE* Callback, OS_TIME Timeout);
+__version_3 void    OS_RetriggerTimer (OS_TIMER * pTimer);
+__version_3 void    OS_StartTimer     (OS_TIMER * pTimer);
+__version_3 void    OS_StopTimer      (OS_TIMER * pTimer);
+__version_3 void    OS_DeleteTimer    (OS_TIMER * pTimer);                  /* OSTIMED.c  */
+__version_3 OS_TIME OS_GetTimerPeriod (OS_CONST_PTR OS_TIMER * pTimer);     /* OSTIMEGP.c */
+__version_3 OS_BOOL OS_GetTimerStatus (OS_CONST_PTR OS_TIMER * pTimer);     /* OSTIMEGS.c */
+__version_3 OS_TIME OS_GetTimerValue  (OS_CONST_PTR OS_TIMER * pTimer);     /* OSTIMEGV.c */
+__version_3 void    OS_SetTimerPeriod (OS_TIMER * pTimer, OS_TIME Period);  /* OSTIMES.c  */
 
 #define OS_CREATETIMER(pTimer,c,d)          \
         OS_CreateTimer((pTimer), (c), (d)); \
@@ -2113,16 +2113,16 @@ void    OS_SetTimerPeriod (OS_TIMER * pTimer, OS_TIME Period);  /* OSTIMES.c  */
 *
 **********************************************************************
 */
-void    OS_CreateTimerEx (OS_TIMER_EX * pTimerEx, OS_TIMER_EX_ROUTINE* Callback, OS_TIME Timeout, void * pData);
+__version_3 void    OS_CreateTimerEx (OS_TIMER_EX * pTimerEx, OS_TIMER_EX_ROUTINE* Callback, OS_TIME Timeout, void * pData);
 
-#define OS_RetriggerTimerEx(pTimerEx)         OS_RetriggerTimer(&(pTimerEx)->Timer)
-#define OS_StartTimerEx(pTimerEx)             OS_StartTimer(&(pTimerEx)->Timer)
-#define OS_StopTimerEx(pTimerEx)              OS_StopTimer(&(pTimerEx)->Timer)
-#define OS_DeleteTimerEx(pTimerEx)            OS_DeleteTimer(&(pTimerEx)->Timer)
-#define OS_GetTimerPeriodEx(pTimerEx)         OS_GetTimerPeriod(&(pTimerEx)->Timer)
-#define OS_GetTimerStatusEx(pTimerEx)         OS_GetTimerStatus(&(pTimerEx)->Timer)
-#define OS_GetTimerValueEx(pTimerEx)          OS_GetTimerValue(&(pTimerEx)->Timer)
-#define OS_SetTimerPeriodEx(pTimerEx,Period)  OS_SetTimerPeriod(&(pTimerEx)->Timer, (Period))
+#define __version_3 OS_RetriggerTimerEx(pTimerEx)         OS_RetriggerTimer(&(pTimerEx)->Timer)
+#define __version_3 OS_StartTimerEx(pTimerEx)             OS_StartTimer(&(pTimerEx)->Timer)
+#define __version_3 OS_StopTimerEx(pTimerEx)              OS_StopTimer(&(pTimerEx)->Timer)
+#define __version_3 OS_DeleteTimerEx(pTimerEx)            OS_DeleteTimer(&(pTimerEx)->Timer)
+#define __version_3 OS_GetTimerPeriodEx(pTimerEx)         OS_GetTimerPeriod(&(pTimerEx)->Timer)
+#define __version_3 OS_GetTimerStatusEx(pTimerEx)         OS_GetTimerStatus(&(pTimerEx)->Timer)
+#define __version_3 OS_GetTimerValueEx(pTimerEx)          OS_GetTimerValue(&(pTimerEx)->Timer)
+#define __version_3 OS_SetTimerPeriodEx(pTimerEx,Period)  OS_SetTimerPeriod(&(pTimerEx)->Timer, (Period))
 
 #define OS_CREATETIMER_EX(pTimerEx,cb,Timeout,pData)            \
         OS_CreateTimerEx((pTimerEx), (cb), (Timeout), (pData)); \
@@ -2143,9 +2143,9 @@ void    OS_CreateTimerEx (OS_TIMER_EX * pTimerEx, OS_TIMER_EX_ROUTINE* Callback,
 */
 
 #if OS_SUPPORT_OS_ALLOC
-  void* OS_malloc   (unsigned int Size);
-  void  OS_free     (void* pMemBlock);
-  void* OS_realloc  (void* pMemBlock, unsigned int NewSize);
+  __version_3 void* OS_malloc   (unsigned int Size);
+  __version_3 void  OS_free     (void* pMemBlock);
+  __version_3 void* OS_realloc  (void* pMemBlock, unsigned int NewSize);
 #endif
 
 /*********************************************************************
@@ -2155,18 +2155,18 @@ void    OS_CreateTimerEx (OS_TIMER_EX * pTimerEx, OS_TIMER_EX_ROUTINE* Callback,
 **********************************************************************
 */
 
-void    OS_MEMF_Create           (OS_MEMF* pMEMF, void* pPool, OS_UINT NumBlocks, OS_UINT BlockSize);
-void    OS_MEMF_Delete           (OS_MEMF* pMEMF);
-void*   OS_MEMF_Alloc            (OS_MEMF* pMEMF, int Purpose);
-void*   OS_MEMF_AllocTimed       (OS_MEMF* pMEMF, OS_TIME Timeout, int Purpose);
-void*   OS_MEMF_Request          (OS_MEMF* pMEMF, int Purpose);
-void    OS_MEMF_Release          (OS_MEMF* pMEMF, void* pMemBlock);
-void    OS_MEMF_FreeBlock        (void* pMemBlock);
-int     OS_MEMF_GetNumFreeBlocks (OS_CONST_PTR OS_MEMF* pMEMF);
-OS_BOOL OS_MEMF_IsInPool         (OS_CONST_PTR OS_MEMF* pMEMF, OS_CONST_PTR void* pMemBlock);
-int     OS_MEMF_GetMaxUsed       (OS_CONST_PTR OS_MEMF* pMEMF);
-int     OS_MEMF_GetNumBlocks     (OS_CONST_PTR OS_MEMF* pMEMF);
-int     OS_MEMF_GetBlockSize     (OS_CONST_PTR OS_MEMF* pMEMF);
+__version_3 void    OS_MEMF_Create           (OS_MEMF* pMEMF, void* pPool, OS_UINT NumBlocks, OS_UINT BlockSize);
+__version_3 void    OS_MEMF_Delete           (OS_MEMF* pMEMF);
+__version_3 void*   OS_MEMF_Alloc            (OS_MEMF* pMEMF, int Purpose);
+__version_3 void*   OS_MEMF_AllocTimed       (OS_MEMF* pMEMF, OS_TIME Timeout, int Purpose);
+__version_3 void*   OS_MEMF_Request          (OS_MEMF* pMEMF, int Purpose);
+__version_3 void    OS_MEMF_Release          (OS_MEMF* pMEMF, void* pMemBlock);
+__version_3 void    OS_MEMF_FreeBlock        (void* pMemBlock);
+__version_3 int     OS_MEMF_GetNumFreeBlocks (OS_CONST_PTR OS_MEMF* pMEMF);
+__version_3 OS_BOOL OS_MEMF_IsInPool         (OS_CONST_PTR OS_MEMF* pMEMF, OS_CONST_PTR void* pMemBlock);
+__version_3 int     OS_MEMF_GetMaxUsed       (OS_CONST_PTR OS_MEMF* pMEMF);
+__version_3 int     OS_MEMF_GetNumBlocks     (OS_CONST_PTR OS_MEMF* pMEMF);
+__version_3 int     OS_MEMF_GetBlockSize     (OS_CONST_PTR OS_MEMF* pMEMF);
 
 /*********************************************************************
 *
@@ -2177,15 +2177,15 @@ int     OS_MEMF_GetBlockSize     (OS_CONST_PTR OS_MEMF* pMEMF);
 
 /****** Simple OS_EVENT functions ************************************/
 
-void    OS_EVENT_Create    (OS_EVENT* pEvent);
-void    OS_EVENT_Delete    (OS_EVENT* pEvent);
+__version_3 void    OS_EVENT_Create    (OS_EVENT* pEvent);
+__version_3 void    OS_EVENT_Delete    (OS_EVENT* pEvent);
 
-OS_BOOL OS_EVENT_Get       (OS_CONST_PTR OS_EVENT* pEvent);
-void    OS_EVENT_Pulse     (OS_EVENT* pEvent);
-void    OS_EVENT_Reset     (OS_EVENT* pEvent);
-void    OS_EVENT_Set       (OS_EVENT* pEvent);
-void    OS_EVENT_Wait      (OS_EVENT* pEvent);
-char    OS_EVENT_WaitTimed (OS_EVENT* pEvent, OS_TIME Timeout);
+__version_3 OS_BOOL OS_EVENT_Get       (OS_CONST_PTR OS_EVENT* pEvent);
+__version_3 void    OS_EVENT_Pulse     (OS_EVENT* pEvent);
+__version_3 void    OS_EVENT_Reset     (OS_EVENT* pEvent);
+__version_3 void    OS_EVENT_Set       (OS_EVENT* pEvent);
+__version_3 void    OS_EVENT_Wait      (OS_EVENT* pEvent);
+__version_3 char    OS_EVENT_WaitTimed (OS_EVENT* pEvent, OS_TIME Timeout);
 
 /*********************************************************************
 *
@@ -2198,9 +2198,9 @@ char    OS_EVENT_WaitTimed (OS_EVENT* pEvent, OS_TIME Timeout);
 */
 
 #define OS_TIMING OS_U32
-void    OS_Timing_Start(OS_TIMING* pCycle);
-void    OS_Timing_End(OS_TIMING* pCycle);
-OS_U32  OS_Timing_Getus(OS_CONST_PTR OS_TIMING* pCycle);
+__version_3 void    OS_Timing_Start(OS_TIMING* pCycle);
+__version_3 void    OS_Timing_End(OS_TIMING* pCycle);
+__version_3 OS_U32  OS_Timing_Getus(OS_CONST_PTR OS_TIMING* pCycle);
 #define OS_Timing_GetCycles(pPara) (*(pPara))
 
 
@@ -2220,9 +2220,9 @@ OS_U32  OS_Timing_Getus(OS_CONST_PTR OS_TIMING* pCycle);
 #define OS_POWER_LEVEL6  (0x0040)
 #define OS_POWER_LEVEL8  (0x0080)
 
-void    OS_POWER_UsageInc(OS_UINT Level);
-void    OS_POWER_UsageDec(OS_UINT Level);
-OS_UINT OS_POWER_GetMask(void);
+__version_3 void    OS_POWER_UsageInc(OS_UINT Level);
+__version_3 void    OS_POWER_UsageDec(OS_UINT Level);
+__version_3 OS_UINT OS_POWER_GetMask(void);
 #endif
 
 /*********************************************************************
@@ -2232,8 +2232,8 @@ OS_UINT OS_POWER_GetMask(void);
 **********************************************************************
 */
 #if OS_PROFILE >= 1
-  void OS_EnableProfiling(int Period);
-  #define OS_DisableProfiling() { OS_ProfilingOn=0; }
+  __version_3 void OS_EnableProfiling(int Period);
+  __version_3 #define OS_DisableProfiling() { OS_ProfilingOn=0; }
 #else
   #define OS_EnableProfiling(Period);
   #define OS_DisableProfiling()
@@ -2306,19 +2306,19 @@ This is automatically done, when OS_LIBMODE_T is defined.
 
 #if OS_TRACE
   /* Declare trace function prototypes */
-  void OS_TraceVoid (OS_U8 id);
-  void OS_TracePtr  (OS_U8 id, void* p);
-  void OS_TraceData (OS_U8 id, int v);
-  void OS_TraceDataPtr (OS_U8 id, int v, void*p);
-  void OS_TraceU32Ptr  (OS_U8 id, OS_U32 p0, void*p1);
-  void OS_TraceEnable(void);
-  void OS_TraceDisable(void);
-  void OS_TraceEnableAll(void);                              /* OSTrace1.c */
-  void OS_TraceDisableAll(void);                             /* OSTrace1.c */
-  void OS_TraceEnableId(OS_U8 id);                           /* OSTrace1.c */
-  void OS_TraceDisableId(OS_U8 id);                          /* OSTrace1.c */
-  void OS_TraceEnableFilterId(OS_U8 FilterIndex, OS_U8 id);  /* OSTrace1.c */
-  void OS_TraceDisableFilterId(OS_U8 FilterIndex, OS_U8 id); /* OSTrace1.c */
+  __version_3 void OS_TraceVoid (OS_U8 id);
+  __version_3 void OS_TracePtr  (OS_U8 id, void* p);
+  __version_3 void OS_TraceData (OS_U8 id, int v);
+  __version_3 void OS_TraceDataPtr (OS_U8 id, int v, void*p);
+  __version_3 void OS_TraceU32Ptr  (OS_U8 id, OS_U32 p0, void*p1);
+  __version_3 void OS_TraceEnable(void);
+  __version_3 void OS_TraceDisable(void);
+  __version_3 void OS_TraceEnableAll(void);                              /* OSTrace1.c */
+  __version_3 void OS_TraceDisableAll(void);                             /* OSTrace1.c */
+  __version_3 void OS_TraceEnableId(OS_U8 id);                           /* OSTrace1.c */
+  __version_3 void OS_TraceDisableId(OS_U8 id);                          /* OSTrace1.c */
+  __version_3 void OS_TraceEnableFilterId(OS_U8 FilterIndex, OS_U8 id);  /* OSTrace1.c */
+  __version_3 void OS_TraceDisableFilterId(OS_U8 FilterIndex, OS_U8 id); /* OSTrace1.c */
 
   /* Trace function macros, used in API functions */
   #define OS_TRACE_VOID(id)            OS_TraceVoid(id)
@@ -2378,12 +2378,12 @@ The routines declared below are available on all targets.
 */
 
 /* Routines in RTOSInit.c */
-void   OS_InitHW(void);
-void   OS_Idle(void);
-OS_U32 OS_ConvertCycles2us(OS_U32 Cycles);
-OS_U32 OS_GetTime_Cycles(void);
-void   OS_COM_Init(void);
-void   OS_COM_Send1(unsigned char c);
+__version_3 void   OS_InitHW(void);
+__version_3 void   OS_Idle(void);
+__version_3 OS_U32 OS_ConvertCycles2us(OS_U32 Cycles);
+__version_3 OS_U32 OS_GetTime_Cycles(void);
+__version_3 void   OS_COM_Init(void);
+__version_3 void   OS_COM_Send1(unsigned char c);
 
 /* Routines in OS_Error.c, delivered as source file */
 void   OS_Error(int ErrCode);
@@ -2391,16 +2391,16 @@ void   OS_Error(int ErrCode);
 OS_INTERWORK void  OS_StartASM(void);               /* RTOS ASM part   */
 OS_INTERWORK int   OS_SwitchFromInt(void);          /* RTOS ASM part   */
 
-void   OS_InitKern(void);             /* OSKern.c        */
-OS_U8  OS_OnTx(void);                 /* OSComRxTx1.c, Returns 1 on last byte */
-OS_INT OS_COM_GetNextChar(void);      /* OSComRxTx1.c, Returns the character to send, or -1  */
-void   OS_OnRx(unsigned char c);      /* OSComRxTx1.c    */
-void   OS_Send1(OS_U8 c);             /* not implemented */
-void   OS_SendString(OS_ROM_DATA const char* s);  /* OSSend.c        */
-OS_RX_CALLBACK* OS_SetRxCallback(OS_RX_CALLBACK* cb);
-OS_U8  OS_EvaPacketEx(const OS_U8 * pSrc, OS_U16 SrcLen, OS_U8** pReturn);  /* OS_EvaPacketEx.c */
+__version_3 void   OS_InitKern(void);             /* OSKern.c        */
+__version_3 OS_U8  OS_OnTx(void);                 /* OSComRxTx1.c, Returns 1 on last byte */
+__version_3 OS_INT OS_COM_GetNextChar(void);      /* OSComRxTx1.c, Returns the character to send, or -1  */
+__version_3 void   OS_OnRx(unsigned char c);      /* OSComRxTx1.c    */
+__version_3 void   OS_Send1(OS_U8 c);             /* not implemented */
+__version_3 void   OS_SendString(OS_ROM_DATA const char* s);  /* OSSend.c        */
+__version_3 OS_RX_CALLBACK* OS_SetRxCallback(OS_RX_CALLBACK* cb);
+__version_3 OS_U8  OS_EvaPacketEx(const OS_U8 * pSrc, OS_U16 SrcLen, OS_U8** pReturn);  /* OS_EvaPacketEx.c */
 
-void   OS_COM_ClearTxActive(void);   /* OSCom2.c */
+__version_3 void   OS_COM_ClearTxActive(void);   /* OSCom2.c */
 
 #define OS_Start()  OS_Running = 1u; OS_StartASM()
 
@@ -2429,27 +2429,27 @@ only. (Because they do not make much sense on others)
   #endif
 #endif
 
-void OS__di(void);
-void OS__ei(void);
-void OS__SaveIPL(void);
-void OS__RestIPL(void);
-void OS_SIM_Init(void);
+__version_3 void OS__di(void);
+__version_3 void OS__ei(void);
+__version_3 void OS__SaveIPL(void);
+__version_3 void OS__RestIPL(void);
+__version_3 void OS_SIM_Init(void);
 
 /* Standard tick handler which increment OS time variable by one on each interrupt */
-void OS_TICK_Handle(void);       /* New version of OS_TickHandler() without Enter- Leave-Interrupt  */
-void OS_TICK_HandleEx(void);     /* OS_TICK_HandleEx.c */
-void OS_TICK_HandleNoHook(void); /* Alternate fster tick hanlder without tick-hook-function */
-void OS_TICK_Config(unsigned FractPerInt, unsigned FractPerTick);
-void OS_TICK_AddHook   (OS_TICK_HOOK* pHook, OS_TICK_HOOK_ROUTINE * pfUser);
-void OS_TICK_RemoveHook(OS_CONST_PTR OS_TICK_HOOK* pHook);
+__version_3 void OS_TICK_Handle(void);       /* New version of OS_TickHandler() without Enter- Leave-Interrupt  */
+__version_3 void OS_TICK_HandleEx(void);     /* OS_TICK_HandleEx.c */
+__version_3 void OS_TICK_HandleNoHook(void); /* Alternate fster tick hanlder without tick-hook-function */
+__version_3 void OS_TICK_Config(unsigned FractPerInt, unsigned FractPerTick);
+__version_3 void OS_TICK_AddHook   (OS_TICK_HOOK* pHook, OS_TICK_HOOK_ROUTINE * pfUser);
+__version_3 void OS_TICK_RemoveHook(OS_CONST_PTR OS_TICK_HOOK* pHook);
 
 /* Routines for the PC-version running in native mode (non-windows) */
-void OS_SetIntFreq(OS_UINT f);
-void OS_Exit(int code);
-void OS_UseDos(void);
-void OS_UnuseDos(void);
-int  OS_GetKey(void);
-int  OS_WaitKey(void);
+__version_3 void OS_SetIntFreq(OS_UINT f);
+__version_3 void OS_Exit(int code);
+__version_3 void OS_UseDos(void);
+__version_3 void OS_UnuseDos(void);
+__version_3 int  OS_GetKey(void);
+__version_3 int  OS_WaitKey(void);
 
 /* Compatibility with manual */
 #define OS_CREATEMB          OS_CreateMB

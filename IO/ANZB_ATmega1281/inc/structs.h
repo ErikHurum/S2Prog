@@ -12,27 +12,53 @@
 *************************************************************************************/
 typedef struct {
     /*--- Transmit buffer ---*/
-    char  *pTxBuffer;
-    unsigned short TxFirst;
-    unsigned short TxLast;
-    unsigned short TxCount;
-    char  TxStatus;
-    char  TxSeqCnt;
+    char  pTxBuffer[ TXSIZE_UART_16552 ] ;
+    volatile unsigned short TxFirst;
+    volatile unsigned short TxLast;
+    volatile unsigned short TxCount;
+    volatile char  TxStatus;
+    volatile char  TxSeqCnt;
 
     /*--- Receive buffer ---*/
-    char  *pRxBuffer;
-    unsigned short RxFirst;
-    unsigned short RxLast;
-    unsigned short RxCount;
-    char  RxState;
-    char  SyncCnt;
-    unsigned short RxTimeout;
-    unsigned short RxPacklen;
-    char RxFaultCnt;
-    char RxSendReply;
-
+    char  pRxBuffer[ RXSIZE_UART_16552 ];         
+    volatile unsigned short RxFirst;
+    volatile unsigned short RxLast;
+    volatile unsigned short RxCount;
+    volatile char  RxState;
+    volatile char  SyncCnt;
+    volatile unsigned short RxTimeout;
+    volatile unsigned short RxPacklen;
+    volatile char RxFaultCnt;
+    volatile char RxSendReply;
+    char RxByte;
+    char RxMailBoxBuf[MBUF_SIZE];
+    OS_MAILBOX RxMailBox;
     
-} UARTDataType;
+} UART16552DataType;
+typedef struct {
+    /*--- Transmit buffer ---*/
+    char  pTxBuffer[ TXSIZE_UART ];
+    volatile unsigned short TxFirst;
+    volatile unsigned short TxLast;
+    volatile unsigned short TxCount;
+    volatile char  TxStatus;
+    volatile char  TxSeqCnt;
+
+    /*--- Receive buffer ---*/
+    char  pRxBuffer[ RXSIZE_UART ];
+    volatile unsigned short RxFirst;
+    volatile unsigned short RxLast;
+    volatile unsigned short RxCount;
+    volatile char  RxState;
+    volatile char  SyncCnt;
+    volatile unsigned short RxTimeout;
+    volatile unsigned short RxPacklen;
+    volatile char RxFaultCnt;
+    volatile char RxSendReply;
+    char RxByte;
+    char RxMailBoxBuf[MBUF_SIZE];
+    OS_MAILBOX RxMailBox;
+} UARTCPUDataType;
 
 /*************************************************************************************
 **
@@ -105,3 +131,23 @@ typedef union  {
     AnZb485 RS4 ;
 
 } TargetData ;
+/*************************************************************************************
+**
+**  Struct defining data for ANPRO1
+**
+*************************************************************************************/
+
+typedef struct  {
+	char  RxAddress;
+	char TxAddress;
+	char HiSize;
+	char LoSize;
+}ANPRO1_PacketHeading;
+
+typedef struct  {	// cmd 0 No ack / 1 with ack
+	char ecmd;
+	char edata;
+	char PCRC;
+	char EOT;
+}ANPRO1_PacketTail;
+

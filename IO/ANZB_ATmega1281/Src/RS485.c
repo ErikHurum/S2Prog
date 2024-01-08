@@ -11,7 +11,7 @@
 #include "version.h"
 
 #if USE_MODBUS_PROTOCOL == 1
-#include "common_def.h"
+    #include "common_def.h"
 
 #endif /* USE_MODBUS_PROTOCOL == 1 */
 
@@ -42,24 +42,25 @@ void TimoutUART1(void) {
 *  Usart handler UART send request
 *
 *************************************************************************/
+#pragma diag_suppress=Pa082
 void ExtRS485Ctl(void) {
     char SeqCnt = 0;
     char PowerOnTimer = POWER_ON_CNT;                    // do not make a unwanted power on sequence in the starting phase
     char EventStatus;
     char AskMD[2];
-    char temp;
 
-    
+
     Init16552(0, 9600);                                      // Init UART channel 0
     Init16552(1, 9600);                                      // Init UART channel 1
-    
-    TData.RS4.PortUsed = ReadEEPROMByte(EEPROM_PORTSETUP);   // Get setup from EEPROM
+    OS_SignalEvent(0x01,&TCB_16552_RxHandler1 );
+    OS_SignalEvent(0x01,&TCB_16552_RxHandler2 );
+    TData.RS4.PortUsed      = ReadEEPROMByte(EEPROM_PORTSETUP);   // Get setup from EEPROM
     TData.RS4.SensorType[0] = ReadEEPROMByte(EEPROM_PORTSETUP + 1);
     TData.RS4.SensorType[1] = ReadEEPROMByte(EEPROM_PORTSETUP + 2);
 #if USE_MODBUS_PROTOCOL == 1
     {
-      static void load_eeprom_misc_485(void);
-      load_eeprom_misc_485();
+        static void load_eeprom_misc_485(void);
+        load_eeprom_misc_485();
     }
 #endif
 
@@ -67,8 +68,8 @@ void ExtRS485Ctl(void) {
     TData.RS4.ToTargetBuffer[1][0] = false;
     TData.RS4.FromTargetBuffer[0][0] = false;
     TData.RS4.FromTargetBuffer[1][0] = false;
-    
-    
+
+
     for (char i = 0; i < 8; i++) {
         SetBit(PORTC, (TData.RS4.PortUsed & (0x01 << i)));      // Switch on power
         OS_Delay(100);
@@ -80,12 +81,14 @@ void ExtRS485Ctl(void) {
     // let modbus task that I'm done initializing
     //
     {
-      extern void modbus_rtu_notify_go(void);
-      modbus_rtu_notify_go();
+        extern void modbus_rtu_notify_go(void);
+        modbus_rtu_notify_go();
     }
 #endif
 
     while (1) {
+        PortPair = 0;
+
         for (PortPair = 0; PortPair < 4; PortPair++) {        // loop through all ports
             if (UART16552[0].RxFaultCnt > MAX_16552_FAIL) {
                 EmptyRxBuf16552(0);                            // Empty UART channel 0
@@ -102,33 +105,35 @@ void ExtRS485Ctl(void) {
             // volatile undefined behavior
             // ClrBit(PORTE, (0x10 << PortPair) & 0xf0);           // set mux port
             //
-            temp = (0x10 << PortPair) & 0xf0;
-            ClrBit(PORTE, temp);           // set mux port
+            char temp = (0x10 << PortPair) & 0xf0;
+            ClrBit(PORTE, temp);              // set mux port
             if ((TData.RS4.PortUsed >> PortPair) & 0x01) {      // sensor on port 0?
-                UART16552[0].TxFirst = 6;                       // Start packet build at pos.
+                UART16552[0].TxFirst = 6;        // Start packet build at pos.
                 char SnsType = (TData.RS4.SensorType[0] >> (2 * PortPair)) & 0x3;
+
                 switch (SnsType) {
-                case 0x01:    //Water ingress??
+                case 0x01:                              //Water ingress??
                     switch (SeqCnt) {
                     case 0:
-                        Uart_BuildReqWISCardStatus(0);          //Card status
+                        Uart_BuildReqWISCardStatus(0);                     //Card status
                         break;
                     case 20:
                         if ((TData.RS4.FromTargetBuffer[0][0] == false) && (TData.RS4.EEPROMPortpair[0] == PortPair)) { // buffer ready
-                            Uart_BuildReqWISXData(0, 115);            // Request serial no
+                            Uart_BuildReqWISXData(0, 115);          // Request serial no
                             if (++TData.RS4.EEPROMPortpair[0] >= 4) {
                                 TData.RS4.EEPROMPortpair[0] = 0;
                             }
                         } else {
-                            Uart_BuildReqWISData(0);                //WIS data
+                            Uart_BuildReqWISData(0);          //WIS data
                         }
                         break;
                     default:
-                        Uart_BuildReqWISData(0);                //WIS data
+                        Uart_BuildReqWISData(0);            //WIS data
                         break;
                     }
                     break;
-                case 0x02: // Radar??
+
+                case 0x02:                             // Radar??
                     switch (SeqCnt) {
                     case 20:
                         if ((TData.RS4.FromTargetBuffer[0][0] == false) && (TData.RS4.EEPROMPortpair[0] == PortPair)) { // buffer ready
@@ -138,17 +143,17 @@ void ExtRS485Ctl(void) {
                         }
                         // Fall through and send the request
                     default:
-                        Uart_BuildReqRadarData(0);          // Radar data
+                        Uart_BuildReqRadarData(0);             // Radar data
                         break;
                     case 0:
-                        Uart_BuildReqRadarInfo(0);          //Radar Information
+                        Uart_BuildReqRadarInfo(0);             //Radar Information
                         break;
                     }
                     break;
-                case 0x00:  // AN-SGCNV
+                case 0x00:                         // AN-SGCNV
                     if ((TData.RS4.ToTargetBuffer[0][0] == true) && // Data ready for this AD card
                         (TData.RS4.ToTargetBuffer[0][1] == PortPair)) {
-                        Uart_BuildSndData(0);                       // add data to AD card package
+                        Uart_BuildSndData(0);     // add data to AD card package
                         Uart_BuildReqConfig(0);                 //Config data, cmd 17
                         AskMD[0] = false;
                     } else {
@@ -164,7 +169,8 @@ void ExtRS485Ctl(void) {
                         Uart_BuildReqC16552(0);                 //Cal data, cmd 16
                     } else if (SeqCnt == 20) {
                         if ((TData.RS4.FromTargetBuffer[0][0] == false) && (TData.RS4.EEPROMPortpair[0] == PortPair)) { // buffer ready
-                            Uart_BuildReqEEPROMData(0);             //EEpromdata cmd, 24
+                            Uart_BuildReqEEPROMData(0);
+                            //EEpromdata cmd, 24
                             if ((TData.RS4.EEPROMADChannel[0] += 2) > 14) { //Next channel
                                 TData.RS4.EEPROMADChannel[0] = 0;
                                 if (++TData.RS4.EEPROMPortpair[0] >= 4) {
@@ -179,6 +185,7 @@ void ExtRS485Ctl(void) {
                     }
                     break;
                 }
+                //EmptyRxBuf16552(0);                            // Empty UART channel 0
                 Uart_BuildTail16552(0);
             } else {
                 if (TData.RS4.EEPROMPortpair[0] == PortPair) {
@@ -187,7 +194,7 @@ void ExtRS485Ctl(void) {
                     }
                 }
             }
-            if ((TData.RS4.PortUsed >> (PortPair + 4)) & 0x01) {              // sensor on port 1?
+            if ((TData.RS4.PortUsed >> (PortPair + 4)) & 0x01) {      // sensor on port 1?
                 UART16552[1].TxFirst = 6;                       // Start at
                 char SnsType = ((TData.RS4.SensorType[1] >> (2 * PortPair))) & 0x3;
                 switch (SnsType) {
@@ -262,6 +269,7 @@ void ExtRS485Ctl(void) {
                     }
                     break;
                 }
+                //EmptyRxBuf16552(0);                            // Empty UART channel 0
                 Uart_BuildTail16552(1);
             } else {
                 if (TData.RS4.EEPROMPortpair[1] == PortPair) {
@@ -290,7 +298,6 @@ void ExtRS485Ctl(void) {
 *
 *************************************************************************/
 void ExtRS485Rec(void) {
-
     char portresp;
     char temp;
 
@@ -298,15 +305,15 @@ void ExtRS485Rec(void) {
 
     while (1) {
         OS_Delay(499);                          // wait for answer and correct the speed (.5 * 4 = 2 sec update)
-        portresp = OS_WaitEventTimed(3, 1);     // Wait for receive from both channels
+        portresp = OS_WaitEventTimed(3, 1);   // Wait for receive from both channels
         if (portresp & 0x01) {                  // answer on ch 0
-            Usart16552CheckPackage(0);         // handle incomming package
+            Usart16552CheckPackage(0);            // handle incomming package
             TData.RS4.FailCnt[PortPair][0] = 0; // Reset counter
             TData.RS4.IOUnitStatus[PortPair] &= ~COMFAIL_BIT; // No error
             UART16552[0].RxFaultCnt = 0;          // OK package on 16552 channel
         } else {
             UART16552[0].RxFaultCnt++;          // Fault in package on 16552 channel
-            TData.RS4.FailCnt[PortPair][1]++;      // no answer total counter
+            TData.RS4.FailCnt[PortPair][1]++;                            // no answer total counter
             if (TData.RS4.FailCnt[PortPair][0]++ > FAILCNT_ERROR) {
                 TData.RS4.IOUnitStatus[PortPair] |= COMFAIL_BIT;      // report fault
             }
@@ -316,7 +323,7 @@ void ExtRS485Rec(void) {
                     // ClrBit(PORTC, (0x01 << PortPair));            // Switch off power
                     //
                     temp = (0x01 << PortPair);
-                    ClrBit(PORTC, temp);            // Switch off power
+                    ClrBit(PORTC, temp);  // Switch off power
                     OS_SignalEvent(2, &TCB_RS485Ctl);
                 }
             }
@@ -335,7 +342,7 @@ void ExtRS485Rec(void) {
             if ((TData.RS4.PortUsed >> (PortPair + 4)) & 0x01) {              // sensor on port 1?
                 if ((TData.RS4.FailCnt[PortPair + 4][0] & 0x0007) == 0x0004) {   //check if powqer shall be switched off
                     // volatile undefined behavior
-                    // ClrBit(PORTC, (0x01 << (PortPair + 4)));            // Switch off power
+                    //        ClrBit(PORTC, (0x01 << (PortPair + 4)));            // Switch off power
                     //
                     temp = (0x01 << (PortPair + 4));
                     ClrBit(PORTC, temp);            // Switch off power
@@ -365,12 +372,10 @@ void SetRS4Port(void) {
 *************************************************************************/
 void Usart16552CheckPackage(char ch) {
 
-    unsigned short pointer;
-    char count_out, more;
+    unsigned short pointer = 4;
+    char count_out  = MAX_PROT_CMD;// max command
+    char more       = true;
 
-    count_out = MAX_PROT_CMD;                  // max command
-    more = true;
-    pointer = 4;
     do {
         if (!CheckActionUart16552(ch, pointer)) {
             more = false;                          // terminate while loop
@@ -382,6 +387,8 @@ void Usart16552CheckPackage(char ch) {
     } while (more && (pointer < UART16552[ch].RxPacklen - 3));
     GoToSyncUART16552(ch);
 }
+
+
 
 /*************************************************************************
 *
@@ -565,15 +572,15 @@ void ReceiveWHData(char ch, unsigned short pointer) {
     OS_Use(&UARTSEND);    // Do not write to buffer while the buffer can be read by other
     short Index = (ch * 4) + PortPair;
     // Check if we have time information included
-    if (UART16552[ch].pRxBuffer[pointer -1] == 4 ) {
+    if (UART16552[ch].pRxBuffer[pointer - 1] == 4) {
         for (short pnt = 0; pnt < 3; pnt++) {
-            TData.RS4.WTrackCnt[Index][pnt] = UART16552[ch].pRxBuffer[pointer+pnt];  // 4 x Wash track
+            TData.RS4.WTrackCnt[Index][pnt] = UART16552[ch].pRxBuffer[pointer + pnt];  // 4 x Wash track
         }
         // 4th WashTrack dont come
         TData.RS4.WTrackCnt[Index][3] = 0;  // Missing 4th Wash track because of BUG in H8 compiler
-        TData.RS4.LevelSwitch[Index] = UART16552[ch].pRxBuffer[pointer +3]; // Hgh levels in 5th byte
+        TData.RS4.LevelSwitch[Index] = UART16552[ch].pRxBuffer[pointer + 3]; // Hgh levels in 5th byte
         TData.RS4.WTTime[Index] = 0;
-    }else{
+    } else {
         for (short pnt = 0; pnt < 4; pnt++) {
             TData.RS4.WTrackCnt[Index][pnt] = ((unsigned short *)&UART16552[ch].pRxBuffer[pointer])[pnt];  // 4 x Wash track
         }
@@ -721,14 +728,14 @@ void Uart_BuildTail16552(char ch) {
 
     UART16552[ch].TxCount = UART16552[ch].TxFirst - 1;       //bytes to send (-1 for the start byte)
     UART16552[ch].TxLast = 1;                               // sent 1 byte
-    GoToSyncUART16552(ch);                                 // go to sync modus for recive
+    GoToSendUART16552(ch);                                 // go to sync modus for recive
     if (ch == 0) {                                           // Turn on TXE for channel
-        OS_RetriggerTimer(&TimerUART0);                    // and start timeout timer
+        //OS_RetriggerTimer(&TimerUART0);                    // and start timeout timer
         U0_MCR |= RTS;                                    // set RTS on
         OS_Delay(20);                                           // Wait (ms) for tx stable
         U0_THR = UART16552[ch].pTxBuffer[0];                // Send 1. byte
     } else if (ch == 1) {
-        OS_RetriggerTimer(&TimerUART1);                    // and start timeout timer
+        //OS_RetriggerTimer(&TimerUART1);                    // and start timeout timer
         U1_MCR |= RTS;                                      // set RTS on
         OS_Delay(20);                                           // Wait (ms) for tx stable
         U1_THR = UART16552[ch].pTxBuffer[0];                  // Send 1. byte
@@ -987,17 +994,23 @@ short CalcDSRxChecksum16552(char ch) {
 
 /*************************************************************************
 *
+* Goes to send mode
+*
+*************************************************************************/
+void GoToSendUART16552(char ch) {
+    UART16552[ch].SyncCnt   = 0;                        // ready for sync
+    UART16552[ch].RxState   = SEND;
+    UART16552[ch].RxFirst   = 0;
+    UART16552[ch].RxPacklen = 0;
+}
+/*************************************************************************
+*
 * Goes to sync mode
 *
 *************************************************************************/
 void GoToSyncUART16552(char ch) {
 
-    if (ch < 2) {
-        UART16552[ch].SyncCnt = 0;                        // ready for sync
-        UART16552[ch].RxState = SYNC;
-        UART16552[ch].RxFirst = 0;
-        UART16552[ch].RxPacklen = 0;
-    }
+    UART16552[ch].RxState = SYNC;
 }
 
 /*************************************************************************
@@ -1027,7 +1040,7 @@ void EmptyRxBuf16552(char uartno) {
 *
 *************************************************************************/
 void Init16552(char channel, unsigned long baud) {
-
+    OS_CREATEMB(&UART16552[channel].RxMailBox, 1, MBUF_SIZE, &UART16552[channel].RxMailBoxBuf);
     /*--- Configure UART data block ---*/
     UART16552[channel].TxFirst = 0x00;
     UART16552[channel].TxLast = 0x00;
@@ -1035,15 +1048,13 @@ void Init16552(char channel, unsigned long baud) {
     UART16552[channel].RxFirst = 0x00;
     UART16552[channel].RxLast = 0x00;
     UART16552[channel].RxCount = 0x00;
-    UART16552[channel].RxState = SYNC;
+    UART16552[channel].RxState = SEND;  // Must send a message before receiving anything
     UART16552[channel].SyncCnt = 0;
     UART16552[channel].TxStatus = 0x00;
 
     switch (channel) {
     case 0x00 :
         UART16552[channel].RxTimeout = RX_TO_TIME;   // reset timeout
-        UART16552[channel].pTxBuffer = TxBuf16552Ch0;
-        UART16552[channel].pRxBuffer = RxBuf16552Ch0;
         U0_LCR = 0x80;          // set DLAB
         U0_DLL = ((XTAL_CPU / 8 / 16 / baud) & 0xff);
         U0_DLM = (((XTAL_CPU / 8 / 16 / baud) >> 8) & 0xff);
@@ -1055,8 +1066,6 @@ void Init16552(char channel, unsigned long baud) {
         break;
     case 0x01 :
         UART16552[channel].RxTimeout = RX_TO_TIME;   // reset timeout
-        UART16552[channel].pTxBuffer = TxBuf16552Ch1;
-        UART16552[channel].pRxBuffer = RxBuf16552Ch1;
         U1_LCR = 0x80;          // set DLAB
         U1_DLL = ((XTAL_CPU / 8 / 16 / baud) & 0xff);
         U1_DLM = (((XTAL_CPU / 8 / 16 / baud) >> 8) & 0xff);
@@ -1075,199 +1084,175 @@ void Init16552(char channel, unsigned long baud) {
 static unsigned short  Rsp_Delay[2];       // response delay
 
 static void
-load_eeprom_misc_485(void)
-{
-  char ch;
-  uint16_t temp;
+load_eeprom_misc_485(void) {
+    char ch;
+    uint16_t temp;
 
-  for (ch = 0; ch < 2; ch++)
-  {
-    ReadEEPROMBuffer(EEPROM_PORTSETUP + 3 + ch * 2, sizeof(uint16_t), (char*)&temp);
+    for (ch = 0; ch < 2; ch++) {
+        ReadEEPROMBuffer(EEPROM_PORTSETUP + 3 + ch * 2, sizeof(uint16_t), (char *)&temp);
 
-    if (temp > 0 && temp <= 5000)
-    {
-      Rsp_Delay[ch] = temp;
+        if (temp > 0 && temp <= 5000) {
+            Rsp_Delay[ch] = temp;
+        } else {
+            Rsp_Delay[ch] = 0;
+        }
     }
-    else
-    {
-      Rsp_Delay[ch] = 0;
-    }
-  }
 }
 
 static void
-__rs485_task_set_power(uint8_t ch, uint8_t on)
-{
-  uint8_t current;
+__rs485_task_set_power(uint8_t ch, uint8_t on) {
+    uint8_t current;
 
-  current = (TData.RS4.PortUsed >> ch) & 0x01;
+    current = (TData.RS4.PortUsed >> ch) & 0x01;
 
-  if(current == on)
-  {
-    // no need to waste time
-    return;
-  }
+    if (current == on) {
+        // no need to waste time
+        return;
+    }
 
-  if(on)
-  {
-    TData.RS4.PortUsed |= (1 << ch);
-  }
-  else
-  {
-    TData.RS4.PortUsed &= ~(1 << ch);
-  }
-  PORTC = TData.RS4.PortUsed;
+    if (on) {
+        TData.RS4.PortUsed |= (1 << ch);
+    } else {
+        TData.RS4.PortUsed &= ~(1 << ch);
+    }
+    PORTC = TData.RS4.PortUsed;
 
-  WriteEEPROMByte(EEPROM_PORTSETUP, TData.RS4.PortUsed);
+    WriteEEPROMByte(EEPROM_PORTSETUP, TData.RS4.PortUsed);
 }
 
 void
-rs485_task_set_power(uint8_t ch, uint8_t on)
-{
-  OS_Use(&UARTSEND); 
-  __rs485_task_set_power(ch, on);
-  OS_Unuse(&UARTSEND); 
+rs485_task_set_power(uint8_t ch, uint8_t on) {
+    OS_Use(&UARTSEND);
+    __rs485_task_set_power(ch, on);
+    OS_Unuse(&UARTSEND);
 }
 
 uint8_t
-rs485_task_get_power(uint8_t ch)
-{
-  uint8_t status;
+rs485_task_get_power(uint8_t ch) {
+    uint8_t status;
 
-  OS_Use(&UARTSEND); 
-  status = (TData.RS4.PortUsed >> ch) & 0x01;
-  OS_Unuse(&UARTSEND); 
+    OS_Use(&UARTSEND);
+    status = (TData.RS4.PortUsed >> ch) & 0x01;
+    OS_Unuse(&UARTSEND);
 
-  return status;
+    return status;
 }
 
 uint8_t
-rs485_task_get_sensor_type(uint8_t ch)
-{
-  uint8_t sensor_type;
+rs485_task_get_sensor_type(uint8_t ch) {
+    uint8_t sensor_type;
 
-  OS_Use(&UARTSEND); 
-  sensor_type = (TData.RS4.SensorType[ch / 4] >> (2 * (ch % 4))) & 0x03;
-  OS_Unuse(&UARTSEND); 
+    OS_Use(&UARTSEND);
+    sensor_type = (TData.RS4.SensorType[ch / 4] >> (2 * (ch % 4))) & 0x03;
+    OS_Unuse(&UARTSEND);
 
-  return sensor_type;
+    return sensor_type;
 }
 
 void
-rs485_task_set_sensor_type(uint8_t ch, uint8_t sensor_type)
-{
-  OS_Use(&UARTSEND); 
+rs485_task_set_sensor_type(uint8_t ch, uint8_t sensor_type) {
+    OS_Use(&UARTSEND);
 
-  // clear first
-  TData.RS4.SensorType[ch / 4] &= ~(0x03 << ((ch % 4)*2));
+    // clear first
+    TData.RS4.SensorType[ch / 4] &= ~(0x03 << ((ch % 4) * 2));
 
-  // set
-  TData.RS4.SensorType[ch / 4] |= ((sensor_type & 0x03)<< ((ch % 4)*2));
+    // set
+    TData.RS4.SensorType[ch / 4] |= ((sensor_type & 0x03) << ((ch % 4) * 2));
 
-  WriteEEPROMByte(EEPROM_PORTSETUP + 1, TData.RS4.SensorType[0]);
-  WriteEEPROMByte(EEPROM_PORTSETUP + 2, TData.RS4.SensorType[1]);
+    WriteEEPROMByte(EEPROM_PORTSETUP + 1, TData.RS4.SensorType[0]);
+    WriteEEPROMByte(EEPROM_PORTSETUP + 2, TData.RS4.SensorType[1]);
 
-  OS_Unuse(&UARTSEND); 
+    OS_Unuse(&UARTSEND);
 }
 
 static void
-__rs485_task_set_rsp_delay(uint8_t port, uint16_t delay)
-{
-  uint16_t cur_delay = Rsp_Delay[port];
+__rs485_task_set_rsp_delay(uint8_t port, uint16_t delay) {
+    uint16_t cur_delay = Rsp_Delay[port];
 
-  if(cur_delay == delay)
-  {
-    return;
-  }
+    if (cur_delay == delay) {
+        return;
+    }
 
-  if (delay > 5000)
-  {
-    return;
-  }
+    if (delay > 5000) {
+        return;
+    }
 
-  Rsp_Delay[port] = delay;
+    Rsp_Delay[port] = delay;
 
-  WriteEEPROMBufferSync(EEPROM_PORTSETUP + 3 + port * 2, sizeof(uint16_t), (char*)&delay);
+    WriteEEPROMBufferSync(EEPROM_PORTSETUP + 3 + port * 2, sizeof(uint16_t), (char *)&delay);
 }
 
 void
-rs485_task_set_rsp_delay(uint8_t port, uint16_t delay)
-{
-  OS_Use(&UARTSEND); 
-  __rs485_task_set_rsp_delay(port, delay);
-  OS_Unuse(&UARTSEND); 
+rs485_task_set_rsp_delay(uint8_t port, uint16_t delay) {
+    OS_Use(&UARTSEND);
+    __rs485_task_set_rsp_delay(port, delay);
+    OS_Unuse(&UARTSEND);
 }
 
 uint16_t
-rs485_task_get_rsp_delay(uint8_t port)
-{
-  uint16_t    ret;
+rs485_task_get_rsp_delay(uint8_t port) {
+    uint16_t    ret;
 
-  OS_Use(&UARTSEND); 
-  ret = Rsp_Delay[port];
-  OS_Unuse(&UARTSEND); 
+    OS_Use(&UARTSEND);
+    ret = Rsp_Delay[port];
+    OS_Unuse(&UARTSEND);
 
-  return ret;
+    return ret;
 }
 
 uint8_t
-rs485_task_get_comm_status(uint8_t port)
-{
-  uint16_t    ret;
+rs485_task_get_comm_status(uint8_t port) {
+    uint16_t    ret;
 
-  // XXX no need for lock
-  ret = (TData.RS4.IOUnitStatus[port] & COMFAIL_BIT) ? 0 : 1;
+    // XXX no need for lock
+    ret = (TData.RS4.IOUnitStatus[port] & COMFAIL_BIT) ? 0 : 1;
 
-  return ret;
+    return ret;
 }
 
 uint8_t
-rs485_task_get_channel_status(uint8_t port, uint8_t ch)
-{
-  uint8_t ret;
+rs485_task_get_channel_status(uint8_t port, uint8_t ch) {
+    uint8_t ret;
 
-  OS_Use(&UARTSEND); 
-  ret = (uint8_t)TData.RS4.TargetSetup1[port][ch];
-  OS_Unuse(&UARTSEND);
+    OS_Use(&UARTSEND);
+    ret = (uint8_t)TData.RS4.TargetSetup1[port][ch];
+    OS_Unuse(&UARTSEND);
 
-  return ret;
+    return ret;
 }
 
 int16_t
-rs485_task_get_channel_value(uint8_t port, uint8_t ch)
-{
-  float f;
-  int16_t  ret;
+rs485_task_get_channel_value(uint8_t port, uint8_t ch) {
+    float f;
+    int16_t  ret;
 
-  OS_Use(&UARTSEND); 
-  f = TData.RS4.Result[port][ch];
-  OS_Unuse(&UARTSEND);
+    OS_Use(&UARTSEND);
+    f = TData.RS4.Result[port][ch];
+    OS_Unuse(&UARTSEND);
 
-  ret = (int16_t)(f * 100);
-  return ret;
+    ret = (int16_t)(f * 100);
+    return ret;
 }
 
 int16_t
-rs485_task_get_channel_raw_value(uint8_t port, uint8_t ch)
-{
-  int16_t ret;
+rs485_task_get_channel_raw_value(uint8_t port, uint8_t ch) {
+    int16_t ret;
 
-  OS_Use(&UARTSEND); 
-  ret = TData.RS4.Raw[port][ch];
-  OS_Unuse(&UARTSEND);
+    OS_Use(&UARTSEND);
+    ret = TData.RS4.Raw[port][ch];
+    OS_Unuse(&UARTSEND);
 
-  return ret;
+    return ret;
 }
 
 int16_t
-rs485_task_get_channel_cal_value(uint8_t port, uint8_t ch)
-{
-  int16_t ret;
+rs485_task_get_channel_cal_value(uint8_t port, uint8_t ch) {
+    int16_t ret;
 
-  OS_Use(&UARTSEND); 
-  ret = TData.RS4.Cal[port][ch];
-  OS_Unuse(&UARTSEND);
+    OS_Use(&UARTSEND);
+    ret = TData.RS4.Cal[port][ch];
+    OS_Unuse(&UARTSEND);
 
-  return ret;
+    return ret;
 }
 #endif /* USE_MODBUS_PROTOCOL == 1 */

@@ -18,11 +18,11 @@
 #include "inavr.h"
 #include "string.h"
 
+OS_TIMER    TimerUSART0, TimerUSART1, TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
 
 OS_STACKPTR int Stack0[80], Stack1[80], Stack3[50], Stack10[89], Stack11[89]; /* Task stacks */
 OS_TASK     TCB_USART0, TCB_USART1, TCB_WATCHDOG, TCB_RS485Ctl, TCB_RS485Rec, TCB_AD7715;               /* Task-control-blocks */
 OS_RSEMA    UARTSEND;
-OS_TIMER    TimerUSART0, TimerUSART1, TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
 
 /**********************************************************
 *

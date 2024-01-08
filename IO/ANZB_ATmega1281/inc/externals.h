@@ -3,22 +3,38 @@
  **
  **
  ***************************************************************************/
+#ifndef EXTERNALS_H
+#define EXTERNALS_H
 #include "constants.h"
 #include "Anpro10Const.h"
 #include "Anpro1Const.h"
-#include "structs.h"
 #include "RTOS.H"
+#include "structs.h"
+
 
 
 // OS-tasks
 extern OS_TASK  TCB_USART0, TCB_USART1, TCB_WATCHDOG, TCB_RS485Ctl, TCB_RS485Rec, TCB_AD7715;               // Task-control-blocks
-extern OS_TIMER TimerUSART0, TimerUSART1, TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
+#if USE_1281_RX_INT_TASK == 0
+extern OS_TIMER TimerUSART0, TimerUSART1;
+extern OS_TASK TCB_ATMega1281RX_Driver0;
+extern OS_TASK TCB_ATMega1281RX_Driver1;
+#else
+extern OS_TASK TCB_ATMega1281RX_Driver0;
+extern OS_TASK TCB_ATMega1281RX_Driver1;
+
+#endif
+extern OS_TIMER TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
 extern void Usart0Handler(void);
 extern void Usart1Handler(void);
 extern void WatchDogHandler(void);
 extern void ExtRS485Ctl(void);
 extern void ExtRS485Rec(void);
 extern void AD7715(void);
+
+// ExtInt.h
+extern OS_TASK TCB_16552_RxHandler1;
+extern OS_TASK TCB_16552_RxHandler2;
 
 // OS-semaphores
 extern OS_RSEMA    UARTSEND;
@@ -33,15 +49,7 @@ extern void TimoutUART1(void);
 
 
 // externals for USARTs
-extern char TxBufferCh0[];
-extern char RxBufferCh0[];
-extern char TxBufferCh1[];
-extern char RxBufferCh1[];
 
-extern char TxBuf16552Ch0[];
-extern char RxBuf16552Ch0[];
-extern char TxBuf16552Ch1[];
-extern char RxBuf16552Ch1[];
 
 extern char UnitID;
 extern volatile char PortPair;
@@ -158,8 +166,9 @@ extern void Uart_BuildTail16552(char);
 extern void ReceivePacketUart16552(char);
 extern char CalcDSTxChecksumUART16552(char, unsigned short);
 extern short CalcDSRxChecksum16552(char);
+extern void GoToSendUART16552(char);
 extern void GoToSyncUART16552(char);
-extern void EmptyRxBuf16552(char);
+extern void EmptyRxBuf16552( char);
 extern void Init16552( char, unsigned long);
 
 
@@ -169,8 +178,9 @@ extern volatile char ADChannel;
 extern void WatchdogReset(void);
 
 // structs
-extern UARTDataType    UART[];
-extern UARTDataType    UART16552[];
-extern AnalogInt       ADInt ;
-extern TargetData      TData;
+extern UARTCPUDataType   UART[];
+extern UART16552DataType UART16552[];
+extern AnalogInt         ADInt ;
+extern TargetData        TData;
 
+#endif

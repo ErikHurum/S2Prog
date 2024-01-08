@@ -250,7 +250,7 @@ void __fastcall TSetupForm::mASensorLogTimeEditChange(TObject *Sender)
 {
 	AnsiString tmpStr = mASensorLogTimeEdit->Text;
 	int tmpSensorLogInterval = Make_hour_time_str_to_seconds(tmpStr.c_str());
-	if (tmpSensorLogInterval >= 10 ) {
+	if (tmpSensorLogInterval >= 1 ) {
 		MainForm->SensorLogInterval = tmpSensorLogInterval;
 	}
 	if ( MainForm->SensorLogThreadPtr ){

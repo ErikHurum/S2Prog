@@ -33,16 +33,6 @@ extern void TimoutUART1(void);
 
 
 // externals for USARTs
-extern char TxBufferCh0[];
-extern char RxBufferCh0[];
-extern char TxBufferCh1[];
-extern char RxBufferCh1[];
-
-extern char TxBuf16552Ch0[];
-extern char RxBuf16552Ch0[];
-extern char TxBuf16552Ch1[];
-extern char RxBuf16552Ch1[];
-
 extern char UnitID;
 extern volatile char PortPair;
 
@@ -169,8 +159,8 @@ extern volatile char ADChannel;
 extern void WatchdogReset(void);
 
 // structs
-extern UARTDataType    UART[];
-extern UARTDataType    UART16552[];
+extern volatile UARTDataType    UART[2];
+extern My485UARTDataType        UART16552[2];
 extern AnalogInt       ADInt ;
 extern TargetData      TData;
 

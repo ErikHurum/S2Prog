@@ -5,8 +5,10 @@
  ***************************************************************************/
 
 #define __BIT_MASK(A) (1<<(A))
-#define SetBit( SFR, MASK ) OS_IncDI(); (SFR) |=  (MASK); OS_DecRI()                                     // en able int
+#define __BIT_MASK_HI(A) (1<<(8+A))
+#define SetBitsAnd( SFR, MASK ) OS_IncDI(); (SFR) &= (MASK); OS_DecRI() 
 
+#define SetBit( SFR, MASK ) OS_IncDI(); (SFR) |=  (MASK); OS_DecRI()                                     
 #define ClrBit( SFR, MASK ) OS_IncDI(); (SFR) &= ~(MASK); OS_DecRI() 
 
 #define true              1 
@@ -40,6 +42,8 @@
 #define RXSIZE_UART       150       /* RX buffer size */
 #define TXSIZE_UART_16552  60       /* TX buffer size PC16552  */
 #define RXSIZE_UART_16552 120       /* RX buffer size PC16552  */
+
+#define MBUF_SIZE 50
 
 // PC16552 #0 register definition
 // DLAB = 0
@@ -94,6 +98,7 @@
 #define SYNC		    0		/* rx mode syncing */
 #define HEADER		    1		/* rx mode check header */
 #define RECEIVE 	    2		/* rx mode receiving */
+#define SEND   	        3		/* rx mode handling */
 #define HANDLE   	   10		/* rx mode handling */
 #define RX_TO_TIME	   250      	// Timeout on uart
 
@@ -113,4 +118,13 @@
 #define EEPROM_NEXTBYTE     EEPROM_OFFGAIN + 2048
 #define EEPROM_STOP         EEPROM_NEXTBYTE + 1                 // Stop of data in EEPROM 
 
+/* equates for interrupt identification register */
+
+#define IIR_IP	    0x01	/* interrupt pending bit */
+#define IIR_MASK	0x0F	/* interrupt id bits mask */
+#define IIR_MSTAT   0x00	/* modem status interrupt */
+#define IIR_THRE	0X02	/* transmit holding register empty */
+#define IIR_RBRF	0x04	/* receiver buffer register full */
+#define IIR_SEOB	0x06	/* serialization error or break */
+#define IIR_TOUT    0x0c	/* char receive timeout */
 

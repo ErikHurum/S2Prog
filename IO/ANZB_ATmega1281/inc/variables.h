@@ -2,28 +2,21 @@
 /   Declars the variable in the project
 /
 ***************************************************************************************/
+#ifndef VARIABLES_H
+#define VARIABLES_H
+#include <stdbool.h>
 #include "constants.h"
 #include "externals.h"
-
 // system variables
 char UnitID;                                // board type
 char RestartStatus;                           // mirror of the restart status
 volatile char PortPair;                              // port pair (ch 1/5) to ADcard
 
-UARTDataType    UART[2];                    // set ut Uart struct for two CPU ports
-UARTDataType    UART16552[2];               // set ut Uart struct for two PC16552ports
-AnalogInt       ADInt ;                     // Analog in port internal
-TargetData      TData;                      // Data for ANZBANA or ANZB485
+UARTCPUDataType     UART[2];                    // set ut Uart struct for two CPU ports
+UART16552DataType   UART16552[2];               // set ut Uart struct for two PC16552ports
+AnalogInt           ADInt ;                     // Analog in port internal
+TargetData          TData;                      // Data for ANZBANA or ANZB485
 
-char TxBufferCh0[ TXSIZE_UART ];            // set up buffer size
-char RxBufferCh0[ RXSIZE_UART ];
-char TxBufferCh1[ TXSIZE_UART ];
-char RxBufferCh1[ RXSIZE_UART ];
-
-char TxBuf16552Ch0[ TXSIZE_UART_16552 ];            // set up buffer size
-char RxBuf16552Ch0[ RXSIZE_UART_16552 ];
-char TxBuf16552Ch1[ TXSIZE_UART_16552 ];
-char RxBuf16552Ch1[ RXSIZE_UART_16552 ];
 
 //ADC Int
 volatile char  ADChannel;                            // AD channel to be converted
@@ -58,4 +51,4 @@ __farflash const char crc[] =             /*Dallas Semiconductor one-wire CRC ta
     233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
     116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
 } ;
-
+#endif

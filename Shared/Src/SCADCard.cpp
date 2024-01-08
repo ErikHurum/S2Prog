@@ -597,14 +597,14 @@ bool SCADCard::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                                         if ( ((SensorType[i] == ADConfigData[i].PCSensor)/*&& ADConfigData[i].UsePCSetUp*/)
                                              || (SensorType[i] == ADConfigData[i].FoundSensor) ) {
                                             CompPtr->SetStatus((U8 *)&ADConfigData[i]);
-                                            CompPtr->NewValue(MsrdValues[i]);
                                             CompPtr->ActiveAlarms = CheckAlarms(CompPtr->AlarmSet, &CompPtr->MyHWFailure);
-                                            CompPtr->Calculate();
-                                            /*
-                                            if ( !CompPtr->ActiveAlarms ) {
-                                                CompPtr->SetTimeStamp();
+                                            // For sensors on AN-SGCNV we use only diagnostics from the AN-SGCNV
+                                            // Because of that, it's safe to simply check for active alarms before we update
+                                            // the value and calculates
+                                            if (!CompPtr->ActiveAlarms) {
+                                                CompPtr->NewValue(MsrdValues[i]);
+                                                CompPtr->Calculate();
                                             }
-                                            */
                                             CompPtr->SendData();
                                         } else {
                                             RequestADConfig = 3;

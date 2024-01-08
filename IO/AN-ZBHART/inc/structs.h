@@ -14,10 +14,6 @@
 **  Struct defining My485UART parameters
 **
 *************************************************************************************/
-// externals for USARTs
-extern char TxBufferCh0[TXSIZE_UART];
-extern char RxBufferCh0[RXSIZE_UART];
-extern char MailBufCh0[MBUF_SIZE];
 
 
 typedef struct {

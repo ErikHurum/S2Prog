@@ -6,7 +6,7 @@
  **
  ***************************************************************************/
 
-#define PROG_VERSION    43            // version of the program
+#define PROG_VERSION    46            // version of the program
 #define COMP_VERSION     1            // compability with the PC on structs and com.
 #define STORE_VERSION    2            // Store format in the EEPROM
 
@@ -15,9 +15,18 @@
 
   Program:
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  V 43                       Released: 20 November 2023    EHS
-     -  Increased stack size for 16552_DRIVER task to 300   
-     -  Increased stack size for Watchdog task to 300
+  V 46                       Released: 2 January 2024    EHS
+     -  Changed task priorities to avoid round-robin scheduling
+ +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  V 45                       Released: 14 Desember 2023    EHS
+     -  Now handling all UART Rx on task level instead of on interrupt
+     -  Removed use of Timers
+ +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  V 44                       Released: 12 Desember 2023    EHS
+     -  Increased stack size for 16552_DRIVER task to 400   
+     -  Increased stack size for Watchdog task to 400
+     -  Increased CSTACK from 60 to 200
+     -  Refreshed CPU selection to ensure correct memory mapping and linking.
      -  Upgraded OS to V 3.86g
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

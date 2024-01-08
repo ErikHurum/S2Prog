@@ -2,7 +2,13 @@
 / Init the project
 /
 ***************************************************************************************/
+#ifdef __ATMEGA_1280__
+#include	"iom1280.h"
+#endif
+
+#ifdef __ATMEGA_1281__
 #include "iom1281.h"
+#endif
 #include "stdio.h"
 #include "math.h"
 #include "externals.h"
@@ -32,10 +38,6 @@ void InitSystem(void) {
     Init_CPU();                         // init all processes
     Init_IO();
     Init_TMR() ;
-#if (OS_UART != 0)
-    Init_USART(0, 38400) ;              // 
-#endif
-    Init_USART(1, 38400) ;              //    
     Init_AD();
     Init_Values();                      // init the values in the system
 
@@ -60,7 +62,7 @@ void Init_CPU( void ) {
         EIMSK = 0x00 ;        // External interrupt mask register, all off
         EICRA = 0xAf ;        // External interrupt control register, 0,1 raising, rest faling
         EICRB = 0xAA ;        // External interrupt control register 
-        EIMSK = 0x03 ;        // External interrupt mask register, int 0 and 1 on
+        EIMSK = 0x03 ;        // External interrupt mask register, int 0 and 1 on 
         XMCRA = 0x80;         // maximum wait states
         break;
     case AN_ZBANA:                  // AN-ZBANA
@@ -244,9 +246,12 @@ void Init_TMR( void ) {
 ** Init the USARTs registers
 **===========================================================================
 */ 
+
+
 void Init_USART( char channel, unsigned long baud ) {
 
-
+    OS_CREATEMB(&UART[channel].RxMailBox,1, sizeof(UART[channel].RxMailBoxBuf),&UART[channel].RxMailBoxBuf);
+    
     /*--- Configure UART data block ---*/
     UART[channel].TxFirst   = 0x00;
     UART[channel].TxLast    = 0x00;
@@ -261,12 +266,10 @@ void Init_USART( char channel, unsigned long baud ) {
     switch (channel) {
     case 0x00 :          
         UART[channel].RxTimeout = RX_TO_TIME ;   // reset timeout
-        UART[channel].pTxBuffer = TxBufferCh0;        
-        UART[channel].pRxBuffer = RxBufferCh0;        
         UCSR0A  = 0x00; 
         //UBRR0L  = ((XTAL_CPU / 16 / baud )-1) & 0xff;
         //UBRR0H  = (((XTAL_CPU / 16 / baud )-1)>> 8) & 0xff;
-        UBRR0   = ((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5; 
+        UBRR0   = (unsigned)(((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5); 
         // why the fuck do you enalbe UDRE here you stupid fucktard!!! -hkim
         // UCSR0B = 0xb8; /* tx/ rx enable, int udre/rxon */
         UCSR0B  = 0x98;       /* tx/ rx enable, int udre/rxon */
@@ -274,12 +277,10 @@ void Init_USART( char channel, unsigned long baud ) {
         break;
     case 0x01 :
         UART[channel].RxTimeout = RX_TO_TIME ;   // reset timeout
-        UART[channel].pTxBuffer = TxBufferCh1;
-        UART[channel].pRxBuffer = RxBufferCh1;
         UCSR1A  = 0x00; 
         //UBRR1L  = ((XTAL_CPU / 16 / baud )-1) & 0xff;
         //UBRR1H  = (((XTAL_CPU / 16 / baud )-1)>> 8) & 0xff;
-        UBRR1   = ((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5; 
+        UBRR1   = (unsigned)(((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5); 
         // why the fuck do you enalbe UDRE here you stupid fucktard!!! -hkim
         // UCSR1B = 0xb8; /* tx/ rx enable, int udre/rxon */
         UCSR1B = 0x98;       /* tx/ rx enable, int udre/rxon */

@@ -74,7 +74,7 @@ Purpose : Initializes and handles the hardware for embOS as far
 *       Clock frequency settings
 */
 #ifndef   OS_FSYS                   /* CPU Main clock frequency     */
-#define OS_FSYS 7372800LuL        /* Assume 7.3728 MHz            */
+#define OS_FSYS 16000000LuL        /* Assume 16 MHz            */
 #endif
 
 #ifndef   OS_PCLK_TIMER             /* Peripheral clock for timer   */
@@ -219,9 +219,7 @@ void OS_InitHW(void) {
              |(1<<3)             // 1: Reset on compare match
              |(1<<0);            // 1: clock source CK/1
     OCR1A = (XTAL_CPU/1000)-1;         // generate 1ms interrupts
-    // 128 -> 1281
-    // TIMSK |= (1<<4);      // Output CompareA Match Interrupt Enable
-    TIMSK1 |= 0x02;      // Output CompareA Match Interrupt Enable
+  TIMSK1 |= (1<<1);      // Output CompareA Match Interrupt Enable
     //  SREG  = 0x80 ;        // global interrupt
     OS_COM_INIT();        // Initialize communication to embOSView
 }

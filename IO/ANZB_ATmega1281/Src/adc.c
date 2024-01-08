@@ -8,16 +8,14 @@
 #include "math.h"
 #include "externals.h"
 #include "version.h"
+#pragma diag_suppress=Pa082
 
 void Int_Handler_AD( void ){
-    short temp;
-
     //
     //  volatile undefined behavior
     // ADInt.Result[ADChannel] = ADC; // Reading ADCL and ADCH in one run
     //
-    temp = ADC;
-    ADInt.Result[ADChannel] = temp; // Reading ADCL and ADCH in one run
+    ADInt.Result[ADChannel] = ADC; // Reading ADCL and ADCH in one run
     if (++ADChannel > 0x01 ) {                //set next ADchannel
           ADChannel = 0x00 ;
     }
@@ -25,8 +23,7 @@ void Int_Handler_AD( void ){
     // volatile undefined behavior
     // ADMUX |= ADChannel;
     //
-    temp = ADChannel;
-    ADMUX |= temp;
+    ADMUX |= ADChannel;
     // 128 -> 1281
     ADCSRA |= 0x40 ;                           //start new convertion
 }
