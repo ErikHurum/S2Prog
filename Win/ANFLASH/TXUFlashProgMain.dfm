@@ -10,9 +10,7 @@ object TXUFlashProg: TTXUFlashProg
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  OldCreateOrder = False
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 13
   object HeadingLabel: TLabel
     Left = 195
@@ -10713,7 +10711,6 @@ object TXUFlashProg: TTXUFlashProg
       nrComm = nrComm1
       ResetOnChanged = False
       TabOrder = 2
-      Text = 'COM1'
       Visible = False
     end
     object BtnConnect: TButton
@@ -10793,11 +10790,11 @@ object TXUFlashProg: TTXUFlashProg
       TabOrder = 0
     end
     object StartProgramButton: TButton
-      Left = 488
+      Left = 496
       Top = 16
       Width = 75
       Height = 25
-      Caption = 'Start program'
+      Caption = 'Restart TCU'
       TabOrder = 1
       OnClick = StartProgramButtonClick
     end

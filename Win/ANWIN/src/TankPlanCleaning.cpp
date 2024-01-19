@@ -10,7 +10,6 @@
 #pragma package(smart_init)
 #pragma link "TankPlanUnit"
 #pragma link "RzPanel"
-#pragma link "ES.BaseControls"
 #pragma link "ES.PaintBox"
 #pragma link "ES.Labels"
 #pragma link "AdvMenus"

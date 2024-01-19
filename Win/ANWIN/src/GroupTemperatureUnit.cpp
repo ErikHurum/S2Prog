@@ -10,7 +10,6 @@
 #pragma package(smart_init)
 #pragma link "GroupUnit"
 #pragma link "RzButton"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "AdvGrid"
 #pragma link "AdvObj"
@@ -19,6 +18,7 @@
 #pragma link "asgprint"
 #pragma link "frCoreClasses"
 #pragma link "tmsAdvGridExcel"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TGroupTableTemperature *GroupTableTemperature;
 TGroupTableTemperature *TGroupTableTemperature::TemperaturesTable = NULL;

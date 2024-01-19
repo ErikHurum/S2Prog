@@ -16,11 +16,6 @@ bool Master = 0;
 
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
-#pragma link "nrclasses"
-#pragma link "nrcomm"
-#pragma link "nrdataproc"
-#pragma link "nrsemaphore"
-#pragma link "nrcommbox"
 #pragma resource "*.dfm"
 
 // ---------------------------------------------------------------------------
@@ -516,7 +511,7 @@ void __fastcall TTXUFlashProg::StartProgramButtonClick(TObject *Sender) {
 			CurrentOperation->Font->Color = clYellow;
 			break;
 		case CMD_START_PROGRAM_OK:
-			CurrentOperation->Caption = "Program started";
+			CurrentOperation->Caption = "TCU restarted";
 			CurrentOperation->Font->Color = clGreen;
 			break;
 		case CMD_START_PROGRAM_NO_CONFIG:

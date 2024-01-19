@@ -11,7 +11,6 @@ USEFORM("TankPressureUnit.cpp", TankPressureForm);
 #pragma package(smart_init)
 #pragma link "GroupUnit"
 #pragma link "RzButton"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "AdvGrid"
 #pragma link "AdvObj"
@@ -19,6 +18,8 @@ USEFORM("TankPressureUnit.cpp", TankPressureForm);
 #pragma link "BaseGrid"
 #pragma link "asgprint"
 #pragma link "tmsAdvGridExcel"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TGroupTableTankPressure *GroupTableTankPressure;
 
@@ -104,7 +105,7 @@ PROXRefObject* __fastcall TGroupTableTankPressure::NewPartSum(void) {
 
 
 
-void __fastcall TGroupTableTankPressure::StringGridAllTanksFixedCellClick(TObject *Sender, int ACol, int ARow)
+void __fastcall TGroupTableTankPressure::StringGridAllTanksFixedCellClick(TObject *Sender, System::LongInt ACol, System::LongInt ARow)
 {
 	TStringGrid* StringGrid = static_cast<TStringGrid*>(Sender);
 	CurrentColumn = ACol;
@@ -180,4 +181,6 @@ void __fastcall TGroupTableTankPressure::StringGridAllTanksFixedCellClick(TObjec
 
 }
 //---------------------------------------------------------------------------
+
+
 

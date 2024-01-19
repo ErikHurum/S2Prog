@@ -30,6 +30,8 @@
 #include "DBAdvGlowNavigator.hpp"
 #include <System.ImageList.hpp>
 #include <Vcl.ImgList.hpp>
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 //---------------------------------------------------------------------------
 class TAlarmLogForm : public TChildForm
 {

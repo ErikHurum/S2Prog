@@ -23,6 +23,9 @@
 #include <System.ImageList.hpp>
 #include <Vcl.Dialogs.hpp>
 #include <Vcl.ImgList.hpp>
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
+#include "tmsAdvGridExcel.hpp"
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------

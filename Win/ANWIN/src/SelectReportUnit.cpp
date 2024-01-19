@@ -4,8 +4,9 @@
 #include "SelectReportUnit.h"
 //---------------------------------------------------------------------
 #pragma link "ChildUnit"
-#pragma link "frxClass"
 #pragma link "frxCross"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 
 static short ServiceTValues[]= {SVT_ULLAGE, SVT_ULLAGE_UTI, SVT_LEVEL_REF,

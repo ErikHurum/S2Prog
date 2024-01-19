@@ -5,19 +5,18 @@ inherited SelectTankForm: TSelectTankForm
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'Select object'
-  ClientHeight = 72
-  ClientWidth = 192
+  ClientHeight = 67
+  ClientWidth = 184
   Constraints.MaxHeight = 106
   Constraints.MaxWidth = 200
   Constraints.MinHeight = 99
   Constraints.MinWidth = 198
-  OldCreateOrder = True
-  ExplicitWidth = 198
-  ExplicitHeight = 101
+  StyleElements = [seFont, seClient, seBorder]
+  ExplicitWidth = 200
+  ExplicitHeight = 106
   DesignSize = (
-    192
-    72)
-  PixelsPerInch = 96
+    184
+    67)
   TextHeight = 13
   object Label1: TLabel [0]
     Left = 32

@@ -12,6 +12,11 @@
 #include <ExtCtrls.hpp>
 #include <Menus.hpp>
 #include "RzPanel.hpp"
+#include "AdvMenus.hpp"
+#include "ES.BaseControls.hpp"
+#include "ES.PaintBox.hpp"
+#include <System.ImageList.hpp>
+#include <Vcl.ImgList.hpp>
 //---------------------------------------------------------------------------
 class TTankPlanDrawingServiceForm : public TTankPlanDrawingForm
 {

@@ -26,7 +26,6 @@
 #pragma link "BaseGrid"
 #pragma link "AdvDateTimePicker"
 #pragma link "DBAdvGrid"
-#pragma link "RzDBNav"
 #pragma resource "*.dfm"
 USEFORM("LogGraphUnit.cpp", HistoryForm);
 

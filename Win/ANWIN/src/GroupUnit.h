@@ -29,6 +29,7 @@
 #include <Vcl.ImgList.hpp>
 #include "tmsAdvGridExcel.hpp"
 #include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 
 // ---------------------------------------------------------------------------
 class TGroupTable : public TChildForm {
@@ -162,10 +163,10 @@ __published: // IDE-managed Components
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
 	void __fastcall StringGridRefreshTimerTimer(TObject *Sender);
 	void __fastcall HighLightingCheckBoxClick(TObject *Sender);
-	void __fastcall StringGridAllTanksFixedCellClick(TObject *Sender, int ACol, int ARow);
+	void __fastcall StringGridAllTanksFixedCellClick(TObject *Sender, System::LongInt ACol, System::LongInt ARow);
 	void __fastcall FormDestroy(TObject *Sender);
-	void __fastcall StringGridAllTanksColumnMoved(TObject *Sender, int FromIndex, int ToIndex);
-	void __fastcall StringGridAllTanksRowMoved(TObject *Sender, int FromIndex, int ToIndex);
+	void __fastcall StringGridAllTanksColumnMoved(TObject *Sender, System::LongInt FromIndex, System::LongInt ToIndex);
+	void __fastcall StringGridAllTanksRowMoved(TObject *Sender, System::LongInt FromIndex, System::LongInt ToIndex);
 	void __fastcall OnlineButtonClick(TObject *Sender);
 	void __fastcall FormCreate(TObject *Sender);
 	void __fastcall BargraphViewButtonClick(TObject *Sender);

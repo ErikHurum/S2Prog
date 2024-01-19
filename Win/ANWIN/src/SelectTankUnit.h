@@ -11,6 +11,8 @@
 #include <ExtCtrls.hpp>
 #include <Buttons.hpp>
 #include <Vcl.Menus.hpp>
+#include <System.ImageList.hpp>
+#include <Vcl.ImgList.hpp>
 //---------------------------------------------------------------------------
 class TSelectTankForm : public TChildForm
 {

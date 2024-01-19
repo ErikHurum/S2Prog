@@ -11,13 +11,11 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   FormStyle = fsMDIChild
-  OldCreateOrder = False
   Position = poDefault
   Scaled = False
   Visible = True
   OnClose = FormClose
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 13
   object StringGridTanks: TStringGrid
     Left = 17
@@ -557,7 +555,7 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
     end
   end
   object frxReportLoadResult: TfrxReport
-    Version = '2021.3'
+    Version = '2024.1.0'
     DotMatrixReport = False
     EngineOptions.DoublePass = True
     IniFile = '\Software\Fast Reports'
@@ -625,6 +623,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Ship:')
@@ -635,6 +635,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo7: TfrxMemoView
@@ -642,6 +644,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 374.173470000000000000
           Width = 143.622140000000000000
           Height = 26.456710000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           AutoWidth = True
           Clipped = False
           Font.Charset = DEFAULT_CHARSET
@@ -807,6 +811,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 117.165430000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             '[Date] [Time]')
@@ -817,6 +823,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 49.133890000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object MemoDataRevision: TfrxMemoView
@@ -825,6 +833,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 124.724490000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Data:')
@@ -835,6 +845,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 90.708720000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Page [Page] of [TotalPages]')
@@ -850,6 +862,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 49.133890000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Project:')
@@ -860,6 +874,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 90.708720000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Data Revision:')
@@ -882,6 +898,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 7.559060000000000000
           Width = 86.929190000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Loading Port:')
@@ -892,6 +910,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 7.559060000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo4: TfrxMemoView
@@ -900,6 +920,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 7.559060000000000000
           Width = 75.590600000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Destination:')
@@ -910,6 +932,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 7.559060000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo5: TfrxMemoView
@@ -918,6 +942,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 7.559060000000000000
           Width = 68.031540000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Voyage:')
@@ -928,6 +954,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 7.559060000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
       end
@@ -948,6 +976,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 86.929190000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Started:')
@@ -958,6 +988,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo9: TfrxMemoView
@@ -966,6 +998,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 75.590600000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Completed:')
@@ -976,6 +1010,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo10: TfrxMemoView
@@ -984,6 +1020,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 68.031540000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Inspected:')
@@ -994,6 +1032,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 3.779530000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
       end
@@ -1013,6 +1053,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 7.559060000000000000
           Width = 86.929190000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Remarks:')
@@ -1022,6 +1064,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 102.047310000000000000
           Width = 710.551640000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
       end
@@ -1041,6 +1085,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 7.559060000000000000
           Width = 86.929190000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Bill of lading:')
@@ -1050,6 +1096,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 287.244280000000000000
           Width = 75.590600000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Ship figures:')
@@ -1059,6 +1107,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 642.520100000000000000
           Width = 68.031540000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Difference:')
@@ -1068,6 +1118,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 102.047310000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object ShipWgtFiguresLabel: TfrxMemoView
@@ -1075,6 +1127,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 374.173470000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DifferenceWgtLabel: TfrxMemoView
@@ -1082,6 +1136,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 718.110700000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object BillOfLadingVolLabel: TfrxMemoView
@@ -1090,6 +1146,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object ShipVolFiguresLabel: TfrxMemoView
@@ -1098,6 +1156,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DifferenceVolLabel: TfrxMemoView
@@ -1106,6 +1166,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DifferencePrcWgtLabel: TfrxMemoView
@@ -1113,6 +1175,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 907.087200000000000000
           Width = 64.252010000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DifferencePrcVolLabel: TfrxMemoView
@@ -1121,6 +1185,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 64.252010000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo16: TfrxMemoView
@@ -1128,6 +1194,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 975.118740000000000000
           Width = 18.897650000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             '%')
@@ -1138,6 +1206,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 18.897650000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             '%')
@@ -1147,6 +1217,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 200.315090000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo19: TfrxMemoView
@@ -1154,6 +1226,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 472.441250000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo20: TfrxMemoView
@@ -1161,6 +1235,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 816.378480000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo21: TfrxMemoView
@@ -1169,6 +1245,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo22: TfrxMemoView
@@ -1177,6 +1255,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo23: TfrxMemoView
@@ -1185,6 +1265,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 19.456710000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
       end
@@ -1204,6 +1286,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 7.559060000000000000
           Width = 86.929190000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Drafts: Fore:')
@@ -1213,6 +1297,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 287.244280000000000000
           Width = 75.590600000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Midship:')
@@ -1222,6 +1308,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 642.520100000000000000
           Width = 68.031540000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Aft:')
@@ -1231,6 +1319,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 102.047310000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DMMemo: TfrxMemoView
@@ -1238,6 +1328,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 374.173470000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DAMemo: TfrxMemoView
@@ -1245,6 +1337,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 718.110700000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DFUnitMemo: TfrxMemoView
@@ -1252,6 +1346,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 200.315090000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DMUnitMemo: TfrxMemoView
@@ -1259,6 +1355,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 472.441250000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object DAUnitMemo: TfrxMemoView
@@ -1266,6 +1364,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 816.378480000000000000
           Width = 34.015770000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
       end
@@ -1286,6 +1386,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 18.897650000000000000
           Width = 45.354360000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Name')
@@ -1296,6 +1398,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 37.795300000000000000
           Width = 45.354360000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Title')
@@ -1306,6 +1410,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 18.897650000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object ShipSignTitleMemo: TfrxMemoView
@@ -1314,6 +1420,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 37.795300000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo29: TfrxMemoView
@@ -1322,6 +1430,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 18.897650000000000000
           Width = 64.252010000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Name')
@@ -1332,6 +1442,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 37.795300000000000000
           Width = 64.252010000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
           Memo.UTF8W = (
             'Company')
@@ -1342,6 +1454,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 18.897650000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object SurveyorSignCompanyMemo: TfrxMemoView
@@ -1350,6 +1464,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Top = 37.795300000000000000
           Width = 94.488250000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Frame.Typ = []
         end
         object Memo33: TfrxMemoView
@@ -1357,6 +1473,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 11.338590000000000000
           Width = 37.795300000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clBlack
           Font.Height = -13
@@ -1372,6 +1490,8 @@ object LoadResultUserInputForm: TLoadResultUserInputForm
           Left = 578.268090000000000000
           Width = 64.252010000000000000
           Height = 18.897650000000000000
+          ContentScaleOptions.Constraints.MaxIterationValue = 0
+          ContentScaleOptions.Constraints.MinIterationValue = 0
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clBlack
           Font.Height = -13

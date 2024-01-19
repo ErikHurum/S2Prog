@@ -1,10 +1,8 @@
-#ifndef S2TXU
-	#include <process.h>
-#ifdef BORLAND
-  #include <windows.h>
-#endif
-#else
+#ifdef S2TXU
 	#include "RTOS.h"
+#else
+	#include <process.h>
+  #include <windows.h>
 #endif
 #include "TSNDefines.h"
 #include "ANCriticalSection.h"

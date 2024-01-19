@@ -4,11 +4,11 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
   Caption = 'TankPlanCleaningForm'
   ClientHeight = 554
   ClientWidth = 1057
+  StyleElements = [seFont, seClient, seBorder]
   OnActivate = FormActivate
   OnPaint = OnFormPaint
   ExplicitWidth = 1073
   ExplicitHeight = 593
-  PixelsPerInch = 96
   TextHeight = 13
   inherited Panel11: TPanel
     Top = 293
@@ -16,9 +16,15 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
     Height = 261
     Align = alClient
     Visible = False
+    StyleElements = [seFont, seClient, seBorder]
     ExplicitTop = 293
     ExplicitWidth = 1057
     ExplicitHeight = 261
+    inherited OpModeGroupBox: TGroupBox
+      inherited OpModeComboBox: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
     inherited TankValuesGroupBox: TGroupBox
       Left = 129
       Top = 2
@@ -27,11 +33,67 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
       ExplicitLeft = 129
       ExplicitTop = 2
       ExplicitWidth = 443
+      inherited ULabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VolumProsentLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Weight: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Volum: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited temp: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited UValueLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VProsentValueLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited WValueLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited TValueLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited UUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VProsentUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited WUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited TUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited TankNameLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VValueLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
       inherited CargoTypeGroupBox: TGroupBox
         Left = 149
         Top = 14
         ExplicitLeft = 149
         ExplicitTop = 14
+        inherited CargoTypeLabel: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited GroupBox2: TGroupBox
+        inherited OpModeLabel: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
       end
     end
     inherited LegendGroupBox: TGroupBox
@@ -42,20 +104,171 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
       ExplicitLeft = 375
       ExplicitTop = 55
       ExplicitWidth = 658
+      inherited Label1: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label2: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label3: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label4: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited WeightUnitLabel2: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VolumeUnitLabel2: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VolumeUnitLabel1: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited WeightUnitLabel1: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
       inherited ScrollBar1: TScrollBar
         Left = 639
         ExplicitLeft = 639
+      end
+      inherited Panel1: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel1: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel1: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel1: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel2: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel2: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel2: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel2: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel3: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel3: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel3: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel3: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel4: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel4: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel4: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel4: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel5: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel5: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel5: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel5: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel6: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel6: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel6: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel6: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel7: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel7: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel7: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel7: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel8: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel8: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel8: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel8: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel9: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel9: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel9: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel9: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+      end
+      inherited Panel10: TRzPanel
+        StyleElements = [seFont, seClient, seBorder]
+        inherited CargoLabel10: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited VolumeLabel10: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
+        inherited sumLabel10: TLabel
+          StyleElements = [seFont, seClient, seBorder]
+        end
       end
     end
     inherited ValueTypeGroupBox: TGroupBox
       Height = 96
       ExplicitHeight = 96
+      inherited ValueTypeLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ValueUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
     end
   end
   inherited PaintBoxPanel: TPanel
     Width = 1057
     Height = 293
     Anchors = [akLeft, akTop, akRight, akBottom]
+    StyleElements = [seFont, seClient, seBorder]
     ExplicitWidth = 1057
     ExplicitHeight = 293
     inherited EsPaintBox1: TEsPaintBox
@@ -182,6 +395,14 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
       ControlLook.DropDownFooter.Font.Style = []
       ControlLook.DropDownFooter.Visible = True
       ControlLook.DropDownFooter.Buttons = <>
+      ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+      ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+      ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+      ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+      ControlLook.ToggleSwitch.CaptionFont.Height = -12
+      ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+      ControlLook.ToggleSwitch.CaptionFont.Style = []
+      ControlLook.ToggleSwitch.Shadow = False
       Filter = <>
       FilterDropDown.Font.Charset = DEFAULT_CHARSET
       FilterDropDown.Font.Color = clWindowText
@@ -255,7 +476,7 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
       SortSettings.HeaderColorTo = clWhite
       SortSettings.HeaderMirrorColor = clWhite
       SortSettings.HeaderMirrorColorTo = clWhite
-      Version = '8.6.8.5'
+      Version = '9.0.0.6'
       ColWidths = (
         64
         64
@@ -275,7 +496,7 @@ inherited TankPlanCleaningForm: TTankPlanCleaningForm
     Left = 168
     Top = 232
   end
-  object TankPlanCleaningTimer: TTimer [12]
+  object TankPlanCleaningTimer: TTimer [11]
     Interval = 6000
     OnTimer = OnTankPlanCleaningTimerTick
     Left = 304

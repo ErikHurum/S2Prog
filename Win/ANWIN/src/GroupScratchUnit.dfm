@@ -1,5 +1,6 @@
 inherited GroupTableScratchPage: TGroupTableScratchPage
   Caption = 'Scratch Page'
+  StyleElements = [seFont, seClient, seBorder]
   TextHeight = 13
   inherited PageControl1: TPageControl
     inherited TabSheet3: TTabSheet
@@ -44,6 +45,17 @@ inherited GroupTableScratchPage: TGroupTableScratchPage
     end
   end
   inherited Panel2: TPanel
+    StyleElements = [seFont, seClient, seBorder]
+    inherited GroupBox1: TGroupBox
+      inherited EditFontSize: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
+    inherited GroupBox2: TGroupBox
+      inherited OpModeComboBox: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
     inherited BargraphViewButton: TRzBitBtn
       Visible = False
     end

@@ -950,9 +950,9 @@ Anpro_Net::anpro_net_thread(LPVOID lpParameter)
 
    apnet->anpro_thread_init();
 
-   while(!ExitFlagStatus())
+   while(!apnet->_exit_flag)
    {
-      tv.tv_sec   = 1;
+	  tv.tv_sec   = 1;
       tv.tv_usec  = 0;
 
       apnet->anpro_thread_pre_select(&rset, &wset, &max_fd);

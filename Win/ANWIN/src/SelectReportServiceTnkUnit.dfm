@@ -1,7 +1,13 @@
 inherited SelectReportPictureService: TSelectReportPictureService
   Caption = 'Service tank report'
-  PixelsPerInch = 96
-  TextHeight = 13
+  StyleElements = [seFont, seClient, seBorder]
+  TextHeight = 15
+  inherited Label1: TLabel
+    StyleElements = [seFont, seClient, seBorder]
+  end
+  inherited TankListBox: TListBox
+    StyleElements = [seFont, seClient, seBorder]
+  end
   inherited frxReportServiceInfo: TfrxReport
     Datasets = <>
     Variables = <>

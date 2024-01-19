@@ -7,10 +7,11 @@
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "LoadResultUserInputUnit"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "RzButton"
 #pragma link "RzPanel"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 USEFORM("src\CTS_LoadResultUnit.cpp", LoadResultForm1);
 TLoadResultUserInputForm1 *LoadResultUserInputForm1;

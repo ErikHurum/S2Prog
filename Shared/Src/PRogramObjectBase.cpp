@@ -435,11 +435,14 @@ void PRogramObjectBase::SendStaticData(void) {
     if (!MyStaticDataSet.empty()) {
         TSN_Delay(START_DELAY);
         const int NumberOfObjects   = MyStaticDataSet.size();    // Not used, but informative when debugging
-        //const int ComDelay          = STATIC_UPDATE_MIN_DELAY;        //STATIC_UPDATE_PERIOD_COM / PRogramObjectBaseSet.size();;
         bool FirstTime              = true;
         int Delay                   = STATIC_UPDATE_PERIOD_COM / MyStaticDataSet.size();
-        if (Delay < 5) {
-            Delay = 5;
+        int TxQueFullCnt            = 0;
+        int TxUnknownCmdFailCnt     = 0;
+        int TxUnknownObjFailCnt     = 0;
+
+        if (Delay < STATIC_UPDATE_MIN_DELAY) {
+            Delay = STATIC_UPDATE_MIN_DELAY;
         }
         FOREVER{
             if (SendFlashDataInProgress == FLASH_IDLE) {
@@ -462,21 +465,18 @@ void PRogramObjectBase::SendStaticData(void) {
                     int ret = (*pBIt)->SendData(CMD_GENERIC_STATIC_DATA);
                     switch (ret) {
                     case E_QUEUE_FULL:
-                        if ((Delay < 100) && (RunningTime > 5 * STATIC_UPDATE_PERIOD_COM)) {
-                            Delay++;
-                        }
+                        TxQueFullCnt++;
+                        break;
                     case E_OK:
-                        if ((Delay > 5) && (PROTanksystemUnit::MySelf->GetIOLoadDelay() >= 10)) {
-                            Delay--;
-                        }
                         TSN_Delay(Delay);
                         break;
                     case E_UNKNOWN_COMMAND:
+                        TxUnknownCmdFailCnt++;
                         //MyStaticDataSet.erase(pBIt); // Remove objects which have no static data to send from the set
                         break;
                     case E_UNKNOWN_OBJECT:
                     default:
-                        //TSN_Delay(0);
+                        TxUnknownObjFailCnt++;
                         break;
                     }
                 }

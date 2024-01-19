@@ -1,11 +1,12 @@
 inherited LoadResultUserInputForm1: TLoadResultUserInputForm1
   Caption = 'LoadResultUserInputForm1'
   ClientHeight = 446
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitHeight = 485
-  PixelsPerInch = 96
   TextHeight = 13
   inherited Panel1: TPanel
     Height = 417
+    StyleElements = [seFont, seClient, seBorder]
     ExplicitHeight = 417
     inherited GroupBox1: TGroupBox
       Top = 344
@@ -13,47 +14,167 @@ inherited LoadResultUserInputForm1: TLoadResultUserInputForm1
       TabOrder = 6
       ExplicitTop = 344
       ExplicitHeight = 124
+      inherited ValueComboBox1: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ComboBox1: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ComboBox2: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ComboBox3: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ComboBox4: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ComboBox5: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ComboBox6: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
     end
     inherited GroupBox2: TGroupBox
       Caption = 'Trim/List'
       inherited Label9: TLabel
         Caption = 'Trim'
+        StyleElements = [seFont, seClient, seBorder]
       end
       inherited Label10: TLabel
         Caption = 'List'
+        StyleElements = [seFont, seClient, seBorder]
       end
       inherited Label11: TLabel
         Visible = False
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ForeUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited MidUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
       end
       inherited AftUnitLabel: TLabel
         Visible = False
+        StyleElements = [seFont, seClient, seBorder]
       end
       inherited DraftForeEdit: TEdit
         Top = 17
         TabOrder = 2
+        StyleElements = [seFont, seClient, seBorder]
         ExplicitTop = 17
+      end
+      inherited DraftMidEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
       end
       inherited DraftAftEdit: TEdit
         TabOrder = 0
         Visible = False
+        StyleElements = [seFont, seClient, seBorder]
       end
     end
     inherited GroupBox3: TGroupBox
       TabOrder = 0
+      inherited Label1: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label2: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label3: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited LoadingPortEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited DestinationPortEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited VoyageEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
+    inherited GroupBox4: TGroupBox
+      inherited Label5: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label6: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label7: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited CommencedEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited CompletedEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited InspectedEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
+    inherited GroupBox5: TGroupBox
+      inherited Label12: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label13: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label14: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label15: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited ShipNameLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited Label19: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited RepNameEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited RepTitleEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited SurvNameEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited SurvCompEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
     end
     inherited GroupBox7: TGroupBox
       Height = 79
       ExplicitHeight = 79
       inherited RmarkMemo: TMemo
         Height = 62
+        StyleElements = [seFont, seClient, seBorder]
         ExplicitHeight = 62
       end
     end
     inherited GroupBox8: TGroupBox
       TabOrder = 2
+      inherited BoLUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited BoLVolUnitLabel: TLabel
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited BillOfLadingEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+      inherited BillOfLadingVolEdit: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
     end
   end
   inherited RzToolbar1: TRzToolbar
+    StyleElements = [seFont, seClient, seBorder]
     ToolbarControls = (
       RzToolButton1)
   end
@@ -174,6 +295,15 @@ inherited LoadResultUserInputForm1: TLoadResultUserInputForm1
             3E3C636F6C756D6E736F72743E3C6974656D20322F3E3C2F636F6C756D6E736F
             72743E3C726F77736F72743E3C6974656D20322F3E3C2F726F77736F72743E3C
             2F63726F73733E}
+        end
+      end
+      inherited PageFooter1: TfrxPageFooter
+        inherited MemoPageInfo: TfrxMemoView
+          Formats = <
+            item
+            end
+            item
+            end>
         end
       end
     end

@@ -9,6 +9,8 @@
 #pragma package(smart_init)
 #pragma link "TankPlanUnit"
 #pragma link "RzPanel"
+#pragma link "AdvMenus"
+#pragma link "ES.PaintBox"
 #pragma resource "*.dfm"
 TTankPlanDrawingBallastForm *TankPlanDrawingBallastForm;
 //---------------------------------------------------------------------------

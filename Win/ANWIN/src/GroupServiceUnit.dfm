@@ -1,22 +1,19 @@
 inherited GroupTableService: TGroupTableService
   Caption = 'GroupTableService'
   ClientHeight = 771
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitHeight = 810
-  PixelsPerInch = 96
   TextHeight = 13
   inherited PageControl1: TPageControl
     Height = 714
-    ExplicitHeight = 714
     inherited TabSheet1: TTabSheet
       ExplicitHeight = 683
       inherited PageControl2: TPageControl
         Height = 677
-        ExplicitHeight = 677
         inherited TabSheetOnlineValues: TTabSheet
           ExplicitHeight = 669
           inherited StringGridAllTanks: TAdvStringGrid
             Height = 669
-            ExplicitHeight = 669
           end
         end
         inherited TabSheetAlarms: TTabSheet
@@ -226,9 +223,16 @@ inherited GroupTableService: TGroupTableService
     end
   end
   inherited Panel2: TPanel
+    StyleElements = [seFont, seClient, seBorder]
+    inherited GroupBox1: TGroupBox
+      inherited EditFontSize: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
     inherited GroupBox2: TGroupBox
       Visible = False
       inherited OpModeComboBox: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
         OnChange = OpModeComboBoxChange
       end
     end

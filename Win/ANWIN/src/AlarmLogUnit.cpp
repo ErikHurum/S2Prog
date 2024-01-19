@@ -14,14 +14,12 @@ USEFORM("ProtocolInfoUnit.cpp", ProtocolInfoForm);
 #pragma link "LiteCall"
 #pragma link "LiteConsts"
 #pragma link "MemDS"
-#pragma link "RzDBNav"
 #pragma link "RzPanel"
-#pragma link "RzDBNav"
 #pragma link "RzPanel"
-#pragma link "frxClass"
-#pragma link "frxCross"
 #pragma link "CRGrid"
 #pragma link "DBAdvGlowNavigator"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TAlarmLogForm *AlarmLogForm;
 //---------------------------------------------------------------------------

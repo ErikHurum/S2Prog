@@ -32,6 +32,8 @@
 #include "BaseGrid.hpp"
 #include "AeroButtons.hpp"
 #include <VCLTee.TeCanvas.hpp>
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 
 // ---------------------------------------------------------------------------
 class TLoadcalcForm : public TChildForm {

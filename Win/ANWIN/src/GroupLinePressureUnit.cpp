@@ -11,7 +11,6 @@ USEFORM("LinePressureUnit.cpp", LinePressureForm);
 #pragma package(smart_init)
 #pragma link "GroupUnit"
 #pragma link "RzButton"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "AdvGrid"
 #pragma link "AdvObj"
@@ -19,6 +18,8 @@ USEFORM("LinePressureUnit.cpp", LinePressureForm);
 #pragma link "BaseGrid"
 #pragma link "asgprint"
 #pragma link "tmsAdvGridExcel"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TGroupTableLinePressure *GroupTableLinePressure;
 
@@ -175,7 +176,7 @@ void __fastcall TGroupTableLinePressure::StringGridAllTanksContextPopup(TObject 
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TGroupTableLinePressure::StringGridAllTanksFixedCellClick(TObject *Sender, int ACol, int ARow)
+void __fastcall TGroupTableLinePressure::StringGridAllTanksFixedCellClick(TObject *Sender, System::LongInt ACol, System::LongInt ARow)
 {
 	TStringGrid* StringGrid = static_cast<TStringGrid*>(Sender);
 	CurrentColumn = ACol;
@@ -250,5 +251,7 @@ void __fastcall TGroupTableLinePressure::StringGridAllTanksFixedCellClick(TObjec
 
 }
 //---------------------------------------------------------------------------
+
+
 
 

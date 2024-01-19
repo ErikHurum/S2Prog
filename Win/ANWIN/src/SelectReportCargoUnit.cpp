@@ -8,8 +8,9 @@
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "SelectReportUnit"
-#pragma link "frxClass"
 #pragma link "frxCross"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TSelectReportPictureCargo *SelectReportPictureCargo;
 //---------------------------------------------------------------------------

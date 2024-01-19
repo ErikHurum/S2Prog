@@ -1,5 +1,6 @@
 inherited GroupTableTemperature: TGroupTableTemperature
   Caption = 'GroupTableTemperature'
+  StyleElements = [seFont, seClient, seBorder]
   TextHeight = 13
   inherited PageControl1: TPageControl
     inherited TabSheet1: TTabSheet
@@ -76,8 +77,17 @@ inherited GroupTableTemperature: TGroupTableTemperature
     end
   end
   inherited Panel2: TPanel
+    StyleElements = [seFont, seClient, seBorder]
+    inherited GroupBox1: TGroupBox
+      inherited EditFontSize: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
+    end
     inherited GroupBox2: TGroupBox
       Visible = False
+      inherited OpModeComboBox: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
+      end
     end
     inherited GroupBox3: TGroupBox
       inherited VolPrcntBarGraphCheckBox: TCheckBox

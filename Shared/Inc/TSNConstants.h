@@ -3312,8 +3312,8 @@
 #define REAL_TIME_UPDATE_PERIOD     2000
 
 
-#define STATIC_UPDATE_PERIOD_COM    (1*60 * 1000)
-#define STATIC_UPDATE_MIN_DELAY     5               // C00614 has 57 as calculated delay and it works on the Hudong series C00610 and related
+#define STATIC_UPDATE_PERIOD_COM    (3*60 * 1000)   // Was set to 1 minute
+#define STATIC_UPDATE_MIN_DELAY     30               // C00614 has 57 as calculated delay and it works on the Hudong series C00610 and related
 
 #define CALCULATION_PERIOD          1000  
 

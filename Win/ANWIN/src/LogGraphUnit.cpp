@@ -24,7 +24,6 @@
 #pragma link "RzDBDTP"
 #pragma link "RzDTP"
 #pragma link "DBAdvNavigator"
-#pragma link "RzDBNav"
 #pragma link "RzPanel"
 #pragma link "RzEdit"
 #pragma link "AdvGlassButton"

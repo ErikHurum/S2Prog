@@ -23,6 +23,8 @@
 #include <Vcl.Dialogs.hpp>
 #include <Vcl.ImgList.hpp>
 #include "tmsAdvGridExcel.hpp"
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 
 // ---------------------------------------------------------------------------
 class TGroupTableBallast : public TGroupTable {

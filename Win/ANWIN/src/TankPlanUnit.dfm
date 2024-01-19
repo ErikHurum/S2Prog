@@ -5,6 +5,7 @@ inherited TankPlanDrawingForm: TTankPlanDrawingForm
   ClientHeight = 432
   ClientWidth = 899
   GlassFrame.Enabled = True
+  StyleElements = [seFont, seClient, seBorder]
   OnResize = FormResize
   OnShow = FormShow
   ExplicitWidth = 915
@@ -1009,24 +1010,24 @@ inherited TankPlanDrawingForm: TTankPlanDrawingForm
       Caption = 'Change cargo'
     end
   end
-  object LegendTimer: TTimer [11]
-    Interval = 5000
-    OnTimer = LegendTimerTimer
-    Left = 592
-    Top = 360
-  end
-  object AdvPopupMenu1: TAdvPopupMenu [12]
-    Version = '2.7.1.11'
+  object AdvPopupMenu1: TAdvPopupMenu [11]
+    Version = '2.7.1.12'
     UIStyle = tsOffice2019White
     Left = 736
     Top = 377
   end
-  object PrinterSetupDialog1: TPrinterSetupDialog [13]
+  object PrinterSetupDialog1: TPrinterSetupDialog [12]
     Left = 472
     Top = 392
   end
-  object PrintDialog1: TPrintDialog [14]
+  object PrintDialog1: TPrintDialog [13]
     Left = 392
     Top = 384
+  end
+  object LegendTimer: TTimer [14]
+    Interval = 5000
+    OnTimer = LegendTimerTimer
+    Left = 592
+    Top = 360
   end
 end

@@ -11,7 +11,6 @@ USEFORM("src\LCTrimListUnit.cpp", TrimListSrcDlg);
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "ChildUnit"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "RzButton"
 #pragma link "RzPanel"
@@ -20,6 +19,8 @@ USEFORM("src\LCTrimListUnit.cpp", TrimListSrcDlg);
 #pragma link "AdvUtil"
 #pragma link "BaseGrid"
 #pragma link "AeroButtons"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 
 TLoadcalcForm *LoadcalcForm;

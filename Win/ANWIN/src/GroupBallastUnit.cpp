@@ -11,7 +11,6 @@ USEFORM("BarGraphFromBGUnit.cpp", BarGraphFromBGForm);
 #pragma package(smart_init)
 #pragma link "GroupUnit"
 #pragma link "RzButton"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "AdvGrid"
 #pragma link "AdvObj"
@@ -19,6 +18,8 @@ USEFORM("BarGraphFromBGUnit.cpp", BarGraphFromBGForm);
 #pragma link "BaseGrid"
 #pragma link "asgprint"
 #pragma link "tmsAdvGridExcel"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TGroupTableBallast *GroupTableBallast;
 

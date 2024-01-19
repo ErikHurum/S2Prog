@@ -27,6 +27,7 @@
 #include <Vcl.ImgList.hpp>
 #include "frCoreClasses.hpp"
 #include "tmsAdvGridExcel.hpp"
+#include "frxSmartMemo.hpp"
 //---------------------------------------------------------------------------
 class TGroupTableScratchPage : public TGroupTable
 {

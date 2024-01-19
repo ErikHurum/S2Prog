@@ -3,6 +3,7 @@ inherited AlarmLogForm: TAlarmLogForm
   ClientHeight = 570
   ClientWidth = 1082
   Scaled = False
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitWidth = 1098
   ExplicitHeight = 609
   TextHeight = 13
@@ -249,7 +250,7 @@ inherited AlarmLogForm: TAlarmLogForm
     Top = 56
   end
   object frxReportAlarmLogList: TfrxReport [11]
-    Version = '2022.3'
+    Version = '2024.1.0'
     DataSetName = 'frxUserDataSet1'
     DotMatrixReport = False
     EngineOptions.DoublePass = True
@@ -11075,24 +11076,54 @@ inherited AlarmLogForm: TAlarmLogForm
     end
   end
   object frxDBDatasetAlarmLog: TfrxDBDataset [12]
+    Left = 616.000000000000000000
+    Top = 8.000000000000000000
     UserName = 'frxDBDataset1'
     CloseDataSource = False
-    FieldAliases.Strings = (
-      'Id=Id'
-      'AlarmId=AlarmId'
-      'Event=Event'
-      'Location=Location'
-      'Description=Description'
-      'AlarmLimit=AlarmLimit'
-      'AlarmValue=AlarmValue'
-      'AlarmState=AlarmState'
-      'Enabled=Enabled'
-      'EventTimeGMT=EventTimeGMT')
     DataSource = LiteDataSource2
     BCDToCurrency = False
     DataSetOptions = []
-    Left = 616
-    Top = 8
+    FieldDefs = <
+      item
+        FieldName = 'Id'
+        FieldAlias = 'Id'
+      end
+      item
+        FieldName = 'AlarmId'
+        FieldAlias = 'AlarmId'
+      end
+      item
+        FieldName = 'Event'
+        FieldAlias = 'Event'
+      end
+      item
+        FieldName = 'Location'
+        FieldAlias = 'Location'
+      end
+      item
+        FieldName = 'Description'
+        FieldAlias = 'Description'
+      end
+      item
+        FieldName = 'AlarmLimit'
+        FieldAlias = 'AlarmLimit'
+      end
+      item
+        FieldName = 'AlarmValue'
+        FieldAlias = 'AlarmValue'
+      end
+      item
+        FieldName = 'AlarmState'
+        FieldAlias = 'AlarmState'
+      end
+      item
+        FieldName = 'Enabled'
+        FieldAlias = 'Enabled'
+      end
+      item
+        FieldName = 'EventTimeGMT'
+        FieldAlias = 'EventTimeGMT'
+      end>
   end
   object LiteDataSource1: TLiteDataSource [13]
     DataSet = LiteQuery1

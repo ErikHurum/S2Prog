@@ -6,10 +6,11 @@ USEFORM("src\LoadResultWin.cpp", LoadResultForm);
 
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "RzPanel"
 #pragma link "RzButton"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TLoadResultUserInputForm *LoadResultUserInputForm= NULL;
 //---------------------------------------------------------------------------

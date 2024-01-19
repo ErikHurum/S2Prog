@@ -13,6 +13,8 @@
 #include <Grids.hpp>
 #include "frxClass.hpp"
 #include "frxCross.hpp"
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 //---------------------------------------------------------------------------
 class TSelectReportPictureBallast : public TSelectReportForm
 {

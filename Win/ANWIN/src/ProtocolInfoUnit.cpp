@@ -7,7 +7,6 @@
 #include "ProtocolInfoUnit.h"
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
-#pragma link "Excel_XP_srvr"
 #pragma resource "*.dfm"
 TProtocolInfoForm *ProtocolInfoForm;
 

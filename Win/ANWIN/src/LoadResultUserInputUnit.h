@@ -19,6 +19,8 @@
 #include "RzButton.hpp"
 #include <System.ImageList.hpp>
 #include <Vcl.ImgList.hpp>
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 class TLoadResultUserInputForm : public TChildForm
 {
 __published:    // IDE-managed Components

@@ -1,6 +1,6 @@
 inherited GroupTableCargo: TGroupTableCargo
   Caption = 'Cargo'
-  PixelsPerInch = 96
+  StyleElements = [seFont, seClient, seBorder]
   TextHeight = 13
   inherited PageControl1: TPageControl
     inherited TabSheet2: TTabSheet
@@ -14,12 +14,17 @@ inherited GroupTableCargo: TGroupTableCargo
     end
   end
   inherited Panel2: TPanel
+    StyleElements = [seFont, seClient, seBorder]
     inherited GroupBox1: TGroupBox
       TabOrder = 2
+      inherited EditFontSize: TEdit
+        StyleElements = [seFont, seClient, seBorder]
+      end
     end
     inherited GroupBox2: TGroupBox
       TabOrder = 0
       inherited OpModeComboBox: TComboBox
+        StyleElements = [seFont, seClient, seBorder]
         OnChange = OpModeComboBoxChange
       end
     end

@@ -10,6 +10,8 @@
 #include <Grids.hpp>
 #include "frxClass.hpp"
 #include "frxCross.hpp"
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 
 //----------------------------------------------------------------------------
 class TSelectReportForm : public TChildForm

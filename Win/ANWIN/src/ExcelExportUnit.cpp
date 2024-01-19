@@ -6,7 +6,6 @@
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
 
-#pragma link "Excel_XP_srvr"
 #pragma resource "*.dfm"
 TExcelExportForm *ExcelExportForm;
 

@@ -18,6 +18,8 @@
 #include "RzPanel.hpp"
 #include <System.ImageList.hpp>
 #include <Vcl.ImgList.hpp>
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 //---------------------------------------------------------------------------
 class TLoadResultUserInputForm1 : public TLoadResultUserInputForm
 {

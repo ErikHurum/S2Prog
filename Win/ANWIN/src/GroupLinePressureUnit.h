@@ -24,13 +24,15 @@
 #include <System.ImageList.hpp>
 #include <Vcl.ImgList.hpp>
 #include "tmsAdvGridExcel.hpp"
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 class TGroupTableLinePressure : public TGroupTable {
 __published: // IDE-managed Components
 	void __fastcall StringGridAllTanksContextPopup(TObject *Sender, TPoint &MousePos, bool &Handled);
-	void __fastcall StringGridAllTanksFixedCellClick(TObject *Sender, int ACol, int ARow);
+	void __fastcall StringGridAllTanksFixedCellClick(TObject *Sender, System::LongInt ACol, System::LongInt ARow);
 
 private: // User declarations
 	vector<int>__fastcall SetDefaultValTable(void);

@@ -7,19 +7,19 @@
 
 #include <Vcl.Styles.hpp>
 #include <Vcl.Themes.hpp>
-USEFORM("BarGraphServiceUnit.cpp", BarGraphServiceForm);
 USEFORM("BarGraphFromVSGUnit.cpp", BarGraphFromVSGForm);
 USEFORM("BarGraphFromSGUnit.cpp", BarGraphFromSGForm);
 USEFORM("BarGraphFromCGUnit.cpp", BarGraphFromCGForm);
 USEFORM("BarGraphFromBGUnit.cpp", BarGraphFromBGForm);
-USEFORM("CargoTypeUnit.cpp", CargoTypeSetupForm);
+USEFORM("BarGraphCargoUnit.cpp", BarGraphCargoForm);
 USEFORM("BinnenmaatUnit.cpp", BinnenmaatForm);
 USEFORM("BarGraphVoidSpaceUnit.cpp", BarGraphVoidSpaceForm);
 USEFORM("BargraphUnit.cpp", BarGraphForm);
-USEFORM("BarGraphCargoUnit.cpp", BarGraphCargoForm);
-USEFORM("AlarmUnit.cpp", AlarmForm);
-USEFORM("AlarmLogUnit.cpp", AlarmLogForm);
+USEFORM("BarGraphServiceUnit.cpp", BarGraphServiceForm);
 USEFORM("BarGraphBallastUnit.cpp", BarGraphBallastForm);
+USEFORM("AlarmLogUnit.cpp", AlarmLogForm);
+USEFORM("AlarmUnit.cpp", AlarmForm);
+USEFORM("CargoTypeUnit.cpp", CargoTypeSetupForm);
 USEFORM("SelectServiceTankUnit.cpp", SelectPROServiceTank);
 USEFORM("SelectReportVoidSpaceUnit.cpp", SelectReportPictureVoidSpace);
 USEFORM("SelectReportUnit.cpp", SelectReportForm);

@@ -19,7 +19,6 @@ USEFORM("ExcelExportGroupUnit.cpp", ExcelExportGroupForm);
 #pragma link "ChildUnit"
 #pragma link "RzButton"
 #pragma link "RzRadChk"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "AdvGrid"
 #pragma link "AdvObj"
@@ -28,6 +27,7 @@ USEFORM("ExcelExportGroupUnit.cpp", ExcelExportGroupForm);
 #pragma link "asgprint"
 #pragma link "tmsAdvGridExcel"
 #pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 TGroupTable *GroupTable;
 
@@ -1567,7 +1567,7 @@ void __fastcall TGroupTable::HighLightingCheckBoxClick(TObject *Sender) {
 }
 // ---------------------------------------------------------------------------
 
-void __fastcall TGroupTable::StringGridAllTanksFixedCellClick(TObject *Sender, int ACol, int ARow) {
+void __fastcall TGroupTable::StringGridAllTanksFixedCellClick(TObject *Sender, System::LongInt ACol, System::LongInt ARow) {
 	TStringGrid* StringGrid = static_cast<TStringGrid*>(Sender);
 	CurrentColumn = ACol;
 	CurrentRow    = ARow;
@@ -1662,8 +1662,7 @@ void __fastcall TGroupTable::PopupMenuCargoTypeExecute(TObject *Sender) {
 	}
 }
 
-void __fastcall TGroupTable::StringGridAllTanksColumnMoved(TObject *Sender, int FromIndex,
-		  int ToIndex)
+void __fastcall TGroupTable::StringGridAllTanksColumnMoved(TObject *Sender, System::LongInt FromIndex, System::LongInt ToIndex)
 {
 	int tmpVal1 = CurrentValueTable[FromIndex];
 	int tmpVal2 = CurrentValueTable[ToIndex];
@@ -1673,8 +1672,7 @@ void __fastcall TGroupTable::StringGridAllTanksColumnMoved(TObject *Sender, int 
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TGroupTable::StringGridAllTanksRowMoved(TObject *Sender, int FromIndex,
-		  int ToIndex)
+void __fastcall TGroupTable::StringGridAllTanksRowMoved(TObject *Sender, System::LongInt FromIndex, System::LongInt ToIndex)
 {
 	TStringGrid* StringGrid = static_cast<TStringGrid*>(Sender);
 	FromIndex -= StringGrid->FixedRows;

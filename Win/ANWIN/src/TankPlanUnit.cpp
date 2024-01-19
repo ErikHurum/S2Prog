@@ -14,7 +14,6 @@ USEFORM("TankObjectUnit.cpp", TankObjectForm);
 #pragma package(smart_init)
 #pragma link "ChildUnit"
 #pragma link "RzPanel"
-#pragma link "ES.BaseControls"
 #pragma link "ES.PaintBox"
 #pragma link "AdvMenus"
 #pragma resource "*.dfm"

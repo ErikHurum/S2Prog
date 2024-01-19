@@ -2,6 +2,7 @@ inherited ExcelExportGroupForm: TExcelExportGroupForm
   Caption = 'ExcelExportGroupForm'
   ClientHeight = 193
   ClientWidth = 470
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitWidth = 486
   ExplicitHeight = 232
   TextHeight = 13

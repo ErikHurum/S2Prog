@@ -4,7 +4,7 @@
 
 #pragma hdrstop
 #include "ChildUnit.h"
-#pragma link "frxClass"
+
 
 #include <Vcl.Dialogs.hpp>
 #include <Clipbrd.hpp>

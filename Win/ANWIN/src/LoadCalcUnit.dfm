@@ -74,7 +74,6 @@ object LoadcalcForm: TLoadcalcForm
             Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goRowMoving, goColMoving, goEditing, goFixedRowDefAlign]
             PopupMenu = PopuMenupOnlineOffline
             TabOrder = 0
-            OnDrawCell = LocDataStringGridDrawCell
             OnRightClickCell = LocDataStringGridRightClickCell
             OnGetEditorType = LocDataStringGridGetEditorType
             OnEditCellDone = LocDataStringGridEditCellDone
@@ -110,6 +109,14 @@ object LoadcalcForm: TLoadcalcForm
             ControlLook.DropDownFooter.Font.Style = []
             ControlLook.DropDownFooter.Visible = True
             ControlLook.DropDownFooter.Buttons = <>
+            ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+            ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+            ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+            ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+            ControlLook.ToggleSwitch.CaptionFont.Height = -12
+            ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+            ControlLook.ToggleSwitch.CaptionFont.Style = []
+            ControlLook.ToggleSwitch.Shadow = False
             Filter = <>
             FilterDropDown.Font.Charset = DEFAULT_CHARSET
             FilterDropDown.Font.Color = clWindowText
@@ -131,7 +138,7 @@ object LoadcalcForm: TLoadcalcForm
               'Clear')
             FixedRowHeight = 22
             FixedFont.Charset = DEFAULT_CHARSET
-            FixedFont.Color = 3881787
+            FixedFont.Color = clWindowText
             FixedFont.Height = -15
             FixedFont.Name = 'Tahoma'
             FixedFont.Style = []
@@ -181,11 +188,12 @@ object LoadcalcForm: TLoadcalcForm
             SearchFooter.HintHighlight = 'Highlight occurrences'
             SearchFooter.MatchCaseCaption = 'Match case'
             SearchFooter.ResultFormat = '(%d of %d)'
+            SelectionTextColor = clWindowText
             SortSettings.HeaderColorTo = clWhite
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '8.7.0.3'
+            Version = '9.0.0.6'
             WordWrap = False
             ColWidths = (
               64
@@ -237,8 +245,6 @@ object LoadcalcForm: TLoadcalcForm
           FixedColor = clWhite
           FixedRows = 2
           TabOrder = 0
-          GridLineColor = 13948116
-          GridFixedLineColor = 11250603
           ActiveCellFont.Charset = DEFAULT_CHARSET
           ActiveCellFont.Color = 4474440
           ActiveCellFont.Height = -11
@@ -275,6 +281,14 @@ object LoadcalcForm: TLoadcalcForm
           ControlLook.DropDownFooter.Font.Style = []
           ControlLook.DropDownFooter.Visible = True
           ControlLook.DropDownFooter.Buttons = <>
+          ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+          ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+          ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+          ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+          ControlLook.ToggleSwitch.CaptionFont.Height = -12
+          ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+          ControlLook.ToggleSwitch.CaptionFont.Style = []
+          ControlLook.ToggleSwitch.Shadow = False
           Filter = <>
           FilterDropDown.Font.Charset = DEFAULT_CHARSET
           FilterDropDown.Font.Color = clWindowText
@@ -296,7 +310,7 @@ object LoadcalcForm: TLoadcalcForm
             'Clear')
           FixedRowHeight = 22
           FixedFont.Charset = DEFAULT_CHARSET
-          FixedFont.Color = 3881787
+          FixedFont.Color = clWindowText
           FixedFont.Height = -11
           FixedFont.Name = 'Tahoma'
           FixedFont.Style = [fsBold]
@@ -343,11 +357,12 @@ object LoadcalcForm: TLoadcalcForm
           SearchFooter.MatchCaseCaption = 'Match case'
           SearchFooter.ResultFormat = '(%d of %d)'
           SelectionColor = 13744549
+          SelectionTextColor = clWindowText
           SortSettings.HeaderColor = clWhite
           SortSettings.HeaderColorTo = clWhite
           SortSettings.HeaderMirrorColor = clWhite
           SortSettings.HeaderMirrorColorTo = clWhite
-          Version = '8.7.0.3'
+          Version = '9.0.0.6'
           ColWidths = (
             64
             64
@@ -380,8 +395,6 @@ object LoadcalcForm: TLoadcalcForm
           FixedColor = clWhite
           FixedRows = 2
           TabOrder = 0
-          GridLineColor = 13948116
-          GridFixedLineColor = 11250603
           ActiveCellFont.Charset = DEFAULT_CHARSET
           ActiveCellFont.Color = 4474440
           ActiveCellFont.Height = -11
@@ -418,6 +431,14 @@ object LoadcalcForm: TLoadcalcForm
           ControlLook.DropDownFooter.Font.Style = []
           ControlLook.DropDownFooter.Visible = True
           ControlLook.DropDownFooter.Buttons = <>
+          ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+          ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+          ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+          ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+          ControlLook.ToggleSwitch.CaptionFont.Height = -12
+          ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+          ControlLook.ToggleSwitch.CaptionFont.Style = []
+          ControlLook.ToggleSwitch.Shadow = False
           Filter = <>
           FilterDropDown.Font.Charset = DEFAULT_CHARSET
           FilterDropDown.Font.Color = clWindowText
@@ -439,7 +460,7 @@ object LoadcalcForm: TLoadcalcForm
             'Clear')
           FixedRowHeight = 22
           FixedFont.Charset = DEFAULT_CHARSET
-          FixedFont.Color = 3881787
+          FixedFont.Color = clWindowText
           FixedFont.Height = -11
           FixedFont.Name = 'Tahoma'
           FixedFont.Style = [fsBold]
@@ -486,11 +507,12 @@ object LoadcalcForm: TLoadcalcForm
           SearchFooter.MatchCaseCaption = 'Match case'
           SearchFooter.ResultFormat = '(%d of %d)'
           SelectionColor = 13744549
+          SelectionTextColor = clWindowText
           SortSettings.HeaderColor = clWhite
           SortSettings.HeaderColorTo = clWhite
           SortSettings.HeaderMirrorColor = clWhite
           SortSettings.HeaderMirrorColorTo = clWhite
-          Version = '8.7.0.3'
+          Version = '9.0.0.6'
           ColWidths = (
             64
             64
@@ -2147,7 +2169,7 @@ object LoadcalcForm: TLoadcalcForm
     end
   end
   object frxReportLoadCalc: TfrxReport
-    Version = '2022.3'
+    Version = '2024.1.0'
     DotMatrixReport = False
     EngineOptions.DoublePass = True
     IniFile = '\Software\Fast Reports'

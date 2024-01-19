@@ -11,13 +11,15 @@ USEFORM("BarGraphFromVSGUnit.cpp", BarGraphFromVSGForm);
 #pragma package(smart_init)
 #pragma link "GroupUnit"
 #pragma link "RzButton"
-#pragma link "frxClass"
 #pragma link "frxCross"
 #pragma link "AdvGrid"
 #pragma link "AdvObj"
 #pragma link "AdvUtil"
 #pragma link "BaseGrid"
 #pragma link "asgprint"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
+#pragma link "tmsAdvGridExcel"
 #pragma resource "*.dfm"
 TGroupTableVoidspace *GroupTableVoidspace;
 
