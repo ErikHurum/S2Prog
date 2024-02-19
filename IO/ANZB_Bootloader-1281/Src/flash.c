@@ -2,7 +2,7 @@
 #include <iom1280.h>
 #endif
 
-#ifdef __ATMEGA_1281__
+#ifdef __AVR_ATmega1281__
 #include <iom1281.h>
 #endif
 

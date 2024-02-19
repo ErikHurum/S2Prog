@@ -1,7 +1,9 @@
 #ifndef ANBOOTLOADER
     #ifdef ANWIN
         #include "ANWinInc.h"
-        #include "MainUnit.h"
+		#include "ChildUnit.h"
+		#include "Anpro_Net.h"
+		#include "MainUnit.h"
         #include "Anpro_Net.h"
     #else
         #include <set>
@@ -968,7 +970,7 @@ void SendUDP(U8 *Buf, int Size, int Cnt) {
                 int  NumberOfFullParts = Size / MAX_UDP_SIZE;
                 int  Remaining         = Size % MAX_UDP_SIZE;
                 int  NumberOfParts     = NumberOfFullParts;
-                char *Ptr              = Buf;
+                U8 *Ptr              = Buf;
                 if ( Remaining ) NumberOfParts += 1;
                 for ( int i = 0; i < NumberOfParts; i++ ) {
                     int PSize;

@@ -3,12 +3,13 @@
 #ifndef TWMRunCollectionH
 #define TWMRunCollectionH
 //---------------------------------------------------------------------------
-
+#ifdef S2TXU
 #include <set>
 #include <vector>
+#endif
 #include "TankWashingMachineRun.h"
 #if defined(ANWIN) || defined(ANTDUSIM)
-using namespace std;
+//using namespace std;
 #endif
 
 // forward declarations

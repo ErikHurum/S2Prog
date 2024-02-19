@@ -37,6 +37,8 @@
 #include "asgprev.hpp"
 #include "AdvCombo.hpp"
 #include "DBAdvGlowNavigator.hpp"
+#include "frCoreClasses.hpp"
+#include "frxSmartMemo.hpp"
 
 
 #define TTankWashLogForm_TANK_NAME_COL 0

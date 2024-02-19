@@ -2,13 +2,13 @@
 #include	"iom1280.h"
 #endif
 
-#ifdef __ATMEGA_1281__
+#ifdef __AVR_ATmega1281__
 #include	"iom1281.h"
 #endif
 #include "stdio.h"
 #include "math.h"
 #include "externals.h"
-
+#include <intrinsics.h>
 void sendchar(char c){
     UART_DATA_REG0 = c;                                   // prepare transmission
     while (!(UART_STATUS_REG0 & (1 << TRANSMIT_COMPLETE_BIT0)));// wait until byte sendt
@@ -19,6 +19,7 @@ void sendchar(char c){
 void recchar(void){
   if((UART_STATUS_REG0 & (1 << RECEIVE_COMPLETE_BIT0)) ||(UART_STATUS_REG0 & 0x10)){
     RxBufferCh0[ myUART.RxFirst ] = UART_DATA_REG0;                     // Read the character 
+    __watchdog_reset();
     if (myUART.RxState != HANDLE) {        // ok to receive? 
         switch (myUART.RxState) {                   // Yes, check state
         case SYNC :

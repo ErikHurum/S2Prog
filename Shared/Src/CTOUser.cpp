@@ -4,7 +4,9 @@
 #pragma hdrstop
 #include "TSNIncludes.h"
 #ifdef ANWIN
-    #include "MainUnit.h"
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
+	#include "MainUnit.h"
 #endif
 #pragma hdrstop
 #ifdef BORLAND

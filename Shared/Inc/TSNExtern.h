@@ -24,24 +24,24 @@ extern void SuspendIO(int TimeOut);
 //
 //////////////////////////////////////////////////////
 
-extern char ProgramDataANZB485[];
-extern int ProgramDataANZB485Size;
+extern const char ProgramDataANZB_128[];
+extern const int ProgramDataANZB_128_Size;
 //////////////////////////////////////////////////////
 //
 // From ANZBBin101.c
 //
 //////////////////////////////////////////////////////
 
-extern char ProgramDataANZB_New[];
-extern int ProgramDataANZB_NewSize;
+extern const unsigned char ProgramDataANZB_1281[];
+extern const int ProgramDataANZB_1281_Size;
 //////////////////////////////////////////////////////
 //
 // From ANZBHartBin.c
 //
 //////////////////////////////////////////////////////
 
-extern char ProgramDataANZBHART[];
-extern int ProgramDataANZBHARTSize;
+extern const char ProgramDataANZBHART[];
+extern const int ProgramDataANZBHARTSize;
 
 
 
@@ -134,6 +134,9 @@ extern AnsiString ProjectFileNameAndExtension;
 extern AnsiString SettingsFileNameAndExtension;
 extern AnsiString ProjectFileName;
 extern AnsiString StyleName;
+extern AnsiString DataSourceName;
+extern unsigned CurrentSearchComPortIndex;
+
 #endif
 
 extern short CurrentDeviceId;

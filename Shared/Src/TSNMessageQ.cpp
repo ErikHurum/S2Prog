@@ -1,7 +1,7 @@
 #ifdef WIN32
 #include "windows.h"
+using namespace std;
 
-//using namespace std;
 
 #else
 #include "RTOS.h"

@@ -6,8 +6,9 @@ inherited GroupTable: TGroupTable
   ClientWidth = 1137
   Position = poDefault
   PrintScale = poPrintToFit
-  ExplicitWidth = 1149
-  ExplicitHeight = 810
+  StyleElements = [seFont, seClient, seBorder]
+  ExplicitWidth = 1153
+  ExplicitHeight = 811
   TextHeight = 13
   object PageControl1: TPageControl [0]
     Left = 0
@@ -211,7 +212,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1087
             ExplicitHeight = 669
@@ -401,7 +402,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -591,7 +592,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -781,7 +782,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -992,7 +993,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ColWidths = (
               64
@@ -1183,7 +1184,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -1375,7 +1376,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -1567,7 +1568,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -1784,7 +1785,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -1976,7 +1977,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -2168,7 +2169,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -2360,7 +2361,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -2577,7 +2578,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -2769,7 +2770,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -2961,7 +2962,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -3151,7 +3152,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -3368,7 +3369,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -3560,7 +3561,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -3752,7 +3753,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -3944,7 +3945,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -4167,7 +4168,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -4359,7 +4360,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -4551,7 +4552,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -4743,7 +4744,7 @@ inherited GroupTable: TGroupTable
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
             VAlignment = vtaCenter
-            Version = '9.0.0.2'
+            Version = '9.0.0.7'
             WordWrap = False
             ExplicitWidth = 1053
             ExplicitHeight = 526
@@ -5111,7 +5112,7 @@ inherited GroupTable: TGroupTable
     Top = 540
   end
   object frxReportGroupWin: TfrxReport
-    Version = '2023.2.1'
+    Version = '2024.1.0'
     DotMatrixReport = False
     EngineOptions.DoublePass = True
     IniFile = '\Software\Fast Reports'

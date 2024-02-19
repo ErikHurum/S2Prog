@@ -612,7 +612,7 @@ int PROLevelSwitch::WriteXML(char *StrBuf, bool IncAlarms) {
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<PacketID>Freevalue</PacketID>\r\n");
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<TagID>%s</TagID>\r\n", TagName.c_str());
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<Value>%i</Value>\r\n", LEDStatus);
-    tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<Alarm>%s</Alarm>\r\n", AlMessageStr);
+    tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<Alarm>%s</Alarm>\r\n", AlMessageStr.c_str());
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t</Packet>\r\n");
     return tmpPtr;
 #else

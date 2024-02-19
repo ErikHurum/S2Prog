@@ -1,24 +1,34 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       31/Jan/2023  09:48:37
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       29/Jan/2024  09:35:44
 # Copyright 1996-2022 IAR Systems AB.
-# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
-#    Source file  =  D:\S2Prog\IO\AN-ZBHART\Src\hart.c
+#    Source file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Src\hart.c
 #    Command line =  
-#        -f C:\Users\ESY\AppData\Local\Temp\EW801A.tmp
-#        (D:\S2Prog\IO\AN-ZBHART\Src\hart.c --cpu=m1280 -ms -o
-#        D:\S2Prog\IO\AN-ZBHART\Release\Obj -D OS_LIBMODE_R -D OS_UART=-1 -lCN
-#        D:\S2Prog\IO\AN-ZBHART\Release\List -y --initializers_in_flash
-#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\AN-ZBHART\INC\\ -I
+#        -f C:\Users\ESY\AppData\Local\Temp\EWBD1A.tmp ("C:\Users\ESY\OneDrive
+#        - Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Src\hart.c" --cpu=m1280
+#        -ms -o "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Release\Obj" -D
+#        OS_LIBMODE_R -D OS_UART=-1 -lCN "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Release\List" -y
+#        --initializers_in_flash -DENABLE_BIT_DEFINITIONS -e -I
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\INC\\" -I
 #        ..\..\..\Shared\Inc\\ --eeprom_size 4096 --clib -Ohs)
-#    Locale       =  Norwegian Bokmål_NOR.1252
-#    List file    =  D:\S2Prog\IO\AN-ZBHART\Release\List\hart.lst
-#    Object file  =  D:\S2Prog\IO\AN-ZBHART\Release\Obj\hart.r90
+#    Locale       =  English_USA.1252
+#    List file    =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Release\List\hart.lst
+#    Object file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Release\Obj\hart.r90
 #
 ###############################################################################
 
-D:\S2Prog\IO\AN-ZBHART\Src\hart.c
+C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\AN-ZBHART\Src\hart.c
       1          #include <stdio.h>
       2          #include "iom1280.h"
 
@@ -1669,7 +1679,7 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
    \   00000056   E109               LDI     R16, 25
    \   00000058   2E40               MOV     R4, R16
     646                  }
-    647              }while ( (SyncCnt < 20) && !RxTimeOut && (RxByte == 0xff) );
+    647              }while ( (SyncCnt < HART_PREAMBLE_MAX_LENGTH) && !RxTimeOut && (RxByte == HART_PREAMBLE) );
    \                     ??ReceiveReply_1:
    \   0000005A   3184               CPI     R24, 20
    \   0000005C   0596               CPC     R25, R6
@@ -1681,14 +1691,14 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
    \   00000068   F421               BRNE    ??ReceiveReply_3
    \   0000006A   CFEA               RJMP    ??ReceiveReply_0
     648          
-    649              if ( !RxTimeOut && (SyncCnt >= 4) &&  (SyncCnt < 20) ) {
+    649              if ( !RxTimeOut && (SyncCnt >= HART_PREAMBLE_MIN_LENGTH ) &&  (SyncCnt < HART_PREAMBLE_MAX_LENGTH) ) {
    \                     ??ReceiveReply_2:
    \   0000006C   2311               TST     R17
    \   0000006E   F009               BREQ    $+2+2
    \   00000070   C0D7               RJMP    ??ReceiveReply_4
    \                     ??ReceiveReply_3:
-   \   00000072   9704               SBIW    R25:R24, 4
-   \   00000074   9740               SBIW    R25:R24, 16
+   \   00000072   9705               SBIW    R25:R24, 5
+   \   00000074   970F               SBIW    R25:R24, 15
    \   00000076   F008               BRCS    $+2+2
    \   00000078   C0D3               RJMP    ??ReceiveReply_4
     650                  *BufPtr = RxByte;
@@ -1948,11 +1958,11 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
     701                                  }
     702                                  char Cnt = 0;
    \                     ??ReceiveReply_15:
-   \   00000206   E383               LDI     R24, 51
+   \   00000206   EF8E               LDI     R24, 254
     703                                  do {
     704                                      char RxByte;
     705                                      RxTimeOut = OS_GetMailTimed(&task->RxMailBox, &RxByte, TimeOut);
-    706                                  }while ( !RxTimeOut && Cnt++ < 50 );
+    706                                  }while ( !RxTimeOut && Cnt++ < HART_MAX_DATA_LENGTH );
    \                     ??ReceiveReply_16:
    \   00000208   01A2               MOVW    R21:R20, R5:R4
    \   0000020A   019E               MOVW    R19:R18, R29:R28
@@ -2546,7 +2556,7 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
    \   00000022   E050               LDI     R21, 0
    \   00000024   ........           CALL    ?ML_FLASH_SRAM_24EC_16_L07
     819              char ModemNo            = (char)pVoid;
-    820              OS_TASK *taskPtr        = OS_GetpCurrentTask();
+    820              //OS_TASK *taskPtr        = OS_GetpCurrentTask();
     821              //HartTaskStruct *myTask  = container_of(taskPtr, HartTaskStruct, tcb);
     822              HartTaskStruct *myTask  = HartTasks[ModemNo];
    \   00000028   01FE               MOVW    R31:R30, R29:R28
@@ -2823,7 +2833,7 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
     882              //OS_CreateTask(&_hart_task0.tcb, "HART0", HART_TASK_PRIORITY,HART_Task,_hart_task0.Mystack,sizeof(_hart_task0.Mystack),0);
     883              //OS_CreateTask(&_hart_task1.tcb, "HART1", HART_TASK_PRIORITY,HART_Task,_hart_task1.Mystack,sizeof(_hart_task1.Mystack),0);
     884              //OS_CreateTask(&_hart_task2.tcb, "HART2", HART_TASK_PRIORITY,HART_Task,_hart_task2.Mystack,sizeof(_hart_task2.Mystack),0);
-    885              OS_CREATETASK_EX(&_hart_task0.tcb, "HART0", HART_Task, HART_TASK_PRIORITY, _hart_task0.Mystack, (void *)0);
+    885              OS_CREATETASK_EX(&_hart_task0.tcb, "HART0", HART_Task, HART_TASK_PRIORITY+0, _hart_task0.Mystack, (void *)0);
    \   00000090   924A               ST      -Y, R4
    \   00000092   924A               ST      -Y, R4
    \   00000094   E002               LDI     R16, 2
@@ -2845,7 +2855,7 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
    \   000000B4   ....               LDI     R16, LOW((_hart_task0 + 511))
    \   000000B6   ....               LDI     R17, HIGH((_hart_task0 + 511))
    \   000000B8   ........           CALL    OS_CreateTaskEx_R
-    886              OS_CREATETASK_EX(&_hart_task1.tcb, "HART1", HART_Task, HART_TASK_PRIORITY, _hart_task1.Mystack, (void *)1);
+    886              OS_CREATETASK_EX(&_hart_task1.tcb, "HART1", HART_Task, HART_TASK_PRIORITY+1, _hart_task1.Mystack, (void *)1);
    \   000000BC   E001               LDI     R16, LOW(1)
    \   000000BE   924A               ST      -Y, R4
    \   000000C0   930A               ST      -Y, R16
@@ -2862,13 +2872,13 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
    \   000000D6   930A               ST      -Y, R16
    \   000000D8   ....               LDI     R22, LOW(HART_Task/2)
    \   000000DA   ....               LDI     R23, (HART_Task/2) >> 8
-   \   000000DC   E748               LDI     R20, 120
+   \   000000DC   E749               LDI     R20, 121
    \   000000DE   ....               LDI     R18, LOW((`?<Constant "HART0">` + 6))
    \   000000E0   ....               LDI     R19, HIGH((`?<Constant "HART0">` + 6))
    \   000000E2   ....               LDI     R16, LOW((_hart_task0 + 1906))
    \   000000E4   ....               LDI     R17, HIGH((_hart_task0 + 1906))
    \   000000E6   ........           CALL    OS_CreateTaskEx_R
-    887              OS_CREATETASK_EX(&_hart_task2.tcb, "HART2", HART_Task, HART_TASK_PRIORITY, _hart_task2.Mystack, (void *)2);
+    887              OS_CREATETASK_EX(&_hart_task2.tcb, "HART2", HART_Task, HART_TASK_PRIORITY+2, _hart_task2.Mystack, (void *)2);
    \   000000EA   E002               LDI     R16, LOW(2)
    \   000000EC   924A               ST      -Y, R4
    \   000000EE   930A               ST      -Y, R16
@@ -2884,7 +2894,7 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
    \   00000102   930A               ST      -Y, R16
    \   00000104   ....               LDI     R22, LOW(HART_Task/2)
    \   00000106   ....               LDI     R23, (HART_Task/2) >> 8
-   \   00000108   E748               LDI     R20, 120
+   \   00000108   E74A               LDI     R20, 122
    \   0000010A   ....               LDI     R18, LOW((`?<Constant "HART0">` + 12))
    \   0000010C   ....               LDI     R19, HIGH((`?<Constant "HART0">` + 12))
    \   0000010E   ....               LDI     R16, LOW((_hart_task0 + 3301))
@@ -4051,4 +4061,4 @@ D:\S2Prog\IO\AN-ZBHART\Src\hart.c
  4 486 bytes of DATA memory (+ 18 bytes shared)
 
 Errors: none
-Warnings: 4
+Warnings: 3

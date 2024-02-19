@@ -1,9 +1,16 @@
 // ---------------------------------------------------------------------------
-
 #include <vcl.h>
-#include "ConstantsANWIN.h"
-#include "TSNIncludes.h"
-
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
+#include "ANWinInc.h"
 #include "GroupVoidSpaceUnit.h"
 #pragma hdrstop
 USEFORM("BarGraphFromVSGUnit.cpp", BarGraphFromVSGForm);

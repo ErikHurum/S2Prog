@@ -1,8 +1,10 @@
 //---------------------------------------------------------------------------
 
-//#include <System.hpp>
+#include <System.hpp>
 #include "ANWinInc.h"
 #pragma hdrstop
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 
 #include "DataLogThreadUnit.h"

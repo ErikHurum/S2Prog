@@ -9,10 +9,10 @@ inherited AlarmForm: TAlarmForm
   Font.Height = -13
   Font.Name = 'Arial'
   Scaled = False
+  StyleElements = [seFont, seClient, seBorder]
   OnShortCut = FormShortCut
   ExplicitWidth = 814
   ExplicitHeight = 467
-  PixelsPerInch = 96
   TextHeight = 16
   object AlarmStringGrid: TStringGrid [0]
     Left = 0
@@ -139,7 +139,7 @@ inherited AlarmForm: TAlarmForm
     OnTimer = RefreshStringTimer
   end
   object frxReportAlarmList: TfrxReport [9]
-    Version = '2022.1.3'
+    Version = '2024.1.0'
     DataSetName = 'frxUserDataSet1'
     DotMatrixReport = False
     IniFile = '\Software\Fast Reports'

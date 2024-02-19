@@ -6,11 +6,12 @@
 #include	"iom1280.h"
 #endif
 
-#ifdef __ATMEGA_1281__
+#ifdef __AVR_ATmega1281__
 #include	"iom1281.h"
 #endif
 #include "stdio.h"
 #include "math.h"
+#include "constants.h"
 #include "externals.h"
 #include "inavr.h"
 #include "string.h"
@@ -27,7 +28,6 @@ void InitSystem(void) {
     Init_IO();
     Init_TMR();
     Init_USART( SPEED) ;              // Init uarts
-    UnitID  = (PINB >> 2) & 0x03;          //get the unit ID
 }
 
 /*
@@ -76,7 +76,15 @@ __monitor void Init_Watchdog(void) {
 **===========================================================================
 */
 void Init_IO(void) {
-
+#if ANZBANA_V8 == 1
+    DDRA    =  0x00 ;      // Port A data direction, bit 0, 4-7 out
+    PORTA   =  0x3;
+    UnitID  = PINA & 0x03;       //get the unit ID
+#else
+    DDRB    =  0x00 ;      // Port B data direction, bit 0, 4-7 out
+//    PORTB   =  0xc;
+    UnitID  = (PINB >> 2)& 0x03;       //get the unit ID
+#endif
     DDRA   =  0x00;      // Port A data
     PORTA  =  0x00;      // Port A data
     DDRB   =  0x00;      // Port B data
@@ -99,42 +107,41 @@ void Init_IO(void) {
 **===========================================================================
 */
 void Init_TMR(void) {
-    /*--- Timer control (disable clock inputs) ---*/
+    switch (UnitID) {
+    case AN_ZB485:                  // AN-ZB485
+        // 128 -> 1281
+        // TIM0 and TIM2 are swapped in 1281.
+        // Registers are completely changed.
+        // TCCR0   =  0x99 ;      // Timer control register 0
+        // OCR0    =  3;         // Timer output compare register 0, 2MHZ //16MHz xtal
+        //
+        // TCCR2A : 0 1 0 0 - - 1 0
+        // TCCR2B : 1 0 - - 0 0 0 1
+        //
+        // COM2A1 COM2A0 : 0 1
+        // COM2B1 COM2B0 : 0 0
+        // WGM21 WGM20   : 1 0
+        // FOC2A : 1, FOR2B : 0, WGM22 : 0, CS2/1/0 : 0 0 1
+        //
+        // COM2A : Toggle
+        // WGM : CTC
+        // Clock Scale: 1
 
-    //TCCR0A  =  0x99;             // Timer control register 0
-    //OCR0A    =  7;               // Timer output compare register 0, 1MHZ //16MHz xtal
-    //
-    // to provide ADC with 1 Mhz clock, OC3A (PE3) is connected to ADC clock
-    //
-    // we will use TC3 to generate 1 Mhz clock by setting
-    //
-    // 1) TCCR3A    : 01000000   = 0x40
-    //    a) Bit 7:6,     COM3A1/COM3A0   :   01  - Toggle OC3A(PE3) on compare match
-    //    b) Bit 5:2,     don't care. all zero
-    //    c) Bit 1:0,     WGM31/WGM30     :   00 for CTC mode
-    //
-    // 2) TCCR3B    : 00001001 = 0x09
-    //    a) Bit 7,       noise canceler. don't care. 0
-    //    b) Bit 6,       edge select for input. don't care. 0
-    //    c) Bit 5,       reserved, 0
-    //    d) Bit 4:3,     WGM33/WGM32     : 01 for CTC mode with OCR3A as TOP
-    //    e) Bit 2:0,     CS32/CS31/CS30  : Clock Select, 001 : 16 Mhz with no divider
-    //
-    // 3) OCR3A     : 7, compare match at 8 tick at 16 Mhz will generate 1 MHz Clock
-    //
-    //
-    TCCR3A    = 0x40;
-    TCCR3B    = 0x09;
-    OCR3A     = 7;
-
-    TCCR0A  = (1 << WGM01) | (0 << WGM00) |                /* CTC mode.        */
-        (0 << COM0A1) | (0 << COM0A0) |              /* OC0A disabled.   */
-        (0 << COM0B1) | (0 << COM0B0);               /* OC0B disabled.   */
-    TCCR0B  = (0 << WGM02) | (1 << CS01) | (1 << CS00);    /* CTC mode., 64 prescale  */
-    OCR0A   = TIMER_TICK_COUNT_FOR_1MS - 1;
-    TCNT0   = 0;                                           /* Reset counter.   */
-    TIFR0   = (1 << OCF0A);                                /* Reset pending.   */
-    TIMSK0  = (1 << OCIE0A);                               /* IRQ on compare.  */
+        TCCR2A = 0x42;
+        TCCR2B = 0x81;
+        OCR2A = 3;
+        break;
+    case AN_ZBANA:                  // AN-ZBANA
+        // 128 -> 1281
+        // TCCR0   =  0x99 ;      // Timer control register 0
+        // OCR0    =  7 ;         // Timer output compare register 0, 1MHZ //16MHz xtal
+        TCCR2A = 0x42;
+        TCCR2B = 0x81;
+        OCR2A = 7;
+        break;
+    default:
+        break;
+    }
 
 
 }

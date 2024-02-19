@@ -1,27 +1,38 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       17/Mar/2023  14:41:04
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       13/Feb/2024  15:22:08
 # Copyright 1996-2022 IAR Systems AB.
-# Mobile license - IAR Embedded Workbench for Microchip AVR 7.30
+# Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
-#    Source file  =  D:\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c
+#    Source file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c
 #    Command line =  
-#        -f C:\Users\ESY\AppData\Local\Temp\EWED19.tmp
-#        (D:\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c --cpu=m1281 -ms -o
-#        D:\S2Prog\IO\ANZB_Bootloader-1281\Debug\Obj -D SPEED=38400 -D PORT0 -D
-#        __ATMEGA_1281__ -lCN D:\S2Prog\IO\ANZB_Bootloader-1281\Debug\List -y
+#        -f C:\Users\ESY\AppData\Local\Temp\EW9DBC.tmp ("C:\Users\ESY\OneDrive
+#        - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c"
+#        --cpu=m1281 -ms -o "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Debug\Obj" -D
+#        SPEED=38400 -D __AVR_ATmega1281__ -D ANZBANA_V8=1 -lCN
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Debug\List" -y
 #        --initializers_in_flash --no_cse --no_inline --no_code_motion
 #        --no_cross_call --no_clustering --no_tbaa --debug
-#        -DENABLE_BIT_DEFINITIONS -e -I D:\S2Prog\IO\ANZB_Bootloader-1281\INC\\
-#        -I D:\S2Prog\IO\ANZB_Bootloader-1281\..\..\SHARED\INC\\ --eeprom_size
-#        4096 --clib -On)
-#    Locale       =  Norwegian Bokmål_NOR.1252
-#    List file    =  D:\S2Prog\IO\ANZB_Bootloader-1281\Debug\List\Misc.lst
-#    Object file  =  D:\S2Prog\IO\ANZB_Bootloader-1281\Debug\Obj\Misc.r90
+#        -DENABLE_BIT_DEFINITIONS -e -I "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\INC\\" -I
+#        "C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\..\..\SHARED\INC\\"
+#        --eeprom_size 4096 --clib -On)
+#    Locale       =  English_USA.1252
+#    List file    =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Debug\List\Misc.lst
+#    Object file  =  
+#        C:\Users\ESY\OneDrive -
+#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Debug\Obj\Misc.r90
 #
 ###############################################################################
 
-D:\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c
+C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c
       1          /****************************************************************************************
       2          /  Misc. routines
       3          /
@@ -30,12 +41,32 @@ D:\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c
       6          #include	"iom1280.h"
       7          #endif
       8          
-      9          #ifdef __ATMEGA_1281__
+      9          #ifdef __AVR_ATmega1281__
      10          #include	"iom1281.h"
 
-   \                                 In  segment ABSOLUTE, at 0x2c
-   \   union <unnamed> volatile __io _A_PINE
-   \                     _A_PINE:
+   \                                 In  segment ABSOLUTE, at 0x60
+   \   union <unnamed> volatile __io _A_WDTCSR
+   \                     _A_WDTCSR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x41
+   \   union <unnamed> volatile __io _A_EEAR
+   \                     _A_EEAR:
+   \   00000000                      DS8 2
+
+   \                                 In  segment ABSOLUTE, at 0x40
+   \   union <unnamed> volatile __io _A_EEDR
+   \                     _A_EEDR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x3f
+   \   union <unnamed> volatile __io _A_EECR
+   \                     _A_EECR:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x29
+   \   union <unnamed> volatile __io _A_PIND
+   \                     _A_PIND:
    \   00000000                      DS8 1
      11          #endif
      12          #include "stdio.h"
@@ -44,48 +75,143 @@ D:\S2Prog\IO\ANZB_Bootloader-1281\Src\Misc.c
      15          #include "inavr.h"
      16          #include "string.h"
      17          
-     18          
-     19          /*************************************************************************
-     20          *
-     21          *  Get my address
-     22          *
-     23          *************************************************************************/
 
    \                                 In  segment CODE, align 2, keep-with-next
-     24          char MyAddress(void) {
+     18          void WDT_Prescaler_Change(void)
+   \                     WDT_Prescaler_Change:
+     19          {
+     20              __disable_interrupt();
+   \   00000000   94F8               CLI
+     21              __watchdog_reset();
+   \   00000002   95A8               WDR
+     22              /* Start timed equence */
+     23              WDTCSR |= (1<<WDCE) | (1<<WDE);
+   \   00000004   9100....           LDS     R16, _A_WDTCSR
+   \   00000008   6108               ORI     R16, 0x18
+   \   0000000A   9300....           STS     _A_WDTCSR, R16
+     24              /* Set new prescaler(time-out) value = 64K cycles (~0.5 s) */
+     25              //WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP0);
+     26              /* Set new prescaler(time-out) value = 256K cycles (~2.0 s) */
+     27             // WDTCSR = (1<<WDE) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+     28              /* Set new prescaler(time-out) value = 256K cycles (~2.0 s) */
+     29              WDTCSR = (1<<WDE) | (1<<WDP3)| (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+   \   0000000E   E20F               LDI     R16, 47
+   \   00000010   9300....           STS     _A_WDTCSR, R16
+     30          
+     31          
+     32          __enable_interrupt();
+   \   00000014   9478               SEI
+     33          }
+   \   00000016   9508               RET
+   \   00000018                      REQUIRE _A_WDTCSR
+     34          
+     35          // ***************************************************************
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     36          void EEPROM_writeByte(unsigned int uiAddress, unsigned char ucData)
+   \                     EEPROM_writeByte:
+     37          {
+     38            // Wait for completion of previous write 
+     39            while(EECR & (1<< EEPE));
+   \                     ??EEPROM_writeByte_0:
+   \   00000000   99F9               SBIC    0x1F, 0x01
+   \   00000002   CFFE               RJMP    ??EEPROM_writeByte_0
+     40            // Set up address and Data Registers 
+     41            EEAR = uiAddress;
+   \   00000004   BD12               OUT     0x22, R17
+   \   00000006   BD01               OUT     0x21, R16
+     42            EEDR = ucData;
+   \   00000008   BD20               OUT     0x20, R18
+     43            //  Write logical one to EEMPE (master write enable)
+     44            EECR |= (1<< EEMPE);
+   \   0000000A   9AFA               SBI     0x1F, 0x02
+     45            //  Start eeprom write by setting EEPE (write enable)
+     46            EECR |= (1<< EEPE);
+   \   0000000C   9AF9               SBI     0x1F, 0x01
+     47          }
+   \   0000000E   9508               RET
+   \   00000010                      REQUIRE _A_EECR
+   \   00000010                      REQUIRE _A_EEAR
+   \   00000010                      REQUIRE _A_EEDR
+     48          // ***************************************************************************************************
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     49          unsigned char EEPROM_readByte(unsigned int uiAddress)
+   \                     EEPROM_readByte:
+     50          {
+   \   00000000   0198               MOVW    R19:R18, R17:R16
+     51            // Wait for completion of previous write */
+     52            while(EECR & (1<< EEPE));
+   \                     ??EEPROM_readByte_0:
+   \   00000002   99F9               SBIC    0x1F, 0x01
+   \   00000004   CFFE               RJMP    ??EEPROM_readByte_0
+     53            // Set up address register */
+     54            EEAR = uiAddress;
+   \   00000006   BD32               OUT     0x22, R19
+   \   00000008   BD21               OUT     0x21, R18
+     55            // Start eeprom read by writing EERE */
+     56            EECR |= (1<< EERE);
+   \   0000000A   9AF8               SBI     0x1F, 0x00
+     57            // Return data from Data Register */
+     58            return EEDR;
+   \   0000000C   B500               IN      R16, 0x20
+   \   0000000E   9508               RET
+   \   00000010                      REQUIRE _A_EECR
+   \   00000010                      REQUIRE _A_EEAR
+   \   00000010                      REQUIRE _A_EEDR
+     59          }
+     60          
+     61          /*************************************************************************
+     62          *
+     63          *  Get my address
+     64          *
+     65          *************************************************************************/
+
+   \                                 In  segment CODE, align 2, keep-with-next
+     66          char MyAddress(void) {
    \                     MyAddress:
-     25              //return 0;
-     26              char Address = (~(PINE>>4) & 0x0f) ;
-   \   00000000   B10C               IN      R16, 0x0C
+     67              //return 0;
+     68              char Address = (~(PIND>>4) & 0x0f) ;
+   \   00000000   B109               IN      R16, 0x09
    \   00000002   9502               SWAP    R16
    \   00000004   700F               ANDI    R16, 0x0F
    \   00000006   9500               COM     R16
    \   00000008   700F               ANDI    R16, 0x0F
-     27              return Address;
+     69              return Address;
    \   0000000A   9508               RET
-   \   0000000C                      REQUIRE _A_PINE
-     28          }
+   \   0000000C                      REQUIRE _A_PIND
+     70          }
 
    Maximum stack usage in bytes:
 
    RSTACK Function
    ------ --------
+      2   EEPROM_readByte
+      2   EEPROM_writeByte
       2   MyAddress
+      2   WDT_Prescaler_Change
 
 
    Segment part sizes:
 
    Bytes  Function/Label
    -----  --------------
+      16  EEPROM_readByte
+      16  EEPROM_writeByte
       12  MyAddress
-       1  _A_PINE
+      24  WDT_Prescaler_Change
+       2  _A_EEAR
+       1  _A_EECR
+       1  _A_EEDR
+       1  _A_PIND
+       1  _A_WDTCSR
 
  
-  1 byte  in segment ABSOLUTE
- 12 bytes in segment CODE
+  6 bytes in segment ABSOLUTE
+ 68 bytes in segment CODE
  
- 12 bytes of CODE memory
-  0 bytes of DATA memory (+ 1 byte shared)
+ 68 bytes of CODE memory
+  0 bytes of DATA memory (+ 6 bytes shared)
 
 Errors: none
 Warnings: none

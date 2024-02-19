@@ -3,7 +3,9 @@
     #include "LiteCall.hpp"
     #include "LiteAccess.hpp"
     #pragma hdrstop
-    #include "MainUnit.h"
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
+	#include "MainUnit.h"
 #endif
 #ifdef BORLAND
     #pragma package(smart_init)
@@ -934,7 +936,7 @@ int AlarmBasic::ReceiveData(U8 *data) {
 
 // This function is typically called from AddAlarm, RemoveAlarm and MoveAlarmToAcknovledge (on Master)
 // every time alarmstate changes. In addition it is also called from cyclic alarmupdate routine.
-#ifndef BORLAND
+#ifdef S2TXU
     #pragma diag_suppress=Pa082
 #endif
 int AlarmBasic::SendData(U16 cmd) {

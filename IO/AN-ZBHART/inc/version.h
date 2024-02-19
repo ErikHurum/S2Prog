@@ -6,7 +6,7 @@
  **
  ***************************************************************************/
 
-#define PROG_VERSION     15            // version of the program
+#define PROG_VERSION     16            // version of the program
 #define COMP_VERSION     2            // compability with the PC on structs and com.
 #define STORE_VERSION    3            // Store format in the EEPROM
 
@@ -15,7 +15,11 @@
 
   Program:
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
- V 14   Release 14.Feb.2023
+ V 16   Release 29.January.2024 EHS
+    - Watchdog corrected. Now WD is enabled via fuses
+ V 15   Release 3.October.2023 EHS
+    - Watchdog corrected. Now WD is enabled via fuses
+ V 14   Release 14.Feb.2023 EHS
     - Verify bootloader and firmware update
  V 13          
     - Corrected GotoBootloader

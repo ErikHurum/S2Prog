@@ -710,7 +710,7 @@ int PRODraft::PutValue(int ValueId, int Index, AnsiString NewValue, bool Local, 
     case SVT_ZEROSET_LEVEL:
         if (!LevelPressures.empty()) {
             AnsiString TmpString = ZeroSetDraftSensors(Local);
-#ifndef BORLAND
+#ifdef S2TXU
             if (Local && TmpString.Length()) {
                 AnsiString Text1("Zero set warnings:");
                 DisplayMessage(Text1, TmpString);

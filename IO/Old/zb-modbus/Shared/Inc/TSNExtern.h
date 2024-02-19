@@ -27,8 +27,8 @@ extern void SuspendIO(int TimeOut);
 //
 //////////////////////////////////////////////////////
 
-extern char ProgramDataANZB485[];
-extern int ProgramDataANZB485Size;
+extern char ProgramDataANZB_128[];
+extern int ProgramDataANZB_128_Size;
 
 //////////////////////////////////////////////////////
 //

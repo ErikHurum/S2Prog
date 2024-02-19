@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------
 #ifndef ANWinIncH
 #define ANWinIncH
+#undef _HAS_STD_BYTE
 #include "ConstantsANWIN.h"
 #include "TSNIncludes.h"
 #ifdef ANWIN

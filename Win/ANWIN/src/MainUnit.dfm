@@ -977,8 +977,8 @@ object MainForm: TMainForm
       object AlarmLabel: TLabel
         Left = 1
         Top = 1
-        Width = 49
-        Height = 21
+        Width = 262
+        Height = 31
         Align = alClient
         Alignment = taCenter
         Caption = 'Alarms'
@@ -994,6 +994,8 @@ object MainForm: TMainForm
         Layout = tlCenter
         StyleElements = [seFont, seBorder]
         OnClick = AlarmPanelClick
+        ExplicitWidth = 49
+        ExplicitHeight = 21
       end
     end
     object TrimPanel: TPanel
@@ -1140,8 +1142,8 @@ object MainForm: TMainForm
       object DraftValue: TLabel
         Left = 41
         Top = 1
-        Width = 17
-        Height = 16
+        Width = 42
+        Height = 31
         Align = alClient
         Alignment = taCenter
         Caption = '0.0'
@@ -1153,6 +1155,8 @@ object MainForm: TMainForm
         ParentFont = False
         Layout = tlCenter
         OnClick = DraftPanelClick
+        ExplicitWidth = 17
+        ExplicitHeight = 16
       end
       object DraftUnit: TLabel
         Left = 83
@@ -1217,8 +1221,8 @@ object MainForm: TMainForm
       object SystemOKLabel: TLabel
         Left = 1
         Top = 1
-        Width = 76
-        Height = 21
+        Width = 182
+        Height = 31
         Align = alClient
         Alignment = taCenter
         Caption = 'System OK'
@@ -1234,6 +1238,8 @@ object MainForm: TMainForm
         Layout = tlCenter
         StyleElements = [seFont, seBorder]
         OnClick = SystemPanelClick
+        ExplicitWidth = 76
+        ExplicitHeight = 21
       end
     end
     object OpModePanel: TPanel

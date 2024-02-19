@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       05/Jan/2024  14:33:20
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       15/Feb/2024  16:44:03
 # Copyright 1996-2022 IAR Systems AB.
 # Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
@@ -8,12 +8,12 @@
 #        C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\init.c
 #    Command line =  
-#        -f C:\Users\ESY\AppData\Local\Temp\EW57B.tmp ("C:\Users\ESY\OneDrive -
-#        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\init.c"
+#        -f C:\Users\ESY\AppData\Local\Temp\EW4B5A.tmp ("C:\Users\ESY\OneDrive
+#        - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\init.c"
 #        --cpu=m1281 -ms -o "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Debug\Obj" -D
 #        OS_LIBMODE_D -D OS_UART=-1 -D USE_16552_DRIVER_TASK=1 -D
-#        USE_1281_RX_INT_TASK=1 -D USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=0 -D
+#        USE_1281_RX_INT_TASK=1 -D USE_MODBUS_PROTOCOL=0 -D ANZBANA_V8=1 -D
 #        __ATMEGA_1281__ -lCN "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Debug\List" -y
 #        --no_cse --no_inline --no_code_motion --no_cross_call --no_clustering
@@ -220,11 +220,6 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \                     _A_DDRB:
    \   00000000                      DS8 1
 
-   \                                 In  segment ABSOLUTE, at 0x23
-   \   union <unnamed> volatile __io _A_PINB
-   \                     _A_PINB:
-   \   00000000                      DS8 1
-
    \                                 In  segment ABSOLUTE, at 0x22
    \   union <unnamed> volatile __io _A_PORTA
    \                     _A_PORTA:
@@ -233,6 +228,11 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \                                 In  segment ABSOLUTE, at 0x21
    \   union <unnamed> volatile __io _A_DDRA
    \                     _A_DDRA:
+   \   00000000                      DS8 1
+
+   \                                 In  segment ABSOLUTE, at 0x20
+   \   union <unnamed> volatile __io _A_PINA
+   \                     _A_PINA:
    \   00000000                      DS8 1
      11          #endif
      12          #include "stdio.h"
@@ -253,19 +253,19 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \                     InitSystem:
      25          #if ANZBANA_V8 == 1
      26              DDRA    =  0x00 ;      // Port B data direction, bit 0, 4-7 out
-     27              PORTA   =  0x3;
-     28              UnitID  = PINA & 0x03;       //get the unit ID
-     29          #else
-     30              DDRB    =  0x00 ;      // Port B data direction, bit 0, 4-7 out
    \   00000000   E000               LDI     R16, 0
-   \   00000002   B904               OUT     0x04, R16
-     31          //    PORTB   =  0xc;
-     32              UnitID  = (PINB >> 2)& 0x03;       //get the unit ID
-   \   00000004   B103               IN      R16, 0x03
-   \   00000006   9506               LSR     R16
-   \   00000008   9506               LSR     R16
+   \   00000002   B901               OUT     0x01, R16
+     27              PORTA   =  0x3;
+   \   00000004   E003               LDI     R16, 3
+   \   00000006   B902               OUT     0x02, R16
+     28              UnitID  = PINA & 0x03;       //get the unit ID
+   \   00000008   B100               IN      R16, 0x00
    \   0000000A   7003               ANDI    R16, 0x03
    \   0000000C   9300....           STS     UnitID, R16
+     29          #else
+     30              DDRB    =  0x00 ;      // Port B data direction, bit 0, 4-7 out
+     31          //    PORTB   =  0xc;
+     32              UnitID  = (PINB >> 2)& 0x03;       //get the unit ID
      33          #endif
      34          #if (OS_UART == 0)
      35              UnitID = 0x00; //AStmark  for test
@@ -290,8 +290,9 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000020   9300007A           STS     122, R16
      47          }
    \   00000024   9508               RET
-   \   00000026                      REQUIRE _A_DDRB
-   \   00000026                      REQUIRE _A_PINB
+   \   00000026                      REQUIRE _A_DDRA
+   \   00000026                      REQUIRE _A_PORTA
+   \   00000026                      REQUIRE _A_PINA
    \   00000026                      REQUIRE _A_ADCSRA
      48          
      49          /*
@@ -523,85 +524,86 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
     159              case AN_ZBANA:                  // AN-ZBANA
     160          #if ANZBANA_V8 == 1
     161                  DDRA   =  0x00 ;      // Port A data direction in ID0, ID1
-    162                  PORTA  =  0x03 ;      // Port A data
-    163                  DDRB   =  0xF7 ;      // Port B data direction, bit 2 in, bit 0-1 and 3-7 out
-    164                  PORTB  =  0x08 ;      // Port B data  Pin 3 pull-up 
-    165                  DDRC   =  0xFF ;      // Port C data direction, all out
-    166                  PORTC  =  0x00 ;      // Port C data
-    167                  DDRD   =  0x02 ;      // Port D data direction, all in except output to ADC CLC
-    168                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD and ADC CLC
-    169                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
-    170                  PORTE  =  0x00 ;      // Port E data 
-    171                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
-    172                  PORTF  =  0x00 ;      // Port F data 
-    173                  DDRG   =  0x08 ;      // Port G data direction, bit 3 out
-    174                  PORTG  =  0x30 ;      // Port G data pullup PG4, PG5 
-    175                  SPI_Init();
-    176          #else
-    177                  DDRA   =  0x00 ;      // Port A data direction in (not used)
    \                     ??Init_IO_1:
    \   00000048   E000               LDI     R16, 0
    \   0000004A   B901               OUT     0x01, R16
-    178                  PORTA  =  0x00 ;      // Port A data
-   \   0000004C   E000               LDI     R16, 0
+    162                  PORTA  =  0x03 ;      // Port A data
+   \   0000004C   E003               LDI     R16, 3
    \   0000004E   B902               OUT     0x02, R16
-    179                  DDRB   =  0xF1 ;      // Port B data direction, bit 0, 4-7 out
-   \   00000050   EF01               LDI     R16, 241
+    163                  DDRB   =  0xF7 ;      // Port B data direction, bit 2 in, bit 0-1 and 3-7 out
+   \   00000050   EF07               LDI     R16, 247
    \   00000052   B904               OUT     0x04, R16
-    180                  PORTB  =  0x00 ;      // Port B data   
-   \   00000054   E000               LDI     R16, 0
+    164                  PORTB  =  0x08 ;      // Port B data  Pin 3 pull-up 
+   \   00000054   E008               LDI     R16, 8
    \   00000056   B905               OUT     0x05, R16
-    181                  DDRC   =  0xFF ;      // Port C data direction, all out
+    165                  DDRC   =  0xFF ;      // Port C data direction, all out
    \   00000058   EF0F               LDI     R16, 255
    \   0000005A   B907               OUT     0x07, R16
-    182                  PORTC  =  0x00 ;      // Port C data
+    166                  PORTC  =  0x00 ;      // Port C data
    \   0000005C   E000               LDI     R16, 0
    \   0000005E   B908               OUT     0x08, R16
-    183                  DDRD   =  0x02 ;      // Port D data direction, all in except output to osc and txd
+    167                  DDRD   =  0x02 ;      // Port D data direction, all in except output to ADC CLC
    \   00000060   E002               LDI     R16, 2
    \   00000062   B90A               OUT     0x0A, R16
-    184                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD
+    168                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD and ADC CLC
    \   00000064   EF01               LDI     R16, 241
    \   00000066   B90B               OUT     0x0B, R16
-    185                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
+    169                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
    \   00000068   EF0E               LDI     R16, 254
    \   0000006A   B90D               OUT     0x0D, R16
-    186                  PORTE  =  0x00 ;      // Port E data 
+    170                  PORTE  =  0x00 ;      // Port E data 
    \   0000006C   E000               LDI     R16, 0
    \   0000006E   B90E               OUT     0x0E, R16
-    187                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
+    171                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
    \   00000070   E000               LDI     R16, 0
    \   00000072   BB00               OUT     0x10, R16
-    188                  PORTF  =  0x00 ;      // Port F data 
+    172                  PORTF  =  0x00 ;      // Port F data 
    \   00000074   E000               LDI     R16, 0
    \   00000076   BB01               OUT     0x11, R16
-    189                  DDRG   =  0x10 ;      // Port G data direction, bit 5 out
-   \   00000078   E100               LDI     R16, 16
+    173                  DDRG   =  0x08 ;      // Port G data direction, bit 3 out
+   \   00000078   E008               LDI     R16, 8
    \   0000007A   BB03               OUT     0x13, R16
-    190                  PORTG  =  0x00 ;      // Port G data 
-   \   0000007C   E000               LDI     R16, 0
+    174                  PORTG  =  0x30 ;      // Port G data pullup PG4, PG5 
+   \   0000007C   E300               LDI     R16, 48
    \   0000007E   BB04               OUT     0x14, R16
+    175                  SPI_Init();
+   \   00000080   ....               RCALL   SPI_Init
+    176          #else
+    177                  DDRA   =  0x00 ;      // Port A data direction in (not used)
+    178                  PORTA  =  0x00 ;      // Port A data
+    179                  DDRB   =  0xF1 ;      // Port B data direction, bit 0, 4-7 out
+    180                  PORTB  =  0x00 ;      // Port B data   
+    181                  DDRC   =  0xFF ;      // Port C data direction, all out
+    182                  PORTC  =  0x00 ;      // Port C data
+    183                  DDRD   =  0x02 ;      // Port D data direction, all in except output to osc and txd
+    184                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD
+    185                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
+    186                  PORTE  =  0x00 ;      // Port E data 
+    187                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
+    188                  PORTF  =  0x00 ;      // Port F data 
+    189                  DDRG   =  0x10 ;      // Port G data direction, bit 5 out
+    190                  PORTG  =  0x00 ;      // Port G data 
     191          #endif
     192                  break;
     193              default:
     194                  break;
     195              }    
     196          }
-   \   00000080   9508               RET
-   \   00000082                      REQUIRE _A_DDRA
-   \   00000082                      REQUIRE _A_PORTA
-   \   00000082                      REQUIRE _A_DDRB
-   \   00000082                      REQUIRE _A_PORTB
-   \   00000082                      REQUIRE _A_DDRC
-   \   00000082                      REQUIRE _A_PORTC
-   \   00000082                      REQUIRE _A_DDRD
-   \   00000082                      REQUIRE _A_PORTD
-   \   00000082                      REQUIRE _A_DDRE
-   \   00000082                      REQUIRE _A_PORTE
-   \   00000082                      REQUIRE _A_DDRF
-   \   00000082                      REQUIRE _A_PORTF
-   \   00000082                      REQUIRE _A_DDRG
-   \   00000082                      REQUIRE _A_PORTG
+   \   00000082   9508               RET
+   \   00000084                      REQUIRE _A_DDRA
+   \   00000084                      REQUIRE _A_PORTA
+   \   00000084                      REQUIRE _A_DDRB
+   \   00000084                      REQUIRE _A_PORTB
+   \   00000084                      REQUIRE _A_DDRC
+   \   00000084                      REQUIRE _A_PORTC
+   \   00000084                      REQUIRE _A_DDRD
+   \   00000084                      REQUIRE _A_PORTD
+   \   00000084                      REQUIRE _A_DDRE
+   \   00000084                      REQUIRE _A_PORTE
+   \   00000084                      REQUIRE _A_DDRF
+   \   00000084                      REQUIRE _A_PORTF
+   \   00000084                      REQUIRE _A_DDRG
+   \   00000084                      REQUIRE _A_PORTG
     197          
     198          /*
     199          **===========================================================================
@@ -1027,6 +1029,7 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
       0      2   Init_AD
       0      2   Init_CPU
       0      2   Init_IO
+        0      2   -> SPI_Init
       0      2   Init_TMR
       5      2   Init_USART
         5      2   -> OS_CreateMB
@@ -1046,7 +1049,7 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
       38  InitSystem
       52  Init_AD
      102  Init_CPU
-     130  Init_IO
+     132  Init_IO
       54  Init_TMR
      460  Init_USART
        2  Init_Values
@@ -1067,7 +1070,7 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
        1  _A_MCUCR
        1  _A_MCUSR
        1  _A_OCR2A
-       1  _A_PINB
+       1  _A_PINA
        1  _A_PORTA
        1  _A_PORTB
        1  _A_PORTC
@@ -1093,9 +1096,9 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
 
  
   40 bytes in segment ABSOLUTE
- 868 bytes in segment CODE
+ 870 bytes in segment CODE
  
- 868 bytes of CODE memory
+ 870 bytes of CODE memory
    0 bytes of DATA memory (+ 40 bytes shared)
 
 Errors: none

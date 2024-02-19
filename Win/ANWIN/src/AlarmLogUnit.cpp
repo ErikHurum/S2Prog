@@ -2,6 +2,8 @@
 #include "ANWinInc.h"
 //#include "ProtocolInfoUnit.h"
 #pragma hdrstop
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #include "AlarmLogUnit.h"
 USEFORM("ProtocolInfoUnit.cpp", ProtocolInfoForm);

@@ -775,6 +775,14 @@ object HistoryForm: THistoryForm
         ControlLook.DropDownFooter.Font.Style = []
         ControlLook.DropDownFooter.Visible = True
         ControlLook.DropDownFooter.Buttons = <>
+        ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+        ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+        ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+        ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+        ControlLook.ToggleSwitch.CaptionFont.Height = -12
+        ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+        ControlLook.ToggleSwitch.CaptionFont.Style = []
+        ControlLook.ToggleSwitch.Shadow = False
         Filter = <>
         FilterDropDown.Font.Charset = DEFAULT_CHARSET
         FilterDropDown.Font.Color = clWindowText
@@ -851,7 +859,7 @@ object HistoryForm: THistoryForm
         SortSettings.HeaderColorTo = clWhite
         SortSettings.HeaderMirrorColor = clWhite
         SortSettings.HeaderMirrorColorTo = clWhite
-        Version = '2.5.1.19'
+        Version = '2.5.1.23'
         AutoCreateColumns = True
         AutoRemoveColumns = False
         Columns = <
@@ -1356,7 +1364,6 @@ object HistoryForm: THistoryForm
     Top = 448
   end
   object DataLogLiteQuery: TLiteQuery
-    Aggregates = <>
     Connection = MainForm.DataLogLiteConnection
     DataTypeMap = <
       item
@@ -1464,7 +1471,6 @@ object HistoryForm: THistoryForm
     Top = 464
   end
   object TankLiteTable: TLiteTable
-    Aggregates = <>
     Connection = MainForm.DataLogLiteConnection
     TableName = 'Tanks'
     Left = 44
@@ -1476,7 +1482,6 @@ object HistoryForm: THistoryForm
     Top = 520
   end
   object TankLiteQuery: TLiteQuery
-    Aggregates = <>
     Connection = MainForm.DataLogLiteConnection
     DataTypeMap = <
       item

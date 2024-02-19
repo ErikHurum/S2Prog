@@ -1,6 +1,5 @@
-//---------------------------------------------------------------------------
-
 #pragma hdrstop
+#include "TSNIncludes.h"
 
 #include "TankWashingMachineRunCollection.h"
 #include <algorithm>

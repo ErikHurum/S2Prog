@@ -4,9 +4,6 @@
 #define PRogramObjectBaseH
 
 #include "TSNIncludes.h"
-#ifdef ANWIn
-using namespace std;
-#endif
 
 class PRogramObjectBase;
 struct pair_struct {

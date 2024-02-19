@@ -9,13 +9,14 @@
 
 #include "TankWashingException.h"
 #include "SystemWarningUnit.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 
 USEFORM("SystemWarningUnit.cpp", SystemWarningForm);
 
-using namespace std;
 
 
 UnitOfWork::UnitOfWork()

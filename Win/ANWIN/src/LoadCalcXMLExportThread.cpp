@@ -2,6 +2,8 @@
 
 #include <vcl.h>
 #include "ANWinInc.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #pragma hdrstop
 

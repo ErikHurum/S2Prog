@@ -2,6 +2,8 @@
 
 #include <System.hpp>
 #pragma hdrstop
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 
 #include "ANPRO10ThreadUnit.h"

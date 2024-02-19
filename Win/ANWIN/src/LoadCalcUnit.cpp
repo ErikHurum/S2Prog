@@ -1,4 +1,14 @@
-#include <vcl.h>
+#include "windows.h"
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
 #include "ANWinInc.h"
 #pragma hdrstop
 #include <Registry.hpp>
@@ -1476,9 +1486,9 @@ void __fastcall TLoadcalcForm::PrintPage1(void)
 	MemoStr += "    Code                      Vol%  Weight   LCG    TCG    VCG    Free S.Mom\r\n";
 	AnsiString tmpStr;
 	tmpStr.sprintf("                            %-11s%-9s%-7s%-7s%-7s%-10s",
-		GetUnitName(PERCENT_UNIT), GetUnitName(WEIGHT_UNIT),
-		GetUnitName(LENGTH_UNIT), GetUnitName(LENGTH_UNIT),
-		GetUnitName(LENGTH_UNIT), GetUnitName(MOMENT_UNIT));
+		GetUnitName(PERCENT_UNIT).c_str(), GetUnitName(WEIGHT_UNIT).c_str(),
+		GetUnitName(LENGTH_UNIT).c_str(), GetUnitName(LENGTH_UNIT).c_str(),
+		GetUnitName(LENGTH_UNIT).c_str(), GetUnitName(MOMENT_UNIT).c_str());
 	MemoStr += tmpStr + "\r\n";
 	MemoStr += "    __________________________________________________________________________\r\n";
 
@@ -1565,8 +1575,8 @@ void __fastcall TLoadcalcForm::PrintPage1(void)
 	MemoStr += "    __________________________________________________________________________\r\n";
 	MemoStr += "    Code                          Weight   LCG    TCG    VCG\r\n";
 	tmpStr.sprintf("                                  %-12s%-7s%-7s%-7s",
-		GetUnitName(WEIGHT_UNIT), GetUnitName(LENGTH_UNIT),
-		GetUnitName(LENGTH_UNIT), GetUnitName(LENGTH_UNIT));
+		GetUnitName(WEIGHT_UNIT).c_str(), GetUnitName(LENGTH_UNIT).c_str(),
+		GetUnitName(LENGTH_UNIT).c_str(), GetUnitName(LENGTH_UNIT).c_str());
 	MemoStr +=tmpStr+"\r\n";
 	MemoStr += "    __________________________________________________________________________\r\n";
 	for (unsigned i = 0; i < LCLocationData::SolidsTable.size(); i++) {
@@ -1635,8 +1645,8 @@ void __fastcall TLoadcalcForm::PrintPage1(void)
 		MemoStr += "                                       moment    moment  moment\r\n";
 
 		tmpStr.sprintf("                             %-10s%-10s%-10s%-10s",
-			GetUnitName(WEIGHT_UNIT), GetUnitName(MOMENT_UNIT),
-			GetUnitName(MOMENT_UNIT), GetUnitName(MOMENT_UNIT));
+			GetUnitName(WEIGHT_UNIT).c_str(), GetUnitName(MOMENT_UNIT).c_str(),
+			GetUnitName(MOMENT_UNIT).c_str(), GetUnitName(MOMENT_UNIT).c_str());
 		MemoStr += tmpStr+"\r\n";
 		MemoStr += "    _______________________________________________________________\r\n";
 		RStr = "    Light ship weight.. :";
@@ -1689,10 +1699,10 @@ void __fastcall TLoadcalcForm::PrintPage2(void)
 		MemoStr += "    __________________________________________________________________________\r\n";
 
 		tmpStr.sprintf("            %-10s%    -8s%-7s%-7s%-8s%-7s%-7s",
-			GetUnitName(LENGTH_UNIT), GetUnitName(WEIGHT_UNIT),
-			GetUnitName(PERCENT_UNIT), GetUnitName(PERCENT_UNIT),
-			GetUnitName(MOMENT_UNIT), GetUnitName(PERCENT_UNIT),
-			GetUnitName(PERCENT_UNIT));
+			GetUnitName(LENGTH_UNIT).c_str(), GetUnitName(WEIGHT_UNIT).c_str(),
+			GetUnitName(PERCENT_UNIT).c_str(), GetUnitName(PERCENT_UNIT).c_str(),
+			GetUnitName(MOMENT_UNIT).c_str(), GetUnitName(PERCENT_UNIT).c_str(),
+			GetUnitName(PERCENT_UNIT).c_str());
 		MemoStr += tmpStr+"\r\n";
 		MemoStr += "    __________________________________________________________________________\r\n";
 		{

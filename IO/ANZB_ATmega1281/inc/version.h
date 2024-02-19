@@ -6,7 +6,7 @@
  **
  ***************************************************************************/
 
-#define PROG_VERSION    46            // version of the program
+#define PROG_VERSION    101            // version of the program
 #define COMP_VERSION     1            // compability with the PC on structs and com.
 #define STORE_VERSION    2            // Store format in the EEPROM
 
@@ -15,8 +15,9 @@
 
   Program:
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  V 46                       Released: 2 January 2024    EHS
+  V 101                       Released: 2 January 2024    EHS
      -  Changed task priorities to avoid round-robin scheduling
+     -  Changed version number sceme. Versions with Atmega1281 starts at V101
  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   V 45                       Released: 14 Desember 2023    EHS
      -  Now handling all UART Rx on task level instead of on interrupt

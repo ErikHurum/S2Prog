@@ -6,6 +6,7 @@ inherited ShipSystemInfoForm: TShipSystemInfoForm
   ClientWidth = 641
   Constraints.MinHeight = 400
   Constraints.MinWidth = 440
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitWidth = 657
   ExplicitHeight = 400
   TextHeight = 13
@@ -930,6 +931,14 @@ inherited ShipSystemInfoForm: TShipSystemInfoForm
         ControlLook.DropDownFooter.Font.Style = []
         ControlLook.DropDownFooter.Visible = True
         ControlLook.DropDownFooter.Buttons = <>
+        ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+        ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+        ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+        ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+        ControlLook.ToggleSwitch.CaptionFont.Height = -12
+        ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+        ControlLook.ToggleSwitch.CaptionFont.Style = []
+        ControlLook.ToggleSwitch.Shadow = False
         Filter = <>
         FilterDropDown.Font.Charset = DEFAULT_CHARSET
         FilterDropDown.Font.Color = clWindowText
@@ -1006,7 +1015,7 @@ inherited ShipSystemInfoForm: TShipSystemInfoForm
         SortSettings.HeaderColorTo = clWhite
         SortSettings.HeaderMirrorColor = clWhite
         SortSettings.HeaderMirrorColorTo = clWhite
-        Version = '2.5.1.17'
+        Version = '2.5.1.23'
         AutoCreateColumns = True
         AutoRemoveColumns = False
         Columns = <

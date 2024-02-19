@@ -1,6 +1,21 @@
 #include <vcl.h>
 #include "math.h"
 #pragma hdrstop
+#ifdef WIN32
+#include "windows.h"
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
+using namespace std;
+#endif
+
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "ChildUnit"
@@ -205,12 +220,10 @@ void __fastcall TBarGraphForm::FormCreate(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TBarGraphForm::Chart1AllowScroll(TChartAxis *Sender, double &AMin,
-		  double &AMax, bool &AllowScroll)
+
+void __fastcall TBarGraphForm::Chart1AllowScroll(TChartAxis *Sender, TAxisValue &AMin, TAxisValue &AMax, bool &AllowScroll)
 {
    AllowScroll = false;
 }
 //---------------------------------------------------------------------------
-
-
 

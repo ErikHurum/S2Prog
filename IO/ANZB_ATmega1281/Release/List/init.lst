@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       02/Jan/2024  12:42:51
+# IAR C/C++ Compiler V7.30.5.1680 for Microchip AVR       08/Feb/2024  10:48:55
 # Copyright 1996-2022 IAR Systems AB.
 # Mobile license - IAR Embedded Workbench for Microchip AVR 8.10
 #
@@ -8,7 +8,7 @@
 #        C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\init.c
 #    Command line =  
-#        -f C:\Users\ESY\AppData\Local\Temp\EWC75F.tmp ("C:\Users\ESY\OneDrive
+#        -f C:\Users\ESY\AppData\Local\Temp\EWA60E.tmp ("C:\Users\ESY\OneDrive
 #        - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\init.c"
 #        --cpu=m1281 -ms -o "C:\Users\ESY\OneDrive -
 #        Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Release\Obj" -D
@@ -377,13 +377,7 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \                     ??InitSystem_7:
    \   000000E8   9300....           STS     _A_OCR2A, R16
      40              Init_TMR() ;
-     41          #if USE_1281_RX_INT_TASK==0
-     42          #if (OS_UART != 0)
-     43              Init_USART(0, 38400) ;              // 
-     44          #endif
-     45              Init_USART(1, 38400) ;              //    
-     46          #endif
-     47              Init_AD();
+     41              Init_AD();
    \                     ??InitSystem_8:
    \   000000EC   ....               LDI     R30, LOW(ADInt)
    \   000000EE   ....               LDI     R31, (ADInt) >> 8
@@ -399,15 +393,15 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000102   9300....           STS     _A_ADMUX, R16
    \   00000106   E80F               LDI     R16, 143
    \   00000108   9300....           STS     _A_ADCSRA, R16
-     48              Init_Values();                      // init the values in the system
-     49          
-     50              // 128 -> 1281
-     51              // ADCSR |= 0x40 ;                     //start the AD convertion
-     52              ADCSRA |= 0x40 ;
+     42              Init_Values();                      // init the values in the system
+     43          
+     44              // 128 -> 1281
+     45              // ADCSR |= 0x40 ;                     //start the AD convertion
+     46              ADCSRA |= 0x40 ;
    \   0000010C   9100007A           LDS     R16, 122
    \   00000110   6400               ORI     R16, 0x40
    \   00000112   9300007A           STS     122, R16
-     53          }
+     47          }
    \   00000116   9508               RET
    \                     ??InitSystem_4:
    \   00000118   2311               TST     R17
@@ -448,102 +442,102 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000130                      REQUIRE _A_PORTF
    \   00000130                      REQUIRE _A_DDRG
    \   00000130                      REQUIRE _A_PORTG
-     54          
-     55          /*
-     56          **===========================================================================
-     57          ** Init the CPU related registers
-     58          **===========================================================================
-     59          */ 
+     48          
+     49          /*
+     50          **===========================================================================
+     51          ** Init the CPU related registers
+     52          **===========================================================================
+     53          */ 
 
    \                                 In  segment CODE, align 2, keep-with-next
-     60          void Init_CPU( void ) {
+     54          void Init_CPU( void ) {
    \                     Init_CPU:
-     61          
-     62              __disable_interrupt();
+     55          
+     56              __disable_interrupt();
    \   00000000   94F8               CLI
-     63          
-     64              /*--- Configure CPU and interrupts ---*/
-     65              switch (UnitID) {
+     57          
+     58              /*--- Configure CPU and interrupts ---*/
+     59              switch (UnitID) {
    \   00000002   9100....           LDS     R16, UnitID
    \   00000006   2300               TST     R16
    \   00000008   F019               BREQ    ??Init_CPU_0
    \   0000000A   950A               DEC     R16
    \   0000000C   F079               BREQ    ??Init_CPU_1
    \   0000000E   C01B               RJMP    ??Init_CPU_2
-     66              case AN_ZB485:                  // AN-ZB485 
-     67                  MCUCR = 0xc0 ;        // MCU control register  External Ram + wait state
+     60              case AN_ZB485:                  // AN-ZB485 
+     61                  MCUCR = 0xc0 ;        // MCU control register  External Ram + wait state
    \                     ??Init_CPU_0:
    \   00000010   EC00               LDI     R16, 192
    \   00000012   BF05               OUT     0x35, R16
-     68                  EIMSK = 0x00 ;        // External interrupt mask register, all off
+     62                  EIMSK = 0x00 ;        // External interrupt mask register, all off
    \   00000014   E000               LDI     R16, 0
    \   00000016   BB0D               OUT     0x1D, R16
-     69                  EICRA = 0xAf ;        // External interrupt control register, 0,1 raising, rest faling
+     63                  EICRA = 0xAf ;        // External interrupt control register, 0,1 raising, rest faling
    \   00000018   EA0F               LDI     R16, 175
    \   0000001A   9300....           STS     _A_EICRA, R16
-     70                  EICRB = 0xAA ;        // External interrupt control register 
+     64                  EICRB = 0xAA ;        // External interrupt control register 
    \   0000001E   EA0A               LDI     R16, 170
    \   00000020   9300....           STS     _A_EICRB, R16
-     71                  EIMSK = 0x03 ;        // External interrupt mask register, int 0 and 1 on 
+     65                  EIMSK = 0x03 ;        // External interrupt mask register, int 0 and 1 on 
    \   00000024   E003               LDI     R16, 3
    \   00000026   BB0D               OUT     0x1D, R16
-     72                  XMCRA = 0x80;         // maximum wait states
+     66                  XMCRA = 0x80;         // maximum wait states
    \   00000028   E800               LDI     R16, 128
    \   0000002A   C00B               RJMP    ??Init_CPU_3
-     73                  break;
-     74              case AN_ZBANA:                  // AN-ZBANA
-     75                  MCUCR = 0x00 ;        // MCU control register wait state
+     67                  break;
+     68              case AN_ZBANA:                  // AN-ZBANA
+     69                  MCUCR = 0x00 ;        // MCU control register wait state
    \                     ??Init_CPU_1:
    \   0000002C   E000               LDI     R16, 0
    \   0000002E   BF05               OUT     0x35, R16
-     76                  EIMSK = 0x00 ;        // External interrupt mask register , all off
+     70                  EIMSK = 0x00 ;        // External interrupt mask register , all off
    \   00000030   BB0D               OUT     0x1D, R16
-     77                  EICRA = 0xAA ;        // External interrupt control register, o on faling edge
+     71                  EICRA = 0xAA ;        // External interrupt control register, o on faling edge
    \   00000032   EA0A               LDI     R16, 170
    \   00000034   9300....           STS     _A_EICRA, R16
-     78                  EICRB = 0xAA ;        // External interrupt control register 
+     72                  EICRB = 0xAA ;        // External interrupt control register 
    \   00000038   9300....           STS     _A_EICRB, R16
-     79                  EIMSK = 0x01 ;        // External interrupt mask register, int 0 on
+     73                  EIMSK = 0x01 ;        // External interrupt mask register, int 0 on
    \   0000003C   E001               LDI     R16, 1
    \   0000003E   BB0D               OUT     0x1D, R16
-     80                  XMCRA = 0x00 ;        // maximum wait states
+     74                  XMCRA = 0x00 ;        // maximum wait states
    \   00000040   E000               LDI     R16, 0
    \                     ??Init_CPU_3:
    \   00000042   9300....           STS     _A_XMCRA, R16
-     81                  break;
-     82              }
-     83              // XMCRA = 0x00; // maximum wait states
-     84              XMCRB = 0x07 ;       // Full portC + bus keeper
+     75                  break;
+     76              }
+     77              // XMCRA = 0x00; // maximum wait states
+     78              XMCRB = 0x07 ;       // Full portC + bus keeper
    \                     ??Init_CPU_2:
    \   00000046   E007               LDI     R16, 7
    \   00000048   9300....           STS     _A_XMCRB, R16
-     85              //
-     86              // hkim
-     87              // are you fucking out of mind?
-     88              // why do you enable global interrupt here?
-     89              //
-     90              // SREG = 0x80;  // global interrupt
+     79              //
+     80              // hkim
+     81              // are you fucking out of mind?
+     82              // why do you enable global interrupt here?
+     83              //
+     84              // SREG = 0x80;  // global interrupt
+     85          
+     86              //
+     87              // 128 -> 1281
+     88              // No XDIV in 1281. CLKPR instead.
+     89              // Anyway No need to do this.
+     90              //XDIV  = 0x00 ;     // Init valuse used 0x00
      91          
-     92              //
-     93              // 128 -> 1281
-     94              // No XDIV in 1281. CLKPR instead.
-     95              // Anyway No need to do this.
-     96              //XDIV  = 0x00 ;     // Init valuse used 0x00
-     97          
-     98              // 128 -> 1281
-     99              // register name change
-    100              // RestartStatus = MCUCSR;       // Remember reset source
-    101              RestartStatus = MCUSR;
+     92              // 128 -> 1281
+     93              // register name change
+     94              // RestartStatus = MCUCSR;       // Remember reset source
+     95              RestartStatus = MCUSR;
    \   0000004C   B704               IN      R16, 0x34
    \   0000004E   9300....           STS     RestartStatus, R16
-    102              MCUSR = 0x00; // and reset
+     96              MCUSR = 0x00; // and reset
    \   00000052   E000               LDI     R16, 0
    \   00000054   BF04               OUT     0x34, R16
-    103              /*--- Initialize buffer ---*/
-    104              WriteCount = 0;
+     97              /*--- Initialize buffer ---*/
+     98              WriteCount = 0;
    \   00000056   9300....           STS     WriteCount, R16
-    105          
-    106          }
+     99          
+    100          }
    \   0000005A   9508               RET
    \   0000005C                      REQUIRE _A_MCUCR
    \   0000005C                      REQUIRE _A_EIMSK
@@ -552,188 +546,188 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   0000005C                      REQUIRE _A_XMCRA
    \   0000005C                      REQUIRE _A_XMCRB
    \   0000005C                      REQUIRE _A_MCUSR
-    107          
-    108          /*
-    109          **===========================================================================
-    110          ** Init the watchdog registers
-    111          **===========================================================================
-    112          */ 
+    101          
+    102          /*
+    103          **===========================================================================
+    104          ** Init the watchdog registers
+    105          **===========================================================================
+    106          */ 
 
    \                                 In  segment CODE, align 2, keep-with-next
-    113          __monitor void Init_Watchdog( void ) {
+    107          __monitor void Init_Watchdog( void ) {
    \                     Init_Watchdog:
    \   00000000   B71F               IN      R17, 0x3F
    \   00000002   94F8               CLI
-    114          
-    115              asm("WDR");                             // kick the dog!!
+    108          
+    109              asm("WDR");                             // kick the dog!!
    \   00000004   95A8               WDR
-    116              // 128 -> 1281
-    117              // WDTCR = 0x0f;
-    118              WDTCSR = 0x0f;
+    110              // 128 -> 1281
+    111              // WDTCR = 0x0f;
+    112              WDTCSR = 0x0f;
    \   00000006   E00F               LDI     R16, 15
    \   00000008   9300....           STS     _A_WDTCSR, R16
-    119              asm("WDR");                             // kick the dog!!
+    113              asm("WDR");                             // kick the dog!!
    \   0000000C   95A8               WDR
-    120          
-    121          }
+    114          
+    115          }
    \   0000000E   BF1F               OUT     0x3F, R17
    \   00000010   9508               RET
    \   00000012                      REQUIRE _A_WDTCSR
+    116          
+    117          /*
+    118          **===========================================================================
+    119          ** Init the IO related registers
+    120          **===========================================================================
+    121          */ 
     122          
-    123          /*
-    124          **===========================================================================
-    125          ** Init the IO related registers
-    126          **===========================================================================
-    127          */ 
-    128          
-    129          
+    123          
 
    \                                 In  segment CODE, align 2, keep-with-next
-    130          void SPI_Init()					/* SPI Initialize function */
+    124          void SPI_Init()					/* SPI Initialize function */
    \                     SPI_Init:
-    131          {
-    132          
-    133              // SPI initialization
-    134              // SPI Type: Master
-    135              // SPI Clock Rate: 125,000 kHz
-    136              // SPI Clock Phase: Cycle Half
-    137              // SPI Clock Polarity: High
-    138              // SPI Data Order: MSB First
-    139              //SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);	/* Enable SPI in master mode with Fosc/16 */
-    140              SPCR=(0<<SPIE) | (1<<SPE) | (0<<DORD) | (1<<MSTR) | (1<<CPOL) | (1<<CPHA) | (1<<SPR1) | (1<<SPR0);
+    125          {
+    126          
+    127              // SPI initialization
+    128              // SPI Type: Master
+    129              // SPI Clock Rate: 125,000 kHz
+    130              // SPI Clock Phase: Cycle Half
+    131              // SPI Clock Polarity: High
+    132              // SPI Data Order: MSB First
+    133              //SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);	/* Enable SPI in master mode with Fosc/16 */
+    134              SPCR=(0<<SPIE) | (1<<SPE) | (0<<DORD) | (1<<MSTR) | (1<<CPOL) | (1<<CPHA) | (1<<SPR1) | (1<<SPR0);
    \   00000000   E50F               LDI     R16, 95
    \   00000002   BD0C               OUT     0x2C, R16
-    141              //SPSR=(0<<SPI2X);
-    142              SPSR &= ~(1<<SPI2X);			/* Disable speed doubler */
+    135              //SPSR=(0<<SPI2X);
+    136              SPSR &= ~(1<<SPI2X);			/* Disable speed doubler */
    \   00000004   B50D               IN      R16, 0x2D
    \   00000006   7F0E               ANDI    R16, 0xFE
    \   00000008   BD0D               OUT     0x2D, R16
-    143          }
+    137          }
    \   0000000A   9508               RET
    \   0000000C                      REQUIRE _A_SPCR
    \   0000000C                      REQUIRE _A_SPSR
-    144          
+    138          
 
    \                                 In  segment CODE, align 2, keep-with-next
-    145          void Init_IO( void ) {
+    139          void Init_IO( void ) {
    \                     Init_IO:
-    146          
-    147              /*--- Initialize the data registers, output value and input pullup ---*/
-    148              switch (UnitID) {
+    140          
+    141              /*--- Initialize the data registers, output value and input pullup ---*/
+    142              switch (UnitID) {
    \   00000000   9100....           LDS     R16, UnitID
    \   00000004   2300               TST     R16
    \   00000006   F019               BREQ    ??Init_IO_0
    \   00000008   950A               DEC     R16
    \   0000000A   F0D9               BREQ    ??Init_IO_1
    \   0000000C   9508               RET
-    149              case AN_ZB485:                  // AN-ZB485  
-    150                  DDRA   =  0xff ;      // Port A data direction (out), external bus
+    143              case AN_ZB485:                  // AN-ZB485  
+    144                  DDRA   =  0xff ;      // Port A data direction (out), external bus
    \                     ??Init_IO_0:
    \   0000000E   EF0F               LDI     R16, 255
    \   00000010   B901               OUT     0x01, R16
-    151                  PORTA  =  0x00 ;      // Port A data
+    145                  PORTA  =  0x00 ;      // Port A data
    \   00000012   E000               LDI     R16, 0
    \   00000014   B902               OUT     0x02, R16
-    152                  DDRB   =  0x10 ;      // Port B data direction, bit 0, 4-7 out
+    146                  DDRB   =  0x10 ;      // Port B data direction, bit 0, 4-7 out
    \   00000016   E100               LDI     R16, 16
    \   00000018   B904               OUT     0x04, R16
-    153                  PORTB  =  0x00 ;      // Port B data   
+    147                  PORTB  =  0x00 ;      // Port B data   
    \   0000001A   E000               LDI     R16, 0
    \   0000001C   B905               OUT     0x05, R16
-    154                  DDRC   =  0xff ;      // Port C data direction, all out
+    148                  DDRC   =  0xff ;      // Port C data direction, all out
    \   0000001E   EF0F               LDI     R16, 255
    \   00000020   B907               OUT     0x07, R16
-    155                  PORTC  =  0x00 ;      // Port C data
+    149                  PORTC  =  0x00 ;      // Port C data
    \   00000022   E000               LDI     R16, 0
    \   00000024   B908               OUT     0x08, R16
-    156                  DDRD   =  0x00 ;      // Port D data direction, all in except output to osc and txd
+    150                  DDRD   =  0x00 ;      // Port D data direction, all in except output to osc and txd
    \   00000026   B90A               OUT     0x0A, R16
-    157                  PORTD  =  0xff ;      // Port D data pullup on int fro AD
+    151                  PORTD  =  0xff ;      // Port D data pullup on int fro AD
    \   00000028   EF0F               LDI     R16, 255
    \   0000002A   B90B               OUT     0x0B, R16
-    158                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
+    152                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
    \   0000002C   EF0E               LDI     R16, 254
    \   0000002E   B90D               OUT     0x0D, R16
-    159                  PORTE  =  0xf0 ;      // Port E data 
+    153                  PORTE  =  0xf0 ;      // Port E data 
    \   00000030   EF00               LDI     R16, 240
    \   00000032   B90E               OUT     0x0E, R16
-    160                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
+    154                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
    \   00000034   E000               LDI     R16, 0
    \   00000036   BB00               OUT     0x10, R16
-    161                  PORTF  =  0x00 ;      // Port F data 
+    155                  PORTF  =  0x00 ;      // Port F data 
    \   00000038   BB01               OUT     0x11, R16
-    162                  DDRG   =  0x07 ;      // Port G data direction, port 1,2,3 out
+    156                  DDRG   =  0x07 ;      // Port G data direction, port 1,2,3 out
    \   0000003A   E007               LDI     R16, 7
    \   0000003C   BB03               OUT     0x13, R16
-    163                  PORTG  =  0x03 ;      // Port G data 
+    157                  PORTG  =  0x03 ;      // Port G data 
    \   0000003E   E003               LDI     R16, 3
    \   00000040   C018               RJMP    ??Init_IO_2
-    164                  break;
-    165              case AN_ZBANA:                  // AN-ZBANA
-    166          #if ANZBANA_V8 == 1
-    167                  DDRA   =  0x00 ;      // Port A data direction in ID0, ID1
-    168                  PORTA  =  0x03 ;      // Port A data
-    169                  DDRB   =  0xF7 ;      // Port B data direction, bit 2 in, bit 0-1 and 3-7 out
-    170                  PORTB  =  0x08 ;      // Port B data  Pin 3 pull-up 
-    171                  DDRC   =  0xFF ;      // Port C data direction, all out
-    172                  PORTC  =  0x00 ;      // Port C data
-    173                  DDRD   =  0x02 ;      // Port D data direction, all in except output to ADC CLC
-    174                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD and ADC CLC
-    175                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
-    176                  PORTE  =  0x00 ;      // Port E data 
-    177                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
-    178                  PORTF  =  0x00 ;      // Port F data 
-    179                  DDRG   =  0x08 ;      // Port G data direction, bit 3 out
-    180                  PORTG  =  0x30 ;      // Port G data pullup PG4, PG5 
-    181                  SPI_Init();
-    182          #else
-    183                  DDRA   =  0x00 ;      // Port A data direction in (not used)
+    158                  break;
+    159              case AN_ZBANA:                  // AN-ZBANA
+    160          #if ANZBANA_V8 == 1
+    161                  DDRA   =  0x00 ;      // Port A data direction in ID0, ID1
+    162                  PORTA  =  0x03 ;      // Port A data
+    163                  DDRB   =  0xF7 ;      // Port B data direction, bit 2 in, bit 0-1 and 3-7 out
+    164                  PORTB  =  0x08 ;      // Port B data  Pin 3 pull-up 
+    165                  DDRC   =  0xFF ;      // Port C data direction, all out
+    166                  PORTC  =  0x00 ;      // Port C data
+    167                  DDRD   =  0x02 ;      // Port D data direction, all in except output to ADC CLC
+    168                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD and ADC CLC
+    169                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
+    170                  PORTE  =  0x00 ;      // Port E data 
+    171                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
+    172                  PORTF  =  0x00 ;      // Port F data 
+    173                  DDRG   =  0x08 ;      // Port G data direction, bit 3 out
+    174                  PORTG  =  0x30 ;      // Port G data pullup PG4, PG5 
+    175                  SPI_Init();
+    176          #else
+    177                  DDRA   =  0x00 ;      // Port A data direction in (not used)
    \                     ??Init_IO_1:
    \   00000042   E000               LDI     R16, 0
    \   00000044   B901               OUT     0x01, R16
-    184                  PORTA  =  0x00 ;      // Port A data
+    178                  PORTA  =  0x00 ;      // Port A data
    \   00000046   B902               OUT     0x02, R16
-    185                  DDRB   =  0xF1 ;      // Port B data direction, bit 0, 4-7 out
+    179                  DDRB   =  0xF1 ;      // Port B data direction, bit 0, 4-7 out
    \   00000048   EF01               LDI     R16, 241
    \   0000004A   B904               OUT     0x04, R16
-    186                  PORTB  =  0x00 ;      // Port B data   
+    180                  PORTB  =  0x00 ;      // Port B data   
    \   0000004C   E000               LDI     R16, 0
    \   0000004E   B905               OUT     0x05, R16
-    187                  DDRC   =  0xFF ;      // Port C data direction, all out
+    181                  DDRC   =  0xFF ;      // Port C data direction, all out
    \   00000050   EF0F               LDI     R16, 255
    \   00000052   B907               OUT     0x07, R16
-    188                  PORTC  =  0x00 ;      // Port C data
+    182                  PORTC  =  0x00 ;      // Port C data
    \   00000054   E000               LDI     R16, 0
    \   00000056   B908               OUT     0x08, R16
-    189                  DDRD   =  0x02 ;      // Port D data direction, all in except output to osc and txd
+    183                  DDRD   =  0x02 ;      // Port D data direction, all in except output to osc and txd
    \   00000058   E002               LDI     R16, 2
    \   0000005A   B90A               OUT     0x0A, R16
-    190                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD
+    184                  PORTD  =  0xf1 ;      // Port D data pullup on int fro AD
    \   0000005C   EF01               LDI     R16, 241
    \   0000005E   B90B               OUT     0x0B, R16
-    191                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
+    185                  DDRE   =  0xFE ;      // Port E data direction, all out except rxd
    \   00000060   EF0E               LDI     R16, 254
    \   00000062   B90D               OUT     0x0D, R16
-    192                  PORTE  =  0x00 ;      // Port E data 
+    186                  PORTE  =  0x00 ;      // Port E data 
    \   00000064   E000               LDI     R16, 0
    \   00000066   B90E               OUT     0x0E, R16
-    193                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
+    187                  DDRF   =  0x00 ;      // Port F data direction, used for ADC
    \   00000068   BB00               OUT     0x10, R16
-    194                  PORTF  =  0x00 ;      // Port F data 
+    188                  PORTF  =  0x00 ;      // Port F data 
    \   0000006A   BB01               OUT     0x11, R16
-    195                  DDRG   =  0x10 ;      // Port G data direction, bit 5 out
+    189                  DDRG   =  0x10 ;      // Port G data direction, bit 5 out
    \   0000006C   E100               LDI     R16, 16
    \   0000006E   BB03               OUT     0x13, R16
-    196                  PORTG  =  0x00 ;      // Port G data 
+    190                  PORTG  =  0x00 ;      // Port G data 
    \   00000070   E000               LDI     R16, 0
    \                     ??Init_IO_2:
    \   00000072   BB04               OUT     0x14, R16
-    197          #endif
-    198                  break;
-    199              default:
-    200                  break;
-    201              }    
-    202          }
+    191          #endif
+    192                  break;
+    193              default:
+    194                  break;
+    195              }    
+    196          }
    \   00000074   9508               RET
    \   00000076                      REQUIRE _A_DDRA
    \   00000076                      REQUIRE _A_PORTA
@@ -749,91 +743,91 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000076                      REQUIRE _A_PORTF
    \   00000076                      REQUIRE _A_DDRG
    \   00000076                      REQUIRE _A_PORTG
-    203          
-    204          /*
-    205          **===========================================================================
-    206          ** Init the timer related registers
-    207          **===========================================================================
-    208          */ 
+    197          
+    198          /*
+    199          **===========================================================================
+    200          ** Init the timer related registers
+    201          **===========================================================================
+    202          */ 
 
    \                                 In  segment CODE, align 2, keep-with-next
-    209          void Init_TMR( void ) {
+    203          void Init_TMR( void ) {
    \                     Init_TMR:
-    210              /*--- Timer control (disable clock inputs) ---*/
-    211          
-    212              switch (UnitID) {
+    204              /*--- Timer control (disable clock inputs) ---*/
+    205          
+    206              switch (UnitID) {
    \   00000000   9100....           LDS     R16, UnitID
    \   00000004   2300               TST     R16
    \   00000006   F019               BREQ    ??Init_TMR_0
    \   00000008   950A               DEC     R16
    \   0000000A   F049               BREQ    ??Init_TMR_1
    \   0000000C   9508               RET
-    213              case AN_ZB485:                  // AN-ZB485
-    214                  // 128 -> 1281
-    215                  // TIM0 and TIM2 are swapped in 1281.
-    216                  // Registers are completely changed.
-    217                  // TCCR0   =  0x99 ;      // Timer control register 0
-    218                  // OCR0    =  3;         // Timer output compare register 0, 2MHZ //16MHz xtal
-    219                  //
-    220                  // TCCR2A : 0 1 0 0 - - 1 0
-    221                  // TCCR2B : 1 0 - - 0 0 0 1
-    222                  //
-    223                  // COM2A1 COM2A0 : 0 1
-    224                  // COM2B1 COM2B0 : 0 0
-    225                  // WGM21 WGM20   : 1 0
-    226                  // FOC2A : 1, FOR2B : 0, WGM22 : 0, CS2/1/0 : 0 0 1
-    227                  //
-    228                  // COM2A : Toggle
-    229                  // WGM : CTC
-    230                  // Clock Scale: 1
-    231          
-    232                  TCCR2A = 0x42;
+    207              case AN_ZB485:                  // AN-ZB485
+    208                  // 128 -> 1281
+    209                  // TIM0 and TIM2 are swapped in 1281.
+    210                  // Registers are completely changed.
+    211                  // TCCR0   =  0x99 ;      // Timer control register 0
+    212                  // OCR0    =  3;         // Timer output compare register 0, 2MHZ //16MHz xtal
+    213                  //
+    214                  // TCCR2A : 0 1 0 0 - - 1 0
+    215                  // TCCR2B : 1 0 - - 0 0 0 1
+    216                  //
+    217                  // COM2A1 COM2A0 : 0 1
+    218                  // COM2B1 COM2B0 : 0 0
+    219                  // WGM21 WGM20   : 1 0
+    220                  // FOC2A : 1, FOR2B : 0, WGM22 : 0, CS2/1/0 : 0 0 1
+    221                  //
+    222                  // COM2A : Toggle
+    223                  // WGM : CTC
+    224                  // Clock Scale: 1
+    225          
+    226                  TCCR2A = 0x42;
    \                     ??Init_TMR_0:
    \   0000000E   E402               LDI     R16, 66
    \   00000010   9300....           STS     _A_TCCR2A, R16
-    233                  TCCR2B = 0x81;
+    227                  TCCR2B = 0x81;
    \   00000014   E801               LDI     R16, 129
    \   00000016   9300....           STS     _A_TCCR2B, R16
-    234                  OCR2A = 3;
+    228                  OCR2A = 3;
    \   0000001A   E003               LDI     R16, 3
    \   0000001C   C007               RJMP    ??Init_TMR_2
-    235                  break;
-    236              case AN_ZBANA:                  // AN-ZBANA
-    237                  // 128 -> 1281
-    238                  // TCCR0   =  0x99 ;      // Timer control register 0
-    239                  // OCR0    =  7 ;         // Timer output compare register 0, 1MHZ //16MHz xtal
-    240                  TCCR2A = 0x42;
+    229                  break;
+    230              case AN_ZBANA:                  // AN-ZBANA
+    231                  // 128 -> 1281
+    232                  // TCCR0   =  0x99 ;      // Timer control register 0
+    233                  // OCR0    =  7 ;         // Timer output compare register 0, 1MHZ //16MHz xtal
+    234                  TCCR2A = 0x42;
    \                     ??Init_TMR_1:
    \   0000001E   E402               LDI     R16, 66
    \   00000020   9300....           STS     _A_TCCR2A, R16
-    241                  TCCR2B = 0x81;
+    235                  TCCR2B = 0x81;
    \   00000024   E801               LDI     R16, 129
    \   00000026   9300....           STS     _A_TCCR2B, R16
-    242                  OCR2A = 7;
+    236                  OCR2A = 7;
    \   0000002A   E007               LDI     R16, 7
    \                     ??Init_TMR_2:
    \   0000002C   9300....           STS     _A_OCR2A, R16
-    243                  break;
-    244              default:
-    245                  break;
-    246              }
-    247          
-    248          } 
+    237                  break;
+    238              default:
+    239                  break;
+    240              }
+    241          
+    242          } 
    \   00000030   9508               RET
    \   00000032                      REQUIRE _A_TCCR2A
    \   00000032                      REQUIRE _A_TCCR2B
    \   00000032                      REQUIRE _A_OCR2A
+    243          
+    244          /*
+    245          **===========================================================================
+    246          ** Init the USARTs registers
+    247          **===========================================================================
+    248          */ 
     249          
-    250          /*
-    251          **===========================================================================
-    252          ** Init the USARTs registers
-    253          **===========================================================================
-    254          */ 
-    255          
-    256          
+    250          
 
    \                                 In  segment CODE, align 2, keep-with-next
-    257          void Init_USART( char channel, unsigned long baud ) {
+    251          void Init_USART( char channel, unsigned long baud ) {
    \                     Init_USART:
    \   00000000   927A               ST      -Y, R7
    \   00000002   926A               ST      -Y, R6
@@ -849,8 +843,8 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   0000000E   2F80               MOV     R24, R16
    \   00000010   012A               MOVW    R5:R4, R21:R20
    \   00000012   013B               MOVW    R7:R6, R23:R22
-    258          
-    259              OS_CREATEMB(&UART[channel].RxMailBox,1, sizeof(UART[channel].RxMailBoxBuf),&UART[channel].RxMailBoxBuf);
+    252          
+    253              OS_CREATEMB(&UART[channel].RxMailBox,1, sizeof(UART[channel].RxMailBoxBuf),&UART[channel].RxMailBoxBuf);
    \   00000014   2F20               MOV     R18, R16
    \   00000016   EF0D               LDI     R16, 253
    \   00000018   E011               LDI     R17, 1
@@ -872,9 +866,9 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000038   500E               SUBI    R16, 14
    \   0000003A   4F1E               SBCI    R17, 254
    \   0000003C   ........           CALL    OS_CreateMB
-    260              
-    261              /*--- Configure UART data block ---*/
-    262              UART[channel].TxFirst   = 0x00;
+    254              
+    255              /*--- Configure UART data block ---*/
+    256              UART[channel].TxFirst   = 0x00;
    \   00000040   018D               MOVW    R17:R16, R27:R26
    \   00000042   5E0D               SUBI    R16, 237
    \   00000044   4F1E               SBCI    R17, 254
@@ -882,50 +876,50 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000048   E020               LDI     R18, 0
    \   0000004A   8320               ST      Z, R18
    \   0000004C   8321               STD     Z+1, R18
-    263              UART[channel].TxLast    = 0x00;
+    257              UART[channel].TxLast    = 0x00;
    \   0000004E   8322               STD     Z+2, R18
    \   00000050   8323               STD     Z+3, R18
-    264              UART[channel].TxCount   = 0x00;
+    258              UART[channel].TxCount   = 0x00;
    \   00000052   8324               STD     Z+4, R18
    \   00000054   8325               STD     Z+5, R18
-    265              UART[channel].RxFirst   = 0x00;
+    259              UART[channel].RxFirst   = 0x00;
    \   00000056   54AF               SUBI    R26, 79
    \   00000058   4FBE               SBCI    R27, 254
    \   0000005A   01FD               MOVW    R31:R30, R27:R26
    \   0000005C   8320               ST      Z, R18
    \   0000005E   8321               STD     Z+1, R18
-    266              UART[channel].RxLast    = 0x00;
+    260              UART[channel].RxLast    = 0x00;
    \   00000060   8322               STD     Z+2, R18
    \   00000062   8323               STD     Z+3, R18
-    267              UART[channel].RxCount   = 0x00;
+    261              UART[channel].RxCount   = 0x00;
    \   00000064   8324               STD     Z+4, R18
    \   00000066   8325               STD     Z+5, R18
-    268              UART[channel].RxState   = SYNC;
+    262              UART[channel].RxState   = SYNC;
    \   00000068   8326               STD     Z+6, R18
-    269              UART[channel].SyncCnt   = 0 ;
+    263              UART[channel].SyncCnt   = 0 ;
    \   0000006A   8327               STD     Z+7, R18
-    270              UART[channel].TxStatus  = 0x00;
+    264              UART[channel].TxStatus  = 0x00;
    \   0000006C   01F8               MOVW    R31:R30, R17:R16
    \   0000006E   8326               STD     Z+6, R18
-    271          
-    272              switch (channel) {
+    265          
+    266              switch (channel) {
    \   00000070   2388               TST     R24
    \   00000072   F019               BREQ    ??Init_USART_0
    \   00000074   958A               DEC     R24
    \   00000076   F129               BREQ    ??Init_USART_1
    \   00000078   C047               RJMP    ??Init_USART_2
-    273              case 0x00 :          
-    274                  UART[channel].RxTimeout = RX_TO_TIME ;   // reset timeout
+    267              case 0x00 :          
+    268                  UART[channel].RxTimeout = RX_TO_TIME ;   // reset timeout
    \                     ??Init_USART_0:
    \   0000007A   EF0A               LDI     R16, 250
    \   0000007C   9300....           STS     (UART + 441), R16
    \   00000080   E000               LDI     R16, 0
    \   00000082   9300....           STS     (UART + 442), R16
-    275                  UCSR0A  = 0x00; 
+    269                  UCSR0A  = 0x00; 
    \   00000086   9300....           STS     _A_UCSR0A, R16
-    276                  //UBRR0L  = ((XTAL_CPU / 16 / baud )-1) & 0xff;
-    277                  //UBRR0H  = (((XTAL_CPU / 16 / baud )-1)>> 8) & 0xff;
-    278                  UBRR0   = (unsigned)(((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5); 
+    270                  //UBRR0L  = ((XTAL_CPU / 16 / baud )-1) & 0xff;
+    271                  //UBRR0H  = (((XTAL_CPU / 16 / baud )-1)>> 8) & 0xff;
+    272                  UBRR0   = (unsigned)(((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5); 
    \   0000008A   01A2               MOVW    R21:R20, R5:R4
    \   0000008C   01B3               MOVW    R23:R22, R7:R6
    \   0000008E   ........           CALL    ?UL2F_QS_L04
@@ -941,28 +935,28 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   000000A8   ........           CALL    ?F2SL_S_L04
    \   000000AC   9310....           STS     (_A_UBRR0 + 1), R17
    \   000000B0   9300....           STS     _A_UBRR0, R16
-    279                  // why the fuck do you enalbe UDRE here you stupid fucktard!!! -hkim
-    280                  // UCSR0B = 0xb8; /* tx/ rx enable, int udre/rxon */
-    281                  UCSR0B  = 0x98;       /* tx/ rx enable, int udre/rxon */
+    273                  // why the fuck do you enalbe UDRE here you stupid fucktard!!! -hkim
+    274                  // UCSR0B = 0xb8; /* tx/ rx enable, int udre/rxon */
+    275                  UCSR0B  = 0x98;       /* tx/ rx enable, int udre/rxon */
    \   000000B4   E908               LDI     R16, 152
    \   000000B6   9300....           STS     _A_UCSR0B, R16
-    282                  UCSR0C  = 0x06;       /* n,8,1 */
+    276                  UCSR0C  = 0x06;       /* n,8,1 */
    \   000000BA   E006               LDI     R16, 6
    \   000000BC   9300....           STS     _A_UCSR0C, R16
-    283                  break;
+    277                  break;
    \   000000C0   C023               RJMP    ??Init_USART_2
-    284              case 0x01 :
-    285                  UART[channel].RxTimeout = RX_TO_TIME ;   // reset timeout
+    278              case 0x01 :
+    279                  UART[channel].RxTimeout = RX_TO_TIME ;   // reset timeout
    \                     ??Init_USART_1:
    \   000000C2   EF0A               LDI     R16, 250
    \   000000C4   9300....           STS     (UART + 950), R16
    \   000000C8   E000               LDI     R16, 0
    \   000000CA   9300....           STS     (UART + 951), R16
-    286                  UCSR1A  = 0x00; 
+    280                  UCSR1A  = 0x00; 
    \   000000CE   9300....           STS     _A_UCSR1A, R16
-    287                  //UBRR1L  = ((XTAL_CPU / 16 / baud )-1) & 0xff;
-    288                  //UBRR1H  = (((XTAL_CPU / 16 / baud )-1)>> 8) & 0xff;
-    289                  UBRR1   = (unsigned)(((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5); 
+    281                  //UBRR1L  = ((XTAL_CPU / 16 / baud )-1) & 0xff;
+    282                  //UBRR1H  = (((XTAL_CPU / 16 / baud )-1)>> 8) & 0xff;
+    283                  UBRR1   = (unsigned)(((float)XTAL_CPU / 16.0 / ((float)baud) )-0.5); 
    \   000000D2   01A2               MOVW    R21:R20, R5:R4
    \   000000D4   01B3               MOVW    R23:R22, R7:R6
    \   000000D6   ........           CALL    ?UL2F_QS_L04
@@ -978,19 +972,19 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   000000F0   ........           CALL    ?F2SL_S_L04
    \   000000F4   9310....           STS     (_A_UBRR1 + 1), R17
    \   000000F8   9300....           STS     _A_UBRR1, R16
-    290                  // why the fuck do you enalbe UDRE here you stupid fucktard!!! -hkim
-    291                  // UCSR1B = 0xb8; /* tx/ rx enable, int udre/rxon */
-    292                  UCSR1B = 0x98;       /* tx/ rx enable, int udre/rxon */
+    284                  // why the fuck do you enalbe UDRE here you stupid fucktard!!! -hkim
+    285                  // UCSR1B = 0xb8; /* tx/ rx enable, int udre/rxon */
+    286                  UCSR1B = 0x98;       /* tx/ rx enable, int udre/rxon */
    \   000000FC   E908               LDI     R16, 152
    \   000000FE   9300....           STS     _A_UCSR1B, R16
-    293                  UCSR1C  = 0x06;       /* n,8,1 */
+    287                  UCSR1C  = 0x06;       /* n,8,1 */
    \   00000102   E006               LDI     R16, 6
    \   00000104   9300....           STS     _A_UCSR1C, R16
-    294                  break;
-    295              default:
-    296                  break ;
-    297              }    
-    298          }
+    288                  break;
+    289              default:
+    290                  break ;
+    291              }    
+    292          }
    \                     ??Init_USART_2:
    \   00000108   9189               LD      R24, Y+
    \   0000010A   91A9               LD      R26, Y+
@@ -1008,58 +1002,58 @@ C:\Users\ESY\OneDrive - Scanjet\Documents\GitHub\S2Prog\IO\ANZB_ATmega1281\Src\i
    \   00000118                      REQUIRE _A_UBRR1
    \   00000118                      REQUIRE _A_UCSR1B
    \   00000118                      REQUIRE _A_UCSR1C
-    299          
-    300          
-    301          /*
-    302          **===========================================================================
-    303          ** Init the AD converter registers
-    304          **===========================================================================
-    305          */ 
+    293          
+    294          
+    295          /*
+    296          **===========================================================================
+    297          ** Init the AD converter registers
+    298          **===========================================================================
+    299          */ 
 
    \                                 In  segment CODE, align 2, keep-with-next
-    306          void Init_AD( void ) {
+    300          void Init_AD( void ) {
    \                     Init_AD:
-    307          
-    308              char i;     
-    309              for (i = 0; i<8; i++) {                 // Init variables
+    301          
+    302              char i;     
+    303              for (i = 0; i<8; i++) {                 // Init variables
    \   00000000   ....               LDI     R30, LOW(ADInt)
    \   00000002   ....               LDI     R31, (ADInt) >> 8
    \   00000004   E008               LDI     R16, 8
    \   00000006   E020               LDI     R18, 0
-    310                  ADInt.Result[i] = 0;                   // convertion resluts
+    304                  ADInt.Result[i] = 0;                   // convertion resluts
    \                     ??Init_AD_0:
    \   00000008   9321               ST      Z+, R18
    \   0000000A   9321               ST      Z+, R18
-    311              }
+    305              }
    \   0000000C   950A               DEC     R16
    \   0000000E   F7E1               BRNE    ??Init_AD_0
-    312              ADChannel = 0x00 ;                      // AD channel to be converted
+    306              ADChannel = 0x00 ;                      // AD channel to be converted
    \   00000010   9320....           STS     ADChannel, R18
-    313              ADMUX   = 0xc0 ;                        // Ref = 2,56V, right adjust
+    307              ADMUX   = 0xc0 ;                        // Ref = 2,56V, right adjust
    \   00000014   EC00               LDI     R16, 192
    \   00000016   9300....           STS     _A_ADMUX, R16
-    314              // 128 -> 1281
-    315              // ADCSR   = 0x8f ;                        // AD enabled, int enabled, xtal / 128
-    316              ADCSRA = 0x8f;
+    308              // 128 -> 1281
+    309              // ADCSR   = 0x8f ;                        // AD enabled, int enabled, xtal / 128
+    310              ADCSRA = 0x8f;
    \   0000001A   E80F               LDI     R16, 143
    \   0000001C   9300....           STS     _A_ADCSRA, R16
-    317          }
+    311          }
    \   00000020   9508               RET
    \   00000022                      REQUIRE _A_ADMUX
    \   00000022                      REQUIRE _A_ADCSRA
-    318          
-    319          /*
-    320          **===========================================================================
-    321          ** Init values  in the system
-    322          **===========================================================================
-    323          */ 
+    312          
+    313          /*
+    314          **===========================================================================
+    315          ** Init values  in the system
+    316          **===========================================================================
+    317          */ 
 
    \                                 In  segment CODE, align 2, keep-with-next
-    324          void Init_Values(void) {
+    318          void Init_Values(void) {
    \                     Init_Values:
-    325          
-    326          
-    327          }
+    319          
+    320          
+    321          }
    \   00000000   9508               RET
 
    Maximum stack usage in bytes:

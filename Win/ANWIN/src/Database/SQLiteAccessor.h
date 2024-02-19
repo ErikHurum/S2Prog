@@ -3,12 +3,12 @@
 #ifndef SQLiteAccessorH
 #define SQLiteAccessorH
 
-#include <string>
 #ifdef ANWIN
 #include <System.hpp>
 #include "LiteCall.hpp"
+#include <AnsiString.h>
 
-using namespace std;
+//using namespace std;
 #endif
 //---------------------------------------------------------------------------
 
@@ -38,16 +38,16 @@ typedef struct sqlite3 sqlite3;
 class SQLiteAccessor {
 
 private:
-	string dbFilePath;
-	string errorMessage;
+	AnsiString dbFilePath;
+	AnsiString errorMessage;
     TSQLite3API *SqlAPI;
 
 public:
 	SQLiteAccessor(const char *databaseFilePath);
 	~SQLiteAccessor();
 
-	/// Fills in string with the last error message
-	void GetErrorMessage(string& dest);
+	/// Fills in AnsiString with the last error message
+	void GetErrorMessage(AnsiString& dest);
 
 	/// Runs a query in UTF8 encoding and calls the rowParserCallback function for each row in the result set.
 	///
@@ -66,7 +66,7 @@ public:
 	static TDateTime* ConvertToTDateTime(const wchar_t* sqlite3DateTime);
 
 protected:
-	void GetLastDetailedSQLiteError(TSQLite3Db* connection, string& userMessage, string& dest);
+	void GetLastDetailedSQLiteError(TSQLite3Db* connection, AnsiString& userMessage, AnsiString& dest);
 };
 
 #endif

@@ -403,7 +403,7 @@ U16 TPCxObject::AddAlarmWindow(U8 *TxBuf, U16 Ptr, bool Update, bool ShowAlarm)
       {
       case C_TPC_140:
          {
-            U8 tPCData[BUF_SIZE] = { SecondaryAddress, 0 };
+			U8 tPCData[BUF_SIZE] = { (U8)SecondaryAddress, 0 };
             U8 *AsciiVal        = &tPCData[2];
             strcpy((char *)AsciiVal, CurrentAlMessage.c_str());
             Ptr += AddCommand(TxBuf, Ptr, ANP1_SND_LOTXT, tPCData, (CurrentAlMessage.Length() + 2));
@@ -411,7 +411,7 @@ U16 TPCxObject::AddAlarmWindow(U8 *TxBuf, U16 Ptr, bool Update, bool ShowAlarm)
          break;
       case C_TPC_350:
          {
-            U8 tPCData[BUF_SIZE] = { SecondaryAddress, 0 };
+			U8 tPCData[BUF_SIZE] = { (U8)SecondaryAddress, 0 };
             U8 *AsciiVal        = &tPCData[2];
             strncpy((char *)AsciiVal, CurrentAlLocName.c_str(), TPC_UPPER_DISP_WIDTH + 1);
             while (*AsciiVal == ' ') AsciiVal++;
@@ -431,7 +431,7 @@ U16 TPCxObject::AddAlarmWindow(U8 *TxBuf, U16 Ptr, bool Update, bool ShowAlarm)
          // Only add text if alarm and not aknowledge
          if (IsAlarm && (CurrentLEDStatus  == TPC_LED_FLASH))
          {
-            U8 tPCData[BUF_SIZE] = { SecondaryAddress, 0 };
+			U8 tPCData[BUF_SIZE] = { (U8)SecondaryAddress, 0 };
             U8 *AsciiVal        = &tPCData[2];
             strcpy((char *)AsciiVal, CurrentAlMessage.c_str());
             Ptr += AddCommand(TxBuf, Ptr, ANP1_SND_LOTXT, tPCData, (CurrentAlMessage.Length() + 2));
@@ -441,7 +441,7 @@ U16 TPCxObject::AddAlarmWindow(U8 *TxBuf, U16 Ptr, bool Update, bool ShowAlarm)
    }
    // Always add LED status
    {
-      U8 tPCData[BUF_SIZE] = { SecondaryAddress, CurrentLEDStatus };
+	  U8 tPCData[BUF_SIZE] = { (U8)SecondaryAddress, CurrentLEDStatus };
       Ptr += AddCommand(TxBuf, Ptr, ANP1_SND_ALSTA, tPCData, 2);
    }
    return (Ptr);
@@ -459,7 +459,7 @@ U16 TPCxObject::AddExtraWindows(U8 *TxBuf, U16 Ptr, bool Update)
 
       for (int WinIndex = 0; WinIndex < 2; WinIndex++)
       {
-         U8 tPCData[BUF_SIZE] = { SecondaryAddress, WinIndex };  // Not in alarm window
+		 U8 tPCData[BUF_SIZE] = { (U8)SecondaryAddress, (U8)WinIndex };  // Not in alarm window
          if (ValKeyTable[WinIndex] != SVT_NOT_DEFINED)
          {
             AnsiString MyVal = GetLibValueTPCx(ValKeyTable[WinIndex], 0, Win->PROPtr, TPC_EXTRA_DISP_WIDTH);
@@ -528,7 +528,7 @@ U16 TPCxObject::AddUpperWindow(U8 *TxBuf, U16 Ptr, bool Update)
 {
    for (int WinIndex = 0; WinIndex < TPCWindowCount; WinIndex++)
    {
-      U8 tPCData[BUF_SIZE] = { SecondaryAddress, WinIndex + 1 }; // Not in alarm window
+	  U8 tPCData[BUF_SIZE] = { (U8)SecondaryAddress, (U8)(WinIndex + 1) }; // Not in alarm window
       TPCWindow *Win  = TPCWindows[WinIndex];
       AnsiString MyVal;
       switch (Win->UpperDisplay)
@@ -582,8 +582,8 @@ U16 TPCxObject::AddGraphs(U8 *TxBuf, U16 Ptr, bool Update)
             {
                Percent = 0;
             }
-            U8 tPCData[TPC_GRAPH_SIZE] = { SecondaryAddress, WinIndex, Percent };
-            Ptr += AddCommand(TxBuf, Ptr, ANP1_SND_BAVAL, tPCData, TPC_GRAPH_SIZE);
+			U8 tPCData[TPC_GRAPH_SIZE] = { (U8)SecondaryAddress, (U8)WinIndex, (U8)Percent };
+			Ptr += AddCommand(TxBuf, Ptr, ANP1_SND_BAVAL, tPCData, TPC_GRAPH_SIZE);
 
          }
          break;
@@ -601,7 +601,7 @@ U16 TPCxObject::AddGraphs(U8 *TxBuf, U16 Ptr, bool Update)
             {
                Percent = 0;
             }
-            U8 tPCData[TPC_GRAPH_SIZE] = { SecondaryAddress, WinIndex, Percent };
+			U8 tPCData[TPC_GRAPH_SIZE] = { (U8)SecondaryAddress, (U8)WinIndex, (U8)Percent };
             Ptr += AddCommand(TxBuf, Ptr, ANP1_SND_BAVAL, tPCData, TPC_GRAPH_SIZE);
          }
          break;
@@ -673,7 +673,7 @@ U16 TPCxObject::AddWindows(U8 *TxBuf, U16 Ptr, bool Update, bool ShowAlarm)
 
 U16 TPCxObject::SetWindow(U8 *TxBuf, U16 Ptr, U8 WinIndex)
 {
-   U8 Data[BUF_SIZE] = { SecondaryAddress, WinIndex };
+   U8 Data[BUF_SIZE] = { (U8)SecondaryAddress, (U8)WinIndex };
    return (AddCommand(TxBuf, Ptr, ANP1_SND_DVAL, Data, 2));
 }
 void TPCxObject::AckAlarms(void)
@@ -744,7 +744,7 @@ bool TPCxObject::UnpackPacket(TSNUart *PortPtr, U8 *Buf, int Size, set<PRogramOb
 
 U16 TPCxObject::MakeAcknowledge(U8 *TxBuf, U16 Ptr)
 {
-   U8 Data[BUF_SIZE] = { SecondaryAddress, true };
+   U8 Data[BUF_SIZE] = { (U8)SecondaryAddress, true };
    return (AddCommand(TxBuf, Ptr, ANP1_REQ_ACKSTAT, Data, 2));
 }
 

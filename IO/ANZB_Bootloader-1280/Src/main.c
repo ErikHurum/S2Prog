@@ -23,6 +23,8 @@
 #include "variables.h"
 #include <intrinsics.h>
 
+__no_init char BootloaderRevision    @0x21FF;
+
 extern char MyAddress(void);
 
 void WDT_off(void)
@@ -68,6 +70,7 @@ __C_task void main(void){
     //
     WDT_off();
     WDT_Prescaler_Change();
+    BootloaderRevision = PROG_VERSION;
     while ( (EECR & 1<<EEPE) != 0 );        //chech if EEPROM is ready
     EEARL = (0x0fff & 0xff);                // check high byte of eeprom 
     EEARH = (0x0fff >> 8);                  // if date = 0xaa enter uploader mode

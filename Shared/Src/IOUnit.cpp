@@ -25,6 +25,7 @@ IOUnit::IOUnit(int PortNo):ANPRO10Object(TSNUart::Channels[PortNo])
 	CardChannel       = 0;
 	CardId            = 0;
 	CardAddress       = 0;
+    UnitBootVersion   = 0;
 	UnitProgVersion   = 0;
 	ComVersion        = 0;
 	StoreVersion      = 0;
@@ -95,6 +96,11 @@ int  IOUnit::GetValue(int ValueId, int Index, float &MyRetValue, int &DecPnt, in
 	switch ( ValueId ) {
 	case SVT_IO_COM_CHANNEL   :
 		MyRetValue = CardChannel+1;
+		DecPnt     = 0;
+		Unit       = NO_UNIT;
+		break;
+	case SVT_IO_BOOT_VERSION   :
+		MyRetValue = UnitBootVersion;
 		DecPnt     = 0;
 		Unit       = NO_UNIT;
 		break;
@@ -257,30 +263,30 @@ bool IOUnit::UpdateProgram(void)
 	if ( ProgamTypeRunning == 0 ) {	// Are the bootloader active
 		if ( EraseFlash() ) {
 			// New bootloader?
-			if ( UnitProgVersion < VERSION_ANZB_NEW_BOOT ) {
+			if ( UnitProgVersion < VERSION_ANZB_1281_BOOT ) {
 				// Must be old boot loader, thus old ANZB with Atmega128
-				int NumberOfFullPackets = ProgramDataANZB485Size/ANPRO10_IO_PDATA_SIZE;
-				U16 RemainingSize       = ProgramDataANZB485Size % ANPRO10_IO_PDATA_SIZE;
+				int NumberOfFullPackets = ProgramDataANZB_128_Size/ANPRO10_IO_PDATA_SIZE;
+				U16 RemainingSize       = ProgramDataANZB_128_Size % ANPRO10_IO_PDATA_SIZE;
 				int Cnt;
 				for ( Cnt=0; ProgOK && Cnt < NumberOfFullPackets; Cnt++ ) {
-					ProgOK = ProgramFlash(Cnt*ANPRO10_IO_PDATA_SIZE,ANPRO10_IO_PDATA_SIZE,ProgramDataANZB485);
+					ProgOK = ProgramFlash(Cnt*ANPRO10_IO_PDATA_SIZE,ANPRO10_IO_PDATA_SIZE,(char*)ProgramDataANZB_128);
 				}
 				if ( ProgOK ) {
-					ProgOK = ProgramFlash(NumberOfFullPackets*ANPRO10_IO_PDATA_SIZE,RemainingSize,ProgramDataANZB485);
+					ProgOK = ProgramFlash(NumberOfFullPackets*ANPRO10_IO_PDATA_SIZE,RemainingSize,(char*)ProgramDataANZB_128);
 				}
 				if ( ProgOK ) {
 					Request(CMD_EXIT_BOOTLOADER);
 				}
 			} else {
 				// Must be new boot loader, thus new ANZB with Atmega1281
-				int NumberOfFullPackets = ProgramDataANZB_NewSize/ANPRO10_IO_PDATA_SIZE;
-				U16 RemainingSize       = ProgramDataANZB_NewSize % ANPRO10_IO_PDATA_SIZE;
+				int NumberOfFullPackets = ProgramDataANZB_1281_Size/ANPRO10_IO_PDATA_SIZE;
+				U16 RemainingSize       = ProgramDataANZB_1281_Size % ANPRO10_IO_PDATA_SIZE;
 				int Cnt;
 				for ( Cnt=0; ProgOK && Cnt < NumberOfFullPackets; Cnt++ ) {
-					ProgOK = ProgramFlash(Cnt*ANPRO10_IO_PDATA_SIZE,ANPRO10_IO_PDATA_SIZE,ProgramDataANZB_New);
+					ProgOK = ProgramFlash(Cnt*ANPRO10_IO_PDATA_SIZE,ANPRO10_IO_PDATA_SIZE,(char*)ProgramDataANZB_1281);
 				}
 				if ( ProgOK ) {
-					ProgOK = ProgramFlash(NumberOfFullPackets*ANPRO10_IO_PDATA_SIZE,RemainingSize,ProgramDataANZB_New);
+					ProgOK = ProgramFlash(NumberOfFullPackets*ANPRO10_IO_PDATA_SIZE,RemainingSize,(char*)ProgramDataANZB_1281);
 				}
 				if ( ProgOK ) {
 					Request(CMD_EXIT_BOOTLOADER);

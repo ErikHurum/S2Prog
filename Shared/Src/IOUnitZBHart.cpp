@@ -8,19 +8,20 @@
 //---------------------------------------------------------------------------
 
 ValueList IOUnitZBHart::IOUnitZBHartValueList[] =  {
-    { L_WORD304, L_WORD237, SVT_BLANK },                              //  {"Unused"       ,"",SVT_BLANK},
-    { L_WORD379, L_WORD237, SVT_IO_COM_CHANNEL },                     //  {"Com Channel"  ,"",SVT_IO_COM_CHANNEL},
-    { L_WORD24, L_WORD237, SVT_IO_PROG_VERSION },                    //  {"ProgVersion"  ,"",SVT_IO_PROG_VERSION},
-    { L_WORD380, L_WORD237, SVT_IO_COM_VERSION },                     //  {"Com Version"  ,"",SVT_IO_COM_VERSION},
-    { L_WORD381, L_WORD237, SVT_IO_STORE_VERSION },                   //  {"Store Ver."   ,"",SVT_IO_STORE_VERSION},
-    { L_WORD382, L_WORD237, SVT_IO_RXBUF_SIZE },                      //  {"Rx Buf Size"  ,"",SVT_IO_RXBUF_SIZE},
-    { L_WORD383, L_WORD237, SVT_IO_TXBUF_SIZE },                      //  {"Tx Buf Size"  ,"",SVT_IO_TXBUF_SIZE},
-    { L_WORD384, L_WORD237, SVT_IO_RESET_STATUS },                    //  {"Reset Status" ,"",SVT_IO_RESET_STATUS},
-    { L_WORD385, L_WORD237, SVT_IO_TOTAL_RESTARTS },                  //  {"Total Restart","",SVT_IO_TOTAL_RESTARTS},
-    { L_WORD386, L_WORD237, SVT_IO_FAIL_CNT_CHK },                    //  {"Fail count"   ,"",SVT_IO_FAIL_CNT_CHK},
-    { L_WORD387, L_WORD237, SVT_IO_FAIL_CNT_TOT },                    //  {"Tot. fail cnt","",SVT_IO_FAIL_CNT_TOT},
-    { L_WORD388, L_WORD237, SVT_IO_P_TYPE_RUNNING },                  //  {"Program"      ,"",SVT_IO_P_TYPE_RUNNING},
-    { L_WORD389, L_WORD237, SVT_IO_CARD_VOLTAGE },                    //  {"Pwr 24V"      ,"",SVT_IO_CARD_VOLTAGE},
+    { L_WORD304 , L_WORD237, SVT_BLANK },                              //  {"Unused"       ,"",SVT_BLANK},
+    { L_WORD379 , L_WORD237, SVT_IO_COM_CHANNEL },                     //  {"Com Channel"  ,"",SVT_IO_COM_CHANNEL},
+    { L_WORD24  , L_WORD237, SVT_IO_PROG_VERSION },                    //  {"ProgVersion"  ,"",SVT_IO_PROG_VERSION},
+    { L_WORD380 , L_WORD237, SVT_IO_COM_VERSION },                     //  {"Com Version"  ,"",SVT_IO_COM_VERSION},
+    { L_WORD381 , L_WORD237, SVT_IO_STORE_VERSION },                   //  {"Store Ver."   ,"",SVT_IO_STORE_VERSION},
+    { L_WORD1130, L_WORD237, SVT_IO_BOOT_VERSION },                    //   {"ProgVersion"  ,"",SVT_IO_PROG_VERSION},
+    { L_WORD382 , L_WORD237, SVT_IO_RXBUF_SIZE },                      //  {"Rx Buf Size"  ,"",SVT_IO_RXBUF_SIZE},
+    { L_WORD383 , L_WORD237, SVT_IO_TXBUF_SIZE },                      //  {"Tx Buf Size"  ,"",SVT_IO_TXBUF_SIZE},
+    { L_WORD384 , L_WORD237, SVT_IO_RESET_STATUS },                    //  {"Reset Status" ,"",SVT_IO_RESET_STATUS},
+    { L_WORD385 , L_WORD237, SVT_IO_TOTAL_RESTARTS },                  //  {"Total Restart","",SVT_IO_TOTAL_RESTARTS},
+    { L_WORD386 , L_WORD237, SVT_IO_FAIL_CNT_CHK },                    //  {"Fail count"   ,"",SVT_IO_FAIL_CNT_CHK},
+    { L_WORD387 , L_WORD237, SVT_IO_FAIL_CNT_TOT },                    //  {"Tot. fail cnt","",SVT_IO_FAIL_CNT_TOT},
+    { L_WORD388 , L_WORD237, SVT_IO_P_TYPE_RUNNING },                  //  {"Program"      ,"",SVT_IO_P_TYPE_RUNNING},
+    { L_WORD389 , L_WORD237, SVT_IO_CARD_VOLTAGE },                    //  {"Pwr 24V"      ,"",SVT_IO_CARD_VOLTAGE},
 
 };
 
@@ -208,6 +209,7 @@ bool IOUnitZBHart::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                     CardChannel       = CardInfo->CardChannel;
                     CardId            = CardInfo->CardId;
                     CardAddress       = CardInfo->CardAddress;
+                    UnitBootVersion   = CardInfo->UnitBootVersion;
                     UnitProgVersion   = CardInfo->UnitProgVersion;
                     ComVersion        = CardInfo->ComVersion;
                     StoreVersion      = CardInfo->StoreVersion;
@@ -381,7 +383,7 @@ void IOUnitZBHart::HandleIO(int Delay) {
                     UpdateProgram();
                     break;
                 case 1:
-                    if (  (UnitProgVersion != VERSION_ANZBHART_PROG) || (ComVersion  != VERSION_ANZBHART_COMP) || (StoreVersion != VERSION_ANZBHART_EEPROM) ) {
+                    if (  (UnitProgVersion != VERSION_ANZBHART_1280_PROG) || (ComVersion  != VERSION_ANZBHART_COMP) || (StoreVersion != VERSION_ANZBHART_EEPROM) ) {
                         if ( UnitProgVersion >= 13 ) {
                             UpdateProgram();
                         } 
@@ -435,10 +437,10 @@ bool IOUnitZBHart::UpdateProgram(void)
 			U16 RemainingSize       = ProgramDataANZBHARTSize % ANPRO10_IO_PDATA_SIZE;
 			int Cnt;
 			for ( Cnt=0; ProgOK && Cnt < NumberOfFullPackets; Cnt++ ) {
-				ProgOK = ProgramFlash(Cnt*ANPRO10_IO_PDATA_SIZE,ANPRO10_IO_PDATA_SIZE,ProgramDataANZBHART);
+				ProgOK = ProgramFlash(Cnt*ANPRO10_IO_PDATA_SIZE,ANPRO10_IO_PDATA_SIZE,(char*)ProgramDataANZBHART);
 			}
 			if ( ProgOK ) {
-				ProgOK = ProgramFlash(NumberOfFullPackets*ANPRO10_IO_PDATA_SIZE,RemainingSize,ProgramDataANZBHART);
+				ProgOK = ProgramFlash(NumberOfFullPackets*ANPRO10_IO_PDATA_SIZE,RemainingSize,(char*)ProgramDataANZBHART);
 			}
 			if ( ProgOK ) {
 				Request(CMD_EXIT_BOOTLOADER);
@@ -481,6 +483,11 @@ int IOUnitZBHart::ReceiveData(U8 *data) {
             CardChannel      = pData->CardChannel;
             CardId           = pData->CardId;
             CardAddress      = pData->CardAddress;
+            if (pCH->ndb < sizeof(ANPRO10_COMMAND_2602)) {
+                UnitBootVersion = 0;
+            }else{
+                UnitBootVersion  = pData->UnitBootVersion;
+            }
             UnitProgVersion  = pData->UnitProgVersion;
             ComVersion       = pData->ComVersion;
             StoreVersion     = pData->StoreVersion;
@@ -531,24 +538,25 @@ int IOUnitZBHart::SendData(U16 cmd) {
     case CMD_GENERIC_STATIC_DATA:
         {
             QueueANPRO10_COMMAND_2602 Cmd;
-            Cmd.TxInfo.Port           = NULL;
-            Cmd.TxInfo.rxAddr         = DEVICE_BROADCAST_ADDR;
-            Cmd.TxInfo.rxId           = DEVICE_BROADCAST_TXU;
-            Cmd.Data.ObjectId         = IDNumber;
-            Cmd.Data.ndb              = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
-            Cmd.Data.CommandNo        = CMD_GENERIC_STATIC_DATA;
-            Cmd.Data.CardChannel      = CardChannel;
-            Cmd.Data.CardId           = CardId;
-            Cmd.Data.CardAddress      = CardAddress;
-            Cmd.Data.UnitProgVersion  = UnitProgVersion;
-            Cmd.Data.ComVersion       = ComVersion;
-            Cmd.Data.StoreVersion     = StoreVersion;
-            Cmd.Data.RxBufSize        = RxBufSize;
-            Cmd.Data.TxBufSize        = TxBufSize;
-            Cmd.Data.ResetStatus      = ResetStatus;
-            Cmd.Data.ProgamTypeRunning = ProgamTypeRunning;
-            Cmd.Data.TotalUnitRestart =  TotalUnitRestart;
-            Cmd.Data.CardVoltage      = CardVoltage;
+            Cmd.TxInfo.Port             = NULL;
+            Cmd.TxInfo.rxAddr           = DEVICE_BROADCAST_ADDR;
+            Cmd.TxInfo.rxId             = DEVICE_BROADCAST_TXU;
+            Cmd.Data.ObjectId           = IDNumber;
+            Cmd.Data.ndb                = sizeof(Cmd) - sizeof(QueueANPRO10_CommandHeading);
+            Cmd.Data.CommandNo          = CMD_GENERIC_STATIC_DATA;
+            Cmd.Data.CardChannel        = CardChannel;
+            Cmd.Data.CardId             = CardId;
+            Cmd.Data.CardAddress        = CardAddress;
+            Cmd.Data.UnitProgVersion    = UnitProgVersion;
+            Cmd.Data.UnitBootVersion    = UnitBootVersion;
+            Cmd.Data.ComVersion         = ComVersion;
+            Cmd.Data.StoreVersion       = StoreVersion;
+            Cmd.Data.RxBufSize          = RxBufSize;
+            Cmd.Data.TxBufSize          = TxBufSize;
+            Cmd.Data.ResetStatus        = ResetStatus;
+            Cmd.Data.ProgamTypeRunning  = ProgamTypeRunning;
+            Cmd.Data.TotalUnitRestart   = TotalUnitRestart;
+            Cmd.Data.CardVoltage        = CardVoltage;
             bool sent = ANPRO10SendNormal(&Cmd);
             if ( !sent ) ErrorStatus =  E_QUEUE_FULL;
             else ErrorStatus =  E_OK;

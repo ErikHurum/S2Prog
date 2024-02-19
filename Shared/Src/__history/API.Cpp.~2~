@@ -1,0 +1,864 @@
+#include "TSNIncludes.h"
+#pragma hdrstop
+/*
+*
+*   Copyright 1996-2012 Scanjet Ariston
+*
+*/
+
+#ifdef ANTDUSIM
+    #pragma warning( disable : 4244 4305)
+#endif
+
+#ifdef ANWIN
+	#include "LiteCall.hpp"
+#endif
+
+
+double APIRound(double Number, int Decimals)
+{
+    double Factor = pow(10.0,Decimals);
+    Number *= Factor;
+    if ( Number > 0.0 ) {
+        Number = int(Number+0.50001);
+    } else {
+        Number = int(Number-0.50001);
+    }
+    Number /= Factor;
+
+    return Number;
+}
+
+double APIRound5(double Number, int Decimals)
+{
+    double Factor = pow(10.0,Decimals-1);
+    double Num;
+    double Reminder = modf( Number*Factor, &Num );
+    if ( Num > 0.0 ) {
+        if ( Reminder >= 0.75 ) {
+            Num += 1.0;
+        } else if ( Reminder >= 0.25 ) {
+            Num += 0.5;
+        }
+    } else if ( Reminder ) {
+        if ( Reminder <= -0.75 ) {
+            Num -= 1.0;
+        } else if ( Reminder <= -0.25 ) {
+            Num -= 0.5;
+        }
+    }
+    Number = Num/Factor;
+
+    return Number;
+}
+
+double APITruncate(double Number, int Decimals)
+{
+    Decimals--;
+    double Factor = 1;
+    for ( int i=0; i <= Decimals; i++ ) {
+        Factor *= 10.0;
+    }
+    Number *= Factor;
+    if ( Number >= 0.0 ) {
+        Number = int(Number+0.0001);
+    } else {
+        Number = int(Number-0.0001);
+    }
+    Number /= Factor;
+
+    return Number;
+}
+
+//////////////////////////////////////////////////////////////////
+//
+// NOTICE:
+// The densities are by default in vacuum.
+//
+// Constants are from API Chapter 11.1 Methods
+//
+//////////////////////////////////////////////////////////////////
+
+float HydrometerCorrection(float dT)
+{
+    return(1.00 - 0.000023*dT - 0.00000002*dT*dT);
+}
+
+float DnsInVac_to_DnsInAir(float Density)
+{
+    return(Density - D_AIR_ADJ);
+}
+
+float DnsInAir_to_DnsInVac(float DnsVac)
+{
+    return(DnsVac + D_AIR_ADJ);
+}
+
+///////////////////////////////////////////////////////////////////
+//
+// Methodes and constants from API Vol X, page 1
+//
+///////////////////////////////////////////////////////////////////
+
+
+double CalcAlpha(double a, double b, double Dns)
+{
+    if ( !Dns ) Dns=1.0;
+    return(a/(Dns*Dns) + b/Dns);
+}
+
+double CalcAlpha15(double K0, double K1, double Dns15)
+{
+    if ( !Dns15 ) Dns15=1.0;
+    double Term1 = APITruncate(K0/Dns15,8);
+    double Term2 = APITruncate(Term1 / Dns15,10);
+    double Term3 = APITruncate(K1/Dns15,10);
+    double Alpha = APIRound(Term2 + Term3,7);
+    return Alpha;
+}
+
+double API_vcf15(double Alpha, double dT)
+{
+    double Term1 = APITruncate(Alpha*dT,9);
+    double Term2 = APITruncate(0.8*Term1,9);
+    float  Term3 = APIRound(Term1*Term2,9);
+    double Term4 = APITruncate(-Term1 - Term3,8);
+    double VCF   = APIRound(exp(Term4),6);
+    return VCF;
+}
+
+
+double API_vcf20(double Alpha, double dT)
+{
+    double Term1 = APITruncate(Alpha*dT,9);
+    double Term2 = APITruncate(Alpha*Term1,9);
+    double Term3 = APIRound(8*Term2,9);
+    double Term4 = APITruncate(0.8*Term1,9);
+    double Term5 = APIRound(Term1*Term4,9);
+    double Term6 = APITruncate(-Term1 - Term3 - Term5,8);
+    double VCF   = exp(Term6);
+    VCF = APIRound(VCF,6);
+    return VCF;
+}
+
+
+
+////////////////////////////////////////////////////////////
+//
+// Based on API 54A. Works direCtly for 6A as well
+//
+////////////////////////////////////////////////////////////
+
+
+
+
+double Vcf_6_and_54A_Calc(double RefDns, double dT, int *CurveNo, bool FixedCurveNo)
+{
+    RefDns*= 1000.0;
+    if ( CurveNo ) {
+        *CurveNo = 1;
+    }
+    return(API_vcf15(CalcAlpha15(613.9723,0.0,RefDns),dT));
+}
+
+////////////////////////////////////////////////////////////
+//
+// Based on API 54B. Works direCtly for 6B as well
+//
+////////////////////////////////////////////////////////////
+
+double Vcf_6_and_54B_Calc(double RefDns, double dT, int *CurveNo, bool FixedCurveNo)
+{
+    double Alpha15;
+    int FoundCNo;
+    if ( RefDns < A54B_DNS_RANGE1 ) {
+        FoundCNo = 1;
+    } else if ( RefDns <= A54B_DNS_RANGE2 ) {
+        FoundCNo = 2;
+    } else if ( RefDns <= A54B_DNS_RANGE3 ) {
+        FoundCNo = 3;
+    } else {
+        FoundCNo = 4;
+    }
+    int CNo;
+
+    if ( FixedCurveNo ) {
+        if ( CurveNo && *CurveNo ) {
+            CNo = *CurveNo;
+        } else {
+            CNo = FoundCNo;
+        }
+    } else {
+        CNo = FoundCNo;
+    }
+
+    RefDns*= 1000.0;
+    switch ( CNo ) {
+    case 1:
+        Alpha15 = CalcAlpha15(346.4228,0.4388,RefDns);
+        break;
+    case 2:
+        {
+            const double A = -0.00336312;
+            const double B = 2680.3206;
+            double Term1 = APITruncate(B/RefDns,6);
+            double Term2 = APIRound(Term1/RefDns,8);
+            Alpha15 = APIRound(A+Term2,7);
+        }
+        break;
+    case 3:
+        Alpha15 = CalcAlpha15(594.5418,0.0,RefDns);
+        break;
+    case 4:
+        Alpha15  = CalcAlpha15(186.9696,0.4862,RefDns);
+        break;
+
+    }
+    if ( CurveNo ) {
+        *CurveNo = FoundCNo;
+    }
+    return(API_vcf15(Alpha15,dT));
+}
+
+////////////////////////////////////////////////////////////
+//
+// Based on API 54D. Works direCtly for 6D as well
+//
+////////////////////////////////////////////////////////////
+double Vcf_6_and_54D_Calc(double RefDns, double dT, int *CurveNo, bool FixedCurveNo)
+{
+    RefDns*= 1000.0;
+    if ( CurveNo ) {
+        *CurveNo = 1;
+    }
+    return(API_vcf15(CalcAlpha15(0.0,0.62780,RefDns),dT));
+}
+
+
+////////////////////////////////////////////////////////////
+//
+// Based on IP 59A and 60A.
+//
+////////////////////////////////////////////////////////////
+
+
+
+
+double Vcf_59A_and_60A_Calc(double RefDns, double dT, int *CurveNo, bool FixedCurveNo)
+{
+    RefDns*= 1000.0;
+    if ( CurveNo ) {
+        *CurveNo = 1;
+    }
+    return(API_vcf20(CalcAlpha15(613.9723,0.0,RefDns),dT));
+}
+
+////////////////////////////////////////////////////////////
+//
+// Based on IP 59B and 60B.
+//
+////////////////////////////////////////////////////////////
+
+double Vcf_59B_and_60B_Calc(double RefDns, double dT, int *CurveNo, bool FixedCurveNo)
+{
+    double Alpha15;
+    int FoundCNo;
+    if ( RefDns < A59B_DNS_RANGE1 ) {
+        FoundCNo = 1;
+    } else if ( RefDns <= A59B_DNS_RANGE2 ) {
+        FoundCNo = 2;
+    } else if ( RefDns <= A59B_DNS_RANGE3 ) {
+        FoundCNo = 3;
+    } else {
+        FoundCNo = 4;
+    }
+    int CNo;
+
+    if ( FixedCurveNo ) {
+        if ( CurveNo && *CurveNo ) {
+            CNo = *CurveNo;
+        } else {
+            CNo = FoundCNo;
+        }
+    } else {
+        CNo = FoundCNo;
+    }
+    RefDns*= 1000.0;
+    switch ( CNo ) {
+    case 1:
+        Alpha15 = CalcAlpha15(346.4228,0.4388,RefDns);
+        break;
+    case 2:
+        {
+            const double A = -0.00336312;
+            const double B = 2680.3206;
+            double Term1 = APITruncate(B/RefDns,6);
+            double Term2 = APIRound(Term1/RefDns,8);
+            Alpha15 = APIRound(A+Term2,7);
+        }
+        break;
+    case 3:
+        Alpha15 = CalcAlpha15(594.5418,0.0,RefDns);
+        break;
+    case 4:
+        Alpha15  = CalcAlpha15(186.9696,0.4862,RefDns);
+        break;
+
+    }
+    if ( CurveNo ) {
+        *CurveNo = FoundCNo;
+    }
+    return(API_vcf20(Alpha15,dT));
+}
+
+////////////////////////////////////////////////////////////
+//
+// Based on IP 59D and 60D.
+//
+////////////////////////////////////////////////////////////
+double Vcf_59D_and_60D_Calc(double RefDns, double dT, int *CurveNo, bool FixedCurveNo)
+{
+    RefDns*= 1000.0;
+    if ( CurveNo ) {
+        *CurveNo = 1;
+    }
+    return(API_vcf20(CalcAlpha15(0.0,0.62780,RefDns),dT));
+}
+
+/////////////////////////////////////////////////////
+//
+// Ref API Volume X, page X-5
+//
+/////////////////////////////////////////////////////
+
+float Api_to_Density(float Api)
+{
+    return(API_CONST/(API_CONST2 + Api));
+}
+
+float Density_to_API(float Density)
+{
+    if ( !Density ) Density = 1.0;
+    return(API_CONST/Density - API_CONST2);
+}
+
+
+////////////////////////////////////////////////////////////
+//
+// Based on ASTM Implemention Procedures
+//
+////////////////////////////////////////////////////////////
+struct FluidParameters {
+    char Name[15];
+    double Lamda60;
+    double Tc;
+    double Zc;
+    double RhoC;
+    double K1;
+    double K2;
+    double K3;
+    double K4;
+
+};
+const FluidParameters Fluids[] ={
+    { "EE (68/32)"  , 0.325022,  298.11,     0.27998,    6.250,  2.54616855327,  -0.058244177754,     0.803398090807,    -0.745720314137},
+    { "Ethane"      , 0.355994,  305.33,     0.28220,    6.870,  1.89113042610,  -0.370305782347,    -0.544867288720,     0.337876634952},
+    { "EP (65/35)"  , 0.429277,  333.67,     0.28060,    5.615,  2.20970078464,  -0.294253708172,    -0.405754420098,     0.319443433421},
+    { "EP (35/65)"  , 0.470381,  352.46,     0.27930,    5.110,  2.25341981320,  -0.266542138024,    -0.372756711655,     0.384734185665},
+    { "Propane"     , 0.507025,  369.78,     0.27626,    5.000,  1.96568366933,  -0.327662435541,    -0.417979702538,     0.303271602831},
+    { "i-Butane"    , 0.562827,  407.85,     0.28326,    3.860,  2.04748034410,  -0.289734363425,    -0.330345036434,     0.291757103132},
+    { "n-Butane"    , 0.584127,  425.16,     0.27536,    3.920,  2.03734743118,  -0.299059145695,    -0.418883095671,     0.380367738748},
+    { "i-Pentane"   , 0.624285,  460.44,     0.27026,    3.247,  2.06541640707,  -0.238366208840,    -0.161440492247,     0.258681568613},
+    { "n-Pentane"   , 0.631054,  469.65,     0.27235,    3.200,  2.11263474494,  -0.261269413560,    -0.291923445075,     0.308344290017},
+    { "i-Hexane"    , 0.657167,  498.05,     0.26706,    2.727,  2.02382197871,  -0.423550090067,    -1.152810982570,     0.950139001678},
+    { "n-Hexane"    , 0.664064,  507.35,     0.26762,    2.704,  2.17134547773,  -0.232997313405,    -0.267019794036,     0.378629524102},
+    { "n-Heptane"   , 0.688039,  540.15,     0.26312,    2.315,  2.19773533433,  -0.275056764147,    -0.447144095029,     0.493770995799},
+};
+
+double Calc_RohSat(int i, double Tr)
+{
+    // T24/10
+    double t = 1 - Tr;
+    double RhoSat = Fluids[i].RhoC*(1+((Fluids[i].K1*pow(t,double(0.35)))+(Fluids[i].K3*pow(t,double(2.0)))+(Fluids[i].K4*pow(t,double(3.0))))/(1+(Fluids[i].K2*pow(t,double(0.65)))));
+    return RhoSat;
+}
+double Ctl_LPG_Calc_24E(double RefDns60, double TempC)
+{
+    // T24/1
+    double TempF  = APIRound(C_TO_FAHRENHEIT(TempC) ,1);
+    double RDns60 = APIRound(RefDns60,4);
+    double Tx     = (TempF+459.67)/1.8;
+    if ( ( TempF < -50.8 ) || ( TempF > 199.4 ) ) return -1.0; // Error, temp out of range
+    // T24/4
+    unsigned Index = 0;
+    for ( unsigned i=0; !Index && (i < NELEMENTS(Fluids)); i++ ) {
+        if ( Fluids[i].Lamda60 >= RDns60 ) {
+            Index = i;
+        }
+    }
+    if ( !Index ) {
+        return -1.0;
+    }
+    // T24/5
+    double Rho  = ( RDns60 - Fluids[Index-1].Lamda60)/(Fluids[Index].Lamda60 - Fluids[Index-1].Lamda60);
+    // T24/6
+    double Tc   = Fluids[Index-1].Tc + Rho*(Fluids[Index].Tc - Fluids[Index-1].Tc);
+    // T24/7
+    double Trx  = Tx / Tc;
+    // If greater then 1.0, the gas is supercritical and cannot exist as liquid.
+    if ( Trx >= 1.0 ) return -1.0;
+    //T24/8
+    double Tr60 = 519.67/(1.8*Tc);
+    //T24/9
+    double h2   = (Fluids[Index-1].Zc * Fluids[Index-1].RhoC)/(Fluids[Index].Zc * Fluids[Index].RhoC);
+    //T24/10
+    double RhoSat60_1 = Calc_RohSat(Index-1,Tr60);
+    double RhoSat60_2 = Calc_RohSat(Index  ,Tr60);
+    //T24/11
+    double X          = RhoSat60_1/((1+Rho*((RhoSat60_1/(h2*RhoSat60_2))-1)));
+    //T24/12
+    double RhoSatX_1  = Calc_RohSat(Index-1,Trx);
+    double RhoSatX_2  = Calc_RohSat(Index  ,Trx);
+    //T24/13
+    double Ctl        = RhoSatX_1/(X*(1+Rho*((RhoSatX_1/(h2*RhoSatX_2))-1)));
+    Ctl = APIRound(Ctl,5);
+    return Ctl;
+}
+
+double CalcLamdax(int Index, double Tx)
+{
+    double Lamda = -1;;
+    double Tc   = Fluids[Index].Tc;
+    double Trx  = Tx / Tc;
+    if ( Trx <= 1.0 ) {
+        double Tr60 = 519.67/(1.8*Tc);
+        double RhoSatx  = Calc_RohSat(Index  ,Trx);
+        double RhoSat60 = Calc_RohSat(Index  ,Tr60);
+        Lamda           = Fluids[Index].Lamda60*RhoSatx/RhoSat60;
+    }
+    return Lamda;
+}
+
+double CalcCtl(double RDns60, double Tx, int Index1, int Index2)
+{
+    // T24/5
+    double Rho  = ( RDns60 - Fluids[Index1].Lamda60)/(Fluids[Index2].Lamda60 - Fluids[Index1].Lamda60);
+    // T24/6
+    double Tc   = Fluids[Index1].Tc + Rho*(Fluids[Index2].Tc - Fluids[Index1].Tc);
+    // T24/7
+    double Trx  = Tx / Tc;
+    // If greater then 1.0, the gas is supercritical and cannot exist as liquid.
+    if ( Trx > 1.0 ) return -1.0;
+    //T24/8
+    double Tr60 = 519.67/(1.8*Tc);
+    //T24/9
+    double h2   = (Fluids[Index1].Zc * Fluids[Index1].RhoC)/(Fluids[Index2].Zc * Fluids[Index2].RhoC);
+    //T24/10
+    double RhoSat60_1 = Calc_RohSat(Index1 ,Tr60);
+    double RhoSat60_2 = Calc_RohSat(Index2 ,Tr60);
+    //T24/11
+    double X          = RhoSat60_1/((1+Rho*((RhoSat60_1/(h2*RhoSat60_2))-1)));
+    //T24/12
+    double RhoSatX_1  = Calc_RohSat(Index1 ,Trx);
+    double RhoSatX_2  = Calc_RohSat(Index2 ,Trx);
+    //T24/13
+    double Ctl        = RhoSatX_1/(X*(1+Rho*((RhoSatX_1/(h2*RhoSatX_2))-1)));
+    return Ctl;
+
+}
+
+double Ctl_LPG_Calc_23E(double ObsDns, double TempC, bool Round)
+{
+    double TempF  = C_TO_FAHRENHEIT(TempC);
+    double RDtf   = ObsDns;
+
+    if ( Round ) {
+        // T23/1
+        TempF  = APIRound(TempF,1);
+        RDtf   = APIRound(RDtf,4);
+        // T23/3
+        if ( ( TempF   < -50.8  ) || ( TempF   > 199.4  ) ) return -1.0; // Error, temp out of range
+        if ( ( ObsDns  < 0.2100 ) || ( ObsDns  > 0.7400 ) ) return -1.0; // Error, density out of range
+    }
+    //T23/2
+    double Tx     = (TempF+459.67)/1.8;
+
+    // T23/4
+    int Index2 = -1;
+    for ( unsigned i=0; Index2 < 0 && i< NELEMENTS(Fluids); i++ ) {
+        // T23/5
+        double Lamdax = CalcLamdax(i,Tx);
+        if ( Lamdax > RDtf ) {
+            Index2 = i;
+            if ( !Index2 ) {
+                Index2++;
+            }
+        } else if ( !i && RDtf < Lamdax ) {
+            Index2 =1;
+        }
+    }
+    if ( Index2 < 0 ) {
+        Index2 = NELEMENTS(Fluids)-1;
+    }
+    int Index1 = Index2-1;
+    //T23/6
+    double RD60Low   = Fluids[Index1].Lamda60;
+    double RD60High  = Fluids[Index2].Lamda60;   // OK
+    double RDtfLow   = CalcLamdax(Index1,Tx);
+    double RDtfHigh  = CalcLamdax(Index2,Tx);    // OK
+    if ( RDtfLow == -1.0 ) {
+        // Note: RD60Low is already initialized
+        RD60Low  = ( (Tx - Fluids[Index1].Tc)/(Fluids[Index2].Tc-Fluids[Index1].Tc))*(RD60High-RD60Low) + RD60Low;
+        if ( RD60Low <0.3500 ) {
+            RD60Low = 0.3500;
+
+        }
+        RDtfLow  = CalcCtl(RD60Low,Tx,Index1,Index2)*RD60Low;
+        if ( RDtfLow < 0.0 ) {
+            return -1;
+        }
+    }
+    if ( RD60Low <0.3500 ) {
+        RD60Low = 0.3500;
+        RDtfLow  = CalcCtl(RD60Low,Tx,Index1,Index2)*RD60Low;
+        if ( RDtfLow < 0.0 ) {
+            return -1;
+        }
+
+    }
+    if ( RDtf < RDtfLow ) {
+        return -1;
+    }
+    bool   Found = false;
+    int    Cnt   = 0;
+    double RD60  = -1;
+    //T23/7
+    do {
+        double Delta = (RDtf - RDtfLow)/(RDtfHigh - RDtfLow);
+        if ( Delta < 0.001 ) {
+            Delta = 0.001;
+        } else if ( Delta > 0.999 ) {
+            Delta = 0.999;
+        }
+
+        double RD60Mid = RD60Low+ Delta*(RD60High-RD60Low);
+        //double RD60Mid = (RD60High+RD60Low)/2.0;
+        double Ctl     = CalcCtl(RD60Mid,Tx,Index1,Index2);
+        double RDtfMid = Ctl*RD60Mid;
+
+		double DiffLow  = fabs(RD60Mid-RD60Low);
+		double DiffHigh = fabs(RD60Mid-RD60High);
+
+        if ( DiffLow < 1e-8 || DiffHigh < 1e-8 ) {
+            RD60  = RD60Mid;
+            Found = true;
+        } else {
+            double Alpha = (RD60High - RD60Low);
+            double Betha = pow(RDtfHigh,2)-pow(RDtfLow,2);
+            double Phi   = (RDtfHigh-RDtfLow)/(RDtfMid-RDtfLow);
+            double A     = (Alpha-Phi*(RD60Mid-RD60Low))/(Betha-Phi*(pow(RDtfMid,2)-pow(RDtfLow,2)));
+            double B     = ( Alpha - A*Betha)/(RDtfHigh-RDtfLow);
+            double C     = RD60Low - B*RDtfLow - A*pow(RDtfLow,2);
+            double RD60t = A*pow(RDtf,2)+B*RDtf+C;
+            if ( RD60t < RD60Low ) {
+                RD60t = RD60Low+((RD60Mid-RD60Low)*(RDtf-RDtfLow)/(RDtfMid-RDtfLow));
+            } else if ( RD60t > RD60High ) {
+                RD60t   = RD60Mid+((RD60High-RD60Mid)*(RDtf-RDtfMid)/(RDtfHigh-RDtfMid));
+            }
+            Ctl         = CalcCtl(RD60t, Tx, Index1, Index2);
+            double RDt  = Ctl*RD60t;
+			double Diff = fabs(RDt-RDtf);
+            if ( Diff < 1e-8 ) {
+                RD60  = RD60t;
+                Found = true;
+            } else if ( RDt > RDtf ) {
+                RDtfHigh = RDt;
+                RD60High = RD60t;
+				if ( RDtfMid < RDtf ) {
+                    RDtfLow = RDtfMid;
+                    RD60Low = RD60Mid;
+                }
+            } else if ( RDt < RDtf ) {
+                RDtfLow = RDt;
+                RD60Low = RD60t;
+                if ( RDtfMid > RDtf ) {
+                    RDtfHigh = RDtfMid;
+                    RD60High = RD60Mid;
+                }
+            }
+        }
+    } while ( !Found && Cnt++ < 10 );
+    if ( !Found ) {
+        return -1;
+    }
+    if ( Round ) {
+        RD60 = APIRound(RD60,4);
+        if ( RD60 < 0.3500 || RD60 > 0.6880 ) {
+            return -1;
+        }
+    }
+    return RD60;
+}
+
+double Ctl_LPG_Calc_54E(double RDns15, double TempC)
+{
+    // T54/1
+    double Tf    = APIRound5(TempC ,2);
+    double Dns15 = APIRound(RDns15,4);
+    //T54/2
+    double Tx     = Tf + TEMP_ZERO;
+    //T54/3
+    if ( ( Tf < -46.0 ) || ( Tf > 93.0 ) ) return -1.0; // Error, temp out of range
+
+    //T54/4
+    double RDtb = Dns15/0.999016;
+    //T54/5
+    double RD60 = Ctl_LPG_Calc_23E(RDtb,15.0,false);
+    //T54/6
+    double RD60Rounded = APIRound(RD60,5);
+    if ( RD60Rounded < 0.34995 || RD60Rounded > 0.68805 ) {
+        return -1;
+    }
+    // Select the Gas
+    int Index = -1;
+    for ( unsigned i=0; Index < 0  && (i < NELEMENTS(Fluids)); i++ ) {
+        if ( Fluids[i].Lamda60 >= RD60 ) {
+            Index = i;
+        }
+    }
+    if ( Index== -1 ) {
+        return -1.0;
+    } else if ( !Index ) {
+        Index++;
+    }
+    double Ctl1 = CalcCtl(RD60,Tx  ,Index-1,Index);
+    double Ctl2 = CalcCtl(RD60,15.0+TEMP_ZERO  ,Index-1,Index);
+    double Ctl  = Ctl1/Ctl2;
+    if ( Ctl < 0.0 ) {
+        return -1;
+    }
+    Ctl = APIRound(Ctl,5);
+    return Ctl;
+}
+
+double Ctl_LPG_Calc_53E(double ODns, double TempC)
+{
+    // T53/1
+    double Tf   = APIRound5(TempC ,2);
+    double RDtf = APIRound(ODns,4);
+    //T53/2
+    //double Tx     = Tf + TEMP_ZERO;
+    //T53/3
+    if ( ( Tf < -46.0 ) || ( Tf > 93.0 ) ) return -1.0; // Error, temp out of range
+
+    //T53/4
+    double RDtb = RDtf/0.999016;
+    //T53/5
+    double RD60 = Ctl_LPG_Calc_23E(RDtb,Tf,false);
+    if ( RD60 == -1.0 ) {
+        return -1;
+    }
+    //T53/6
+
+    // Select the Gas
+    int Index = -1;
+    for ( unsigned i=0; Index < 0  && (i < NELEMENTS(Fluids)); i++ ) {
+        if ( Fluids[i].Lamda60 >= RD60 ) {
+            Index = i;
+        }
+    }
+    if ( Index== -1 ) {
+        return -1.0;
+    } else if ( !Index ) {
+        Index++;
+    }
+    double Ctl = CalcCtl(RD60,15.0+TEMP_ZERO  ,Index-1,Index);
+    //T53/7
+    if ( Ctl < 0.0 ) {
+        return -1;
+    }
+    //T53/6 continued
+    double RD15 = Ctl * RD60;
+    //T53/8
+    double Rho15 = RD15*0.999016;
+    //T53/9
+    Rho15 = APIRound(Rho15,4);
+    return Rho15;
+}
+
+double Ctl_LPG_Calc_60E(double RDns20, double TempC)
+{
+    // T60/1
+    double Tf    = APIRound5(TempC ,2);
+    double Dns20 = APIRound(RDns20,4);
+    //T60/2
+    double Tx     = Tf + TEMP_ZERO;
+    //T60/3
+    if ( ( Tf    < -46.0 ) || ( Tf    > 93.0  ) ) return -1.0; // Error, temp out of range
+    if ( ( Dns20 < 0.3317 ) || ( Dns20 > 0.6836 ) ) return -1.0; // Error, density out of range
+
+    //T60/4
+    double RDtb = Dns20/0.999016;
+    //T60/5
+    double RD60 = Ctl_LPG_Calc_23E(RDtb,20.0,false);
+    //T60/6
+    double RD60Rounded = APIRound(RD60,5);
+    if ( RD60Rounded < 0.34995 || RD60Rounded > 0.68805 ) {
+        return -1;
+    }
+    // Select the Gas
+    int Index = -1;
+    for ( unsigned i=0; Index < 0  && (i < NELEMENTS(Fluids)); i++ ) {
+        if ( Fluids[i].Lamda60 >= RD60 ) {
+            Index = i;
+        }
+    }
+    if ( Index== -1 ) {
+        return -1.0;
+    } else if ( !Index ) {
+        Index++;
+    }
+    //T60/7
+    double Ctl1 = CalcCtl(RD60,Tx  ,Index-1,Index);
+    double Ctl2 = CalcCtl(RD60,20.0+TEMP_ZERO  ,Index-1,Index);
+    double Ctl  = Ctl1/Ctl2;
+    if ( Ctl < 0.0 ) {
+        return -1;
+    }
+    //T60/11
+    Ctl = APIRound(Ctl,5);
+    return Ctl;
+}
+
+double Ctl_LPG_Calc_59E(double ODns, double TempC)
+{
+    // T59/1
+    double Tf   = APIRound5(TempC ,2);
+    double RDtf = APIRound(ODns,4);
+    //T59/2
+    //double Tx     = Tf + TEMP_ZERO;
+    //T59/3
+    if ( ( Tf < -46.0 ) || ( Tf > 93.0 ) ) return -1.0; // Error, temp out of range
+
+    //T59/4
+    double RDtb = RDtf/0.999016;
+    //T59/5
+    double RD60 = Ctl_LPG_Calc_23E(RDtb,Tf,false);
+    if ( RD60 == -1.0 ) {
+        return -1;
+    }
+    //T59/6
+
+    // Select the Gas
+    int Index = -1;
+    for ( unsigned i=0; Index < 0  && (i < NELEMENTS(Fluids)); i++ ) {
+        if ( Fluids[i].Lamda60 >= RD60 ) {
+            Index = i;
+        }
+    }
+    if ( Index== -1 ) {
+        return -1.0;
+    } else if ( !Index ) {
+        Index++;
+    }
+    double Ctl = CalcCtl(RD60,20.0+TEMP_ZERO  ,Index-1,Index);
+    //T59/7
+    if ( Ctl < 0.0 ) {
+        return -1;
+    }
+    //T59/6 continued
+    double RD20 = Ctl * RD60;
+    //T59/8
+    double Rho20 = RD20*0.999016;
+    //T59/9
+    Rho20 = APIRound(Rho20,4);
+    return Rho20;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////
+//
+// Gas calculations based on mol
+//
+///////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// The data is from a Excel document which is the property of Chemgas, one customer of Henri Systems
+//
+const GasProduct Product[] = {//            Q        F       A       B      MolMass     H       N
+    {  "Ammoniak"       , "NH3"         ,405.5,   1.001,  0.2312,  0.2471,   17.032  ,  12.19 ,  1.965, 11,{{-40, 0.6912, -0.2525, -0.29},{-30, 0.6782, 0.1627, 0.19},{-20, 0.6652, 0.7374, 0.89},{-10, 0.6519, 0.15215, 1.89},{0, 0.6381, 2.5606, 3.26},{10, 0.6239, 3.9267, 5.1},{20, 0.6092, 5.688, 7.5},{30, 0.5939, 7.9364, 10.57},{40, 0.5779, 10.775, 14.42},{50, 0.5611, 14.331, 19.17},{60, 0.5443, 18.7295, 24.92}}},
+    {  "Butadien"       , "C4H6"        ,425.0,   0.977,  0.2444,  0.2710,   54.090  ,  12.16 ,  1.765, 11,{{-40, 0.6900, 0.557, 0.202},{-30, 0.6585, 0.9735, 0.372},{-20, 0.669, 1.39, 0.542},{-10, 0.645, 2.18, 0.883},{0, 0.645, 2.97, 1.224}, {10, 0.633, 4.17, 1.754}, {20, 0.621, 5.69, 2.437}, {30, 0.609, 7.64, 3.324}, {40, 0.595, 10.02, 4.415}, {50, 0.581, 13.375, 5.93}, {60, 0.567, 16.73, 7.444}}},
+    {  "Isobutylene"    , "C4H8"        ,419.2,   1.000,  0.2188,  0.2680,   56.104  ,  12.36 ,  2.600, 11,{{-40, 0.6613, 0.65, 0.23},{-30, 0.6506, 0.99, 0.37},{-20, 0.64, 1.62, 0.59},{-10, 0.6397, 2.34, 0.89},{0, 0.6171, 3.36, 1.31},{10, 0.6053, 4.69, 1.87},{20, 0.5931, 6.39, 2.59},{30, 0.5805, 8.52, 3.5},{40, 0.5674, 11.35, 4.65},{50, 0.5536, 14.72, 6.05},{60, 0.5399, 18.04, 7.45}}},
+    {  "Propylene"      , "C3H6"        ,354.9,   1.040,  0.2252,  0.2699,   42.080  ,  12.04 ,  1.765, 11,{{-40, 0.5995, 3.19, 1.4},{-30, 0.5863, 4.66, 2.11},{-20, 0.5731, 6.643, 3.067},{-10, 0.5599, 9.05, 4.28},{0, 0.5457, 12.22, 5.83},{10, 0.5307, 16.25, 7.78},{20, 0.5147, 21.28, 10.16},{30, 0.4977, 27.53, 13.04},{40, 0.4791, 35.703, 16.49},{50, 0.4586, 45.81, 20.56},{60, 0.4381, 56.43, 24.96}}},
+    {  "Propenoxide"    , "C3H6O"       ,582.0,   1.000,  0.3123,  0.3015,   58.080  ,  12.80 ,  1.765, 11,{{-40, 0.9028, 0.0033, 0.01},{-30, 0.8905, 0.0313, 0.01},{-20, 0.8782, 0.2108, 0.07},{-10, 0.8659, 0.4, 0.16},{0, 0.8536, 0.6, 0.25},{10, 0.8413, 1, 0.4},{20, 0.829, 1.4, 0.61},{30, 0.8167, 2.1, 0.9},{40, 0.8044, 3.2233, 1.28},{50, 0.7921, 4.4235, 1.79},{60, 0.7798, 6.0166, 2.47}}},
+    {  "Vynilchloride"  , "C4H6"        ,429.7,   1.000,  0.3946,  0.3108,   62.500  ,  12.16 ,  1.765, 11,{{-40, 1.0174, 0.4921, 0.15},{-30, 0.9999, 1.4958, 0.47},{-20, 0.9824, 2.398, 0.79},{-10, 0.9649, 3.494, 1.19},{0, 0.9468, 4.967, 1.73},{10, 0.9287, 6.888, 2.46},{20, 0.9104, 9.374, 3.49},{30, 0.8916, 12.446, 4.59},{40, 0.8725, 16.301, 6.88},{50, 0.8534, 23.6689, 8.18},{60, 0.8343, 27.5705, 9.58}}},
+    {  "Butane"         , "C4H10"       ,429.7,   0.000,  0.0000,  0.0000,   58.123  ,  12.027,  1.765, 11,{{-40, 0.6400, 0.5487, 0.183},{-30, 0.6306, 0.8625, 0.3},{-20, 0.6210, 1.3199, 0.478},{-10, 0.6107, 1.873, 0.705},{0, 0.6008, 2.7128, 1.06}, {10, 0.5898, 3.7773, 1.53}, {20, 0.5788, 5.0315, 2.11}, {30, 0.5665, 6.6411}, {40, 0.5546, 8.572, 3.84}, {50, 0.5422, 10.9592, 5.08}, {60, 0.5284, 13.6389, 6.5}}},
+    {  "Propane"        , "C3H8"        ,429.7,   0.000,  0.0000,  0.0000,   44.096  ,  12.027,  1.765, 11,{{-40, 0.5815, 2.33, 1},{-30, 0.5683, 3.4, 1.5},{-20, 0.5551, 5.57, 2.5},{-10, 0.5419, 7.54, 3.45},{0, 0.5287, 10.23, 4.74}, {10, 0.5147, 13.63, 6.36}, {20, 0.5000, 17.9, 8.36}, {30, 0.4843, 23.18, 10.79}, {40, 0.4647, 29.72, 13.69}, {50, 0.4489, 37.57, 17.14}, {60, 0.4304, 48.47, 21.5}}},
+    {  "N-Butane"       , "nC4H8"       ,425.2,   0.000,  0.0000,  0.0000,   58.123  ,  12.027,  1.765, 11,{{-40, 0.6443, 0.3654, 0.12},{-30, 0.6335},{-20, 0.6227, 1.1317, 0.4},{-10, 0.6119, 1.9, 0.7},{0, 0.6011, 2.72, 1.03}, {10, 0.5901, 3.81, 1.48}, {20, 0.5787, 5.23, 2.07}, {30, 0.5669, 7.04, 2.83}, {40, 0.5547, 9.3731, 3.77}, {50, 0.5420, 12.1704, 4.93}, {60, 0.5293, 16.3137, 6.49}}},
+    {  "ISO-Butane"     , "I-C4H10"     ,408.1,   0.000,  0.0000,  0.0000,   58.123  ,  12.027,  1.765, 11,{{-40, 0.6262, 0.82, 0.29},{-30, 0.6148, 1.23, 0.44},{-20, 0.6034, 2.06, 0.74},{-10, 0.5920, 2.96, 1.08},{0, 0.5806, 4.18}, {10, 0.5689, 5.79, 2.2}, {20, 0.5568, 7.77, 3}, {30, 0.5442, 10.28, 4.01}, {40, 0.5310, 13.4, 5.25}, {50, 0.5171, 17.21, 6.74}, {60, 0.5032, 22.09, 8.6}}},
+    {  "1-Butene"       , "1-C4H8 "     ,425.2,   0.000,  0.0000,  0.0000,   56.107  ,  12.027,  1.765, 11,{{-40, 0.6611, 0.65, 0.22},{-30, 0.6497, 0.98, 0.36},{-20, 0.6383, 1.52, 0.56},{-10, 0.6269, 2.29, 0.87},{0, 0.6155, 3.28, 1.28}, {10, 0.6039, 4.59, 1.83}, {20, 0.5918, 6.26, 2.54}, {30, 0.5794, 8.37, 3.44}, {40, 0.5664, 11.01, 4.56}, {50, 0.5529, 14.27, 5.93}, {60, 0.5394, 18.31, 7.61}}},
+    {  "Crude C4"       , "C4"          ,  0.0,   0.000,  0.0000,  0.0000,   55.091  ,  12.027,  1.765, 11,{{-40, 0.6770, 1.1383, 0.115},{-30, 0.6650, 1.4295, 0.241},{-20, 0.6540, 1.3597, 0.531},{-10, 0.642, 2.2352, 0.881},{0, 0.6290, 3.2297, 1.301}, {10, 0.6170, 4.5057, 1.85}, {20, 0.6050, 6.1495, 2.556}, {30, 0.5920, 8.2238, 3.454}, {40, 0.5790, 10.7476, 4.514}, {50, 0.5660, 13.2346, 5.508}, {60, 0.5330, 15.4051, 6.45}}},
+    {  "Raffinate 1"    , "C"           ,  0.0,   0.000,  0.0000,  0.0000,   56.4    ,  12.027,  1.765, 11,{{-40, 0.6642, 1.1383, 0.115},{-30, 0.6528, 1.4295, 0.241},{-20, 0.6414, 1.3597, 0.531},{-10, 0.6300, 2.2352, 0.881},{0, 0.6186, 3.2297, 1.301}, {10, 0.6069, 4.5057, 1.85}, {20, 0.5949, 6.1495, 2.556}, {30, 0.5824, 8.2238, 3.454}, {40, 0.5694, 10.7476, 4.514}, {50, 0.5569, 13.2346, 5.508}, {60, 0.5439, 15.4051, 6.45}}},
+    {  "Raffinate 2"    , "C"           ,  0.0,   0.000,  0.0000,  0.0000,   56.8    ,  12.027,  1.765, 11,{{-40, 0.6678, 1.1383, 0.115},{-30, 0.6565, 1.4295, 0.241},{-20, 0.6452, 1.3597, 0.531},{-10, 0.6339, 2.2352, 0.881},{0, 0.6226, 3.2297, 1.301}, {10, 0.6113, 4.5057, 1.85}, {20, 0.6001, 6.1495, 2.556}, {30, 0.5889, 8.2238, 3.454}, {40, 0.5776, 10.7476, 4.514}, {50, 0.5663, 13.2346, 5.508}, {60, 0.5550, 15.4051, 6.45}}},
+    {  "Propylene Ref"  , "Promix NR"   ,354.9,   0.000,  0.0000,  0.0000,   42.565  ,  12.027,  1.765, 11,{{-40, 0.5776, 6.011, 2.855},{-30, 0.5776, 6.011, 2.855},{-20, 0.5657, 7.282, 3.601},{-10, 0.5534, 9.896, 5.087},{0, 0.5412, 12.336, 6.582}, {10, 0.5277, 15.276, 8.449}, {20, 0.5135, 18.759, 10.742}, {30, 0.4985, 22.831, 13.521}, {40, 0.4825, 27.718, 16.955}, {50, 0.4657, 33.038, 20.855}, {60, 0.4480, 39.542, 25.733}}},
+       {  "Gasolie"        , "Gasolie"     ,  0.0,   0.000,  0.0000,  0.0000,   28      ,  12.027,  1.765, 11,{{-40, 0.882671},{-30, 0.875826},{-20, 0.868982},{-10, 0.862137},{0, 0.855309}, {10, 0.848465}, {20, 0.841536}, {30, 0.834776}, {40, 0.82793}, {50, 0.821069}, {60, 0.814224}}},
+    {  "Flexicoker LPG" , "FLX LPG"     ,  0.0,   0.000,  0.0000,  0.0000,   52.04934,  12.027,  1.765, 11,{{-40, 0.616096, -4.14, -1.63},{-30, 0.605316, -2.8, -1.13},{-20, 0.59426, -0.32, 0.13},{-10, 0.582651, 1.99, 0.82},{0, 0.571319, 5.12, 2.11} ,{10, 0.558881, 9.15, 3.73} ,{20, 0.546443, 14.05, 5.73} ,{30, 0.533176, 20.27, 8.15} ,{40, 0.519632, 28.05, 11.06}, {50, 0.505259, 37.72, 14.51}, {60, 0.490334, 50.75, 18.87}}},
+    {  "Sulphur-1"      , "S"           ,429.7,   0.000,  0.0000,  0.0000,   32.065  ,  12.027,  1.765, 31,{{120, 1.802},{121, 1.801},{122 ,1.801},{123, 1.800},{124, 1.799}, {125, 1.798}, {126, 1.797}, {127, 1.797}, {128, 1.796}, {129, 1.795}, {130, 1.795}, {131, 1.794}, {132, 1.793}, {133, 1.792}, {134, 1.792}, {135, 1.791}, {136, 1.790}, {137, 1.789}, {138, 1.788}, {139, 1.788}, {140, 1.787}, {141, 1.786}, {142, 1.785}, {143, 1.785}, {144, 1.784}, {145, 1.783}, {146, 1.782}, {147, 1.781}, {148, 1.780}, {149, 1.780}, {150, 1.779}}},
+    {  "Sulphur-2"      , "S"           ,429.7,   0.000,  0.0000,  0.0000,   32.065  ,  12.027,  1.765, 31,{{120, 1.7990},{121, 1.7984},{122 ,1.7978},{123, 1.7972},{124, 1.7966}, {125, 1.7960}, {126, 1.7954}, {127, 1.7948}, {128, 1.7942}, {129, 1.7936}, {130, 1.7930}, {131, 1.7924}, {132, 1.7918}, {133, 1.7912}, {134, 1.7906}, {135, 1.7900}, {136, 1.7894}, {137, 1.7888}, {138, 1.7882}, {139, 1.7876}, {140, 1.7870}, {141, 1.7864}, {142, 1.7858}, {143, 1.7852}, {144, 1.7846}, {145, 1.7840}, {146, 1.7834}, {147, 1.7828}, {148, 1.7822}, {149, 1.7816}, {150, 1.7810}}},
+    {  "Sulphur-3"      , "S"           ,429.7,   0.000,  0.0000,  0.0000,   32.065  ,  12.027,  1.765, 31,{{120, 1.8039},{121, 1.8035},{122 ,1.8026},{123, 1.8019},{124, 1.8012}, {125, 1.8005}, {126, 1.7998}, {127, 1.7990}, {128, 1.7982}, {129, 1.7974}, {130, 1.7966}, {131, 1.7985}, {132, 1.7950}, {133, 1.7942}, {134, 1.7933}, {135, 1.7924}, {136, 1.7916}, {137, 1.7808}, {138, 1.7899}, {139, 1.7890}, {140, 1.7881}, {141, 1.7871}, {142, 1.7861}, {143, 1.7851}, {144, 1.7842}, {145, 1.7833}, {146, 1.7825}, {147, 1.7816}, {148, 1.7806}, {149, 1.7798}, {150, 1.7790}}},
+    {  "Sulphur-4"      , "S"           ,429.7,   0.000,  0.0000,  0.0000,   32.065  ,  12.027,  1.765, 31,{{120, 1.8017},{121, 1.8010},{122 ,1.8003},{123, 1.7996},{124, 1.7989}, {125, 1.7982}, {126, 1.7975}, {127, 1.7968}, {128, 1.7960}, {129, 1.7952}, {130, 1.7945}, {131, 1.7938}, {132, 1.7930}, {133, 1.7922}, {134, 1.7915}, {135, 1.7908}, {136, 1.7900}, {137, 1.7893}, {138, 1.7885}, {139, 1.7878}, {140, 1.7870}, {141, 1.7863}, {142, 1.7857}, {143, 1.7849}, {144, 1.7842}, {145, 1.7835}, {146, 1.7828}, {147, 1.7821}, {148, 1.7814}, {149, 1.7806}, {150, 1.7799}}},
+    {  "Sulphur-5"      , "S"           ,429.7,   0.000,  0.0000,  0.0000,   32.065  ,  12.027,  1.765, 31,{{120, 1.7974},{121, 1.7968},{122 ,1.7962},{123, 1.7956},{124, 1.7950}, {125, 1.7944}, {126, 1.7938}, {127, 1.7932}, {128, 1.7926}, {129, 1.7920}, {130, 1.7914}, {131, 1.7908}, {132, 1.7902}, {133, 1.7896}, {134, 1.7890}, {135, 1.7884}, {136, 1.7878}, {137, 1.7872}, {138, 1.7866}, {139, 1.7860}, {140, 1.7854}, {141, 1.7848}, {142, 1.7842}, {143, 1.7836}, {144, 1.7830}, {145, 1.7824}, {146, 1.7818}, {147, 1.7812}, {148, 1.7806}, {149, 1.7800}, {150, 1.7794}}},
+    {  "Sulphur-6"      , "S"           ,429.7,   0.000,  0.0000,  0.0000,   32.065  ,  12.027,  1.765, 31,{{120, 1.8008},{121, 1.8001},{122 ,1.7996},{123, 1.7989},{124, 1.7981}, {125, 1.7974}, {126, 1.7967}, {127, 1.7962}, {128, 1.7954}, {129, 1.7946}, {130, 1.7941}, {131, 1.7939}, {132, 1.7926}, {133, 1.7918}, {134, 1.7913}, {135, 1.7905}, {136, 1.7898}, {137, 1.7890}, {138, 1.7882}, {139, 1.7877}, {140, 1.7869}, {141, 1.7861}, {142, 1.7854}, {143, 1.7848}, {144, 1.7840}, {145, 1.7832}, {146, 1.7825}, {147, 1.7817}, {148, 1.7810}, {149, 1.7804}, {150, 1.7797}}},
+};
+
+/* The following code was included but not used by Henri Systems */
+
+double ChemgasPureGasCalcLiquid(double Q, double F, double A, double B, double ActTemp)
+{
+    // Most likely a modified Rackett Eq’n (1970), for the calculation of molar volume of sat’d liquid.
+    // The code is based on the code marked Original and is an attremt to understand and find the methode
+    // the calculations is based on
+    double Zra  = B;    // Rename paramters later
+    double Tc   = Q;    // Rename paramters later
+    double Tr   = (ActTemp + TEMP_ZERO)/Tc;
+    double Vc   = A;    // Rename paramters later
+    double Z    = F;    // Compressibility???
+    double Vsat = Vc * ( powl ( Zra, -powl(1-Tr,double(2)/double(7))));
+    double Dns  = Z*Vsat;
+    return Dns;
+	/* Original code from here :
+    double R,t1,t2,t3,D;
+
+    if (Q>0)
+        R=(ActTemp+TEMP_ZERO)/Q;
+    else
+        R=1;
+    t1=(double)(2)/(double)(7);
+    t2= 1-R;
+    t3=-powl(t2,t1);
+    t2= powl(B ,t3);
+    D = F*A*t2;
+    if ((D>0.3)&&(D<1.5))
+        return (D);
+    return (0);
+    */
+}
+/* The following code was included but not used by Henri Systems */
+
+double ChemgasPureGasCalcVapour(double MolMass, double H, double N, double ActTemp, double ActAbsPress)
+{
+    double t1,t2,t3;
+    //double GasWeight    = GasVolume*54.67*(Pressure* MH2O_TO_BAR+NORMAL_ATM)/(84.6*(TEMP_ZERO+Temperature));
+
+    t1=(ActAbsPress/100.0)*MolMass/(ActTemp+TEMP_ZERO);
+    t2=t1*H;
+    t3=powl((N*t1),2);
+    t3+=t2;
+
+    if (t3>0)
+        return (t3);
+    return (0);
+}
+

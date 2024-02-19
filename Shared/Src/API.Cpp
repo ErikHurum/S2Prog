@@ -11,7 +11,6 @@
 #endif
 
 
-
 double APIRound(double Number, int Decimals)
 {
     double Factor = pow(10.0,Decimals);

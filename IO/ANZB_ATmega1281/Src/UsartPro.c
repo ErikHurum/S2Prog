@@ -15,6 +15,9 @@
 #include "string.h"
 #include "externals.h"
 #include "version.h"
+__no_init int RestartCnt             @0x21FD;
+__no_init char BootloaderRevision    @0x21FF;
+
 
 /*************************************************************************
 *   (This is a timer calback)
@@ -335,18 +338,21 @@ void BuildStatusData(char ch) {
     UART[ch].pTxBuffer[UART[ch].TxFirst++] = CMD_REP_STATUS >> 8;
     ntna = UART[ch].TxFirst;                                    /* remember index */
     UART[ch].TxFirst += 2;                                      // two byte length
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = ch;               // channel
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = DEVICE_IO + UnitID;   // Product ID
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = MyAddress();           // unit adddress
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = PROG_VERSION;       // software version */
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = COMP_VERSION;        // cpmpability version
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = STORE_VERSION;        // cpmpability version
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = (RXSIZE_UART & 0xff);         // rx buffer size
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = ch;                // channel
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = DEVICE_IO + UnitID;          // Product ID
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = MyAddress();                 // unit adddress
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = PROG_VERSION;                // software version */
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = COMP_VERSION;                // cpmpability version
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = STORE_VERSION;               // cpmpability version
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = (RXSIZE_UART & 0xff);        // rx buffer size
     UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((RXSIZE_UART >> 8) & 0xff); // rx buffer size
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TXSIZE_UART & 0xff);         // tx buffer size
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((TXSIZE_UART >> 8) & 0xff);  // tx buffer size
-    UART[ch].pTxBuffer[UART[ch].TxFirst++] = RestartStatus;                  // restart flag
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = (TXSIZE_UART & 0xff);        // tx buffer size
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = ((TXSIZE_UART >> 8) & 0xff); // tx buffer size
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = RestartStatus;               // restart flag
     UART[ch].pTxBuffer[UART[ch].TxFirst++] = PROGTYPE_APP;                // Application program
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = RestartCnt & 0xff;           // Unit restart count
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = (RestartCnt >> 8 ) & 0xff;   // Unit restart count
+    UART[ch].pTxBuffer[UART[ch].TxFirst++] = BootloaderRevision;          // Bootloader version
 
     UART[ch].pTxBuffer[ntna] = (UART[ch].TxFirst - ntna - 2) & 0xff;      // length of data block lb
     UART[ch].pTxBuffer[ntna + 1] = ((UART[ch].TxFirst - ntna - 2) >> 8) & 0xff; // length of data block hb
@@ -727,7 +733,7 @@ void GetGotoBootloader(char ch, short pointer) {
         // 128 -> 1281
         // WDTCR = 0x18;               //Start watchdog to genetate restart
         // WDTCR = 0x08;               //Start watchdog to genetate restart
-        WDTCSR = 0x18;               //Start watchdog to genetate restart
+    //WDTCSR = 0x18;               //Start watchdog to genetate restart
     WDTCSR = 0x08;               //Start watchdog to genetate restart
 }
 
@@ -771,6 +777,7 @@ void GetRS4Setup(char ch, short pointer) {
     WriteEEPROMByte(EEPROM_PORTSETUP, TData.RS4.PortUsed);      // store in EEPROM
     WriteEEPROMByte(EEPROM_PORTSETUP + 1, TData.RS4.SensorType[0]);
     WriteEEPROMByte(EEPROM_PORTSETUP + 2, TData.RS4.SensorType[1]);
+    RestartCnt  = 0;
     SetRS4Port();                                               // Set power on ports
 }
 

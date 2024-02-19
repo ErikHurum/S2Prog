@@ -7,12 +7,10 @@
 //
 /////////////////////////////////////////////////////////////////////////
 #pragma hdrstop
-#include <windows\sdk\Winsock2.h>
 #include "TXUFlashProgMain.h"
 #include "Anpro_Net.h"
 #include "ANWinInc.h"
-#include <queue>
-queue<char>CharQueue;
+
 #pragma package(smart_init)
 
 /////////////////////////////////////////////////////////////////////////
@@ -48,7 +46,8 @@ ev_pipe(int filedes[2])
    addr.sin_family = AF_INET;
    addr.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
    addr.sin_port = 0;
-   if (bind(listener, (struct sockaddr *)&addr, addr_size))
+   int BindStat = bind(listener, (struct sockaddr *)&addr, addr_size);
+   if (bool(bind(listener, (struct sockaddr *)&addr, addr_size)))
       goto fail;
 
    if (getsockname (listener, (struct sockaddr *)&addr, &addr_size))
@@ -950,9 +949,9 @@ Anpro_Net::anpro_net_thread(LPVOID lpParameter)
 
    apnet->anpro_thread_init();
 
-   while(!Terminated)
+   while(!apnet->_exit_flag)
    {
-	  tv.tv_sec   = 1;
+      tv.tv_sec   = 1;
       tv.tv_usec  = 0;
 
       apnet->anpro_thread_pre_select(&rset, &wset, &max_fd);

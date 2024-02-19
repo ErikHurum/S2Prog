@@ -882,9 +882,9 @@ hart_start(void) {
     //OS_CreateTask(&_hart_task0.tcb, "HART0", HART_TASK_PRIORITY,HART_Task,_hart_task0.Mystack,sizeof(_hart_task0.Mystack),0);
     //OS_CreateTask(&_hart_task1.tcb, "HART1", HART_TASK_PRIORITY,HART_Task,_hart_task1.Mystack,sizeof(_hart_task1.Mystack),0);
     //OS_CreateTask(&_hart_task2.tcb, "HART2", HART_TASK_PRIORITY,HART_Task,_hart_task2.Mystack,sizeof(_hart_task2.Mystack),0);
-    OS_CREATETASK_EX(&_hart_task0.tcb, "HART0", HART_Task, HART_TASK_PRIORITY, _hart_task0.Mystack, (void *)0);
-    OS_CREATETASK_EX(&_hart_task1.tcb, "HART1", HART_Task, HART_TASK_PRIORITY, _hart_task1.Mystack, (void *)1);
-    OS_CREATETASK_EX(&_hart_task2.tcb, "HART2", HART_Task, HART_TASK_PRIORITY, _hart_task2.Mystack, (void *)2);
+    OS_CREATETASK_EX(&_hart_task0.tcb, "HART0", HART_Task, HART_TASK_PRIORITY+0, _hart_task0.Mystack, (void *)0);
+    OS_CREATETASK_EX(&_hart_task1.tcb, "HART1", HART_Task, HART_TASK_PRIORITY+1, _hart_task1.Mystack, (void *)1);
+    OS_CREATETASK_EX(&_hart_task2.tcb, "HART2", HART_Task, HART_TASK_PRIORITY+2, _hart_task2.Mystack, (void *)2);
 
 
 }

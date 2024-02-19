@@ -3,7 +3,9 @@
 	#include "LiteCall.hpp"
     #include "LiteAccess.hpp"
     #pragma hdrstop
-    #include "MainUnit.h"
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
+	#include "MainUnit.h"
 #endif
 
 #include "TankWashingAPI.h"
@@ -270,7 +272,7 @@ bool TankWashingAPI::StartWashingRun(int twmId, int& twmRunId)
 
 			lastErrorMessage = AnsiString("Tank washing run must be prepared before starting. Data: ");
 			lastErrorMessage.cat_sprintf("TWM Id=%d, TWM Run Id=%d, TWM Run status=%d:\"%s\"",
-				twmId, twmRun.Id, twmRun.Status, TankWashingMachineRun::StatusToString(twmRun.Status));
+				twmId, twmRun.Id, twmRun.Status, TankWashingMachineRun::StatusToString(twmRun.Status).c_str());
 			return false;
 		}
 

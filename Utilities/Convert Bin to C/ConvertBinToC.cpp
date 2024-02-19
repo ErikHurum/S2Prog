@@ -26,7 +26,7 @@ void TMainWindow::MakeBinFile(AnsiString FileName)
     InFile = fopen(FileName.c_str(), "rb");
 	OutFile = fopen(SFName.c_str(), "wt");
 	if ( InFile && OutFile ){
-		fprintf(OutFile,"char ProgramDataANZB485[] = {\n");
+		fprintf(OutFile,"char ProgramDataANZB_128[] = {\n");
         int PosCnt = 0;
 		 while(!feof(InFile)){
 			unsigned char MyChar;
@@ -44,7 +44,7 @@ void TMainWindow::MakeBinFile(AnsiString FileName)
 		 fprintf(OutFile," 0x00,");
 
          fprintf(OutFile,"\n};\n");
-         fprintf(OutFile,"int ProgramDataANZB485Size = sizeof(ProgramDataANZB485);\n");
+         fprintf(OutFile,"int ProgramDataANZB_128_Size = sizeof(ProgramDataANZB_128);\n");
          fclose(InFile);
          fclose(OutFile);
     }

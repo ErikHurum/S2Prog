@@ -13,7 +13,8 @@
 #include "version.h"
 #include "structs.h"
 
-//__no_init int RestartCnt             @0x21FD;
+__no_init int RestartCnt             @0x21FD;
+__no_init char BootloaderRevision    @0x21FF;
 
 char hasStartedUARTTask = 0;
 
@@ -298,6 +299,8 @@ void BuildStatusData(void) {
         My485UART.pTxBuffer[My485UART.TxFirst++] = PROGTYPE_APP;                    // Application program
         My485UART.pTxBuffer[My485UART.TxFirst++] = RestartCnt & 0xff;               // Unit restart count
         My485UART.pTxBuffer[My485UART.TxFirst++] = (RestartCnt >> 8 ) & 0xff;       // Unit restart count
+        My485UART.pTxBuffer[My485UART.TxFirst++] = BootloaderRevision;              // Bootloader version
+
 
         My485UART.pTxBuffer[ntna] =   (My485UART.TxFirst - ntna - 2) & 0xff;      // length of data block lb
         My485UART.pTxBuffer[ntna + 1] = ((My485UART.TxFirst - ntna - 2) >> 8) & 0xff; // length of data block hb

@@ -52,8 +52,7 @@ __published: // IDE-managed Components
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
 	void __fastcall FormDestroy(TObject *Sender);
 	void __fastcall FormCreate(TObject *Sender);
-	void __fastcall Chart1AllowScroll(TChartAxis *Sender, double &AMin, double &AMax,
-          bool &AllowScroll);
+	void __fastcall Chart1AllowScroll(TChartAxis *Sender, TAxisValue &AMin, TAxisValue &AMax, bool &AllowScroll);
 
 private: // User declarations
 

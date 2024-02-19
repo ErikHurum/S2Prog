@@ -4615,7 +4615,7 @@ int PROTank::PutValue(int ValueId, int Index, AnsiString NewValue, bool Local, i
     case SVT_ZEROSET_LEVEL:
         if (!LevelPressures.empty()) {
             AnsiString TmpString = ZeroSetLevelSensors(Local);
-#ifndef BORLAND
+#ifdef S2TXU
             if (Local && TmpString.Length()) {
                 AnsiString Text1("Zero set warnings:");
                 DisplayMessage(Text1, TmpString);

@@ -8,19 +8,20 @@
 //---------------------------------------------------------------------------
 
 ValueList IOUnitZBAna::IOUnitZBAnaValueList[] =  {
-    { L_WORD304, L_WORD237, SVT_BLANK },                              //  {"Unused"       ,"",SVT_BLANK},
-    { L_WORD379, L_WORD237, SVT_IO_COM_CHANNEL },                     //  {"Com Channel"  ,"",SVT_IO_COM_CHANNEL},
-    { L_WORD24, L_WORD237, SVT_IO_PROG_VERSION },                    //  {"ProgVersion"  ,"",SVT_IO_PROG_VERSION},
-    { L_WORD380, L_WORD237, SVT_IO_COM_VERSION },                     //  {"Com Version"  ,"",SVT_IO_COM_VERSION},
-    { L_WORD381, L_WORD237, SVT_IO_STORE_VERSION },                   //  {"Store Ver."   ,"",SVT_IO_STORE_VERSION},
-    { L_WORD382, L_WORD237, SVT_IO_RXBUF_SIZE },                      //  {"Rx Buf Size"  ,"",SVT_IO_RXBUF_SIZE},
-    { L_WORD383, L_WORD237, SVT_IO_TXBUF_SIZE },                      //  {"Tx Buf Size"  ,"",SVT_IO_TXBUF_SIZE},
-    { L_WORD384, L_WORD237, SVT_IO_RESET_STATUS },                    //  {"Reset Status" ,"",SVT_IO_RESET_STATUS},
-    { L_WORD385, L_WORD237, SVT_IO_TOTAL_RESTARTS },                  //  {"Total Restart","",SVT_IO_TOTAL_RESTARTS},
-    { L_WORD386, L_WORD237, SVT_IO_FAIL_CNT_CHK },                    //  {"Fail count"   ,"",SVT_IO_FAIL_CNT_CHK},
-    { L_WORD387, L_WORD237, SVT_IO_FAIL_CNT_TOT },                    //  {"Tot. fail cnt","",SVT_IO_FAIL_CNT_TOT},
-    { L_WORD388, L_WORD237, SVT_IO_P_TYPE_RUNNING },                  //  {"Program"      ,"",SVT_IO_P_TYPE_RUNNING},
-    { L_WORD389, L_WORD237, SVT_IO_CARD_VOLTAGE },                    //  {"Pwr 24V"      ,"",SVT_IO_CARD_VOLTAGE},
+    { L_WORD304 , L_WORD237, SVT_BLANK },                              //  {"Unused"       ,"",SVT_BLANK},
+    { L_WORD379 , L_WORD237, SVT_IO_COM_CHANNEL },                     //  {"Com Channel"  ,"",SVT_IO_COM_CHANNEL},
+    { L_WORD24  , L_WORD237, SVT_IO_PROG_VERSION },                    //  {"ProgVersion"  ,"",SVT_IO_PROG_VERSION},
+    { L_WORD380 , L_WORD237, SVT_IO_COM_VERSION },                     //  {"Com Version"  ,"",SVT_IO_COM_VERSION},
+    { L_WORD381 , L_WORD237, SVT_IO_STORE_VERSION },                   //  {"Store Ver."   ,"",SVT_IO_STORE_VERSION},
+    { L_WORD1130, L_WORD237, SVT_IO_BOOT_VERSION },                    //   {"ProgVersion"  ,"",SVT_IO_PROG_VERSION},
+    { L_WORD382 , L_WORD237, SVT_IO_RXBUF_SIZE },                      //  {"Rx Buf Size"  ,"",SVT_IO_RXBUF_SIZE},
+    { L_WORD383 , L_WORD237, SVT_IO_TXBUF_SIZE },                      //  {"Tx Buf Size"  ,"",SVT_IO_TXBUF_SIZE},
+    { L_WORD384 , L_WORD237, SVT_IO_RESET_STATUS },                    //  {"Reset Status" ,"",SVT_IO_RESET_STATUS},
+    { L_WORD385 , L_WORD237, SVT_IO_TOTAL_RESTARTS },                  //  {"Total Restart","",SVT_IO_TOTAL_RESTARTS},
+    { L_WORD386 , L_WORD237, SVT_IO_FAIL_CNT_CHK },                    //  {"Fail count"   ,"",SVT_IO_FAIL_CNT_CHK},
+    { L_WORD387 , L_WORD237, SVT_IO_FAIL_CNT_TOT },                    //  {"Tot. fail cnt","",SVT_IO_FAIL_CNT_TOT},
+    { L_WORD388 , L_WORD237, SVT_IO_P_TYPE_RUNNING },                  //  {"Program"      ,"",SVT_IO_P_TYPE_RUNNING},
+    { L_WORD389 , L_WORD237, SVT_IO_CARD_VOLTAGE },                    //  {"Pwr 24V"      ,"",SVT_IO_CARD_VOLTAGE},
 
 };
 
@@ -267,10 +268,21 @@ bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                     StoreVersion      = CardInfo->StoreVersion;
                     RxBufSize         = CardInfo->RxBufSize;
                     TxBufSize         = CardInfo->TxBufSize;
-                    if (CardInfo->ResetStatus) {
-                        Restart         = true;
-                        ResetStatus     = CardInfo->ResetStatus;
-                        TotalUnitRestart++;
+                    if (UnitProgVersion >= VERSION_ANZB_1281_PROG_FIRST) {
+                        UnitBootVersion   = CardInfo->UnitBootVersion;
+                        TotalUnitRestart  = CardInfo->TotalUnitRestart;
+                        if (CardInfo->ResetStatus) {
+                            ResetStatus       = CardInfo->ResetStatus;
+                            Restart           = true;
+                        }
+                    }else{
+                        ResetStatus         = CardInfo->ResetStatus;
+                        if (CardInfo->ResetStatus) {
+                            UnitBootVersion     = 0;
+                            ResetStatus         = CardInfo->ResetStatus;
+                            Restart             = true;
+                            TotalUnitRestart++;
+                        }
                     }
                     ProgamTypeRunning = CardInfo->ProgamTypeRunning;
                 }
@@ -403,11 +415,11 @@ void IOUnitZBAna::HandleIO(int Delay) {
                     break;
                 case 1:
                     if (UnitProgVersion <= 41) {
-                        if ((UnitProgVersion != VERSION_ANZB_PROG) || (ComVersion  != VERSION_ANZB_COMP) || (StoreVersion != VERSION_ANZB_EEPROM)) {
+                        if ((UnitProgVersion != VERSION_ANZB_128_PROG) || (ComVersion  != VERSION_ANZB_COMP) || (StoreVersion != VERSION_ANZB_EEPROM)) {
                             UpdateProgram();
                         }
                     } else if (UnitProgVersion > 100) {
-                        if ((UnitProgVersion != VERSION_ANZB_NEW_PROG) || (ComVersion  != VERSION_ANZB_NEW_COMP) || (StoreVersion != VERSION_ANZB_NEW_EEPROM)) {
+                        if ((UnitProgVersion != VERSION_ANZB_1281_PROG) || (ComVersion  != VERSION_ANZB_COMP) || (StoreVersion != VERSION_ANZB_EEPROM)) {
                             UpdateProgram();
                         }
                     }
@@ -467,6 +479,11 @@ int IOUnitZBAna::ReceiveData(U8 *data) {
             CardChannel      = pData->CardChannel;
             CardId           = pData->CardId;
             CardAddress      = pData->CardAddress;
+            if (pCH->ndb < sizeof(ANPRO10_COMMAND_2602)) {
+                UnitBootVersion = 0;
+            }else{
+                UnitBootVersion  = pData->UnitBootVersion;
+            }
             UnitProgVersion  = pData->UnitProgVersion;
             ComVersion       = pData->ComVersion;
             StoreVersion     = pData->StoreVersion;

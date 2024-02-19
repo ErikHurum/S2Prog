@@ -3,6 +3,8 @@
 #include <vcl.h>
 #pragma hdrstop
 USEFORM("src\PasswordUnit.cpp", PasswordDlg);
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #include "SetupUnit.h"
 #include "XMLDataExchangeThread.h"

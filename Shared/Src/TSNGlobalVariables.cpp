@@ -39,6 +39,9 @@ AnsiString ProjectFileNameAndExtension;
 AnsiString SettingsFileNameAndExtension;
 AnsiString ProjectFileName;
 AnsiString StyleName;
+AnsiString DataSourceName;
+unsigned CurrentSearchComPortIndex  = 0;
+
 
 #endif
 

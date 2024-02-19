@@ -70,7 +70,7 @@ void __fastcall ComThread::Execute()
 		SendEraseSettings();
 		break;
 	case CMD_TXU_REQ_SYSTEMINFO:
-		//FindWinUart();
+    //FindWinUart();
     {
 	  extern volatile bool __anflash_use_anpro_net;
       if(__anflash_use_anpro_net == false)
@@ -312,7 +312,7 @@ void __fastcall ComThread::DownLoadConfig(int Cmd) {
 			while ((RetryCnt++ < 3) && (DownloadAck == FLASH_PROGRAM_TIMEOUT)) {
 				NoError = ANPRO10_SendCommand(MyForm->WinUartPtr, (U8*)&Command, MyForm->RxAddress, MyForm->RxTypeId);
 				for (int Cnt = 0; (DownloadAck == FLASH_PROGRAM_TIMEOUT) && Cnt < TimeOut; Cnt++) {
-					Sleep(1);
+					Sleep(10);
 				}
 			}
 			PosCnt = NewPosCnt;

@@ -70,9 +70,6 @@
     #include "TSNTable2Degree.h"
     #include "TSNTableCenterOfFlotation.h"
     #include "TSNTableLevelCorrection.h"
-    #ifdef ANWIN
-        #include "TSNTable1Degree.h"
-    #endif
 // Settings
     #include "TSNSaveSettings.h"
 

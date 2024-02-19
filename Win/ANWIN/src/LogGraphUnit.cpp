@@ -4,6 +4,8 @@
 #pragma hdrstop
 
 #include "LogGraphUnit.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 
 //---------------------------------------------------------------------------

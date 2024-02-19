@@ -1,6 +1,17 @@
-#include <vcl.h>
-#include "ConstantsANWIN.h"
-#include "TSNIncludes.h"
+#include "windows.h"
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
+#include "ANWinInc.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #pragma hdrstop
 
@@ -21,29 +32,29 @@ void __fastcall TComSetupDlg::ComRadioGroupClick(TObject *Sender)
 	if (!InCreate) {
 		switch(ComRadioGroup->ItemIndex){
 		case 0:
-			  DataSourceName = nrDeviceBox1->Text;
-			  SearchBitBtn->Visible			= true;
-			  InfoLabel->Visible 			= false;
+			  locDataSourceName 	= nrDeviceBox1->Text;
+			  SearchBitBtn->Visible	= true;
+			  InfoLabel->Visible 	= false;
 			  break;
 		case 1:
-			  DataSourceName = "Network";
-			  SearchBitBtn->Visible			= false;
-			  InfoLabel->Visible 			= true;
+			  locDataSourceName 	= "Network";
+			  SearchBitBtn->Visible	= false;
+			  InfoLabel->Visible 	= true;
 			  break;
 		case 2:
-			  DataSourceName = "AnproNet";
-			  SearchBitBtn->Visible			= false;
-			  InfoLabel->Visible 			= true;
+			  locDataSourceName 	= "AnproNet";
+			  SearchBitBtn->Visible	= false;
+			  InfoLabel->Visible 	= true;
 			  break;
 		case 3:
-			  DataSourceName = "NoCom";
-			  SearchBitBtn->Visible			= false;
-			  InfoLabel->Visible 			= true;
+			  locDataSourceName 	= "NoCom";
+			  SearchBitBtn->Visible	= false;
+			  InfoLabel->Visible 	= true;
 			  break;
 		case 4:
-			  DataSourceName = "Simulator";
-			  SearchBitBtn->Visible			= false;
-			  InfoLabel->Visible 			= true;
+			  locDataSourceName 	= "Simulator";
+			  SearchBitBtn->Visible	= false;
+			  InfoLabel->Visible 	= true;
 			  break;
 		}
 	}
@@ -51,7 +62,7 @@ void __fastcall TComSetupDlg::ComRadioGroupClick(TObject *Sender)
 //---------------------------------------------------------------------------
 void __fastcall TComSetupDlg::BitBtn1Click(TObject *Sender)
 {
-	MainForm->DataSourceName   = DataSourceName;
+	DataSourceName   = locDataSourceName;
 }
 //---------------------------------------------------------------------------
 void __fastcall TComSetupDlg::FormClose(TObject *Sender,
@@ -63,7 +74,7 @@ void __fastcall TComSetupDlg::FormClose(TObject *Sender,
 //---------------------------------------------------------------------------
 void __fastcall TComSetupDlg::SearchBitBtnClick(TObject *Sender)
 {
-	MainForm->CurrentSearchComPortIndex			= 0;
+	CurrentSearchComPortIndex					= 0;
 	MainForm->FindComPort 		 				= true;
 	MainForm->NetReceiveRestartTimer->Enabled 	= true;
 }
@@ -81,8 +92,7 @@ void __fastcall TComSetupDlg::SearchBitBtnClick(TObject *Sender)
 
 void __fastcall TComSetupDlg::nrDeviceBox1Change(TObject *Sender)
 {
-	DataSourceName           = nrDeviceBox1->Text;
-	MainForm->DataSourceName = nrDeviceBox1->Text;
+	locDataSourceName = nrDeviceBox1->Text;
 }
 //---------------------------------------------------------------------------
 
@@ -92,19 +102,19 @@ void __fastcall TComSetupDlg::FormCreate(TObject *Sender)
 	InCreate                     = true;
 
 	int comnr =0;
-	if(MainForm->DataSourceName.SubString(0,3) == "Com"){
-		DataSourceName = MainForm->DataSourceName;
-	}else if(MainForm->DataSourceName == "Network"){
-		DataSourceName = "Network";
+	if( DataSourceName.SubString(0,3) == "Com"){
+		locDataSourceName = DataSourceName;
+	}else if( DataSourceName == "Network"){
+		locDataSourceName = "Network";
 		comnr = 1;
-	} else if(MainForm->DataSourceName == "AnproNet") {
-		DataSourceName = "AnproNet";
+	} else if( DataSourceName == "AnproNet") {
+		locDataSourceName = "AnproNet";
 		comnr = 2;
-	}else if((MainForm->DataSourceName == "NoCom")||(MainForm->DataSourceName == "Com0")){
-		DataSourceName = "NoCom";
+	}else if(( DataSourceName == "NoCom")||( DataSourceName == "Com0")){
+		locDataSourceName = "NoCom";
 		comnr = 3;
-	}else if(MainForm->DataSourceName == "Simulator"){
-		DataSourceName = "Simulator";
+	}else if( DataSourceName == "Simulator"){
+		locDataSourceName = "Simulator";
 		comnr = 4;
 	}
 	ComRadioGroup->ItemIndex 	 = comnr;

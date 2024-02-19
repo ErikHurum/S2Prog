@@ -24,7 +24,6 @@
 #include <System.ImageList.hpp>
 #include <Vcl.ImgList.hpp>
 
-using namespace std;
 
 // Quick fixes - for now. Do a better solution in the future if necessary.
 #define TTankPlanCleaningForm_StringColWidth 80

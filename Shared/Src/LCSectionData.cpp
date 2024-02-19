@@ -153,7 +153,7 @@ int LCSectionData::LoadConfigFromFileWithLimits(TSNConfigString &ConfigString,fl
 	float Draft = Step;
 	for ( unsigned j=0; j < MyFrameTable.size(); j++ ) {
 		LCFrameData *F = MyFrameTable[j];
-		ConfigLog("Name=%6s Distance=%7.1f",F->Name,F->DistToFrame0);
+		ConfigLog("Name=%6s Distance=%7.1f",F->Name.c_str(),F->DistToFrame0);
 	}
 
 	for ( int i=1; i < BUOYANCY_ENTRIES; i++ ) {

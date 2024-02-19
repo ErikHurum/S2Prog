@@ -3,6 +3,8 @@
 #endif
 #include "TSNIncludes.h"
 #ifdef ANWIN
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
 	#include "MainUnit.h"
 #endif
 #pragma hdrstop

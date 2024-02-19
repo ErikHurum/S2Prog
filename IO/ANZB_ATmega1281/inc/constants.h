@@ -128,3 +128,8 @@
 #define IIR_SEOB	0x06	/* serialization error or break */
 #define IIR_TOUT    0x0c	/* char receive timeout */
 
+
+#define AN_ZB485        0x00            // Unit ID for AN-ZB485
+#define AN_ZBANA        0x01            // Unit ID for AN-ZBANA
+#define AN_ZBHART       0x03            // XXX : FIXE IT WHATEVER YOU WANT
+

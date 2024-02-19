@@ -3,12 +3,10 @@
 #pragma hdrstop
 
 #include <iostream>
-#include <string>
 
 #include "SQLiteAccessor.h"
 #include "Litecall.hpp"
 
-using namespace std;
 using namespace Litecall;
 
 //---------------------------------------------------------------------------
@@ -29,7 +27,7 @@ SQLiteAccessor::SQLiteAccessor(const char *databaseFilePath)
         throw "missing databaseFilePath parameter";
 	}
 
-	dbFilePath = string(databaseFilePath);
+	dbFilePath = AnsiString(databaseFilePath);
 	errorMessage = "";
 }
 
@@ -40,7 +38,7 @@ SQLiteAccessor::~SQLiteAccessor()
 }
 
 
-void SQLiteAccessor::GetErrorMessage(string& dest)
+void SQLiteAccessor::GetErrorMessage(AnsiString& dest)
 {
 	dest = errorMessage;
 }
@@ -81,25 +79,25 @@ int SQLiteAccessor::RunQuery(const char *sqlStmt, void (*rowParserCallback)(void
 			}
 			else
 			{
-				string userMessage("Error on sqlite3_step(...)");
+				AnsiString userMessage("Error on sqlite3_step(...)");
 				GetLastDetailedSQLiteError(conn, userMessage, errorMessage);
 				returnValue = DATABASE_READ_ERROR;
 			}
 		}
 		else
 		{
-			string userMessage("Error on sqlite3_prepare(...)");
+			AnsiString userMessage("Error on sqlite3_prepare(...)");
 			GetLastDetailedSQLiteError(conn, userMessage, errorMessage);
 			returnValue = DATABASE_READ_ERROR;    /* TODO -oEHS -cSerious : Multiple failures during startup */
 		}
 	}
 	else
 	{
-		string userMessage("Error on sqlite3_open16(...)");
+		AnsiString userMessage("Error on sqlite3_open16(...)");
 
-		userMessage += "Failed to open database at path " + '\\';
-		userMessage += dbFilePath;
-		userMessage += '\n';
+		userMessage += (AnsiString)"Failed to open database at path " + '\\';
+		userMessage += (AnsiString)dbFilePath;
+		userMessage += (AnsiString)'\n';
 
 		GetLastDetailedSQLiteError(conn, userMessage, errorMessage);
 		returnValue = DATABASE_READ_ERROR;
@@ -114,15 +112,15 @@ int SQLiteAccessor::RunQuery(const char *sqlStmt, void (*rowParserCallback)(void
 /// Protected functions
 /// ***************************************************
 
-/// Get a ready formatted string with the last error message that occured in SQLite3
+/// Get a ready formatted AnsiString with the last error message that occured in SQLite3
 ///
-void SQLiteAccessor::GetLastDetailedSQLiteError(TSQLite3Db* connection, string& userMessage, string& dest)
+void SQLiteAccessor::GetLastDetailedSQLiteError(TSQLite3Db* connection, AnsiString& userMessage, AnsiString& dest)
 {
 	char strBuff[1024];
 	int lastErrorCode  = SqlAPI->sqlite3_errcode(connection);
 	const char* errMsg = SqlAPI->sqlite3_errmsg(connection);
 
-	// Ugly string appending ..
+	// Ugly AnsiString appending ..
 	dest = "";
 	dest += userMessage;
 	dest += ": ";
@@ -143,7 +141,7 @@ TDateTime* SQLiteAccessor::ConvertToTDateTime(const wchar_t* sqlite3DateTime)
 	if (sqlite3DateTime != NULL) {
 		UnicodeString dateStr(sqlite3DateTime);
 
-		// SQLite3 date strings look like this (string indexes added underneath)
+		// SQLite3 date strings look like this (AnsiString indexes added underneath)
 		// YYYY-MM-DD HH:MM:SS.SSS format
 		// 2013-01-29 12:01:02.000 example date
 		// 1  4 6  9  12 15 18 21  pascal indexing

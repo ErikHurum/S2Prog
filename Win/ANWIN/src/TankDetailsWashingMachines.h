@@ -44,7 +44,6 @@
 #include "GradientLabel.hpp"
 #include "RzLabel.hpp"
 
-using namespace std;
 
 class PROTankWashingMachine;
 

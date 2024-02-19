@@ -262,7 +262,7 @@ void SaabProtcol::AddAlarmStatus(char *OutBuf, int& OutPtr, int Index, int Objec
 void SaabProtcol::SAABHandleInput(TSNUart *PortPtr, U8 Data) {
     volatile bool DataAvailable;
     U8 Data2;
-    char InBuf[SAAB_BUF_SIZE] = { Data };
+	char InBuf[SAAB_BUF_SIZE] = { (char)Data };
     int Ptr = 1;
     do {
         DataAvailable = PortPtr->Receive(&Data2, 1, 200); // wait till a character comes in
@@ -625,7 +625,7 @@ void SaabProtcol::SAABHandleRequest(TSNUart *PortPtr){
             {
                 volatile bool DataAvailable;
                 volatile char Data2;
-                char InBuf[SAAB_BUF_SIZE] = { Data };
+                char InBuf[SAAB_BUF_SIZE] = { (char)Data };
                 int Ptr = 1;
                 do {
                     DataAvailable = PortPtr->Receive((U8 *)&Data2, 1, 200); /* wait till a character comes in */
@@ -1175,7 +1175,7 @@ void SaabProtcol::SAABHandleRequest(TSNUart *PortPtr){
                                                 Value =  100.0;
                                                 break;
                                             }
-                                            OutPtr += sprintf(&OutBuf[OutPtr], "%5i", Value);
+                                            OutPtr += sprintf(&OutBuf[OutPtr], "%5i", (int)Value);
                                         }
                                     } else {
                                         OutPtr   += sprintf(&OutBuf[OutPtr], "**********");

@@ -8,6 +8,7 @@ protected:
 	U8      CardChannel;
 	U8      CardId;
 	U8      CardAddress;
+	U8		UnitBootVersion;
 	U8      UnitProgVersion;
 	U8      ComVersion;
 	U8      StoreVersion;

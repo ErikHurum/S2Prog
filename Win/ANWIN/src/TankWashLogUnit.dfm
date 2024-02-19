@@ -14,7 +14,6 @@ object TankWashLogForm: TTankWashLogForm
   Font.Style = []
   OnCreate = FormCreate
   OnPaint = OnFormPaint
-  PixelsPerInch = 96
   TextHeight = 13
   object LogItemSelectionPanel: TPanel
     Left = 0
@@ -102,7 +101,7 @@ object TankWashLogForm: TTankWashLogForm
         Width = 118
         Height = 21
         Color = clWindow
-        Version = '2.0.0.2'
+        Version = '2.0.0.8'
         Visible = True
         ButtonWidth = 17
         EmptyTextStyle = []
@@ -151,7 +150,7 @@ object TankWashLogForm: TTankWashLogForm
       GlyphCustomSize = 0
       Orientation = noHorizontal
       TabOrder = 3
-      Version = '1.2.1.0'
+      Version = '1.3.0.1'
     end
   end
   object LogGrid: TDBAdvGrid
@@ -203,6 +202,14 @@ object TankWashLogForm: TTankWashLogForm
     ControlLook.DropDownFooter.Font.Style = []
     ControlLook.DropDownFooter.Visible = True
     ControlLook.DropDownFooter.Buttons = <>
+    ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+    ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+    ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+    ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+    ControlLook.ToggleSwitch.CaptionFont.Height = -12
+    ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+    ControlLook.ToggleSwitch.CaptionFont.Style = []
+    ControlLook.ToggleSwitch.Shadow = False
     Filter = <>
     FilterDropDown.Font.Charset = DEFAULT_CHARSET
     FilterDropDown.Font.Color = clWindowText
@@ -285,7 +292,7 @@ object TankWashLogForm: TTankWashLogForm
     SortSettings.HeaderColorTo = clWhite
     SortSettings.HeaderMirrorColor = clWhite
     SortSettings.HeaderMirrorColorTo = clWhite
-    Version = '2.5.1.9'
+    Version = '2.5.1.23'
     AutoCreateColumns = True
     AutoRemoveColumns = True
     Columns = <
@@ -892,7 +899,7 @@ object TankWashLogForm: TTankWashLogForm
     Top = 48
   end
   object frxReportTankCleaningLog: TfrxReport
-    Version = '2022.1.3'
+    Version = '2024.1.0'
     DotMatrixReport = False
     EngineOptions.DoublePass = True
     IniFile = '\Software\Fast Reports'

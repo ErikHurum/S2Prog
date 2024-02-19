@@ -1,7 +1,19 @@
 #include <vcl.h>
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
 #include "ANWinInc.h"
 #pragma hdrstop
 #include "TankDetailUnit.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #pragma warn -8057
 // ---------------------------------------------------------------------------

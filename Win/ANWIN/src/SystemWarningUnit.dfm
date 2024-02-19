@@ -4,6 +4,7 @@ inherited SystemWarningForm: TSystemWarningForm
   Caption = 'System Warning'
   ClientHeight = 330
   ClientWidth = 504
+  StyleElements = [seFont, seClient, seBorder]
   OnPaint = OnFormPaint
   ExplicitWidth = 520
   ExplicitHeight = 369

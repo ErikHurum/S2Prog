@@ -2,8 +2,9 @@ inherited SetupForm: TSetupForm
   Caption = 'Preferences'
   ClientHeight = 351
   ClientWidth = 457
-  ExplicitWidth = 469
-  ExplicitHeight = 389
+  StyleElements = [seFont, seClient, seBorder]
+  ExplicitWidth = 473
+  ExplicitHeight = 390
   TextHeight = 13
   object Label1: TLabel [0]
     Left = 216

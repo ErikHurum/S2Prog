@@ -18,6 +18,8 @@
 #include <VCLTee.TeEngine.hpp>
 #include <VCLTee.TeeProcs.hpp>
 #include <VclTee.TeeGDIPlus.hpp>
+#include <System.ImageList.hpp>
+#include <Vcl.ImgList.hpp>
 
 // ---------------------------------------------------------------------------
 class TBarGraphVoidSpaceForm : public TBarGraphForm {

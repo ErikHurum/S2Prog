@@ -1,4 +1,15 @@
 // ---------------------------------------------------------------------------
+#include "windows.h"
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
 #include "ANWinInc.h"
 #pragma hdrstop
 #include "ConstantsANWIN.h"
@@ -69,14 +80,6 @@ __fastcall TLoadCalcReportForm::TLoadCalcReportForm(TComponent* Owner)
 			// Set the product name caption.
 
 			AnsiString ProductName = (char *)BufferPtr;
-			/*
-			 // Get the product version.
-			 wsprintf(QueryBlock, "\\StringFileInfo\\%04x%04x\\ProductVersion",
-			 Array[0].LanguageID, Array[0].CharacterSet);
-			 VerQueryValue(MemPtr, QueryBlock, &BufferPtr, &BufferLength);
-			 // Set the version caption.
-			 Version->Caption = (char *)BufferPtr;
-			 */
 			// Get the product copyright.
 			wsprintf(QueryBlock,
 				"\\StringFileInfo\\%04x%04x\\LegalCopyright",

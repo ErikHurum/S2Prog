@@ -2,11 +2,12 @@
 #ifdef ANWIN
 	#include "LiteCall.hpp"
     #include "LiteAccess.hpp"
-    #pragma hdrstop
-    #include "MainUnit.h"
+	#pragma hdrstop
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
+	#include "MainUnit.h"
 #endif
- 
-#pragma hdrstop
+
 
 #include <ctime>
 #include "PROTankWashingMachine.h"

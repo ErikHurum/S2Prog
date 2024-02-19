@@ -34,6 +34,9 @@ extern void Init_Values(void);
 
 // Misc.c
 extern char MyAddress(void);
+extern void EEPROM_writeByte(unsigned int uiAddress, unsigned char ucData);
+extern unsigned char EEPROM_readByte(unsigned int uiAddress);
+
 
 // Serial.c
 extern void initbootuart(void);

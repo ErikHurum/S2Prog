@@ -1,7 +1,8 @@
 //---------------------------------------------------------------------------
 
 #pragma hdrstop
-
+#include "TSNIncludes.h"
+using namespace std;
 #include "TankWashingMachineRun.h"
 #include "TankWashingException.h"
 #include <ctime>
@@ -60,7 +61,7 @@ void TankWashingMachineRun::Completed(bool force)
 {
 	if (!force && Status != twmr_running) {
 		AnsiString errorMsg("Cannot stop washing run with status=");
-		errorMsg.cat_sprintf("%d/\"%s\"", Status, TankWashingMachineRun::StatusToString(Status));
+		errorMsg.cat_sprintf("%d/\"%s\"", Status, TankWashingMachineRun::StatusToString(Status).c_str());
 		throw TankWashingException(errorMsg.c_str());
 	}
 	else
@@ -74,7 +75,7 @@ void TankWashingMachineRun::Aborted(bool force)
 {
 	if (!force && Status != twmr_running) {
 		AnsiString errorMsg("Cannot stop washing run with status=");
-		errorMsg.cat_sprintf("%d/\"%s\"", Status, TankWashingMachineRun::StatusToString(Status));
+		errorMsg.cat_sprintf("%d/\"%s\"", Status, TankWashingMachineRun::StatusToString(Status).c_str());
 		throw TankWashingException(errorMsg.c_str());
 	}
 	else

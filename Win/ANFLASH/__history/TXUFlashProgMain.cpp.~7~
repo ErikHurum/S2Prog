@@ -5,7 +5,7 @@
 short CurrentDeviceId = 0;
 short CurrentDeviceAddress = 0;
 bool Master = 0;
- 
+
 #include <vector>
 #include <queue>
 
@@ -152,7 +152,7 @@ extern int CompressionRatio;
 bool TTXUFlashProg::DownloadOK = false;
 int TTXUFlashProg::PrevFlashSize = 0;
 
-volatile bool __anflash_use_anpro_net  = true;
+volatile bool __anflash_use_anpro_net  = false;
 Anpro_NetUserIF               anpro_net;
 
 extern volatile bool GetFlashDataCompleted;
@@ -617,7 +617,7 @@ void __fastcall TTXUFlashProg::SaveConfigAfterRx(TObject *Sender) {
 		AnsiString TmpStr;
 		SaveDialog->FileName = ExternProjectId.TrimRight() + ".S2C";
 		SaveDialog->Title = "Save Configuration file!";
-		SaveDialog->FileTypeIndex = 0;
+		SaveDialog->FileTypeIndex = 2;
 		SaveDialog->DefaultFolder = ConfigDir;
 
 		int Status = SaveDialog->Execute();
@@ -701,12 +701,10 @@ void __fastcall TTXUFlashProg::nrDataProcessor1Timeout(TObject *Sender) {
 // ---------------------------------------------------------------------------
 
 void __fastcall TTXUFlashProg::nrDataProcessor1DataPacket(TObject *Sender, TnrDataPacket *Packet) {
-	if ( Packet->DataLength){
-		IsReceiving = true;
-		MyByteCnt += Packet->DataLength;
-		U8 *RxBuf = (U8*)&Packet->DataPtr[4];
-		ANPRO10_Receive(WinUartPtr, RxBuf);
-	}
+	IsReceiving = true;
+	MyByteCnt += Packet->DataLength;
+	U8 *RxBuf = (U8*)&Packet->DataPtr[4];
+	ANPRO10_Receive(WinUartPtr, RxBuf);
 	IsReceiving = false;
 
 }
@@ -799,7 +797,7 @@ int __fastcall TTXUFlashProg::FindWinUart(void) {
 
 void __fastcall TTXUFlashProg::Timer1Timer(TObject *Sender) {
 	Timer1->Enabled = false;
-	EnableCommMethodSelection();
+        EnableCommMethodSelection();
         /*
 	if(__anflash_use_anpro_net) return;
 
@@ -928,7 +926,7 @@ void __fastcall TTXUFlashProg::UpdateTXUInfo(void) {
 				ProgramInfo->Lines->Add("Program : " + PType);
 				ProgramInfo->Lines->Add("Project : " + ExternProjectId);
 				ProgramInfo->Lines->Add("Revision: " + (AnsiString)Buf);
-				ProgramInfo->Lines->Add("-------------------");
+				ProgramInfo->Lines->Add("----------------------------------");
 				sprintf(Buf, "%i.%i.%i.%i", ExternBootVersion.ProdNo, ExternBootVersion.PacketFormat,
 					ExternBootVersion.NewFunctions, ExternBootVersion.Build);
 				ProgramInfo->Lines->Add("BootLoader: " + (AnsiString)Buf);
@@ -1018,7 +1016,7 @@ void __fastcall TTXUFlashProg::FormCreate(TObject *Sender) {
 
   	IsMultiThread = true;
 
-	//CommMethod->ItemIndex = 0;
+	CommMethod->ItemIndex = 0;
 	anpro_net.SetFlagProgForm(this);
 
 	if(__anflash_use_anpro_net) {
@@ -1192,5 +1190,4 @@ void __fastcall TTXUFlashProg::SetVersionInformation(void)
     }
 
 }
-
 

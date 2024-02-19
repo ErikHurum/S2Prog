@@ -8,7 +8,9 @@
         #include <ConfigWarningsForm.h>
     #endif
     #ifdef ANWIN
-        #include "MainUnit.h"
+		#include "ChildUnit.h"
+		#include "Anpro_Net.h"
+		#include "MainUnit.h"
     #endif
     #pragma package(smart_init)
 #else

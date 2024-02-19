@@ -65,8 +65,7 @@
 #define GUI_ORANGE        0x0042a4fd
 
 
-#ifndef BORLAND
-#ifndef ANBOOTLOADER
+#ifdef S2TXU
 // TDU colours
     #define TDU_C_BACK_DEFAULT      GUI_LIGHTGRAY
     #define TDU_C_TEXT_DEFAULT      GUI_BLACK
@@ -281,7 +280,6 @@
     #define MESSAGE_YES_RETURN      WM_USER+20
     #define MESSAGE_NO_RETURN       WM_USER+21
     #define MESSAGE_CANCEL_RETURN   WM_USER+22
-#endif
 #endif
 inline long double sqr(double x) { return x*x;}
 

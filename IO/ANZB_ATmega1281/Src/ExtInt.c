@@ -8,6 +8,7 @@
 #include "math.h"
 #include "externals.h"
 #pragma diag_suppress=Pa082
+#pragma diag_suppress=Pe767
 
 #if USE_16552_DRIVER_TASK == 1
 void _16552_Rx_handler(void *pData) {

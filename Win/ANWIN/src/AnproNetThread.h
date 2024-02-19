@@ -15,7 +15,6 @@
 #include <ctime>
 #include "Winsock2.h"
 
-using namespace std;
 
 #include "TSNMessageQ.h"
 #define ANPRO_NET_GATEWAY               1

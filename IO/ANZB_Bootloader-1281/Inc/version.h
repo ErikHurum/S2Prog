@@ -14,7 +14,8 @@
   Revision list.
 
   Bootloader:
-  V40   Released 27.Feb-2023
+  V40   Released 12.02.2024  EHS
+        - Now Watchdog is enabled and supported in the bootloader
         - First version for 1281. Based on V11 for 1280. The number 40 is to distinguish it 
           from the 128 version. This is for 1281
   

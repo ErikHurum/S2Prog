@@ -79,7 +79,7 @@ bool WinUart::Send(U8 *Data, int Size, char EventMsk, bool Wait) {
     // Must add wait routine to wait for send completed event
     //MyComAccess->Acquire();
 	TxCompleted = false;
-	nrComPtr->SendData(Data, Size);
+	nrComPtr->SendData((const char*)Data, Size);
     //unsigned Delay = Size*10000/115200+10;
     //Sleep(Delay);
     //MyComAccess->Release();
@@ -90,7 +90,7 @@ bool WinUart::Send(U8 *Data, int Size, char EventMsk, bool Wait) {
 }
 bool WinUart::Receive(U8 *MyData, int Size, int TimeOut) {
     nrComPtr->TimeoutRead = TimeOut;
-    nrComPtr->Read(MyData, Size);
+    nrComPtr->Read((char*)MyData, Size);
     return (true);
 }
 

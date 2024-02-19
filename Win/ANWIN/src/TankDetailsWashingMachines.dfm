@@ -16,7 +16,6 @@ object TankDetailsWashingMachinesForm: TTankDetailsWashingMachinesForm
   OnCreate = FormCreate
   OnPaint = OnFormPaint
   OnResize = OnFormResize
-  PixelsPerInch = 96
   DesignSize = (
     971
     387)
@@ -262,7 +261,7 @@ object TankDetailsWashingMachinesForm: TTankDetailsWashingMachinesForm
         ShowSeconds = False
         TabOrder = 0
         Visible = True
-        Version = '2.0.0.5'
+        Version = '2.0.2.6'
         OnKeyDown = PresetTimeEditKeyDown
         OnKeyPress = PresetTimeEditKeyPress
         OnMouseDown = PresetTimeEditMouseDown
@@ -289,7 +288,7 @@ object TankDetailsWashingMachinesForm: TTankDetailsWashingMachinesForm
       Width = 145
       Height = 21
       Color = clWindow
-      Version = '2.0.0.2'
+      Version = '2.0.0.8'
       Visible = True
       ButtonWidth = 17
       EmptyTextStyle = []
@@ -371,6 +370,14 @@ object TankDetailsWashingMachinesForm: TTankDetailsWashingMachinesForm
     ControlLook.DropDownFooter.Font.Style = []
     ControlLook.DropDownFooter.Visible = True
     ControlLook.DropDownFooter.Buttons = <>
+    ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+    ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+    ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+    ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+    ControlLook.ToggleSwitch.CaptionFont.Height = -12
+    ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+    ControlLook.ToggleSwitch.CaptionFont.Style = []
+    ControlLook.ToggleSwitch.Shadow = False
     DefaultEditor = edNone
     Filter = <>
     FilterDropDown.Font.Charset = DEFAULT_CHARSET
@@ -448,7 +455,7 @@ object TankDetailsWashingMachinesForm: TTankDetailsWashingMachinesForm
     SortSettings.HeaderColorTo = clWhite
     SortSettings.HeaderMirrorColor = clWhite
     SortSettings.HeaderMirrorColorTo = clWhite
-    Version = '8.6.8.5'
+    Version = '9.0.0.7'
     ColWidths = (
       100
       80

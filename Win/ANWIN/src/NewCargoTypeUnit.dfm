@@ -445,7 +445,6 @@ object NewCargoTypeSetupDlg: TNewCargoTypeSetupDlg
         ItemHeight = 13
         TabOrder = 0
         OnClick = SelectBaseCTListBoxClick
-        ExplicitLeft = 1
       end
     end
     object SaveNewButton: TButton

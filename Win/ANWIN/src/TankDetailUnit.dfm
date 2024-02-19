@@ -11,6 +11,7 @@ inherited TankDetailsForm: TTankDetailsForm
   GlassFrame.Enabled = True
   PopupMode = pmAuto
   Position = poDesigned
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitWidth = 733
   ExplicitHeight = 451
   TextHeight = 13
@@ -102,6 +103,14 @@ inherited TankDetailsForm: TTankDetailsForm
               ControlLook.DropDownFooter.Font.Style = []
               ControlLook.DropDownFooter.Visible = True
               ControlLook.DropDownFooter.Buttons = <>
+              ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+              ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+              ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+              ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+              ControlLook.ToggleSwitch.CaptionFont.Height = -12
+              ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+              ControlLook.ToggleSwitch.CaptionFont.Style = []
+              ControlLook.ToggleSwitch.Shadow = False
               DefaultEditor = edEditBtn
               Filter = <>
               FilterDropDown.Font.Charset = DEFAULT_CHARSET
@@ -124,7 +133,7 @@ inherited TankDetailsForm: TTankDetailsForm
                 'Clear')
               FixedRowHeight = 22
               FixedFont.Charset = DEFAULT_CHARSET
-              FixedFont.Color = 3881787
+              FixedFont.Color = clWindowText
               FixedFont.Height = -11
               FixedFont.Name = 'Tahoma'
               FixedFont.Style = [fsBold]
@@ -171,11 +180,11 @@ inherited TankDetailsForm: TTankDetailsForm
               SearchFooter.MatchCaseCaption = 'Match case'
               SearchFooter.ResultFormat = '(%d of %d)'
               SelectionColor = clHighlight
-              SelectionTextColor = clHighlightText
+              SelectionTextColor = clWindowText
               SortSettings.HeaderColorTo = clWhite
               SortSettings.HeaderMirrorColor = clWhite
               SortSettings.HeaderMirrorColorTo = clWhite
-              Version = '8.6.13.3'
+              Version = '9.0.0.7'
               ColWidths = (
                 64
                 64
@@ -1877,7 +1886,7 @@ inherited TankDetailsForm: TTankDetailsForm
             BorderStyle = bsSingle
             Ctl3D = True
             DateTime = 44342.550000000000000000
-            Version = '1.3.6.5'
+            Version = '1.3.6.6'
             LabelCaption = 'From'
             LabelFont.Charset = DEFAULT_CHARSET
             LabelFont.Color = clWindowText
@@ -1901,7 +1910,7 @@ inherited TankDetailsForm: TTankDetailsForm
             BorderStyle = bsSingle
             Ctl3D = True
             DateTime = 44342.550000000000000000
-            Version = '1.3.6.5'
+            Version = '1.3.6.6'
             LabelCaption = 'To'
             LabelFont.Charset = DEFAULT_CHARSET
             LabelFont.Color = clWindowText
@@ -2504,8 +2513,6 @@ inherited TankDetailsForm: TTankDetailsForm
             FixedRows = 1
             Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goFixedRowDefAlign]
             TabOrder = 1
-            GridLineColor = 13948116
-            GridFixedLineColor = 11250603
             ActiveCellFont.Charset = DEFAULT_CHARSET
             ActiveCellFont.Color = 4474440
             ActiveCellFont.Height = -11
@@ -2545,6 +2552,14 @@ inherited TankDetailsForm: TTankDetailsForm
             ControlLook.DropDownFooter.Font.Style = []
             ControlLook.DropDownFooter.Visible = True
             ControlLook.DropDownFooter.Buttons = <>
+            ControlLook.ToggleSwitch.BackgroundBorderWidth = 1.000000000000000000
+            ControlLook.ToggleSwitch.ButtonBorderWidth = 1.000000000000000000
+            ControlLook.ToggleSwitch.CaptionFont.Charset = DEFAULT_CHARSET
+            ControlLook.ToggleSwitch.CaptionFont.Color = clWindowText
+            ControlLook.ToggleSwitch.CaptionFont.Height = -12
+            ControlLook.ToggleSwitch.CaptionFont.Name = 'Segoe UI'
+            ControlLook.ToggleSwitch.CaptionFont.Style = []
+            ControlLook.ToggleSwitch.Shadow = False
             Filter = <>
             FilterDropDown.Font.Charset = DEFAULT_CHARSET
             FilterDropDown.Font.Color = clWindowText
@@ -2567,7 +2582,7 @@ inherited TankDetailsForm: TTankDetailsForm
             FixedColWidth = 22
             FixedRowHeight = 22
             FixedFont.Charset = DEFAULT_CHARSET
-            FixedFont.Color = 3881787
+            FixedFont.Color = clWindowText
             FixedFont.Height = -11
             FixedFont.Name = 'Tahoma'
             FixedFont.Style = [fsBold]
@@ -2614,13 +2629,14 @@ inherited TankDetailsForm: TTankDetailsForm
             SearchFooter.MatchCaseCaption = 'Match case'
             SearchFooter.ResultFormat = '(%d of %d)'
             SelectionColor = 13744549
+            SelectionTextColor = clWindowText
             SortSettings.Column = 2
             SortSettings.SingleColumn = True
             SortSettings.HeaderColor = clWhite
             SortSettings.HeaderColorTo = clWhite
             SortSettings.HeaderMirrorColor = clWhite
             SortSettings.HeaderMirrorColorTo = clWhite
-            Version = '2.5.1.11'
+            Version = '2.5.1.23'
             AutoCreateColumns = True
             AutoRemoveColumns = False
             Columns = <

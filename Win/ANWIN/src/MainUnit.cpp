@@ -1,4 +1,26 @@
+#include <vcl.h>
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
 #include "ANWinInc.h"
+#include <Clipbrd.hpp>
+#pragma hdrstop
+#include <Inifiles.hpp>
+#include <psapi.h>
+#include <Registry.hpp>
+#include "WinUart.h"
+#include <process.h>
+#include <errno.h>
+#include <dir.h>
+//#include "ANPRO10Inc.h"
+
 #define _ARRAYOF
 //#include <IdGlobal.hpp>
 #pragma hdrstop
@@ -66,21 +88,15 @@ USEFORM("SetupUnit.cpp", SetupForm);
 
 
 #define TIXML_USE_STL
-#include <Inifiles.hpp>
-#include <psapi.h>
-#include <Registry.hpp>
-#include "WinUart.h"
-#include <process.h>
-#include <errno.h>
-#include <windows.h>
-#include <dir.h>
-//#include <Vcl.Themes.hpp>
+#include <Vcl.Themes.hpp>
 
 #include "tinyxml.h"
 #include "SimulateIOThread.h"
 #include "XMLDataExchangeThread.h"
 #include "LoadCalcXMLExportThread.h"
 #include "SARCDataExchangeThread.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #include "Litecall.hpp"
 using namespace Litecall;
@@ -134,6 +150,33 @@ extern TFormStyle ChildFormStyle;
 #pragma link "DBAdvGrid"
 #pragma link "AdvSmoothSplashScreen"
 #pragma link "PictureContainer"
+#pragma link "AdvMenus"
+#pragma link "AdvSmoothSplashScreen"
+#pragma link "DBAccess"
+#pragma link "LiteAccess"
+#pragma link "LiteCall"
+#pragma link "LiteConsts"
+#pragma link "MemDS"
+#pragma link "nrclasses"
+#pragma link "nrcomm"
+#pragma link "nrdataproc"
+#pragma link "nrsemaphore"
+#pragma link "RzTreeVw"
+#pragma link "RzTreeVw"
+#pragma link "RzTreeVw"
+#pragma link "RzTreeVw"
+#pragma link "AdvMenus"
+#pragma link "AdvSmoothSplashScreen"
+#pragma link "DBAccess"
+#pragma link "LiteAccess"
+#pragma link "LiteCall"
+#pragma link "LiteConsts"
+#pragma link "MemDS"
+#pragma link "nrclasses"
+#pragma link "nrcomm"
+#pragma link "nrdataproc"
+#pragma link "nrsemaphore"
+#pragma link "RzTreeVw"
 #pragma resource "*.dfm"
 
 char old_dir[MAXDIR] = { "\\" };
@@ -2895,12 +2938,6 @@ void __fastcall TMainForm::HTTMLServerConnect(TIdContext *AContext) {
 
      HtmlResult += "</HEAD>"+CrLfStr;
 
-    /*
-     HtmlResult = "<BR CLEAR="...">" ;
-     HtmlResult+= "<h1>HttpServ Demo</h1>";
-     HtmlResult+="<p>This is the only page you''ll get from this example.</p><hr>";
-     HtmlResult+="<p>"+TSNDateTime()+ "<br>" ;
-     */
     HtmlResult += "<BODY>" + CrLfStr;
     HtmlResult += "<BR CLEAR=ALL>" + CrLfStr;
 
@@ -3081,7 +3118,7 @@ void __fastcall TMainForm::HTTMLServerCommandGet(TIdContext *AContext,
 
 // ---------------------------------------------------------------------------
 int __fastcall TMainForm::GetCommandId(AnsiString Command) {
-    static char *Commands[] = { { "GET" }, { "POST" }, };
+	static char *Commands[] = { "GET" ,  "POST" , };
     int CommandCnt = 0;
     while ( CommandCnt < int(NELEMENTS(Commands)) && AnsiString
             (Commands[CommandCnt]) != Command ) {
@@ -3536,7 +3573,6 @@ void __fastcall TMainForm::FormCreate(TObject *Sender) {
 	HaveNewConfig 	= false;
 	FindComPort 	= false;
 	ComRetryCnt 	= 0;
-	CurrentSearchComPortIndex = 0;
 	// Data logging
 	DataLogEnable       = false;
 	DataLogInterval     = 60;
@@ -4056,7 +4092,7 @@ void __fastcall TMainForm::IdUDPServer1UDPRead(TIdUDPListenerThread *AThread, co
         }
         if ( PNo + 1 == NumberOfParts ) {
             //nrSemaphore1->Checked = true;
-            ANPRO10_UDP_Receive(Data);
+			ANPRO10_UDP_Receive((U8*)Data);
         }
     }
     if ( PrevTotalCount - Count > 1 ) {
@@ -4538,7 +4574,7 @@ void __fastcall TMainForm::SendSCOM(unsigned char MsgBuf[], unsigned Size)
 	MsgBuf[8] = IDChk;
 	if (HattelandSCOM->Active) {
 		char RxBuf[BUF_SIZE] = {0,0,0};
-		HattelandSCOM->SendData(MsgBuf, Size);
+		HattelandSCOM->SendData((const char*)MsgBuf, Size);
 		HattelandSCOM->FlushOutputBuffer();
 	}
 }

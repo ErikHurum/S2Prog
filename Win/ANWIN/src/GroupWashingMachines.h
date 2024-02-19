@@ -15,9 +15,6 @@
 #include <Vcl.ExtCtrls.hpp>
 
 
-
-using namespace std;
-
 #define TGroupTableWashingMachines_StringColWidth 80
 
 

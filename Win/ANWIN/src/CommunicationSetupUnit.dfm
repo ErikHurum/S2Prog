@@ -13,7 +13,6 @@ object ComSetupDlg: TComSetupDlg
   Font.Style = []
   OnClose = FormClose
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
     Left = 8
@@ -76,7 +75,6 @@ object ComSetupDlg: TComSetupDlg
       nrComm = MainForm.nrComm1
       ResetOnChanged = True
       TabOrder = 2
-      Text = 'COM1'
       OnChange = nrDeviceBox1Change
     end
   end

@@ -37,7 +37,6 @@
 
 
 
-using namespace std;
 
 // ---------------------------------------------------------------------------
 class TChildForm : public TForm {

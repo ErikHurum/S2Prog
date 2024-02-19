@@ -11,8 +11,7 @@
 #include "TXUFlashProgMain.h"
 #include "Anpro_Net.h"
 #include "ANWinInc.h"
-#include <queue>
-queue<char>CharQueue;
+
 #pragma package(smart_init)
 
 /////////////////////////////////////////////////////////////////////////
@@ -952,7 +951,7 @@ Anpro_Net::anpro_net_thread(LPVOID lpParameter)
 
    while(!apnet->_exit_flag)
    {
-	  tv.tv_sec   = 1;
+      tv.tv_sec   = 1;
       tv.tv_usec  = 0;
 
       apnet->anpro_thread_pre_select(&rset, &wset, &max_fd);

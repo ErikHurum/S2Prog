@@ -2,7 +2,7 @@
 #include	"iom1280.h"
 #endif
 
-#ifdef __ATMEGA_1281__
+#ifdef __AVR_ATmega1281__
 #include	"iom1281.h"
 #endif
 
@@ -24,6 +24,11 @@
 #include <intrinsics.h>
 
 extern char MyAddress(void);
+extern void WDT_Prescaler_Change(void);
+extern void EEPROM_writeByte(unsigned int uiAddress, unsigned char ucData);
+extern unsigned char EEPROM_readByte(unsigned int uiAddress);
+__no_init char BootloaderRevision    @0x21FF;
+
 
 __C_task void main(void){
     //
@@ -42,28 +47,30 @@ __C_task void main(void){
     */
     __disable_interrupt();
     __watchdog_reset();
+    WDT_Prescaler_Change();
+    BootloaderRevision = PROG_VERSION;
+
     /* Clear WDRF in MCUSR */
     MCUSR &= ~(1<<WDRF);
-    /* Write logical one to WDCE and WDE */
-    /* Keep old prescaler setting to prevent unintentional time-out
-    */
-    WDTCSR |= (1<<WDCE) | (1<<WDE);
-    /* Turn off WDT */
-    WDTCSR = 0x00;
     __enable_interrupt();
 
     while ( (EECR & 1<<EEPE) != 0 ) //chech if EEPROM is ready
         ;
-    EEARL = (0x0fff & 0xff);                // check high byte of eeprom 
-    EEARH = (0x0fff >> 8);                  // if date = 0xaa enter uploader mode
-    EECR |= (1<<EERE);                      // else jump to program
-    if ( EEDR != 0xaa || MyAddress() == 0xF) {
+    //EEARL = (0x0fff & 0xff);                // check high byte of eeprom 
+    //EEARH = (0x0fff >> 8);                  // if date = 0xaa enter uploader mode
+    //EECR |= (1<<EERE);                      // else jump to program
+    //char ProgramOK = EEDR;
+    int ProgramOK = EEPROM_readByte(0x0fff);
+    DDRD   =  0x00;      // Port D data
+    PORTD  =  0xf0;      // Port D data  //pullup addr
+    int MyAddr = MyAddress();
+    if ( ProgramOK != 0xaa || MyAddress() == 0xF) {
         EEDR = 0;
         InitSystem();                       // Init the system
-
         GoToSyncUART() ;                   // go to sync modus for recive
         UART_DATA_REG0 ;                    // read dummy byte
         for(;;) {                           // suuuuuuperloooop here!!
+            __watchdog_reset();
             recchar();
              if(myUART.RxState == HANDLE){ // Package OK
                  UsartCheckPackage();

@@ -179,7 +179,7 @@ bool RunMultiple(void) {
 }
 
 // ---------------------------------------------------------------------------
-WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int) {
+int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int) {
 	try {
 		Application->Title = "ANWin";
 		Application->Initialize();

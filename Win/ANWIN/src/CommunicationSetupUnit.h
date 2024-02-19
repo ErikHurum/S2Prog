@@ -35,7 +35,7 @@ __published: // IDE-managed Components
 private: // User declarations
 
 	String 	SetBaudRate;
-	String 	DataSourceName;
+	String 	locDataSourceName;
 	bool 	InCreate;
 
 

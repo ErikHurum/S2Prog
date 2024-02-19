@@ -1,9 +1,11 @@
+#include "TSNIncludes.h"
 #ifdef ANWIN
 	#include "LiteCall.hpp"
 #endif
-#include "TSNIncludes.h"
 #pragma hdrstop
 #ifdef ANWIN
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
 	#include "MainUnit.h"
 #endif
 
@@ -35,7 +37,7 @@ const TColor CargoTypeObject::ColorTable[] = {
     clYellow,                    // Astm 53B
     clYellow,                    // Astm 53D
     clYellow,                    // Astm 54A
-    clYellow,                    // Astm 54B
+	clYellow,                    // Astm 54B
     clYellow,                    // Astm 54C
     (TColor)0x49726f,            // Astm 59A
     (TColor)0x49726f,            // Astm 59B

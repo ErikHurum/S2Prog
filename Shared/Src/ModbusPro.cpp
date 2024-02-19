@@ -397,12 +397,12 @@ int ModbusPro::Set_Single(TSNUart *Port, unsigned Function, unsigned SlaveAddres
     //SlaveAddress--;
     // Not that the Packet contains 3 times 0x0 to make space for CRC
     U8 Packet[REQUEST_QUERY_SIZE + CHECKSUM_SIZE + 1] = {
-        SlaveAddress,
-        Function,
-        Address >> 8,
-        Address & 0xFF,
-        Value >> 8,
-        Value & 0xff,
+		(U8)SlaveAddress,
+		(U8)Function,
+		(U8)(Address >> 8),
+		(U8)(Address & 0xFF),
+		(U8)(Value >> 8),
+		(U8)(Value & 0xff),
     };
 
     if ( Send_Query(Port, Packet, REQUEST_QUERY_SIZE) ) {
@@ -429,13 +429,13 @@ int ModbusPro::Set_Multiple(TSNUart *Port, unsigned Function, unsigned SlaveAddr
 
     // Not that the Packet contains 3 times 0x0 to make space for CRC
     U8 Packet[MAX_QUERY_LENGTH] = {
-        SlaveAddress,
-        Function,
-        Address >> 8,
-        Address & 0x00FF,
-        NumberOfRegisters >> 8,
-        NumberOfRegisters & 0x00FF,
-        NumberOfRegisters * 2,
+		(U8)SlaveAddress,
+		(U8)Function,
+		(U8)(Address >> 8),
+		(U8)(Address & 0x00FF),
+		(U8)(NumberOfRegisters >> 8),
+		(U8)(NumberOfRegisters & 0x00FF),
+		(U8)(NumberOfRegisters * 2),
     };
 
     int Length = REQUEST_MULTIPLE_SIZE;
@@ -460,13 +460,13 @@ int ModbusPro::WriteMultipleCoils(TSNUart *Port, unsigned SlaveAddress, unsigned
     }
     // Not that the Packet contains 3 times 0x0 to make space for CRC
     U8 Packet[MAX_QUERY_LENGTH] = {
-        SlaveAddress,
-        MBUS_CMD_WRITE_MULTIPLE_COILS,
-        Address >> 8,
-        Address & 0x00FF,
-        NumberOfCoils >> 8,
-        NumberOfCoils & 0x00FF,
-        NumberOfBytes
+		(U8)SlaveAddress,
+		(U8)MBUS_CMD_WRITE_MULTIPLE_COILS,
+		(U8)(Address >> 8),
+		(U8)(Address & 0x00FF),
+		(U8)(NumberOfCoils >> 8),
+		(U8)(NumberOfCoils & 0x00FF),
+		(U8)NumberOfBytes
     };
     memcpy(&Packet[REQUEST_MULTIPLE_SIZE], Value, NumberOfBytes);
     int Length = REQUEST_MULTIPLE_SIZE + NumberOfBytes;
@@ -485,13 +485,13 @@ int ModbusPro::WriteMultipleRegisters(TSNUart *Port, unsigned SlaveAddress, unsi
     unsigned Size = NumberOfRegisters * 2;
     // Not that the Packet contains 3 times 0x0 to make space for CRC
     U8 Packet[MAX_QUERY_LENGTH] = {
-        SlaveAddress,
-        MBUS_CMD_WRITE_MULTIPLE_REGISTERS,
-        Address >> 8,
-        Address & 0x00FF,
-        NumberOfRegisters >> 8,
-        NumberOfRegisters & 0x00FF,
-        Size,
+		(U8)SlaveAddress,
+		(U8)MBUS_CMD_WRITE_MULTIPLE_REGISTERS,
+		(U8)(Address >> 8),
+		(U8)(Address & 0x00FF),
+		(U8)(NumberOfRegisters >> 8),
+		(U8)(NumberOfRegisters & 0x00FF),
+		(U8)Size,
     };
     memcpy(&Packet[REQUEST_MULTIPLE_SIZE], Value, Size);
     int Length = REQUEST_MULTIPLE_SIZE + Size;
@@ -513,13 +513,13 @@ int ModbusPro::Get_Multiple(TSNUart *Port, unsigned Function, unsigned SlaveAddr
 
     // Note that the Packet contains 3 times 0x0 to make space for CRC
     U8 Packet[REQUEST_QUERY_SIZE + CHECKSUM_SIZE + 1] = {
-        SlaveAddress,
-        Function,
-        Address >> 8,
-        Address & 0xFF,
-        NumberOfPoints >> 8,
-        NumberOfPoints & 0xff,
-    };
+		(U8)SlaveAddress,
+		(U8)Function,
+		(U8)(Address >> 8),
+		(U8)(Address & 0xFF),
+		(U8)(NumberOfPoints >> 8),
+		(U8)(NumberOfPoints & 0xff),
+	};
 
     int Status;
     if ( Send_Query(Port, Packet, REQUEST_QUERY_SIZE) ) {

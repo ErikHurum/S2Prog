@@ -74,6 +74,10 @@ extern void Init_Values(void);
 // Misc.c
 extern char MyAddress(void);
 extern char IsFloat(float);
+extern void WDT_Prescaler_Change(void);
+
+
+
 
 // eeprom.c
 extern char *pWriteBuffer;

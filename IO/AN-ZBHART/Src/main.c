@@ -19,6 +19,8 @@ extern void InternalADCHandler(void);
 extern void WDT_off(void);
 extern void WDT_Prescaler_Change(void);
 __no_init int RestartCnt             @0x21FD;
+__no_init char BootloaderRevision    @0x21FF;
+
 
 
 /* Task stacks */

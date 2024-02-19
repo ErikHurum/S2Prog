@@ -2,9 +2,9 @@
 #ifndef SaabProtocolH
 #define SaabProtocolH
 typedef struct {
-	int  ValKey,
-	First_Tank,
-	Number_of_Tanks;
+	int      ValKey;
+    unsigned First_Tank,
+             Number_of_Tanks;
 } BlockDef;
 typedef struct {
 	int  Key;

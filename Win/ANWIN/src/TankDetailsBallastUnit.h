@@ -25,6 +25,16 @@
 #include "AdvUtil.hpp"
 #include "BaseGrid.hpp"
 #include "RzPanel.hpp"
+#include "AdvDateTimePicker.hpp"
+#include "DBAccess.hpp"
+#include "DBAdvGrid.hpp"
+#include "LiteAccess.hpp"
+#include "MemDS.hpp"
+#include <System.ImageList.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Vcl.ImgList.hpp>
+#include <Vcl.Mask.hpp>
+#include <VCLTee.DBChart.hpp>
 //---------------------------------------------------------------------------
 class TTankDetailsBallast : public TTankDetailsForm
 {

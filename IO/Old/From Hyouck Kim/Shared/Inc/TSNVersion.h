@@ -57,7 +57,7 @@
 * x is the version number
 *
 ***********************************************************/
-#define VERSION_ANZB_PROG       40
+#define VERSION_ANZB_128_PROG       40
 #define VERSION_ANZB_COMP       1
 #define VERSION_ANZB_EEPROM     2
 #endif

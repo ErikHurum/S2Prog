@@ -49,10 +49,10 @@ __enable_interrupt();
 *************************************************************************/
 void WatchDogHandler(void) {
 
-    OS_Delay(100);                         // wait 1 seconds for other tasks to start and set TaskStatus
-    __watchdog_reset();               //kick the dog
-    WDTCSR = 0x1f;
-    WDTCSR = 0x0f;
+    //OS_Delay(100);                         // wait 1 seconds for other tasks to start and set TaskStatus
+    //__watchdog_reset();               //kick the dog
+    //WDTCSR = 0x1f;
+    //WDTCSR = 0x0f;
     __watchdog_reset();               //kick the dog
     WDT_Prescaler_Change();
     while (1) {

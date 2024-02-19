@@ -6,9 +6,6 @@
 #include <deque>
 #include "TSNIncludes.h"
 //---------------------------------------------------------------------------
-#ifdef ANWIN
-using namespace std;
-#endif
 
 
 enum tcm_operation_status {

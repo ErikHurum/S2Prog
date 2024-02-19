@@ -748,7 +748,7 @@ int PROLinePressure::WriteXML(char *StrBuf, bool IncAlarms)
     int  tmpPtr = sprintf(StrBuf, "\t<Packet>\r\n");
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<PacketID>Freevalue</PacketID>\r\n");
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<TagID>%s</TagID>\r\n", TagName.c_str());
-    tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<Value>%s</Value>\r\n", PressureStr);
+    tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<Value>%s</Value>\r\n", PressureStr.c_str());
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t\t<Alarm>%i</Alarm>\r\n", LEDStatus);
     tmpPtr += sprintf(&StrBuf[tmpPtr], "\t</Packet>\r\n");
     return tmpPtr;

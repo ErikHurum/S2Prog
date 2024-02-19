@@ -20,8 +20,6 @@
 #include <Vcl.Grids.hpp>
 #include <Vcl.Buttons.hpp>
 #include <Vcl.ComCtrls.hpp>
-#include "RzDBNav.hpp"
-#include "RzPanel.hpp"
 #include "frxClass.hpp"
 #include "frxCross.hpp"
 #include "frxDBSet.hpp"

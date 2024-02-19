@@ -1142,6 +1142,7 @@ NewLanguageWord EnglishDictionary[]=
     { L_WORD1127, L"TimeStampPeriod"  },
     { L_WORD1128, L"Age"  },
     { L_WORD1129 ,L"CalcPeriod"},
+    { L_WORD1130 ,L"Bootloader version"},
 };
 
 unsigned WordsInEnglishDictionary = NELEMENTS(EnglishDictionary);
@@ -1161,15 +1162,15 @@ FAILURE to do this correct can cause overloading or damage.\n\
 The manual and other spare parts can be ordered from:\n\
 \n\
 Scanjet Ariston AS\n\
-Dokkvegen 10\n\
-3920 Porsgrunn\n\
+Moen 12\n\
+3948 Porsgrunn\n\
 Norway \n\
 \n\
 Tel: +47 35 93 11 30\n\
-Service: +47 958 78 644\n\
+Service: +46 416 203 185Service \n\
 Fax: +47 35 93 11 31\n\
-E-mail: service@ariston.no\n\
-Web: www.ariston.no\n\
+E-mail: service@scanjet.se\n\
+Web: https://scanjet.net\n\
 "};
 
 int SizeOfEnglishUserManual= sizeof(EnglishUserManual);

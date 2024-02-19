@@ -36,7 +36,7 @@ void TSNSaveSettings::WriteToFile(void) {
 void TSNSaveSettings::SaveSettings(TSNConfigString *SettingsString) {
     if ( PROProjectInfo::PROProjectInfoPtr && PROProjectInfo::PROProjectInfoPtr->ProjectName.data() ) {
         PROProjectInfo::PROProjectInfoPtr->SaveSettings(SettingsString);
-#ifndef BORLAND
+#ifdef S2TXU
         if ( SystemWindow )	SystemWindow->SaveSettings(SettingsString);
 #endif
 // SystemData Info
@@ -150,7 +150,7 @@ bool TSNSaveSettings::RestoreSettings(TSNConfigString *SettingsString) {
                 break;
             case C_TDU_SYSTEM_WIN:
                 if ( HasSystemId ) {
-#ifndef BORLAND
+#ifdef S2TXU
                     switch ( GlobalDeviceHWId ) {
                     case TDU_R1:
                     case TDU_R2:

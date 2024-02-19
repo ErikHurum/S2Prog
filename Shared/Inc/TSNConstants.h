@@ -2010,25 +2010,27 @@
 
 
 // IOUnit Range 4500 -> 5000
+// IOUnit Range 4500 -> 5000
 #define SVT_IO_COM_CHANNEL          4501
-#define SVT_IO_PROG_VERSION         4502
-#define SVT_IO_COM_VERSION          4503
-#define SVT_IO_STORE_VERSION        4504
-#define SVT_IO_RXBUF_SIZE           4505
-#define SVT_IO_TXBUF_SIZE           4506
-#define SVT_IO_RESET_STATUS         4507
-#define SVT_IO_P_TYPE_RUNNING       4508
-#define SVT_IO_CARD_VOLTAGE         4509
-#define SVT_IO_NEW_SENSOR           4510
-#define SVT_IO_TOTAL_RESTARTS       4511
+#define SVT_IO_BOOT_VERSION         4502
+#define SVT_IO_PROG_VERSION         4503
+#define SVT_IO_COM_VERSION          4504
+#define SVT_IO_STORE_VERSION        4505
+#define SVT_IO_RXBUF_SIZE           4506
+#define SVT_IO_TXBUF_SIZE           4507
+#define SVT_IO_RESET_STATUS         4508
+#define SVT_IO_P_TYPE_RUNNING       4509
+#define SVT_IO_CARD_VOLTAGE         4510
+#define SVT_IO_NEW_SENSOR           4511
+#define SVT_IO_TOTAL_RESTARTS       4512
 
-#define SVT_IO_CH_CONV_ERROR          4610
-#define SVT_IO_CH_CAL_ERROR           4611
+#define SVT_IO_CH_CONV_ERROR        4610
+#define SVT_IO_CH_CAL_ERROR         4611
 #define SVT_IO_CH_CNV_CAL_ERROR     4612
 #define SVT_IO_CH_FROM_PC_SENSOR    4613
-#define SVT_IO_CH_USE_PC_SETUP    4614
+#define SVT_IO_CH_USE_PC_SETUP      4614
 #define SVT_IO_CH_AD_SENSOR         4615
-#define SVT_IO_CH_NEW_SENSOR          4616
+#define SVT_IO_CH_NEW_SENSOR        4616
 #define SVT_IO_CH_EEP_USE_PCDATA    4617
 #define SVT_IO_CH_EEP_PC_STAT       4618
 #define SVT_IO_CH_EEP_SNS_STAT      4619

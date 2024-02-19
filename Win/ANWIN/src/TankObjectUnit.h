@@ -15,6 +15,8 @@
 #include <VCLTee.TeeProcs.hpp>
 #include <VclTee.TeeGDIPlus.hpp>
 #include <Vcl.Menus.hpp>
+#include <System.ImageList.hpp>
+#include <Vcl.ImgList.hpp>
 
 
 //---------------------------------------------------------------------------

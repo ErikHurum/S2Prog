@@ -1,6 +1,6 @@
 //For all
 //TSN Help Objects
-#ifndef BORLAND
+#ifdef S2TXU
 	//#include "stdafx.h"
 #endif
 #ifdef WIN32

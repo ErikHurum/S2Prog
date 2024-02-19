@@ -7,9 +7,15 @@
 //
 /////////////////////////////////////////////////////////////////////////
 #pragma hdrstop
-
+#ifdef WIN32
+#include "windows.h"
+#include <functional>
+//using namespace std;
+#endif
+#include "ChildUnit.h"
 #include "Anpro_Net.h"
 #include "ANWinInc.h"
+
 #include "Mstcpip.h"
 
 #pragma package(smart_init)
@@ -51,7 +57,7 @@ ev_pipe(int filedes[2])
    addr.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
    addr.sin_port = 0;
 
-   if (bind (listener, (struct sockaddr *)&addr, addr_size))
+   if (::bind (listener, (struct sockaddr *)&addr, addr_size))
       goto fail;
 
    if (getsockname (listener, (struct sockaddr *)&addr, &addr_size))
@@ -224,7 +230,7 @@ init_udp_socket(unsigned short port)
    anpro_saddr.sin_addr.s_addr   = INADDR_ANY;
    anpro_saddr.sin_port          = htons(port);
 
-   if(bind(sock, (struct sockaddr*)&anpro_saddr, sizeof(anpro_saddr)) != 0)
+   if(::bind(sock, (struct sockaddr*)&anpro_saddr, sizeof(anpro_saddr)) != 0)
    {
       closesocket(sock);
       return -1;
@@ -535,7 +541,7 @@ Anpro_Net::try_connect_to_server(void)
 void
 Anpro_Net::notify_anpro_thread(unsigned char event)
 {
-   ::send(_pipes[1], &event, 1, 0);
+   ::send(_pipes[1], (const char*)&event, 1, 0);
 }
 
 unsigned char
@@ -544,7 +550,7 @@ Anpro_Net::read_notify_event(void)
    int   ret;
    unsigned char cmd;
 
-   ret = ::recv(_pipes[0], &cmd, 1, 0);
+   ret = ::recv(_pipes[0], (char*)&cmd, 1, 0);
    if(ret <= 0)
    {
       return Anpro_Net_Event_Quit_Message;
@@ -812,7 +818,7 @@ Anpro_Net::OnTCPRX(void)
    unsigned char     buffer[1024];
    int               ret;
 
-   ret = ::recv(_tcp_sock, buffer, 1024, 0);
+   ret = ::recv(_tcp_sock, (char*)buffer, 1024, 0);
    if(ret <= 0)
    {
       OnTCPDisconnected();
@@ -868,7 +874,7 @@ Anpro_Net::OnNormalTXReq(void)
       return;
    }
 
-   pkt_len = anpro_encode_message(false, _q_msg_buf, size, _bounce_buffer);
+   pkt_len = anpro_encode_message(false, (unsigned char*)_q_msg_buf, size, (unsigned char*)_bounce_buffer);
 
    tx_over_udp(&_bounce_buffer[ANPRO10_PREAMBLE_SIZE], pkt_len - ANPRO10_PREAMBLE_SIZE);
 }
@@ -889,7 +895,7 @@ Anpro_Net::OnUrgentTXReq(void)
       return;
    }
 
-   pkt_len = anpro_encode_message(true, _q_msg_buf, size, _bounce_buffer);
+   pkt_len = anpro_encode_message(true, (unsigned char*)_q_msg_buf, size, (unsigned char*)_bounce_buffer);
 
    tx_over_tcp(&_bounce_buffer[ANPRO10_PREAMBLE_SIZE], pkt_len - ANPRO10_PREAMBLE_SIZE);
 }
@@ -897,13 +903,13 @@ Anpro_Net::OnUrgentTXReq(void)
 void
 Anpro_Net::OnNormalRX(char* msg, int len)
 {
-   if ( !_exit_flag ) ANPRO10_UDP_Receive(msg);
+   if ( !_exit_flag ) ANPRO10_UDP_Receive((U8*)msg);
 }
 
 void
 Anpro_Net::OnUrgentRX(char* msg, int len)
 {
-   ANPRO10_UDP_Receive(msg);
+   ANPRO10_UDP_Receive((U8*)msg);
 }
 
 int

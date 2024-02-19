@@ -5,9 +5,6 @@
         #pragma package(smart_init)
     #endif
 
-    #ifdef BORLAND
-        #include <fstream.h>
-    #endif
 #else
     #include "BootloaderIncludes.h"
 #endif

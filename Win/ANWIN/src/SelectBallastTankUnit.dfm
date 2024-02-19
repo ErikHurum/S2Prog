@@ -1,8 +1,11 @@
 inherited SelectPROBallastTank: TSelectPROBallastTank
   Caption = 'Select Ballast Tank'
-  ClientWidth = 193
-  OldCreateOrder = False
-  ExplicitWidth = 199
-  PixelsPerInch = 96
+  StyleElements = [seFont, seClient, seBorder]
   TextHeight = 13
+  inherited Label1: TLabel
+    StyleElements = [seFont, seClient, seBorder]
+  end
+  inherited TankComboBox: TComboBox
+    StyleElements = [seFont, seClient, seBorder]
+  end
 end

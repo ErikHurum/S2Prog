@@ -11,6 +11,9 @@
 #include "version.h"
 #include "inavr.h"
 #include "string.h"
+__no_init int  RestartCnt            @0x21FD;
+__no_init char BootloaderRevision    @0x21FF;
+
 
 
 OS_STACKPTR int Stack3[300], Stack10[300], Stack11[300]; /* Task stacks */
@@ -28,24 +31,45 @@ OS_TIMER    TimerUART0, TimerUART1, TimerUSART0On, TimerUSART1On;
 OS_RSEMA    adc_lock;
 OS_RSEMA    rs485_tx_lock[2];
 #endif
+
+unsigned char ReadSignatureRow(unsigned int addr)	{
+    return (__AddrToZByteToSPMCR_LPM((void __flash *)(addr), (1 << SPMEN) | (1 << SIGRD)));
+}
+
+
+/**********************************************************
+*
+*       main
+*  
+* CPU signatures:
+* ATmega128 : 0x1E, 0x97, 0x03
+* ATmega1280: 0x1E, 0x97, 0x02
+* 0x1E=Manufactured by Atmel
+* 0x97= Indicates 128Kbyte Flash memory
+* Last digit is type of device.
+* 
+**********************************************************/
+
 /**********************************************************
 *
 *       main
 *
 **********************************************************/
-
+// 0x1970403F for 1281
 void main(void) {
-    //asm("WDR");                             // Enable watchdog here because the OS hang some times during startup
-    //WDTCSR = 0x1f;
-    //WDTCSR = 0x0f;
-    //asm("WDR");                             // kick the dog!!
+    int SByte1 = ReadSignatureRow(0);
+    int SByte3 = ReadSignatureRow(2);
+    int SByte5 = ReadSignatureRow(4);
+
+    __watchdog_reset();               //kick the dog
+    RestartCnt++;
 
     
     //OS_IncDI();
     OS_InitKern();        /* initialize OS                 */
     OS_InitHW();          /* initialize Hardware for OS    */
     InitSystem();           // init the system according to board
-
+    //WDT_Prescaler_Change();
 #if USE_MODBUS_PROTOCOL == 0
     OS_CREATERSEMA(&UARTSEND);                          // semaphore for sending on UARTs
     // Create timers before tasks
@@ -99,6 +123,6 @@ void main(void) {
         break;
     }
 
-    //OS_CREATETASK(&TCB_WATCHDOG, "Watch dog", WatchDogHandler, 50, Stack3);
+    OS_CREATETASK(&TCB_WATCHDOG, "Watch dog", WatchDogHandler, 50, Stack3);
     OS_Start();                                         // Start multitasking
 }

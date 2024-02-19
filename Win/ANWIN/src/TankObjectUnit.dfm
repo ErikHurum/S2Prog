@@ -11,9 +11,9 @@ inherited TankObjectForm: TTankObjectForm
   Constraints.MinWidth = 115
   Font.Height = -13
   Font.Name = 'Arial'
+  StyleElements = [seFont, seClient, seBorder]
   ExplicitWidth = 265
   ExplicitHeight = 189
-  PixelsPerInch = 96
   TextHeight = 16
   object ULabel: TLabel [0]
     Left = 100

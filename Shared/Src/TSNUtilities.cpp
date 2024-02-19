@@ -5,7 +5,9 @@
 #ifdef BORLAND
     #ifdef ANWIN
         #include "ANWinInc.h"
-        #include "MainUnit.h"
+		#include "ChildUnit.h"
+		#include "Anpro_Net.h"
+		#include "MainUnit.h"
         #pragma hdrstop
     #else
         #include "TSNIncludes.h"
@@ -571,7 +573,7 @@ float Simpson(float First, float Last, int m, float (*Function)(float Val)) {
 
     float h = (Last - First) / m;
     float t = (*Function)(First) - (*Function)(Last);
-    for (register int i = 1; i <= m; i++) {
+	for ( int i = 1; i <= m; i++) {
         X += h;
         t += (*Function)(X) * (1 + (i & 1)) * 2;
     }
@@ -584,7 +586,7 @@ float Simpson(float First, float Last, int m, float (*Function)(float, float), f
     if (m & 1) m++;
     float h = (Last - First) / m;
     float t = (*Function)(First, Val) - (*Function)(Last, Val);
-    for (register int i = 1; i <= m; i++) {
+	for ( int i = 1; i <= m; i++) {
         X += h;
         t += (*Function)(X, Val) * (1 + (i & 1)) * 2;
     }
@@ -597,7 +599,7 @@ float Simpson(float First, float Last, int m, float (*Function)(float, float, fl
     if (m & 1) m++;
     float h = (Last - First) / m;
     float t = (*Function)(First, Val1, Val2) - (*Function)(Last, Val1, Val2);
-    for (register int i = 1; i <= m; i++) {
+	for ( int i = 1; i <= m; i++) {
         X += h;
         t += (*Function)(X, Val1, Val2) * (1 + (i & 1)) * 2;
     }

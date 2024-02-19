@@ -2,11 +2,6 @@
 
 #ifndef TWMRunH
 #define TWMRunH
-#if defined(ANWIN)
-#include <System.hpp>
-#else
-#include "TSNIncludes.h"
-#endif
 //---------------------------------------------------------------------------
 
 enum TankWashingMachineRun_Statuses { twmr_idle = 0, twmr_completed, twmr_running, twmr_error, twmr_aborted  };

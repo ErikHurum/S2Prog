@@ -89,7 +89,7 @@ float TSNTableKY::GetKY(float DraftMS, float DraftCF, float Displ, float Trim, f
 			break;
 	}
 	if ( List > 0.0001 ) {	  // 0.005^
-		register unsigned i=1;
+		unsigned i=1;
 		while ( i < Entries && Table[i]->xVal < xVal ) i++;
 		if ( i > Entries-1 ) {
 			i = Entries-1;
@@ -119,7 +119,7 @@ float TSNTableKY::GetFloodingAngle(float Draft, float Displ, float Trim)
 			xVal = Displ;
 			break;
 	}
-	register unsigned i=1;
+	unsigned i=1;
 	while ( i < Entries && Table[i]->xVal < xVal ) i++;
 	if ( i > Entries-1 ) {
 		i = Entries-1;

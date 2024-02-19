@@ -23,7 +23,7 @@
                                                                             //
 #define VERSION_PROD_NO         2  // Major version number, Tanksystem product number
 #define VERSION_TXU_NEW_FUNC    10  // Minor version number and/or change of packet format (i.e. new objects)
-#define VERSION_TXU_BUILD_NO    37 // Build number
+#define VERSION_TXU_BUILD_NO    38 // Build number
 
 #define VERSION_BOOT_NEW_FUNC   9  // Minor version number and/or change of packet format (i.e. new objects)
 #define VERSION_BOOT_BUG_FIX    1  // Build number
@@ -56,13 +56,22 @@
 * This number should match the verion number for ANZB_x_Bin.c
 * x is the version number
 *
+* Boot versions AN-ZBANA and AN-ZB485
+* Atmega 128    : Up to 40
+* AtMega 1281   : 40 and upwards
+*
+* Program version AN-ZBANA and AN-ZB485:
+* Atmega 128    : Up to 40
+* Atmega 1281   : 40 to 79 for current revision of PCB
 ***********************************************************/
-#define VERSION_ANZB_NEW_BOOT       40
-#define VERSION_ANZB_NEW_PROG       40
-#define VERSION_ANZB_NEW_COMP       1
-#define VERSION_ANZB_NEW_EEPROM     2
+#define VERSION_ANZB_1281_BOOT          40      // 
+#define VERSION_ANZB_1281_PROG_FIRST    100
+#define VERSION_ANZB_1281_PROG          (VERSION_ANZB_1281_PROG_FIRST+1)     // Various fixes for stability
+#define VERSION_ANZB_1281_PROG_NO_BOOT_START  41
+#define VERSION_ANZB_1281_PROG_NO_BOOT_END    45
+#define VERSION_ANZB_128_BOOT           12      // 
+#define VERSION_ANZB_128_PROG           40
 
-#define VERSION_ANZB_PROG           40
 #define VERSION_ANZB_COMP           1
 #define VERSION_ANZB_EEPROM         2
 
@@ -73,7 +82,7 @@
 * x is the version number
 *
 ***********************************************************/
-#define VERSION_ANZBHART_PROG       15
+#define VERSION_ANZBHART_1280_PROG  16
 #define VERSION_ANZBHART_COMP       2
 #define VERSION_ANZBHART_EEPROM     3
 

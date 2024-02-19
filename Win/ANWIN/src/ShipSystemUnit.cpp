@@ -1,7 +1,19 @@
 #include <vcl.h>
+#include <System.hpp>
+#include <SysInit.hpp>
+#include <Winapi.Windows.hpp>
+#include <System.Classes.hpp>
+#include <System.Types.hpp>
+#include <System.UITypes.hpp>
+#include <Vcl.Controls.hpp>
+#include <Vcl.Graphics.hpp>
+#include <Winapi.GDIPAPI.hpp>
+#include <Winapi.GDIPOBJ.hpp>
 #include "ANWinInc.h"
 #pragma hdrstop
 #include "RegistryUtility.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #include "ShipSystemUnit.h"
 //---------------------------------------------------------------------------
@@ -23,6 +35,15 @@
 #pragma link "AdvUtil"
 #pragma link "BaseGrid"
 #pragma link "DBAdvGrid"
+#pragma link "AdvDateTimePicker"
+#pragma link "AdvGrid"
+#pragma link "AdvObj"
+#pragma link "AdvUtil"
+#pragma link "BaseGrid"
+#pragma link "DBAccess"
+#pragma link "DBAdvGrid"
+#pragma link "LiteAccess"
+#pragma link "MemDS"
 #pragma resource "*.dfm"
 #pragma warn -8057
 /*

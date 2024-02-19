@@ -2,10 +2,6 @@
 #ifndef PROWaterHeaterH
 #define PROWaterHeaterH
 
-#if defined(ANTDUSIM) || defined(ANWIN)
-using namespace std;
-#endif
-
 
 class PROWaterHeater 
     : public PROXRefObject {

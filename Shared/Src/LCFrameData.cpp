@@ -396,7 +396,7 @@ bool LCFrameData::FrameInList(LCFrameData *FPtr)
 float LCFrameData::CrossArea(float DistToFrame0, float Draft)
 {
 	float Area;
-	register int Frame=1; // Second frame
+	int Frame=1; // Second frame
 	int Last = Table.size()-1;
 
 	while ( (Frame <= Last) && (Table[Frame]->DistToFrame0 < DistToFrame0) )	Frame++; // look for interval

@@ -1146,6 +1146,16 @@
 #define L_WORD1127      1127
 #define L_WORD1128      1128
 #define L_WORD1129      1129
+#define L_WORD1130      1130
+#define L_WORD1131      1131
+#define L_WORD1132      1132
+#define L_WORD1133      1133
+#define L_WORD1134      1134
+#define L_WORD1135      1135
+#define L_WORD1136      1136
+#define L_WORD1137      1137
+#define L_WORD1138      1138
+#define L_WORD1139      1139
 #endif
 
 

@@ -1,6 +1,6 @@
 inherited TankPressureForm: TTankPressureForm
   Caption = 'Tank/vapour Pressure'
-  PixelsPerInch = 96
+  StyleElements = [seFont, seClient]
   TextHeight = 15
   inherited AdvSmoothGaugeLinePressure: TAdvSmoothGauge
     MinimumValue = -300.000000000000000000

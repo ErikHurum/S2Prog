@@ -90,6 +90,7 @@ struct ANPRO10_COMMAND_1001 {
     U16   TxBufSize;
     U8    ResetStatus;
     U8    ProgamTypeRunning;
+    U8    UnitBootVersion;
 };
 
 struct ANPRO10_COMMAND_1091 {

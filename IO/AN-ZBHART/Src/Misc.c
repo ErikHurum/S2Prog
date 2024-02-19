@@ -12,7 +12,7 @@
 #include "string.h"
 #include "hart.h"
 
-_//_no_init int RestartCnt             @0x21FD;
+__no_init int RestartCnt             @0x21FD;
 volatile char RestartCmd = 0;
 
 

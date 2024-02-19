@@ -5,7 +5,7 @@
 short CurrentDeviceId = 0;
 short CurrentDeviceAddress = 0;
 bool Master = 0;
- 
+
 #include <vector>
 #include <queue>
 
@@ -16,6 +16,11 @@ bool Master = 0;
 
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
+#pragma link "nrclasses"
+#pragma link "nrcomm"
+#pragma link "nrdataproc"
+#pragma link "nrsemaphore"
+#pragma link "nrcommbox"
 #pragma resource "*.dfm"
 
 // ---------------------------------------------------------------------------
@@ -147,7 +152,7 @@ extern int CompressionRatio;
 bool TTXUFlashProg::DownloadOK = false;
 int TTXUFlashProg::PrevFlashSize = 0;
 
-volatile bool __anflash_use_anpro_net  = true;
+volatile bool __anflash_use_anpro_net  = false;
 Anpro_NetUserIF               anpro_net;
 
 extern volatile bool GetFlashDataCompleted;
@@ -511,7 +516,7 @@ void __fastcall TTXUFlashProg::StartProgramButtonClick(TObject *Sender) {
 			CurrentOperation->Font->Color = clYellow;
 			break;
 		case CMD_START_PROGRAM_OK:
-			CurrentOperation->Caption = "TCU restarted";
+			CurrentOperation->Caption = "Program started";
 			CurrentOperation->Font->Color = clGreen;
 			break;
 		case CMD_START_PROGRAM_NO_CONFIG:
@@ -696,12 +701,10 @@ void __fastcall TTXUFlashProg::nrDataProcessor1Timeout(TObject *Sender) {
 // ---------------------------------------------------------------------------
 
 void __fastcall TTXUFlashProg::nrDataProcessor1DataPacket(TObject *Sender, TnrDataPacket *Packet) {
-	if ( Packet->DataLength){
-		IsReceiving = true;
-		MyByteCnt += Packet->DataLength;
-		U8 *RxBuf = (U8*)&Packet->DataPtr[4];
-		ANPRO10_Receive(WinUartPtr, RxBuf);
-	}
+	IsReceiving = true;
+	MyByteCnt += Packet->DataLength;
+	U8 *RxBuf = (U8*)&Packet->DataPtr[4];
+	ANPRO10_Receive(WinUartPtr, RxBuf);
 	IsReceiving = false;
 
 }
@@ -923,7 +926,7 @@ void __fastcall TTXUFlashProg::UpdateTXUInfo(void) {
 				ProgramInfo->Lines->Add("Program : " + PType);
 				ProgramInfo->Lines->Add("Project : " + ExternProjectId);
 				ProgramInfo->Lines->Add("Revision: " + (AnsiString)Buf);
-				ProgramInfo->Lines->Add("-------------------");
+				ProgramInfo->Lines->Add("----------------------------------");
 				sprintf(Buf, "%i.%i.%i.%i", ExternBootVersion.ProdNo, ExternBootVersion.PacketFormat,
 					ExternBootVersion.NewFunctions, ExternBootVersion.Build);
 				ProgramInfo->Lines->Add("BootLoader: " + (AnsiString)Buf);
@@ -1013,7 +1016,7 @@ void __fastcall TTXUFlashProg::FormCreate(TObject *Sender) {
 
   	IsMultiThread = true;
 
-	//CommMethod->ItemIndex = 0;
+	CommMethod->ItemIndex = 0;
 	anpro_net.SetFlagProgForm(this);
 
 	if(__anflash_use_anpro_net) {
@@ -1187,5 +1190,4 @@ void __fastcall TTXUFlashProg::SetVersionInformation(void)
     }
 
 }
-
 

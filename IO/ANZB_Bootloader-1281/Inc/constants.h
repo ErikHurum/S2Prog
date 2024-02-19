@@ -47,3 +47,9 @@
 #define FLASH_PROG_OK       0                                  // Flash programmed ok
 #define FLASH_PROG_PAGEF    1                                  // Flash programmed page fault
 #define FLASH_PROG_ERROR    2                                  // Flash compare error
+
+#define AN_ZB485        0x00            // Unit ID for AN-ZB485
+#define AN_ZBANA        0x01            // Unit ID for AN-ZBANA
+#define AN_ZBHART       0x03            // XXX : FIXE IT WHATEVER YOU WANT
+
+

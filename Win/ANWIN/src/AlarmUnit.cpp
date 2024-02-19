@@ -12,6 +12,8 @@ extern PACKAGE TMainForm *MainForm;
 // ---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "ChildUnit"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 
 static const TColor clOrangeRed = (TColor)0x000045FF;

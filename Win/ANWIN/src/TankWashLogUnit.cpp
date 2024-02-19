@@ -4,6 +4,8 @@
 #include "ANWinInc.h"
 
 #include "TankWashLogUnit.h"
+#include "ChildUnit.h"
+#include "Anpro_Net.h"
 #include "MainUnit.h"
 #include <SQL_Queries.hpp>
 //---------------------------------------------------------------------------
@@ -28,6 +30,8 @@
 #pragma link "asgprev"
 #pragma link "AdvCombo"
 #pragma link "DBAdvGlowNavigator"
+#pragma link "frCoreClasses"
+#pragma link "frxSmartMemo"
 #pragma resource "*.dfm"
 
 

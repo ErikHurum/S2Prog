@@ -91,6 +91,7 @@ struct ANPRO10_COMMAND_1001 {
     U8    ResetStatus;
     U8    ProgamTypeRunning;
     U16   TotalUnitRestart;
+    U8    UnitBootVersion;
 };
 
 struct ANPRO10_COMMAND_1091 {
@@ -602,7 +603,7 @@ struct QueueANPRO10_COMMAND_2603 {
 
 
 struct ANPRO10_COMMAND_2602 {
-    U16   CommandNo;
+    U16   CommandNo;            
     U16   ndb;
 
     U32   ObjectId;
@@ -618,6 +619,7 @@ struct ANPRO10_COMMAND_2602 {
     U8    ProgamTypeRunning;
     U16   TotalUnitRestart;
     float CardVoltage;
+    U8    UnitBootVersion;
 };
 
 struct QueueANPRO10_COMMAND_2602 {
@@ -625,29 +627,6 @@ struct QueueANPRO10_COMMAND_2602 {
     ANPRO10_COMMAND_2602   Data;
 };
 
-struct ANPRO10_COMMAND_2611 {
-    U16   CommandNo;
-    U16   ndb;
-
-    U32   ObjectId;
-    U8    CardChannel;
-    U8    CardId;
-    U8    CardAddress;
-    U8    UnitProgVersion;
-    U8    ComVersion;
-    U8    StoreVersion;
-    U16   RxBufSize;
-    U16   TxBufSize;
-    U8    ResetStatus;
-    U8    ProgamTypeRunning;
-    U16   TotalUnitRestart;
-    float CardVoltage;
-};
-
-struct QueueANPRO10_COMMAND_2611 {
-    InternalCommandStruct  TxInfo;
-    ANPRO10_COMMAND_2611   Data;
-};
 
 struct ANPRO10_COMMAND_2610 {
     U16     CommandNo;

@@ -3,43 +3,31 @@
 #ifndef ShipSystemUnitH
 #define ShipSystemUnitH
 #include "ChildUnit.h"
+#include "AdvDateTimePicker.hpp"
+
+#include "AdvGrid.hpp"
+#include "AdvObj.hpp"
+#include "AdvUtil.hpp"
+#include "BaseGrid.hpp"
 #include "DBAccess.hpp"
+#include "DBAdvGrid.hpp"
 #include "LiteAccess.hpp"
 #include "MemDS.hpp"
 #include <Data.DB.hpp>
 #include <System.Classes.hpp>
+#include <System.ImageList.hpp>
+#include <Vcl.Buttons.hpp>
 #include <Vcl.ComCtrls.hpp>
 #include <Vcl.Controls.hpp>
 #include <Vcl.DBCtrls.hpp>
 #include <Vcl.DBGrids.hpp>
 #include <Vcl.ExtCtrls.hpp>
+#include <Vcl.Graphics.hpp>
 #include <Vcl.Grids.hpp>
-#include <Vcl.StdCtrls.hpp>
+#include <Vcl.ImgList.hpp>
 #include <Vcl.Menus.hpp>
-#include "AdvDateTimePicker.hpp"
-#include "RzDBNav.hpp"
-
-#include "RzPanel.hpp"
-#include "AdvGrid.hpp"
-
-#include "AdvObj.hpp"
-
-#include "AdvUtil.hpp"
-#include "BaseGrid.hpp"
-#include "DBAdvGrid.hpp"
-#include <Vcl.Graphics.hpp>
-#include <System.ImageList.hpp>
-#include <Vcl.ImgList.hpp>
-#include "LiteCall.hpp"
-#include "LiteConsts.hpp"/
-#include "LiteConsts.hpp"
-#include <Vcl.ImgList.hpp>
-#include <Vcl.Graphics.hpp>
-#include "DBAdvGrid.hpp"
-
-#include <Vcl.Graphics.hpp>#include "BaseGrid.hpp"/
-#include "DBAdvGrid.hpp"-
-#include <Vcl.Graphics.hpp>--------------------------------------------------------------------------
+#include <Vcl.StdCtrls.hpp>
+//----------------------------------------------------
 class TShipSystemInfoForm : public TChildForm
 {
 __published:    // IDE-managed Components

@@ -1,7 +1,9 @@
 #include "TSNIncludes.h"
 #pragma hdrstop
 #ifdef BORLAND
-    #pragma package(smart_init)
+	#pragma package(smart_init)
+	#include "ChildUnit.h"
+	#include "Anpro_Net.h"
 	#include "MainUnit.h"
 #endif
 

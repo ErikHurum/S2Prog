@@ -1,9 +1,9 @@
 #include "ANWinInc.h"
 #pragma hdrstop
 USEFORM("TankObjectUnit.cpp", TankObjectForm);
-#include <fstream.h>
-#include <iostream.h>
-#include <iomanip.h>
+//#include <fstream.h>
+//#include <iostream.h>
+//#include <iomanip.h>
 #include "stdio.h"
 #include <dir.h>
 #include <stdlib.h>
@@ -149,7 +149,7 @@ void __fastcall  TTankPlanDrawingForm::SetTankXYPoints(int index )
             float X = _wtof(LineList->Strings[++index].Trim().c_str());
             ++index; // 20
             float Y = _wtof(LineList->Strings[++index].Trim().c_str());
-            PointStruct tmpPoint = {{X,Y},{X,Y}};
+            PointStruct tmpPoint = {{(long)X,(long)Y},{(long)X,(long)Y}};
             tmpPVect.push_back( tmpPoint);
 			MaxX = max(X,MaxX);
             MinX = min(X,MinX);
@@ -171,7 +171,7 @@ bool __fastcall  TTankPlanDrawingForm::SetTankNamePoints(int index)
 	AnsiString temp = LineList->Strings[index+6].SubString(5, 10);
 	PROTank *TempPRO = (PROTank*)FindCompFromTagName(Tag, temp);
 	if (TempPRO) {
-		TankPointStruct tmpPoint = {{{X,Y},{X,Y}},TempPRO};
+		TankPointStruct tmpPoint = {{{(long)X,(long)Y},{(long)X,(long)Y}},TempPRO};
         TankNamePoint.push_back(tmpPoint);
         tankFound = true;
     }
@@ -189,7 +189,7 @@ bool __fastcall  TTankPlanDrawingForm::SetTankValuePoints(int index)
     AnsiString temp = LineList->Strings[index+6].SubString(5, 10);
 	PROTank *TempPRO = (PROTank*)FindCompFromTagName(Tag, temp);
 	if (TempPRO) {
-		TankPointStruct tmpPoint = {{{X,Y},{X,Y}},TempPRO};
+		TankPointStruct tmpPoint = {{{(long)X,(long)Y},{(long)X,(long)Y}},TempPRO};
         TankValuePoint.push_back(tmpPoint);
 		tankFound = true;
     }
@@ -216,7 +216,7 @@ bool __fastcall  TTankPlanDrawingForm::SetTankAlarmPoints(int index) {
 	//AlarmIdTypeStr.ToInt();
 	PROTank *TempPRO = (PROTank *)FindCompFromTagName(Tag, TankNumber);
 	if ( TempPRO ) {
-		AlarmPointStruct tmpPoint = { { { X, Y }, { X, Y } }, TempPRO,AlarmIdType,AlarmIndex };
+		AlarmPointStruct tmpPoint = { { { (long)X, (long)Y }, { (long)X, (long)Y } }, TempPRO,AlarmIdType,AlarmIndex };
 		TankAlarmPoint.push_back(tmpPoint);
 		AlarmColorVect.push_back(clBtnFace);
 		tankFound = true;
@@ -766,20 +766,18 @@ void __fastcall TTankPlanDrawingForm::ScrollBar1Scroll(TObject *Sender,
 
 void __fastcall TTankPlanDrawingForm::FormResize(TObject *Sender)
 {
-	if(this){
-		if (!NoReSize && MaxX ) {
-			if ( MaxX == MinX) {
-				MinX = MaxX -100;
-			}
-			ScaleCoeffW = (MaxX - MinX)/(Width -40);
+	if (!NoReSize && MaxX ) {
+		if ( MaxX == MinX) {
+			MinX = MaxX -100;
+		}
+		ScaleCoeffW = (MaxX - MinX)/(Width -40);
 
-			int heightDiv = Height - 300;
-			if (heightDiv > 0) {
+		int heightDiv = Height - 300;
+		if (heightDiv > 0) {
 
-				ScaleCoeffH = (MaxY - MinY)/(heightDiv);
-				ScaleTPDrawing();
-				CreatePolygonRegion();
-			}
+			ScaleCoeffH = (MaxY - MinY)/(heightDiv);
+			ScaleTPDrawing();
+			CreatePolygonRegion();
 		}
 	}
 }
