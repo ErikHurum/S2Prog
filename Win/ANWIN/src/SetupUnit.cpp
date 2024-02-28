@@ -81,7 +81,7 @@ void __fastcall TSetupForm::FormCreate(TObject *Sender)
 	ExportToHYPETCheckBox->Checked = ExportToSARC;
 	ExportToMidas1CheckBox->Checked= ExporttoMidas1;
 
-	DataLogDaysAdvSpinEdit->Value  	= MainForm->DataLogDays;
+	DataLogDaysAdvSpinEdit->Value  	= TChildForm::DataLogDays;
 	MinLinePressEdit->Text         	= AnalogueLinePressMin;
 	MaxLinePressEdit->Text         	= AnalogueLinePressMax;
 	DividerLinePressEdit->Text     	= AnalogueLinePressDividers;
@@ -224,7 +224,7 @@ void __fastcall TSetupForm::DataLogCheckBoxClick(TObject *Sender)
 
 void __fastcall TSetupForm::DataLogDaysAdvSpinEditChange(TObject *Sender)
 {
-	MainForm->DataLogDays = DataLogDaysAdvSpinEdit->Value;
+	TChildForm::DataLogDays = DataLogDaysAdvSpinEdit->Value;
 }
 //---------------------------------------------------------------------------
 

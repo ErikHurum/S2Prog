@@ -26,7 +26,8 @@ unsigned read_adc(unsigned char adc_input) {
 // Start the AD conversion
     ADCSRA |= (1 << ADSC);
 // Wait for the AD conversion to complete
-    while ( (ADCSRA & (1 << ADIF)) == 0 );
+    OS_I32 EndTime = OS_Time+50;
+    while ( ( (ADCSRA & (1 << ADIF)) == 0 ) && OS_time < EndTime);
     ADCSRA |= (1 << ADIF);
     return ADC; // Reading ADCL and ADCH in one run;
 }

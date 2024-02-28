@@ -134,6 +134,9 @@ public: // User declarations
 
 	static bool   DirectStrGridPrint;
 	static bool   WriteToRegistryOnExit;
+	static TLiteQuery *LiteQueryDataLog;
+    static int    DataLogDays;
+
 
 	__fastcall TChildForm(TComponent* Owner, int TTypeId=0);
 	__fastcall TChildForm(TComponent *Owner, vector<PRogramObjectBase*>ObjVector);

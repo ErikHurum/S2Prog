@@ -1,13 +1,14 @@
 //---------------------------------------------------------------------------
 
+#include "DataLogThreadUnit.h"
 #include <System.hpp>
 #include "ANWinInc.h"
 #pragma hdrstop
 #include "ChildUnit.h"
 #include "Anpro_Net.h"
-#include "MainUnit.h"
+//#include "MainUnit.h"
 
-#include "DataLogThreadUnit.h"
+
 #pragma package(smart_init)
 //---------------------------------------------------------------------------
 
@@ -40,13 +41,13 @@ void __fastcall DataLogThread::Execute()
 			int NextCleanTime = time(NULL) + NEXT_CLEAN_TIME; // Clean once every day
 			while (!Terminated) {
 				const unsigned rDelay         = Delay / NumberOfTanks;
-				PROCargoTank::LogData(MainForm->LiteQueryDataLog, Terminated,rDelay);
-				PROSystemData::LogData(MainForm->LiteQueryDataLog);
+				PROCargoTank::LogData(TChildForm::LiteQueryDataLog, Terminated,rDelay);
+				PROSystemData::LogData(TChildForm::LiteQueryDataLog);
 				int timeNow = time(NULL);
 				if (NextCleanTime <= timeNow) {
 					NextCleanTime = timeNow + NEXT_CLEAN_TIME;
-					PROSystemData::CleanLogData(MainForm->LiteQueryDataLog,MainForm->DataLogDays);
-					PROCargoTank::CleanLogDataFromTank(MainForm->LiteQueryDataLog,MainForm->DataLogDays);
+					PROSystemData::CleanLogData(TChildForm::LiteQueryDataLog,TChildForm::DataLogDays);
+					PROCargoTank::CleanLogDataFromTank(TChildForm::LiteQueryDataLog,TChildForm::DataLogDays);
 				}
 			}
 		}

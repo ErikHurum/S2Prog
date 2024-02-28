@@ -224,6 +224,7 @@ inherited GroupTableService: TGroupTableService
   end
   inherited Panel2: TPanel
     StyleElements = [seFont, seClient, seBorder]
+    ExplicitWidth = 1133
     inherited GroupBox1: TGroupBox
       inherited EditFontSize: TEdit
         StyleElements = [seFont, seClient, seBorder]

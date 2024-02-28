@@ -41,7 +41,8 @@ int    TChildForm::AnalogueLinePressDividers 	= 9;
 double TChildForm::AnalogueTankPressMax			= 600.0;
 double TChildForm::AnalogueTankPressMin			= -300.0;
 int    TChildForm::AnalogueTankPressDividers 	= 6;
-
+TLiteQuery *TChildForm::LiteQueryDataLog 		= NULL;
+int    TChildForm::DataLogDays                  = 30;      // 30 days
 
 TFormStyle ChildFormStyle 		= fsMDIChild;
 set<TChildForm *>TChildForm::TGroupTablePicSet;
@@ -286,6 +287,7 @@ void __fastcall TChildForm::UpdateStringGrid(vector<PRogramObjectBase *>ObjectTa
 								}
 							}
 							CurrentStringGrid->Colors[Col][Row + 2] = CargoColor;
+							CurrentStringGrid->FontStyles[Col][Row + 2] = CurrentStringGrid->FontStyles[Col][Row + 2] << fsItalic;
 						}
 						break;
 					case SVT_PRO_STATUS:

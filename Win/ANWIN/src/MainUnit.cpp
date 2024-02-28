@@ -2116,7 +2116,7 @@ void __fastcall TMainForm::ReadRegistry(void) {
 				if ( Registry->ValueExists(ToolBarItemRegKey		) ) ToolBarItem->Checked 		  			= Registry->ReadBool(ToolBarItemRegKey);
 				if ( Registry->ValueExists(DataLogEnableKey			) ) DataLogEnable 							= Registry->ReadBool(DataLogEnableKey);
 				if ( Registry->ValueExists(DataLogIntervalKey		) ) DataLogInterval 						= Registry->ReadInteger(DataLogIntervalKey);
-				if ( Registry->ValueExists(DataLogDaysKey			) ) DataLogDays 							= Registry->ReadInteger(DataLogDaysKey);
+				if ( Registry->ValueExists(DataLogDaysKey			) ) TChildForm::DataLogDays 				= Registry->ReadInteger(DataLogDaysKey);
 				if ( Registry->ValueExists(SensorLogEnableKey		) ) SensorLogEnable 						= Registry->ReadBool(SensorLogEnableKey);
 				if ( Registry->ValueExists(SensorLogIntervalKey		) ) SensorLogInterval 						= Registry->ReadInteger(SensorLogIntervalKey);
 				if ( Registry->ValueExists(SensorLogDaysKey			) ) SensorLogDays 							= Registry->ReadInteger(SensorLogDaysKey);
@@ -2336,7 +2336,7 @@ void __fastcall TMainForm::WriteRegistry(void) {
 
 			Registry->WriteBool(DataLogEnableKey			, DataLogEnable		);
 			Registry->WriteInteger(DataLogIntervalKey		, DataLogInterval	);
-			Registry->WriteInteger(DataLogDaysKey			, DataLogDays		);
+			Registry->WriteInteger(DataLogDaysKey			, TChildForm::DataLogDays );
 			Registry->WriteBool(SensorLogEnableKey			, SensorLogEnable	);
 			Registry->WriteInteger(SensorLogIntervalKey		, SensorLogInterval	);
 			Registry->WriteInteger(SensorLogDaysKey			, SensorLogDays		);
@@ -2745,7 +2745,7 @@ void __fastcall TMainForm::NetReceiveRestartTimerTimer(TObject *Sender) {
         if ( MainForm->CheckNetwork() ) {
             NetReceiveRestartTimer->Enabled = false;
             FindComPort = false;
-            MainForm->DataSourceName = "Com" + AnsiString(nrComm1->ComPortNo);
+            DataSourceName = "Com" + AnsiString(nrComm1->ComPortNo);
         } else {
             if ( nrComm1->Active ) {
                 nrComm1->Active = false;
@@ -3576,10 +3576,12 @@ void __fastcall TMainForm::FormCreate(TObject *Sender) {
 	// Data logging
 	DataLogEnable       = false;
 	DataLogInterval     = 60;
-	DataLogDays     	= 30;
 	SensorLogEnable     = false;
 	SensorLogInterval   = 60;
 	SensorLogDays  		= 7;
+
+	TChildForm::LiteQueryDataLog =  LiteQueryDataLog;
+
 
 
 	// HasLoadCalc   		= false;

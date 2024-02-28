@@ -52,6 +52,7 @@ Purpose : Initializes and handles the hardware for embOS as far
 #include "RTOS.h"
 #include "iom1281.h"
 #include "constants.h"
+#include "inavr.h"
 /*
 #if (((__TID__ >> 4) & 0x0F) == 1)
   #include "IO8535.H"
@@ -211,6 +212,22 @@ __interrupt void OS_ISR_Tick(void) {
 
 
 void OS_InitHW(void) {
+    TCCR1A_COM1A1 = 0;    // 0: No output
+    TCCR1A_COM1A0 = 0;    // 0: No output
+    TCCR1A_WGM11  = 0;    // 0: No PWM
+    TCCR1A_WGM10  = 0;    // 0: No PWM
+
+    TCCR1B_ICNC1  = 0;     // 0: Disable noise canceler
+    TCCR1B_ICES1  = 0;     // 0: capturee edge
+    TCCR1B_WGM12  = 1;     // 1: Reset on compare match
+    TCCR1B_CS12   = 0;     // Clock-Source: 001 = CK/1 no prescaler
+    TCCR1B_CS11   = 0;     // Clock-Source: 010 = CK/8
+    TCCR1B_CS10   = 1;     // Clock-Source: 001 = CK/1
+                  
+    OCR1A         = (OS_TIMER_RELOAD); // generate 1ms interrupts
+    TIMSK1_OCIE1A = 1;      // Output CompareA Match Interrupt Enable
+
+    /*
     TCCR1A=  (0<<6)       // 0: No output
              |(0<<4)             // 0: No output
              |(0<<0);            // No PWM
@@ -219,7 +236,8 @@ void OS_InitHW(void) {
              |(1<<3)             // 1: Reset on compare match
              |(1<<0);            // 1: clock source CK/1
     OCR1A = (XTAL_CPU/1000)-1;         // generate 1ms interrupts
-  TIMSK1 |= (1<<1);      // Output CompareA Match Interrupt Enable
+    TIMSK1 |= (1<<1);      // Output CompareA Match Interrupt Enable
+    */
     //  SREG  = 0x80 ;        // global interrupt
     OS_COM_INIT();        // Initialize communication to embOSView
 }
@@ -236,9 +254,13 @@ void OS_InitHW(void) {
 *       to be preserved. However, a simple program loop can be programmed
 *       (like toggeling an output or incrementing a counter)
 */
-
+static OS_I32 WatchDogTime = 0;
 void OS_Idle(void) {          // Idle loop: No task is ready to execute
     while (1) {           // Nothing to do ... wait for interrupt
+        if ( OS_Time > WatchDogTime) {
+            WatchDogTime = OS_Time + 500;
+            __watchdog_reset();               //kick the dog
+        }
 #if (DEBUG == 0)
         // Switch CPU into sleep mode
 #endif

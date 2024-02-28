@@ -311,7 +311,7 @@ bool IOUnitZB485::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                     RxBufSize         = CardInfo->RxBufSize;
                     TxBufSize         = CardInfo->TxBufSize;
                     ProgamTypeRunning = CardInfo->ProgamTypeRunning;
-                    TotalUnitRestart  = CardInfo->TotalUnitRestart;
+                    ResetStatus       = CardInfo->ResetStatus;
                     if (UnitProgVersion >= VERSION_ANZB_1281_PROG_FIRST) {
                         UnitBootVersion   = CardInfo->UnitBootVersion;
                         TotalUnitRestart  = CardInfo->TotalUnitRestart;
@@ -319,8 +319,7 @@ bool IOUnitZB485::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                             Restart             = true;
                         }
                     }else{
-                        ResetStatus         = CardInfo->ResetStatus;
-                        if (CardInfo->ResetStatus) {
+                        if ( ResetStatus ) {
                             UnitBootVersion     = 0;
                             Restart             = true;
                             TotalUnitRestart++;

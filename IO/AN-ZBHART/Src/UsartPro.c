@@ -206,6 +206,7 @@ void Usart0Handler(void) {
     hasStartedUARTTask = 1;
     UCSR0B  = 1 << RXCIE0 | 1 << RXEN0 | 1 << TXEN0;  //0x98;                                       /* tx/ rx enable, int udre/rxon */
     while ( 1 ) {
+
         ANPRO10_IO_Receive();
     }
 }
@@ -266,7 +267,9 @@ void My485UART_BuildTail(void) {
     My_SetBit(PORTE, 0x04);                                 // TXE0 on
     OS_Delay(2);                                            // Ensure some settling time
     UCSR0B |= __BIT_MASK(UDRIE0);                           // start sending by enableing interrupt
-    OS_WaitEvent(UART0_EVENT_TX_COMPLETE);
+    if (!OS_WaitEventTimed(UART0_EVENT_TX_COMPLETE, 1000)) {
+        PORTE &= ~0x04 ;                                    // TXE0 off
+    }
 
 }
 

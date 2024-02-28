@@ -62,6 +62,8 @@ void main(void) {
     int SByte5 = ReadSignatureRow(4);
 
     __watchdog_reset();               //kick the dog
+    WDT_Prescaler_Change();
+
     RestartCnt++;
 
     
@@ -123,6 +125,6 @@ void main(void) {
         break;
     }
 
-    OS_CREATETASK(&TCB_WATCHDOG, "Watch dog", WatchDogHandler, 50, Stack3);
+    //OS_CREATETASK(&TCB_WATCHDOG, "Watch dog", WatchDogHandler, 50, Stack3);
     OS_Start();                                         // Start multitasking
 }

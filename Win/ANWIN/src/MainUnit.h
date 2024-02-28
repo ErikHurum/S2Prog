@@ -55,7 +55,6 @@
 #include <Vcl.StdCtrls.hpp>
 #include <Vcl.ToolWin.hpp>
 #include "RzTreeVw.hpp"
-tull
 #include "DataLogThreadUnit.h"
 #include "SensorLogThreadUnit.h"
 #include "AdvProgr.hpp"
@@ -438,8 +437,7 @@ public: // User declarations
 	AnsiString ErrorMsgString;
     // AnsiString ProjectDir;
 	TStringList *ProjectNameList;
-    AnsiString DataSourceName;
-    AnsiString HostIP;
+	AnsiString HostIP;
 	AnsiString HostIP2;
 	AnsiString TCU_IP_Address;
 	int TCU_TCP_Port;
@@ -480,7 +478,6 @@ public: // User declarations
 	TStringList  *PVCSClients;
 	bool DataLogEnable;
 	int DataLogInterval;
-	int DataLogDays;
 	bool SensorLogEnable;
 	int SensorLogInterval;
 	int SensorLogDays;

@@ -268,23 +268,21 @@ bool IOUnitZBAna::ANPRO10_IO_UnpackPacket(U8 *Buf) {
                     StoreVersion      = CardInfo->StoreVersion;
                     RxBufSize         = CardInfo->RxBufSize;
                     TxBufSize         = CardInfo->TxBufSize;
+                    ProgamTypeRunning = CardInfo->ProgamTypeRunning;
+                    ResetStatus       = CardInfo->ResetStatus;
                     if (UnitProgVersion >= VERSION_ANZB_1281_PROG_FIRST) {
                         UnitBootVersion   = CardInfo->UnitBootVersion;
                         TotalUnitRestart  = CardInfo->TotalUnitRestart;
-                        if (CardInfo->ResetStatus) {
-                            ResetStatus       = CardInfo->ResetStatus;
-                            Restart           = true;
+                        if (ResetStatus) {
+                            Restart             = true;
                         }
                     }else{
-                        ResetStatus         = CardInfo->ResetStatus;
-                        if (CardInfo->ResetStatus) {
+                        if ( ResetStatus ) {
                             UnitBootVersion     = 0;
-                            ResetStatus         = CardInfo->ResetStatus;
                             Restart             = true;
                             TotalUnitRestart++;
                         }
                     }
-                    ProgamTypeRunning = CardInfo->ProgamTypeRunning;
                 }
                 //SendData(CMD_GENERIC_STATIC_DATA);
                 break;
